@@ -649,6 +649,23 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	
+	// Debug output for testing
+	print_verbose("CSGSculptedBox3D::_build_brush() debug:");
+	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
+	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
+	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
+	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
+	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
+	print_verbose(vformat("  Faces array size: %d", faces.size()));
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
+	if (brush->faces.size() > 0) {
+		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+			brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
+			brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
+			brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+	}
+	
 	return brush;
 }
 
@@ -890,6 +907,23 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	
+	// Debug output for testing
+	print_verbose("CSGSculptedBox3D::_build_brush() debug:");
+	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
+	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
+	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
+	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
+	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
+	print_verbose(vformat("  Faces array size: %d", faces.size()));
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
+	if (brush->faces.size() > 0) {
+		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+			brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
+			brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
+			brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+	}
+	
 	return brush;
 }
 
@@ -1116,6 +1150,23 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	
+	// Debug output for testing
+	print_verbose("CSGSculptedBox3D::_build_brush() debug:");
+	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
+	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
+	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
+	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
+	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
+	print_verbose(vformat("  Faces array size: %d", faces.size()));
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
+	if (brush->faces.size() > 0) {
+		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+			brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
+			brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
+			brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+	}
+	
 	return brush;
 }
 
@@ -1552,6 +1603,23 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	
+	// Debug output for testing
+	print_verbose("CSGSculptedBox3D::_build_brush() debug:");
+	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
+	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
+	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
+	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
+	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
+	print_verbose(vformat("  Faces array size: %d", faces.size()));
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
+	if (brush->faces.size() > 0) {
+		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+			brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
+			brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
+			brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+	}
+	
 	return brush;
 }
 
@@ -1801,6 +1869,23 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	
+	// Debug output for testing
+	print_verbose("CSGSculptedBox3D::_build_brush() debug:");
+	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
+	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
+	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
+	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
+	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
+	print_verbose(vformat("  Faces array size: %d", faces.size()));
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
+	if (brush->faces.size() > 0) {
+		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+			brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
+			brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
+			brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+	}
+	
 	return brush;
 }
 
@@ -2074,6 +2159,23 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	
+	// Debug output for testing
+	print_verbose("CSGSculptedBox3D::_build_brush() debug:");
+	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
+	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
+	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
+	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
+	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
+	print_verbose(vformat("  Faces array size: %d", faces.size()));
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
+	if (brush->faces.size() > 0) {
+		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+			brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
+			brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
+			brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+	}
+	
 	return brush;
 }
 

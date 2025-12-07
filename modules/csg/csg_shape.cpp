@@ -425,10 +425,25 @@ static void _pack_manifold(
 	mesh.tolerance = 2 * FLT_EPSILON;
 	ERR_FAIL_COND_MSG(mesh.vertProperties.size() % mesh.numProp != 0, "Invalid vertex properties size.");
 	mesh.Merge();
+	
+	// Debug output before creating Manifold
+	print_verbose(vformat("_pack_manifold() - before Manifold constructor: mesh has %d triangles, %d vertices, %d properties",
+		(int)(mesh.triVerts.size() / 3), (int)(mesh.vertProperties.size() / mesh.numProp), (int)(mesh.vertProperties.size())));
+	print_verbose(vformat("  runIndex size: %d, runOriginalID size: %d", (int)mesh.runIndex.size(), (int)mesh.runOriginalID.size()));
+	
 #ifdef DEV_ENABLED
 	print_verbose(_export_meshgl_as_json(mesh));
 #endif // DEV_ENABLED
 	r_manifold = manifold::Manifold(mesh);
+	
+	// Debug output after creating Manifold
+	manifold::MeshGL64 debug_unpacked = r_manifold.GetMeshGL64();
+	manifold::Manifold::Error status = r_manifold.Status();
+	print_verbose(vformat("_pack_manifold() - after Manifold constructor: mesh has %d triangles, %d vertices, status: %d",
+		(int)(debug_unpacked.triVerts.size() / 3), (int)(debug_unpacked.vertProperties.size() / debug_unpacked.numProp), (int)status));
+	if (status != manifold::Manifold::Error::NoError) {
+		print_verbose(vformat("_pack_manifold() - Manifold construction failed with error code: %d", (int)status));
+	}
 }
 
 struct ManifoldOperation {
@@ -459,9 +474,28 @@ CSGBrush *CSGShape3D::_get_brush() {
 	}
 	brush = nullptr;
 	CSGBrush *n = _build_brush();
+	
+	// Debug output for testing
+	if (n) {
+		print_verbose(vformat("CSGShape3D::_get_brush() - brush from _build_brush has %d faces", n->faces.size()));
+		if (n->faces.size() > 0) {
+			print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+				n->faces[0].vertices[0].x, n->faces[0].vertices[0].y, n->faces[0].vertices[0].z,
+				n->faces[0].vertices[1].x, n->faces[0].vertices[1].y, n->faces[0].vertices[1].z,
+				n->faces[0].vertices[2].x, n->faces[0].vertices[2].y, n->faces[0].vertices[2].z));
+		}
+	} else {
+		print_verbose("CSGShape3D::_get_brush() - _build_brush returned nullptr!");
+	}
+	
 	HashMap<int32_t, Ref<Material>> mesh_materials;
 	manifold::Manifold root_manifold;
 	_pack_manifold(n, root_manifold, mesh_materials, this);
+	
+	// Debug output after packing
+	manifold::MeshGL64 debug_mesh = root_manifold.GetMeshGL64();
+	print_verbose(vformat("CSGShape3D::_get_brush() - after _pack_manifold: mesh has %d triangles, %d vertices",
+		(int)(debug_mesh.triVerts.size() / 3), (int)(debug_mesh.vertProperties.size() / debug_mesh.numProp)));
 	manifold::OpType current_op = ManifoldOperation::convert_csg_op(get_operation());
 	std::vector<manifold::Manifold> manifolds;
 	manifolds.push_back(root_manifold);
@@ -489,11 +523,28 @@ CSGBrush *CSGShape3D::_get_brush() {
 	}
 	if (!manifolds.empty()) {
 		manifold::Manifold manifold_result = manifold::Manifold::BatchBoolean(manifolds, current_op);
+		
+		// Debug output after boolean operation
+		manifold::MeshGL64 debug_result_mesh = manifold_result.GetMeshGL64();
+		print_verbose(vformat("CSGShape3D::_get_brush() - after BatchBoolean: mesh has %d triangles, %d vertices",
+			(int)(debug_result_mesh.triVerts.size() / 3), (int)(debug_result_mesh.vertProperties.size() / debug_result_mesh.numProp)));
+		
 		if (n) {
 			memdelete(n);
 		}
 		n = memnew(CSGBrush);
 		_unpack_manifold(manifold_result, mesh_materials, n);
+		
+		// Debug output after unpacking
+		print_verbose(vformat("CSGShape3D::_get_brush() - after _unpack_manifold: brush has %d faces", n->faces.size()));
+		if (n->faces.size() > 0) {
+			print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
+				n->faces[0].vertices[0].x, n->faces[0].vertices[0].y, n->faces[0].vertices[0].z,
+				n->faces[0].vertices[1].x, n->faces[0].vertices[1].y, n->faces[0].vertices[1].z,
+				n->faces[0].vertices[2].x, n->faces[0].vertices[2].y, n->faces[0].vertices[2].z));
+		}
+	} else {
+		print_verbose("CSGShape3D::_get_brush() - manifolds.empty() is true!");
 	}
 	AABB aabb;
 	if (n && !n->faces.is_empty()) {
