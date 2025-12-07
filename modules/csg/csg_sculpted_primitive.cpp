@@ -453,6 +453,10 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	Vector<Vector2> hollow_profile;
 	int segments = 8; // Default segments for box
 	generate_profile_points(profile_curve, profile_begin, profile_end, hollow, hollow_shape, segments, profile, hollow_profile);
+	
+	// Enable end caps - required for manifold mesh (closed surface)
+	// For square profiles, we triangulate using corner vertices, not a center point
+	bool enable_end_caps = true;
 
 	// Generate path points
 	int path_segments = 8;
@@ -547,14 +551,17 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	}
 
 	// Add end caps for linear paths to ensure manifold geometry
-	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+	// For square profiles (4 vertices), we triangulate using corner vertices: (0,1,2) and (0,2,3)
+	// For circular profiles (many vertices), we use vertex 0 as center: (0,i,i+1) for each i
+	if (enable_end_caps && path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin)
 		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
-			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
+			// For square profiles (4 vertices), use fan triangulation from vertex 0
+			// This creates triangles: (0,1,2) and (0,2,3) which properly close the square
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Counter-clockwise: (center, i, i+1)
+				// Counter-clockwise when viewed from below: (0, i, i+1)
 				indices.push_back(bottom_base);
 				indices.push_back(bottom_base + i);
 				indices.push_back(bottom_base + i + 1);
@@ -565,9 +572,9 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
-			// Triangulate the top face - counter-clockwise when viewed from outside (above)
+			// For square profiles, use fan triangulation from vertex 0
+			// Counter-clockwise when viewed from above: (0, i+1, i) - reversed
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
 				indices.push_back(top_base + i + 1);
 				indices.push_back(top_base + i);
