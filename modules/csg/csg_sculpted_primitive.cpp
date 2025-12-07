@@ -553,39 +553,38 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	// Add end caps for linear paths to ensure manifold geometry
 	// For square profiles (4 vertices), we triangulate using corner vertices: (0,1,2) and (0,2,3)
 	// For circular profiles (many vertices), we use vertex 0 as center: (0,i,i+1) for each i
+	// Track end cap face indices for invert flag
+	int bottom_cap_start_face = -1;
+	int top_cap_start_face = -1;
+	
 	if (enable_end_caps && path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin) - match CSGCylinder3D pattern exactly
 		// Side faces create edges (base1+i, base1+next_i) = (i, next_i)
 		// End cap must create reversed edges (next_i, i) to pair correctly
 		// CSGCylinder3D uses: (next_i, i, center) which creates edge (next_i, i) ✓
-		// For correct outward-facing normals, reverse to (i, 0, next_i) which creates edge (i, next_i) then (next_i, i) via center
-		// Actually, to maintain edge (next_i, i) with correct normals, use (i, next_i, 0) then reverse the whole triangle
-		// Wait, let's just reverse the order: (i, 0, next_i) creates edges (i, 0), (0, next_i), (next_i, i) - perimeter edge (next_i, i) ✓
+		bottom_cap_start_face = indices.size() / 3;
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
-			// Use (0, next_i, i) to create reversed edge (next_i, i) for edge pairing
-			// and correct counter-clockwise winding when viewed from below (outside)
+			// Use CSGCylinder3D pattern exactly: (next_i, i, 0) for correct edge pairing
 			for (int i = 0; i < effective_profile_count; i++) {
 				int next_i = (i + 1) % effective_profile_count;
-				indices.push_back(bottom_base);
 				indices.push_back(bottom_base + next_i);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base);
 			}
 		}
 
 		// Top cap (at path_end) - match CSGCylinder3D pattern exactly
-		// Side face triangle 2 creates edge (base2+next_i, base2+i) at top
-		// End cap must create reversed edge (base2+i, base2+next_i) to pair correctly
-		// Use (0, i, next_i) to create edge (i, next_i) which reverses (next_i, i)
-		// and correct counter-clockwise winding when viewed from above (outside)
+		// CSGCylinder3D uses: (i, next_i, center) which creates edge (i, next_i)
+		top_cap_start_face = indices.size() / 3;
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
-			// Use (0, i, next_i) for correct outward normals and edge pairing
+			// Use CSGCylinder3D pattern exactly: (i, next_i, 0) for correct edge pairing
 			for (int i = 0; i < effective_profile_count; i++) {
 				int next_i = (i + 1) % effective_profile_count;
-				indices.push_back(top_base);
 				indices.push_back(top_base + i);
 				indices.push_back(top_base + next_i);
+				indices.push_back(top_base);
 			}
 		}
 
