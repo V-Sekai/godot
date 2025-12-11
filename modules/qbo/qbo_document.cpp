@@ -38,523 +38,530 @@
 #include "scene/resources/mesh.h"
 #include "scene/resources/surface_tool.h"
 
-Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path) {
-	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, "Cannot open QBO file.");
-	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
+Error QBODocument::_parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps) {
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
+	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, vformat("Couldn't open MTL file '%s', it may not exist or not be readable.", p_path));
 
-	HashMap<String, int> bone_name_map;
-	Vector<int> parent_stack;
-	Vector<Transform3D> transform_stack;
-	Vector<Vector<int>> node_children;
-	Ref<GLTFAnimation> current_animation;
-	bool in_hierarchy = false;
-	bool in_motion = false;
-	double frame_time = 0.03333333;
-	int64_t frame_count = 0;
-	int64_t frames_parsed = 0;
-	Vector<Vector<String>> frame_data;
+	Ref<StandardMaterial3D> current;
+	String current_name;
+	String base_path = p_path.get_base_dir();
+	while (true) {
+		String l = f->get_line().strip_edges();
+
+		if (l.begins_with("newmtl ")) {
+			//vertex
+
+			current_name = l.replace("newmtl", "").strip_edges();
+			current.instantiate();
+			current->set_name(current_name);
+			material_map[current_name] = current;
+		} else if (l.begins_with("Ka ")) {
+			//uv
+			WARN_PRINT("OBJ: Ambient light for material '" + current_name + "' is ignored in PBR");
+
+		} else if (l.begins_with("Kd ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_INVALID_DATA);
+			Color c = current->get_albedo();
+			c.r = v[1].to_float();
+			c.g = v[2].to_float();
+			c.b = v[3].to_float();
+			current->set_albedo(c);
+		} else if (l.begins_with("Ks ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_INVALID_DATA);
+			float r = v[1].to_float();
+			float g = v[2].to_float();
+			float b = v[3].to_float();
+			float metalness = MAX(r, MAX(g, b));
+			current->set_metallic(metalness);
+		} else if (l.begins_with("Ns ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() != 2, ERR_INVALID_DATA);
+			float s = v[1].to_float();
+			current->set_metallic((1000.0 - s) / 1000.0);
+		} else if (l.begins_with("d ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() != 2, ERR_INVALID_DATA);
+			float d = v[1].to_float();
+			Color c = current->get_albedo();
+			c.a = d;
+			current->set_albedo(c);
+			if (c.a < 0.99) {
+				current->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+			}
+		} else if (l.begins_with("Tr ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() != 2, ERR_INVALID_DATA);
+			float d = v[1].to_float();
+			Color c = current->get_albedo();
+			c.a = 1.0 - d;
+			current->set_albedo(c);
+			if (c.a < 0.99) {
+				current->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+			}
+
+		} else if (l.begins_with("map_Ka ")) {
+			//uv
+			WARN_PRINT("OBJ: Ambient light texture for material '" + current_name + "' is ignored in PBR");
+
+		} else if (l.begins_with("map_Kd ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+
+			String p = l.replace("map_Kd", "").replace_char('\\', '/').strip_edges();
+			String path;
+			if (p.is_absolute_path()) {
+				path = p;
+			} else {
+				path = base_path.path_join(p);
+			}
+
+			Ref<Texture2D> texture = ResourceLoader::load(path);
+
+			if (texture.is_valid()) {
+				current->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, texture);
+			} else if (r_missing_deps) {
+				r_missing_deps->push_back(path);
+			}
+
+		} else if (l.begins_with("map_Ks ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+
+			String p = l.replace("map_Ks", "").replace_char('\\', '/').strip_edges();
+			String path;
+			if (p.is_absolute_path()) {
+				path = p;
+			} else {
+				path = base_path.path_join(p);
+			}
+
+			Ref<Texture2D> texture = ResourceLoader::load(path);
+
+			if (texture.is_valid()) {
+				current->set_texture(StandardMaterial3D::TEXTURE_METALLIC, texture);
+			} else if (r_missing_deps) {
+				r_missing_deps->push_back(path);
+			}
+
+		} else if (l.begins_with("map_Ns ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+
+			String p = l.replace("map_Ns", "").replace_char('\\', '/').strip_edges();
+			String path;
+			if (p.is_absolute_path()) {
+				path = p;
+			} else {
+				path = base_path.path_join(p);
+			}
+
+			Ref<Texture2D> texture = ResourceLoader::load(path);
+
+			if (texture.is_valid()) {
+				current->set_texture(StandardMaterial3D::TEXTURE_ROUGHNESS, texture);
+			} else if (r_missing_deps) {
+				r_missing_deps->push_back(path);
+			}
+		} else if (l.begins_with("map_bump ")) {
+			//normal
+			ERR_FAIL_COND_V(current.is_null(), ERR_FILE_CORRUPT);
+
+			String p = l.replace("map_bump", "").replace_char('\\', '/').strip_edges();
+			String path = base_path.path_join(p);
+
+			Ref<Texture2D> texture = ResourceLoader::load(path);
+
+			if (texture.is_valid()) {
+				current->set_feature(StandardMaterial3D::FEATURE_NORMAL_MAPPING, true);
+				current->set_texture(StandardMaterial3D::TEXTURE_NORMAL, texture);
+			} else if (r_missing_deps) {
+				r_missing_deps->push_back(path);
+			}
+		} else if (f->eof_reached()) {
+			break;
+		}
+	}
+
+	return OK;
+}
+
+Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_generate_lods, bool p_generate_shadow_mesh, bool p_generate_lightmap_uv2, float p_generate_lightmap_uv2_texel_size, const PackedByteArray &p_src_lightmap_cache, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, Vector<Vector<uint8_t>> &r_lightmap_caches, List<String> *r_missing_deps) {
+	Ref<ImporterMesh> mesh;
+	mesh.instantiate();
+
+	bool generate_tangents = p_generate_tangents;
+	Vector3 scale_mesh = p_scale_mesh;
+	Vector3 offset_mesh = p_offset_mesh;
 
 	Vector<Vector3> vertices;
 	Vector<Vector3> normals;
 	Vector<Vector2> uvs;
 	Vector<Color> colors;
-	HashMap<int, Vector4i> joint_indices_map;
-	HashMap<int, Vector4> joint_weights_map;
-	Ref<SurfaceTool> surf_tool;
-	surf_tool.instantiate();
-	Ref<GLTFMesh> gltf_mesh;
-	gltf_mesh.instantiate();
-	String current_material;
+	const String default_name = "Mesh";
+	String name = default_name;
 
+	HashMap<String, HashMap<String, Ref<StandardMaterial3D>>> material_map;
+
+	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
 	surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 
-	print_verbose("Starting QBO parsing...");
+	String current_material_library;
+	String current_material;
+	String current_group;
+	uint32_t smooth_group = 0;
+	bool smoothing = true;
+	const uint32_t no_smoothing_smooth_group = (uint32_t)-1;
 
-	while (!f->eof_reached()) {
+	bool uses_uvs = false;
+
+	while (true) {
 		String l = f->get_line().strip_edges();
-		if (l.is_empty()) {
-			continue;
+		while (l.length() && l[l.length() - 1] == '\\') {
+			String add = f->get_line().strip_edges();
+			l += add;
+			if (add.is_empty()) {
+				break;
+			}
 		}
 
-		if (l.begins_with("HIERARCHY")) {
-			print_verbose("\n--- Entering HIERARCHY section ---");
-			in_hierarchy = true;
-			in_motion = false;
-			parent_stack.clear();
-			transform_stack.clear();
-			bone_name_map.clear();
-			p_state->nodes.resize(0);
-			node_children.resize(0);
-		} else if (l.begins_with("MOTION")) {
-			print_verbose("\n--- Entering MOTION section ---");
-			in_hierarchy = false;
-			in_motion = true;
-			current_animation.instantiate();
-			current_animation->set_name("animation");
-			frames_parsed = 0;
-			print_verbose(vformat("Motion: Frame Count = %d, Frame Time = %f",
-					frame_count, frame_time));
-		} else if (in_hierarchy) {
-			if (l.begins_with("End Site")) {
-				int brace_count = 0;
-				while (!f->eof_reached()) {
-					String el = f->get_line().strip_edges();
-					if (el == "{") {
-						brace_count++;
-					} else if (el == "}") {
-						brace_count--;
-						if (brace_count <= 0) {
-							break;
+		if (l.begins_with("v ")) {
+			//vertex
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
+			Vector3 vtx;
+			vtx.x = v[1].to_float() * scale_mesh.x + offset_mesh.x;
+			vtx.y = v[2].to_float() * scale_mesh.y + offset_mesh.y;
+			vtx.z = v[3].to_float() * scale_mesh.z + offset_mesh.z;
+			vertices.push_back(vtx);
+			//vertex color
+			if (v.size() >= 7) {
+				while (colors.size() < vertices.size() - 1) {
+					colors.push_back(Color(1.0, 1.0, 1.0));
+				}
+				Color c;
+				c.r = v[4].to_float();
+				c.g = v[5].to_float();
+				c.b = v[6].to_float();
+				colors.push_back(c);
+			} else if (!colors.is_empty()) {
+				colors.push_back(Color(1.0, 1.0, 1.0));
+			}
+		} else if (l.begins_with("vt ")) {
+			//uv
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 3, ERR_FILE_CORRUPT);
+			Vector2 uv;
+			uv.x = v[1].to_float();
+			uv.y = 1.0 - v[2].to_float();
+			uvs.push_back(uv);
+		} else if (l.begins_with("vn ")) {
+			//normal
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
+			Vector3 nrm;
+			nrm.x = v[1].to_float();
+			nrm.y = v[2].to_float();
+			nrm.z = v[3].to_float();
+			normals.push_back(nrm);
+		} else if (l.begins_with("f ")) {
+			//vertex
+
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
+
+			//not very fast, could be sped up
+
+			Vector<String> face[3];
+			face[0] = v[1].split("/");
+			face[1] = v[2].split("/");
+			ERR_FAIL_COND_V(face[0].is_empty(), ERR_FILE_CORRUPT);
+
+			ERR_FAIL_COND_V(face[0].size() != face[1].size(), ERR_FILE_CORRUPT);
+			for (int i = 2; i < v.size() - 1; i++) {
+				face[2] = v[i + 1].split("/");
+
+				ERR_FAIL_COND_V(face[0].size() != face[2].size(), ERR_FILE_CORRUPT);
+				for (int j = 0; j < 3; j++) {
+					int idx = j;
+
+					if (idx < 2) {
+						idx = 1 ^ idx;
+					}
+
+					// Check UVs before faces as we may need to generate dummy tangents if there are no UVs.
+					if (face[idx].size() >= 2 && !face[idx][1].is_empty()) {
+						int uv = face[idx][1].to_int() - 1;
+						if (uv < 0) {
+							uv += uvs.size() + 1;
+						}
+						ERR_FAIL_INDEX_V(uv, uvs.size(), ERR_FILE_CORRUPT);
+						surf_tool->set_uv(uvs[uv]);
+						uses_uvs = true;
+					}
+
+					if (face[idx].size() == 3) {
+						int norm = face[idx][2].to_int() - 1;
+						if (norm < 0) {
+							norm += normals.size() + 1;
+						}
+						ERR_FAIL_INDEX_V(norm, normals.size(), ERR_FILE_CORRUPT);
+						surf_tool->set_normal(normals[norm]);
+						if (generate_tangents && !uses_uvs) {
+							// We can't generate tangents without UVs, so create dummy tangents.
+							Vector3 tan = Vector3(normals[norm].z, -normals[norm].x, normals[norm].y).cross(normals[norm].normalized()).normalized();
+							surf_tool->set_tangent(Plane(tan.x, tan.y, tan.z, 1.0));
+						}
+					} else {
+						// No normals, use a dummy tangent since normals and tangents will be generated.
+						if (generate_tangents && !uses_uvs) {
+							// We can't generate tangents without UVs, so create dummy tangents.
+							surf_tool->set_tangent(Plane(1.0, 0.0, 0.0, 1.0));
+						}
+					}
+
+					int vtx = face[idx][0].to_int() - 1;
+					if (vtx < 0) {
+						vtx += vertices.size() + 1;
+					}
+					ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
+
+					Vector3 vertex = vertices[vtx];
+					if (!colors.is_empty()) {
+						surf_tool->set_color(colors[vtx]);
+					}
+					surf_tool->set_smooth_group(smoothing ? smooth_group : no_smoothing_smooth_group);
+					surf_tool->add_vertex(vertex);
+				}
+
+				face[1] = face[2];
+			}
+		} else if (l.begins_with("s ")) { //smoothing
+			String what = l.substr(2).strip_edges();
+			bool do_smooth;
+			if (what == "off") {
+				do_smooth = false;
+			} else {
+				do_smooth = true;
+			}
+			if (do_smooth != smoothing) {
+				smoothing = do_smooth;
+				if (smoothing) {
+					smooth_group++;
+				}
+			}
+		} else if (/*l.begins_with("g ") ||*/ l.begins_with("usemtl ") || (l.begins_with("o ") || f->eof_reached())) { //commit group to mesh
+			uint64_t mesh_flags = RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+
+			if (p_disable_compression) {
+				mesh_flags = 0;
+			} else {
+				bool is_mesh_2d = true;
+
+				// Disable compression if all z equals 0 (the mesh is 2D).
+				for (int i = 0; i < vertices.size(); i++) {
+					if (!Math::is_zero_approx(vertices[i].z)) {
+						is_mesh_2d = false;
+						break;
+					}
+				}
+
+				if (is_mesh_2d) {
+					mesh_flags = 0;
+				}
+			}
+
+			//groups are too annoying
+			if (surf_tool->get_vertex_array().size()) {
+				//another group going on, commit it
+				if (normals.is_empty()) {
+					surf_tool->generate_normals();
+				}
+
+				if (generate_tangents && uses_uvs) {
+					surf_tool->generate_tangents();
+				}
+
+				surf_tool->index();
+
+				print_verbose("OBJ: Current material library " + current_material_library + " has " + itos(material_map.has(current_material_library)));
+				print_verbose("OBJ: Current material " + current_material + " has " + itos(material_map.has(current_material_library) && material_map[current_material_library].has(current_material)));
+				Ref<StandardMaterial3D> material;
+				if (material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
+					material = material_map[current_material_library][current_material];
+					if (!colors.is_empty()) {
+						material->set_flag(StandardMaterial3D::FLAG_SRGB_VERTEX_COLOR, true);
+					}
+					surf_tool->set_material(material);
+				}
+
+				Array array = surf_tool->commit_to_arrays();
+
+				if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents && uses_uvs) {
+					// Compression is enabled, so let's validate that the normals and generated tangents are correct.
+					Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
+					Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
+					ERR_FAIL_COND_V(tangents.is_empty(), ERR_FILE_CORRUPT);
+					for (int vert = 0; vert < norms.size(); vert++) {
+						Vector3 tan = Vector3(tangents[vert * 4 + 0], tangents[vert * 4 + 1], tangents[vert * 4 + 2]);
+						if (std::abs(tan.dot(norms[vert])) > 0.0001) {
+							// Tangent is not perpendicular to the normal, so we can't use compression.
+							mesh_flags &= ~RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 						}
 					}
 				}
-				continue;
-			} else if (l.begins_with("ROOT") || l.begins_with("JOINT")) {
-				Ref<GLTFNode> node;
-				node.instantiate();
-				node->joint = true;
-				String original_bone_name = l.substr(l.find(" ") + 1).strip_edges();
-				node->set_original_name(original_bone_name);
 
-				if (bone_name_map.has(original_bone_name)) {
-					ERR_FAIL_V_MSG(ERR_PARSE_ERROR, vformat("Bone name '%s' is not unique. Bone names must be unique.", original_bone_name));
+				mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
+
+				print_verbose("OBJ: Added surface :" + mesh->get_surface_name(mesh->get_surface_count() - 1));
+
+				if (!current_material.is_empty()) {
+					if (mesh->get_surface_count() >= 1) {
+						mesh->set_surface_name(mesh->get_surface_count() - 1, current_material.get_basename());
+					}
+				} else if (!current_group.is_empty()) {
+					if (mesh->get_surface_count() >= 1) {
+						mesh->set_surface_name(mesh->get_surface_count() - 1, current_group);
+					}
 				}
 
-				node->set_name(original_bone_name);
+				surf_tool->clear();
+				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+				uses_uvs = false;
+			}
 
-				GLTFNodeIndex parent = -1;
-				if (!parent_stack.is_empty()) {
-					parent = parent_stack[parent_stack.size() - 1];
-					node_children.write[parent].push_back(p_state->nodes.size());
-				}
-				node->set_parent(parent);
-
-				print_verbose(vformat("Created %s node '%s' with parent index %d. Parent stack size: %d",
-						l.begins_with("ROOT") ? "ROOT" : "JOINT", original_bone_name, parent, parent_stack.size()));
-				if (parent != -1 && (parent < 0 || parent >= p_state->nodes.size())) {
-					ERR_PRINT("ERROR: Invalid parent index detected during node creation!");
-				}
-				bone_name_map[original_bone_name] = p_state->nodes.size();
-				p_state->nodes.push_back(node);
-				node_children.push_back(Vector<int>());
-				parent_stack.push_back(p_state->nodes.size() - 1);
-				transform_stack.push_back(Transform3D());
-
-				String brace_check = f->get_line().strip_edges();
-				if (brace_check != "{") {
-					ERR_FAIL_V_MSG(ERR_PARSE_ERROR,
-							"Missing '{' after joint declaration");
-				}
-			} else if (l == "}") {
-				if (!parent_stack.is_empty()) {
-					parent_stack.remove_at(parent_stack.size() - 1);
-					transform_stack.remove_at(transform_stack.size() - 1);
-				}
-			} else if (l.begins_with("OFFSET")) {
-				Vector<String> parts = l.split(" ");
-				if (parts.size() >= 4 && !p_state->nodes.is_empty()) {
-					Vector3 offset(
-							parts[1].to_float(),
-							parts[2].to_float(),
-							parts[3].to_float());
-					Ref<GLTFNode> node = p_state->nodes[p_state->nodes.size() - 1];
-					node->set_xform(Transform3D(Basis(), offset));
-					print_verbose(vformat("Node %d '%s' offset set to: %s",
-							p_state->nodes.size() - 1,
-							node->get_name(),
-							String(offset)));
-				}
-			} else if (l.begins_with("ORIENT")) {
-				Vector<String> parts = l.split(" ");
-				if (parts.size() >= 5 && !p_state->nodes.is_empty()) {
-					Quaternion rot(
-							parts[1].to_float(),
-							parts[2].to_float(),
-							parts[3].to_float(),
-							parts[4].to_float());
-					Ref<GLTFNode> node = p_state->nodes[p_state->nodes.size() - 1];
-					Transform3D t = node->get_xform();
-					t.basis = Basis(rot);
-					node->set_xform(t);
-					print_verbose(vformat("Node %d '%s' orientation set to: %s",
-							p_state->nodes.size() - 1,
-							node->get_name(),
-							String(rot)));
+			if (l.begins_with("o ") || f->eof_reached()) {
+				if (!p_single_mesh) {
+					if (mesh->get_surface_count() > 0) {
+						mesh->set_name(name);
+						r_meshes.push_back(mesh);
+						mesh.instantiate();
+					}
+					name = default_name;
+					current_group = "";
+					current_material = "";
 				}
 			}
-		} else if (in_motion) {
-			if (l.begins_with("Frames:")) {
-				frame_count = l.get_slice(" ", 1).to_int();
-			} else if (l.begins_with("Frame Time:")) {
-				frame_time = l.get_slice(" ", 2).to_float();
+
+			if (f->eof_reached()) {
+				break;
+			}
+
+			if (l.begins_with("o ")) {
+				name = l.substr(2).strip_edges();
+			}
+
+			if (l.begins_with("usemtl ")) {
+				current_material = l.replace("usemtl", "").strip_edges();
+			}
+
+			if (l.begins_with("g ")) {
+				current_group = l.substr(2).strip_edges();
+			}
+
+		} else if (l.begins_with("mtllib ")) { //parse material
+
+			current_material_library = l.replace("mtllib", "").strip_edges();
+			if (!material_map.has(current_material_library)) {
+				HashMap<String, Ref<StandardMaterial3D>> lib;
+				String lib_path = current_material_library;
+				if (lib_path.is_relative_path()) {
+					lib_path = p_base_path.path_join(current_material_library);
+				}
+				Error err = _parse_material_library(lib_path, lib, r_missing_deps);
+				if (err == OK) {
+					material_map[current_material_library] = lib;
+				}
+			}
+		}
+	}
+
+	if (p_generate_lightmap_uv2) {
+		Vector<uint8_t> lightmap_cache;
+		mesh->lightmap_unwrap_cached(Transform3D(), p_generate_lightmap_uv2_texel_size, p_src_lightmap_cache, lightmap_cache);
+
+		if (!lightmap_cache.is_empty()) {
+			if (r_lightmap_caches.is_empty()) {
+				r_lightmap_caches.push_back(lightmap_cache);
 			} else {
-				if (frames_parsed < frame_count) {
-					frame_data.push_back(l.split(" "));
-					frames_parsed++;
-					print_verbose(vformat("Parsed frame %d/%d (data points: %d)",
-							frames_parsed,
-							frame_count,
-							frame_data.size()));
-				} else {
-					in_motion = false;
-				}
-			}
-		} else {
-			if (l.begins_with("v ")) {
-				Vector<String> parts = l.split(" ");
-				Vector3 vertex(
-						parts[1].to_float(),
-						parts[2].to_float(),
-						parts[3].to_float());
-				vertices.push_back(vertex);
+				// MD5 is stored at the beginning of the cache data.
+				const String new_md5 = String::md5(lightmap_cache.ptr());
 
-				if (vertices.size() % 1000 == 0) {
-					print_verbose(vformat("Parsed %d vertices...", vertices.size()));
-				}
-
-				if (parts.size() >= 7) {
-					Color color(
-							parts[4].to_float(),
-							parts[5].to_float(),
-							parts[6].to_float());
-					colors.resize(vertices.size());
-					colors.write[vertices.size() - 1] = color;
-				}
-			} else if (l.begins_with("vt ")) {
-				Vector<String> parts = l.split(" ");
-				Vector2 uv(
-						parts[1].to_float(),
-						1.0 - parts[2].to_float());
-				uvs.push_back(uv);
-			} else if (l.begins_with("vn ")) {
-				Vector<String> parts = l.split(" ");
-				Vector3 normal(
-						parts[1].to_float(),
-						parts[2].to_float(),
-						parts[3].to_float());
-				normals.push_back(normal);
-			} else if (l.begins_with("vw ")) {
-				Vector<String> parts = l.split(" ");
-				int vert_index = parts[1].to_int() - 1;
-				Vector4i joints = Vector4i(0, 0, 0, 0);
-				Vector4 weights = Vector4(0.0, 0.0, 0.0, 0.0);
-				int count = 0;
-
-				for (int i = 2; i < parts.size(); i += 2) {
-					if (count >= 4) {
+				for (int i = 0; i < r_lightmap_caches.size(); i++) {
+					const String md5 = String::md5(r_lightmap_caches[i].ptr());
+					if (new_md5 < md5) {
+						r_lightmap_caches.insert(i, lightmap_cache);
 						break;
 					}
 
-					String bone_name = parts[i];
-					float weight = parts[i + 1].to_float();
-
-					String original_bone_name = parts[i];
-					if (bone_name_map.has(original_bone_name)) {
-						joints[count] = bone_name_map[original_bone_name] + 1;
-						weights[count] = weight;
-						count++;
-					} else {
-						ERR_PRINT(vformat("ERROR: Vertex %d references unknown bone '%s'",
-								vert_index, original_bone_name));
+					if (new_md5 == md5) {
+						break;
 					}
 				}
-
-				float total = weights.x + weights.y + weights.z + weights.w;
-				if (total > 0) {
-					weights /= total;
-				}
-
-				joint_indices_map[vert_index] = joints;
-				joint_weights_map[vert_index] = weights;
-				print_verbose(vformat("Vertex %d weights: %s (joints: %s)",
-						vert_index,
-						String(weights),
-						String(joints)));
-			} else if (l.begins_with("f ")) {
-				Vector<String> face_verts = l.substr(2).split(" ");
-				for (int vert_idx = face_verts.size() - 1; vert_idx >= 0; vert_idx--) {
-					const String &vert = face_verts[vert_idx];
-					Vector<String> components = vert.split("/");
-					int pos_idx = components[0].to_int() - 1;
-
-					Vector3 normal;
-					Vector2 uv;
-					Color color;
-					Vector4i joints;
-					Vector4 weights;
-
-					if (pos_idx >= 0) {
-						if (components.size() > 1 && !components[1].is_empty()) {
-							uv = uvs[components[1].to_int() - 1];
-						}
-						if (components.size() > 2 && !components[2].is_empty()) {
-							normal = normals[components[2].to_int() - 1];
-						}
-					}
-
-					if (pos_idx >= 0 && pos_idx < colors.size()) {
-						color = colors[pos_idx];
-					}
-
-					if (joint_indices_map.has(pos_idx)) {
-						joints = joint_indices_map[pos_idx];
-					}
-					if (joint_weights_map.has(pos_idx)) {
-						weights = joint_weights_map[pos_idx];
-					}
-
-					Vector<int> bone_array;
-					Vector<float> weight_array;
-
-					for (int i = 0; i < 4; i++) {
-						if (joints[i] <= 0) {
-							continue;
-						}
-						bone_array.append(joints[i] - 1);
-						weight_array.append(weights[i]);
-					}
-
-					surf_tool->set_normal(normal);
-					surf_tool->set_uv(uv);
-					surf_tool->set_color(color);
-					surf_tool->set_bones(bone_array);
-					surf_tool->set_weights(weight_array);
-
-					surf_tool->add_vertex(vertices[pos_idx]);
-				}
-				print_verbose(vformat("Added face with %d vertices (total indices: %d)",
-						face_verts.size(),
-						surf_tool->get_vertex_array().size()));
-			} else if (l.begins_with("usemtl ")) {
-				current_material = l.substr(7).strip_edges();
-			} else if (l.begins_with("mtllib ")) {
-				String mtl_path = l.substr(7).strip_edges();
-				// Material loading implementation would go here
 			}
 		}
 	}
 
-	for (GLTFNodeIndex i = 0; i < p_state->nodes.size(); i++) {
-		Ref<GLTFNode> node = p_state->nodes[i];
-		node->children = node_children[i];
+	if (p_generate_lods) {
+		// Use normal merge/split angles that match the defaults used for 3D scene importing.
+		mesh->generate_lods(60.0f, {});
 	}
 
-	print_verbose("\n--- Node Hierarchy Validation ---");
-	for (GLTFNodeIndex i = 0; i < p_state->nodes.size(); i++) {
-		Ref<GLTFNode> node = p_state->nodes[i];
-		GLTFNodeIndex parent = node->get_parent();
-		if (parent != -1) {
-			if (parent < 0 || parent >= p_state->nodes.size()) {
-				ERR_PRINT(vformat("ERROR: Node %d '%s' has invalid parent index %d",
-						i, node->get_name(), parent));
-			} else {
-				print_verbose(vformat("Node %d '%s' parent: %d (%s)",
-						i, node->get_name(), parent, p_state->nodes[parent]->get_name()));
-			}
-		} else {
-			print_verbose(vformat("Node %d '%s' is a root node", i, node->get_name()));
-		}
+	if (p_generate_shadow_mesh) {
+		mesh->create_shadow_mesh();
 	}
 
-	if (current_animation.is_valid()) {
-		print_verbose(vformat("\n--- Processing Animation: %d frames, %f FPS ---",
-				frame_count,
-				1.0 / frame_time));
-		for (int frame_idx = 0; frame_idx < frame_count; frame_idx++) {
-			if (frame_idx >= frame_data.size()) {
-				break;
-			}
-			const Vector<String> &frame = frame_data[frame_idx];
-			int data_idx = 0;
+	mesh->optimize_indices();
 
-			for (GLTFNodeIndex node_idx = 0; node_idx < p_state->nodes.size(); node_idx++) {
-				if (data_idx + 7 > frame.size()) {
-					WARN_PRINT(vformat("Frame %d: Not enough data for node %d (expected 7 values, got %d remaining).",
-							frame_idx, node_idx, frame.size() - data_idx));
-					data_idx = frame.size();
-					break;
-				}
-
-				double pos_x = frame[data_idx++].to_float();
-				double pos_y = frame[data_idx++].to_float();
-				double pos_z = frame[data_idx++].to_float();
-				Vector3 position = Vector3(pos_x, pos_y, pos_z);
-
-				double rot_x_file = frame[data_idx++].to_float();
-				double rot_y_file = frame[data_idx++].to_float();
-				double rot_z_file = frame[data_idx++].to_float();
-				double rot_w_file = frame[data_idx++].to_float();
-				Quaternion rotation = Quaternion(rot_x_file, rot_y_file, rot_z_file, rot_w_file);
-
-				double time = frame_idx * frame_time;
-				GLTFAnimation::NodeTrack &track = current_animation->get_node_tracks()[node_idx];
-
-				track.position_track.times.push_back(time);
-				track.position_track.values.push_back(position);
-				track.rotation_track.times.push_back(time);
-				track.rotation_track.values.push_back(rotation);
-			}
-		}
-		p_state->animations.push_back(current_animation);
+	if (p_single_mesh && mesh->get_surface_count() > 0) {
+		r_meshes.push_back(mesh);
 	}
-
-	print_verbose("\n--- Skin/Joint Validation ---");
-	print_verbose(vformat("Total vertices with skin data: %d", joint_indices_map.size()));
-	for (const KeyValue<int, Vector4i> &E : joint_indices_map) {
-		Vector4i joints = E.value;
-		for (int i = 0; i < 4; i++) {
-			int joint_idx = joints[i];
-			if (joint_idx <= 0) {
-				continue;
-			}
-			joint_idx -= 1;
-			if (joint_idx < 0 || joint_idx >= p_state->nodes.size()) {
-				ERR_PRINT(vformat("ERROR: Vertex %d uses invalid joint index %d",
-						E.key, joint_idx));
-			}
-		}
-	}
-
-	if (!surf_tool->get_vertex_array().is_empty()) {
-		print_verbose(vformat("\n--- Mesh Details ---\nVertices: %d\nNormals: %d\nUVs: %d\nColors: %d",
-				vertices.size(),
-				normals.size(),
-				uvs.size(),
-				colors.size()));
-
-		surf_tool->index();
-
-		if (normals.is_empty()) {
-			print_verbose("Generating normals...");
-			surf_tool->generate_normals();
-		}
-		if (uvs.size() == vertices.size()) {
-			print_verbose("Generating tangents...");
-			surf_tool->generate_tangents();
-		}
-
-		Ref<ImporterMesh> importer_mesh;
-		importer_mesh.instantiate();
-
-		Array surface_arrays = surf_tool->commit_to_arrays();
-
-		importer_mesh->add_surface(
-				Mesh::PRIMITIVE_TRIANGLES,
-				surface_arrays);
-
-		gltf_mesh->set_mesh(importer_mesh);
-		gltf_mesh->set_original_name(p_path.get_file().get_basename());
-
-		p_state->meshes.push_back(gltf_mesh);
-		print_verbose(vformat("Created mesh with %d surfaces (total vertices: %d)",
-				importer_mesh->get_surface_count(),
-				surf_tool->get_vertex_array().size()));
-
-		Vector<int> used_joints;
-		for (const KeyValue<int, Vector4i> &E : joint_indices_map) {
-			Vector4i joints = E.value;
-			for (int i = 0; i < 4; i++) {
-				int joint_idx = joints[i];
-				if (joint_idx <= 0) {
-					continue;
-				}
-				joint_idx -= 1;
-				if (joint_idx >= 0 && joint_idx < p_state->nodes.size() && !used_joints.has(joint_idx)) {
-					used_joints.push_back(joint_idx);
-				}
-			}
-		}
-
-		if (!used_joints.is_empty()) {
-			Vector<Transform3D> global_transforms;
-			global_transforms.resize(p_state->nodes.size());
-
-			for (GLTFNodeIndex i = 0; i < p_state->nodes.size(); i++) {
-				Ref<GLTFNode> node = p_state->nodes[i];
-				GLTFNodeIndex parent = node->get_parent();
-				node->set_additional_data("GODOT_rest_transform", node->get_xform());
-				if (parent == -1) {
-					global_transforms.write[i] = node->get_xform();
-				} else {
-					global_transforms.write[i] = global_transforms[parent] * node->get_xform();
-				}
-			}
-
-			TypedArray<Transform3D> inverse_binds;
-			for (int joint_idx : used_joints) {
-				if (joint_idx >= 0 && joint_idx < global_transforms.size()) {
-					inverse_binds.push_back(global_transforms[joint_idx].affine_inverse());
-				}
-			}
-
-			Ref<GLTFSkin> skin;
-			skin.instantiate();
-			skin->set_joints(used_joints);
-			skin->set_joints_original(used_joints);
-			skin->set_inverse_binds(inverse_binds);
-			p_state->skins.push_back(skin);
-
-			Ref<GLTFNode> mesh_node;
-			mesh_node.instantiate();
-			mesh_node->set_mesh(p_state->meshes.size() - 1);
-			mesh_node->set_skin(p_state->skins.size() - 1);
-			GLTFNodeIndex mesh_node_idx = p_state->nodes.size();
-			p_state->nodes.push_back(mesh_node);
-			mesh_node.instantiate();
-			mesh_node->set_parent(p_state->nodes.size() - 1);
-			p_state->nodes.push_back(mesh_node);
-			mesh_node = p_state->nodes[p_state->nodes.size() - 1];
-
-			if (!p_state->root_nodes.is_empty()) {
-				GLTFNodeIndex root_idx = p_state->root_nodes[0];
-				mesh_node->set_parent(root_idx);
-				p_state->nodes.write[root_idx]->get_children().push_back(mesh_node_idx);
-			} else {
-				p_state->root_nodes.push_back(mesh_node_idx);
-			}
-		} else {
-			Ref<GLTFNode> mesh_node;
-			mesh_node.instantiate();
-			mesh_node->set_mesh(p_state->meshes.size() - 1);
-			GLTFNodeIndex mesh_node_idx = p_state->nodes.size();
-			p_state->nodes.push_back(mesh_node);
-			if (p_state->root_nodes.is_empty()) {
-				p_state->root_nodes.push_back(mesh_node_idx);
-			} else {
-				GLTFNodeIndex root_idx = p_state->root_nodes[0];
-				mesh_node->set_parent(root_idx);
-				p_state->nodes.write[root_idx]->get_children().push_back(mesh_node_idx);
-			}
-		}
-	}
-
-	print_verbose(vformat("\n--- Final Structure ---\nNodes: %d\nRoot Nodes: %d\nSkins: %d\nMeshes: %d\nAnimations: %d",
-			p_state->nodes.size(),
-			p_state->root_nodes.size(),
-			p_state->skins.size(),
-			p_state->meshes.size(),
-			p_state->animations.size()));
-
-	print_verbose(vformat("\n--- Pre-skeleton Determination ---\nSkins: %d, Nodes: %d, Root Nodes: %d",
-			p_state->skins.size(), p_state->nodes.size(), p_state->root_nodes.size()));
-	if (p_state->root_nodes.is_empty()) {
-		print_verbose("WARNING: No root nodes detected!");
-	}
-
-	_compute_node_heights(p_state);
-
-	Error err = OK;
-	if (p_state->get_import_as_skeleton_bones()) {
-		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, p_state->root_nodes, true);
-	} else {
-		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, Vector<GLTFNodeIndex>(), false);
-	}
-	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
-
-	err = SkinTool::_create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
-	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	return OK;
+}
+
+Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path) {
+	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, "Cannot open QBO file.");
+	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
+
+	if (p_base_path.is_empty()) {
+		p_base_path += p_path.get_base_dir();
+	}
+
+	List<String> missing_deps;
+	List<Ref<ImporterMesh>> meshes;
+	Vector<Vector<uint8_t>> mesh_lightmap_caches;
+	Error err = _parse_obj(f, p_base_path, meshes, false, false, false, false, false, 0.2, PackedByteArray(), Vector3(1, 1, 1), Vector3(0, 0, 0), false, mesh_lightmap_caches, &missing_deps);
+
+	if (err != OK) {
+		return err;
+	}
+
+	Node3D *scene = memnew(Node3D);
+
+	for (Ref<ImporterMesh> m : meshes) {
+		ImporterMeshInstance3D *mi = memnew(ImporterMeshInstance3D);
+		mi->set_mesh(m);
+		mi->set_name(m->get_name());
+		scene->add_child(mi, true);
+		mi->set_owner(scene);
+	}
+
+	err = append_from_scene(scene, p_state, 16);
+	//memdelete(scene);
+
+	return err;
 }
 
 Error QBODocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path) {
