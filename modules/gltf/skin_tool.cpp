@@ -593,7 +593,10 @@ Error SkinTool::_create_skeletons(
 			bones.pop_front();
 
 			Ref<GLTFNode> node = nodes[node_i];
-			ERR_FAIL_COND_V(node->skeleton != skel_i, FAILED);
+			if (node->skeleton != skel_i) {
+				continue;
+			}
+			//ERR_FAIL_COND_V(node->skeleton != skel_i, FAILED);
 
 			{ // Add all child nodes to the stack (deterministically)
 				Vector<SkinNodeIndex> child_nodes;
