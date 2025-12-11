@@ -6617,23 +6617,23 @@ TEST_CASE("[SceneTree][TextEdit] mouse") {
 
 	// Add method to get drawn column count?
 	Point2i start_pos = text_edit->get_pos_at_line_column(0, 0);
-	Point2i end_pos = text_edit->get_pos_at_line_column(0, 105);
+	Point2i end_pos = text_edit->get_pos_at_line_column(0, 104);
 
 	CHECK(text_edit->get_line_column_at_pos(Point2i(start_pos.x, start_pos.y)) == Point2i(0, 0));
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y)) == Point2i(104, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y)) == Point2i(103, 0));
 
 	// Should this return Point2i(-1, -1) if its also < 0 not just > vis_lines.
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y), false) == Point2i(90, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y), false) == Point2i(88, 0));
 	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y + 100), false) == Point2i(-1, -1));
 	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y + 100), false) == Point2i(-1, -1));
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y - 100), false) == Point2i(104, 0));
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y - 100), false) == Point2i(90, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y - 100), false) == Point2i(103, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y - 100), false) == Point2i(88, 0));
 
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y)) == Point2i(90, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y)) == Point2i(88, 0));
 	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y + 100)) == Point2i(140, 0));
 	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y + 100)) == Point2i(140, 0));
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y - 100)) == Point2i(104, 0));
-	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y - 100)) == Point2i(90, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x, end_pos.y - 100)) == Point2i(103, 0));
+	CHECK(text_edit->get_line_column_at_pos(Point2i(end_pos.x - 100, end_pos.y - 100)) == Point2i(88, 0));
 
 	memdelete(text_edit);
 }
@@ -7382,7 +7382,7 @@ TEST_CASE("[SceneTree][TextEdit] multicaret") {
 		CHECK(text_edit->get_caret_line(1) == 1);
 		CHECK(text_edit->get_caret_column(1) == 1);
 		CHECK(text_edit->get_caret_line(2) == 0);
-		CHECK(text_edit->get_caret_column(2) == 7);
+		CHECK(text_edit->get_caret_column(2) == 8);
 
 		// Add caret above from first line and not first line wrap.
 		text_edit->add_caret_at_carets(false);
@@ -7393,9 +7393,9 @@ TEST_CASE("[SceneTree][TextEdit] multicaret") {
 		CHECK(text_edit->get_caret_line(1) == 1);
 		CHECK(text_edit->get_caret_column(1) == 1);
 		CHECK(text_edit->get_caret_line(2) == 0);
-		CHECK(text_edit->get_caret_column(2) == 7);
+		CHECK(text_edit->get_caret_column(2) == 8);
 		CHECK(text_edit->get_caret_line(3) == 0);
-		CHECK(text_edit->get_caret_column(3) == 2);
+		CHECK(text_edit->get_caret_column(3) == 4);
 
 		// Cannot add caret above from first line first line wrap.
 		text_edit->remove_secondary_carets();
@@ -7802,7 +7802,7 @@ TEST_CASE("[SceneTree][TextEdit] viewport") {
 	CHECK(text_edit->get_h_scroll() == 0);
 
 	text_edit->set_h_scroll(10000000);
-	CHECK(text_edit->get_h_scroll() == 306);
+	CHECK(text_edit->get_h_scroll() == 307);
 	CHECK(text_edit->get_h_scroll_bar()->get_combined_minimum_size().x == 8);
 
 	text_edit->set_h_scroll(-100);

@@ -136,26 +136,6 @@ ClusterBuilderSharedDataRD::ClusterBuilderSharedDataRD() {
 			cluster_render.cluster_render_shader.set_variant_enabled(ClusterRender::SHADER_USE_ATTACHMENT_MOLTENVK, false);
 		}
 #endif
-		// Do not bake default (with "gl_HelperInvocation" and image atomics) variants for macOS/iOS Vulkan, but bake it for the rest of configs (including Metal).
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL, "macos_forward_clustered_vulkan", false, true);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL, "ios_forward_clustered_vulkan", false, true);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT, "macos_forward_clustered_vulkan", false, true);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT, "ios_forward_clustered_vulkan", false, true);
-
-		// Bake no "gl_HelperInvocation" and no "image atomics" variants for macOS/iOS Vulkan only.
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL_MOLTENVK, "macos_forward_clustered_vulkan", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL_MOLTENVK, "ios_forward_clustered_vulkan", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT_MOLTENVK, "macos_forward_clustered_vulkan", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT_MOLTENVK, "ios_forward_clustered_vulkan", true, false);
-
-		// Bake no "image atomics" variants for macOS/iOS/visionOS Metal only.
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL_NO_ATOMICS, "macos_forward_clustered_metal", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL_NO_ATOMICS, "ios_forward_clustered_metal", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_NORMAL_NO_ATOMICS, "visionos_forward_clustered_metal", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT_NO_ATOMICS, "macos_forward_clustered_metal", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT_NO_ATOMICS, "ios_forward_clustered_metal", true, false);
-		cluster_render.cluster_render_shader.set_variants_bake_for(ClusterRender::SHADER_USE_ATTACHMENT_NO_ATOMICS, "visionos_forward_clustered_metal", true, false);
-
 		cluster_render.shader_version = cluster_render.cluster_render_shader.version_create();
 		cluster_render.shader = cluster_render.cluster_render_shader.version_get_shader(cluster_render.shader_version, shader_variant);
 		cluster_render.shader_pipelines[ClusterRender::PIPELINE_NORMAL] = RD::get_singleton()->render_pipeline_create(cluster_render.shader, fb_format, vertex_format, RD::RENDER_PRIMITIVE_TRIANGLES, rasterization_state, RD::PipelineMultisampleState(), RD::PipelineDepthStencilState(), blend_state, 0);
@@ -307,12 +287,12 @@ ClusterBuilderSharedDataRD::ClusterBuilderSharedDataRD() {
 	}
 }
 ClusterBuilderSharedDataRD::~ClusterBuilderSharedDataRD() {
-	RD::get_singleton()->free(sphere_vertex_buffer);
-	RD::get_singleton()->free(sphere_index_buffer);
-	RD::get_singleton()->free(cone_vertex_buffer);
-	RD::get_singleton()->free(cone_index_buffer);
-	RD::get_singleton()->free(box_vertex_buffer);
-	RD::get_singleton()->free(box_index_buffer);
+	RD::get_singleton()->free_rid(sphere_vertex_buffer);
+	RD::get_singleton()->free_rid(sphere_index_buffer);
+	RD::get_singleton()->free_rid(cone_vertex_buffer);
+	RD::get_singleton()->free_rid(cone_index_buffer);
+	RD::get_singleton()->free_rid(box_vertex_buffer);
+	RD::get_singleton()->free_rid(box_index_buffer);
 
 	cluster_render.cluster_render_shader.version_free(cluster_render.shader_version);
 	cluster_store.cluster_store_shader.version_free(cluster_store.shader_version);
@@ -326,9 +306,9 @@ void ClusterBuilderRD::_clear() {
 		return;
 	}
 
-	RD::get_singleton()->free(cluster_buffer);
-	RD::get_singleton()->free(cluster_render_buffer);
-	RD::get_singleton()->free(element_buffer);
+	RD::get_singleton()->free_rid(cluster_buffer);
+	RD::get_singleton()->free_rid(cluster_render_buffer);
+	RD::get_singleton()->free_rid(element_buffer);
 	cluster_buffer = RID();
 	cluster_render_buffer = RID();
 	element_buffer = RID();
@@ -339,7 +319,7 @@ void ClusterBuilderRD::_clear() {
 	render_element_max = 0;
 	render_element_count = 0;
 
-	RD::get_singleton()->free(framebuffer);
+	RD::get_singleton()->free_rid(framebuffer);
 	framebuffer = RID();
 
 	cluster_render_uniform_set = RID();
@@ -656,5 +636,5 @@ ClusterBuilderRD::ClusterBuilderRD() {
 
 ClusterBuilderRD::~ClusterBuilderRD() {
 	_clear();
-	RD::get_singleton()->free(state_uniform);
+	RD::get_singleton()->free_rid(state_uniform);
 }

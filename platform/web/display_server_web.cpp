@@ -36,6 +36,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/object/callable_method_pointer.h"
+#include "core/os/main_loop.h"
 #include "servers/rendering/dummy/rasterizer_dummy.h"
 
 #ifdef GLES3_ENABLED
@@ -427,7 +428,7 @@ TypedArray<Dictionary> DisplayServerWeb::tts_get_voices() const {
 	return voices;
 }
 
-void DisplayServerWeb::tts_speak(const String &p_text, const String &p_voice, int p_volume, float p_pitch, float p_rate, int p_utterance_id, bool p_interrupt) {
+void DisplayServerWeb::tts_speak(const String &p_text, const String &p_voice, int p_volume, float p_pitch, float p_rate, int64_t p_utterance_id, bool p_interrupt) {
 	if (p_interrupt) {
 		tts_stop();
 	}
@@ -452,14 +453,14 @@ void DisplayServerWeb::tts_resume() {
 }
 
 void DisplayServerWeb::tts_stop() {
-	for (const KeyValue<int, CharString> &E : utterance_ids) {
+	for (const KeyValue<int64_t, CharString> &E : utterance_ids) {
 		tts_post_utterance_event(DisplayServer::TTS_UTTERANCE_CANCELED, E.key);
 	}
 	utterance_ids.clear();
 	godot_js_tts_stop();
 }
 
-void DisplayServerWeb::js_utterance_callback(int p_event, int p_id, int p_pos) {
+void DisplayServerWeb::js_utterance_callback(int p_event, int64_t p_id, int p_pos) {
 #ifdef PROXY_TO_PTHREAD_ENABLED
 	if (!Thread::is_main_thread()) {
 		callable_mp_static(DisplayServerWeb::_js_utterance_callback).call_deferred(p_event, p_id, p_pos);
@@ -470,7 +471,7 @@ void DisplayServerWeb::js_utterance_callback(int p_event, int p_id, int p_pos) {
 	_js_utterance_callback(p_event, p_id, p_pos);
 }
 
-void DisplayServerWeb::_js_utterance_callback(int p_event, int p_id, int p_pos) {
+void DisplayServerWeb::_js_utterance_callback(int p_event, int64_t p_id, int p_pos) {
 	DisplayServerWeb *ds = (DisplayServerWeb *)DisplayServer::get_singleton();
 	if (ds->utterance_ids.has(p_id)) {
 		int pos = 0;
@@ -634,18 +635,18 @@ Point2i DisplayServerWeb::mouse_get_position() const {
 }
 
 // Wheel
-int DisplayServerWeb::mouse_wheel_callback(double p_delta_x, double p_delta_y) {
+int DisplayServerWeb::mouse_wheel_callback(int p_delta_mode, double p_delta_x, double p_delta_y) {
 #ifdef PROXY_TO_PTHREAD_ENABLED
 	if (!Thread::is_main_thread()) {
-		callable_mp_static(DisplayServerWeb::_mouse_wheel_callback).call_deferred(p_delta_x, p_delta_y);
+		callable_mp_static(DisplayServerWeb::_mouse_wheel_callback).call_deferred(p_delta_mode, p_delta_x, p_delta_y);
 		return true;
 	}
 #endif
 
-	return _mouse_wheel_callback(p_delta_x, p_delta_y);
+	return _mouse_wheel_callback(p_delta_mode, p_delta_x, p_delta_y);
 }
 
-int DisplayServerWeb::_mouse_wheel_callback(double p_delta_x, double p_delta_y) {
+int DisplayServerWeb::_mouse_wheel_callback(int p_delta_mode, double p_delta_x, double p_delta_y) {
 	if (!godot_js_display_canvas_is_focused() && !godot_js_is_ime_focused()) {
 		if (get_singleton()->cursor_inside_canvas) {
 			godot_js_display_canvas_focus();
@@ -665,20 +666,43 @@ int DisplayServerWeb::_mouse_wheel_callback(double p_delta_x, double p_delta_y) 
 	ev->set_ctrl_pressed(input->is_key_pressed(Key::CTRL));
 	ev->set_meta_pressed(input->is_key_pressed(Key::META));
 
+	enum DeltaMode {
+		DELTA_MODE_PIXEL = 0,
+		DELTA_MODE_LINE = 1,
+		DELTA_MODE_PAGE = 2,
+	};
+	const float MOUSE_WHEEL_PIXEL_FACTOR = 0.03f;
+	const float MOUSE_WHEEL_LINE_FACTOR = 0.3f;
+	const float MOUSE_WHEEL_PAGE_FACTOR = 1.0f;
+	float mouse_wheel_factor;
+
+	switch (p_delta_mode) {
+		case DELTA_MODE_PIXEL: {
+			mouse_wheel_factor = MOUSE_WHEEL_PIXEL_FACTOR;
+		} break;
+		case DELTA_MODE_LINE: {
+			mouse_wheel_factor = MOUSE_WHEEL_LINE_FACTOR;
+		} break;
+		case DELTA_MODE_PAGE: {
+			mouse_wheel_factor = MOUSE_WHEEL_PAGE_FACTOR;
+		} break;
+	}
+
 	if (p_delta_y < 0) {
 		ev->set_button_index(MouseButton::WHEEL_UP);
+		ev->set_factor(-p_delta_y * mouse_wheel_factor);
 	} else if (p_delta_y > 0) {
 		ev->set_button_index(MouseButton::WHEEL_DOWN);
+		ev->set_factor(p_delta_y * mouse_wheel_factor);
 	} else if (p_delta_x > 0) {
 		ev->set_button_index(MouseButton::WHEEL_LEFT);
+		ev->set_factor(p_delta_x * mouse_wheel_factor);
 	} else if (p_delta_x < 0) {
 		ev->set_button_index(MouseButton::WHEEL_RIGHT);
+		ev->set_factor(-p_delta_x * mouse_wheel_factor);
 	} else {
 		return false;
 	}
-
-	// Different browsers give wildly different delta values, and we can't
-	// interpret deltaMode, so use default value for wheel events' factor.
 
 	MouseButtonMask button_flag = mouse_button_to_mask(ev->get_button_index());
 	BitField<MouseButtonMask> button_mask = input->get_mouse_button_mask();

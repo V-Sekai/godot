@@ -54,6 +54,8 @@ class Resource : public RefCounted {
 	GDCLASS(Resource, RefCounted);
 
 public:
+	static constexpr AncestralClass static_ancestral_class = AncestralClass::RESOURCE;
+
 	static void register_custom_data_to_otdb() { ClassDB::add_resource_base_extension("res", get_class_static()); }
 	virtual String get_base_extension() const { return "res"; }
 
@@ -92,6 +94,7 @@ private:
 
 	using DuplicateRemapCacheT = HashMap<Ref<Resource>, Ref<Resource>>;
 	static thread_local inline DuplicateRemapCacheT *thread_duplicate_remap_cache = nullptr;
+	static thread_local inline bool thread_duplicate_remap_cache_needs_deallocation = true;
 
 	Variant _duplicate_recursive(const Variant &p_variant, const DuplicateParams &p_params, uint32_t p_usage = 0) const;
 	void _find_sub_resources(const Variant &p_variant, HashSet<Ref<Resource>> &p_resources_found);
@@ -120,6 +123,7 @@ protected:
 	GDVIRTUAL0(_reset_state);
 
 	virtual Ref<Resource> _duplicate(const DuplicateParams &p_params) const;
+	virtual String _to_string() override;
 
 public:
 	static Node *(*_get_local_scene_func)(); // Used by the editor.
@@ -181,8 +185,9 @@ public:
 	virtual RID get_rid() const; // Some resources may offer conversion to RID.
 
 	// Helps keep IDs the same when loading/saving scenes. An empty ID clears the entry, and an empty ID is returned when not found.
-	void set_id_for_path(const String &p_path, const String &p_id);
-	String get_id_for_path(const String &p_path) const;
+	static void set_resource_id_for_path(const String &p_referrer_path, const String &p_resource_path, const String &p_id);
+	void set_id_for_path(const String &p_referrer_path, const String &p_id) { set_resource_id_for_path(p_referrer_path, get_path(), p_id); }
+	String get_id_for_path(const String &p_referrer_path) const;
 
 	Resource();
 	~Resource();

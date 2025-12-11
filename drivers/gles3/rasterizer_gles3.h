@@ -56,7 +56,6 @@ private:
 	float delta = 0;
 
 	double time_total = 0.0;
-	bool flip_xy_workaround = false;
 
 #ifdef WINDOWS_ENABLED
 	static bool screen_flipped_y;
@@ -97,7 +96,7 @@ public:
 	RendererCanvasRender *get_canvas() { return canvas; }
 	RendererSceneRender *get_scene() { return scene; }
 
-	void set_boot_image(const Ref<Image> &p_image, const Color &p_color, bool p_scale, bool p_use_filter = true);
+	void set_boot_image_with_stretch(const Ref<Image> &p_image, const Color &p_color, RenderingServer::SplashStretchMode p_stretch_mode, bool p_use_filter = true);
 
 	void initialize();
 	void begin_frame(double frame_step);

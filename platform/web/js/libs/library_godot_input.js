@@ -504,10 +504,6 @@ const GodotInput = {
 		const func = GodotRuntime.get_func(callback);
 		const canvas = GodotConfig.canvas;
 		function move_cb(evt) {
-			if (evt.pointerType == 'touch') {
-				return;
-			}
-
 			const rect = canvas.getBoundingClientRect();
 			const pos = GodotInput.computePosition(evt, rect);
 			// Scale movement
@@ -526,7 +522,7 @@ const GodotInput = {
 	godot_js_input_mouse_wheel_cb: function (callback) {
 		const func = GodotRuntime.get_func(callback);
 		function wheel_cb(evt) {
-			if (func(evt['deltaX'] || 0, evt['deltaY'] || 0)) {
+			if (func(evt.deltaMode, evt.deltaX ?? 0, evt.deltaY ?? 0)) {
 				evt.preventDefault();
 			}
 		}
@@ -539,10 +535,6 @@ const GodotInput = {
 		const func = GodotRuntime.get_func(callback);
 		const canvas = GodotConfig.canvas;
 		function button_cb(p_pressed, evt) {
-			if (evt.pointerType == 'touch') {
-				return;
-			}
-
 			const rect = canvas.getBoundingClientRect();
 			const pos = GodotInput.computePosition(evt, rect);
 			const modifiers = GodotInput.getModifiers(evt);
@@ -555,8 +547,8 @@ const GodotInput = {
 				evt.preventDefault();
 			}
 		}
-		GodotEventListeners.add(canvas, 'pointerdown', button_cb.bind(null, 1), false);
-		GodotEventListeners.add(window, 'pointerup', button_cb.bind(null, 0), false);
+		GodotEventListeners.add(canvas, 'mousedown', button_cb.bind(null, 1), false);
+		GodotEventListeners.add(window, 'mouseup', button_cb.bind(null, 0), false);
 	},
 
 	/*
