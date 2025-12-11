@@ -60,6 +60,7 @@ Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t 
 		state->set_extract_path(p_options["extract_path"]);
 	}
 	state->set_bake_fps(p_options["animation/fps"]);
+#if 0
 	Error err = qbo->append_from_file(p_path, state, p_flags);
 	if (err != OK) {
 		if (r_err) {
@@ -67,11 +68,13 @@ Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t 
 		}
 		return nullptr;
 	}
+#endif
 	if (p_options.has("animation/import")) {
 		state->set_create_animations(bool(p_options["animation/import"]));
 	}
-
-	return qbo->generate_scene(state, state->get_bake_fps(), (bool)p_options["animation/trimming"], false);
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
+	ERR_FAIL_COND_V_MSG(f.is_null(), nullptr, "Cannot open QBO file.");
+	return qbo->parse_qbo_data(f, state, p_flags, p_path.get_base_dir(), p_path);
 }
 
 #endif // TOOLS_ENABLED
