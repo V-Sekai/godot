@@ -377,7 +377,9 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					Vector3 z_axis = basis.get_column(2);
 					basis.set_column(0, z_axis);
 					basis.set_column(2, x_axis);
-					orientation = basis.get_quaternion();
+					// Orthonormalize the basis before converting to quaternion
+					basis = basis.orthonormalized();
+					orientation = basis.get_rotation_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
@@ -1005,7 +1007,9 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					Vector3 z_axis = basis.get_column(2);
 					basis.set_column(0, z_axis);
 					basis.set_column(2, x_axis);
-					orientation = basis.get_quaternion();
+					// Orthonormalize the basis before converting to quaternion
+					basis = basis.orthonormalized();
+					orientation = basis.get_rotation_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
