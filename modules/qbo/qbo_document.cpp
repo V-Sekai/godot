@@ -1434,7 +1434,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 			}
 		} else if (l.begins_with("o ") || f->eof_reached()) {
-			//commit group to mesh before checking if we should create mesh node
+			// When we see 'o' or EOF, finish the current mesh and create mesh node
+			// First, commit any pending surface from surf_tool
 			if (surf_tool->get_vertex_array().size() > 0) {
 				Ref<StandardMaterial3D> material;
 				if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
@@ -1476,9 +1477,57 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 			}
 			
-			// Now check if we have surfaces and create mesh node
-			if (importer_mesh->get_surface_count() > 0) {
-				importer_mesh->set_name(name);
+			// Create mesh node if we have surfaces (when we see 'o', finish previous mesh)
+			// Check both importer_mesh (previous object) and surf_tool (current object)
+			// to ensure we create a mesh even if surfaces were just committed
+			bool has_surfaces = importer_mesh->get_surface_count() > 0;
+			bool has_pending_vertices = surf_tool->get_vertex_array().size() > 0;
+			
+			if (has_surfaces || has_pending_vertices) {
+				// If we have pending vertices but no surfaces yet, commit them first
+				if (has_pending_vertices && !has_surfaces) {
+					Ref<StandardMaterial3D> material;
+					if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
+						material = material_map[current_material_library][current_material];
+					}
+					
+					uint32_t mesh_flags = 0;
+					if (!p_disable_compression) {
+						mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+					}
+					
+					Array array = surf_tool->commit_to_arrays();
+					
+					if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents) {
+						Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
+						Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
+						for (int vert = 0; vert < norms.size(); vert++) {
+							Vector3 tan = Vector3(tangents[vert * 4 + 0], tangents[vert * 4 + 1], tangents[vert * 4 + 2]);
+							if (abs(tan.dot(norms[vert])) > 0.0001) {
+								mesh_flags &= ~RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+							}
+						}
+					}
+					
+					importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
+					
+					if (!current_material.is_empty()) {
+						if (importer_mesh->get_surface_count() >= 1) {
+							importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_material.get_basename());
+						}
+					} else if (!current_group.is_empty()) {
+						if (importer_mesh->get_surface_count() >= 1) {
+							importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_group);
+						}
+					}
+					
+					surf_tool->clear();
+					surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+				}
+				
+				// Now create mesh node if we have surfaces
+				if (importer_mesh->get_surface_count() > 0) {
+					importer_mesh->set_name(name);
 				// Convert ImporterMesh to GLTFMesh
 				Ref<GLTFMesh> gltf_mesh;
 				gltf_mesh.instantiate();
@@ -1557,8 +1606,9 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
 				p_state->root_nodes.push_back(mesh_node_index);
 				
-				// Reset importer_mesh for next mesh group
-				importer_mesh.instantiate();
+					// Reset importer_mesh for next mesh group
+					importer_mesh.instantiate();
+				}
 			}
 			
 			// Handle object name and reset state for new object
@@ -2060,11 +2110,6 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		return err;
 	}
 	
-	// Add hierarchy root nodes (bone nodes) to state root_nodes
-	for (GLTFNodeIndex root_node : hierarchy_root_nodes) {
-		p_state->root_nodes.push_back(root_node);
-	}
-	
 	// Reset file to beginning for OBJ parsing
 	f->seek(0);
 	
@@ -2092,6 +2137,21 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 					node->skeleton = skeleton_index;
 				}
 			}
+		}
+		
+		// Add skeleton root nodes to root_nodes (after skeleton creation)
+		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+			for (GLTFNodeIndex root_node : skeleton->roots) {
+				if (!p_state->root_nodes.has(root_node)) {
+					p_state->root_nodes.push_back(root_node);
+				}
+			}
+		}
+	} else {
+		// No skins - add hierarchy root nodes (bone nodes) to state root_nodes
+		for (GLTFNodeIndex root_node : hierarchy_root_nodes) {
+			p_state->root_nodes.push_back(root_node);
 		}
 	}
 
