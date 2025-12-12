@@ -43,6 +43,7 @@ class GLTFSkin : public Resource {
 	friend class GLTFDocument;
 	friend class SkinTool;
 	friend class FBXDocument;
+	friend class QBODocument;
 
 private:
 	// The "skeleton" property defined in the gltf spec. -1 = Scene Root
