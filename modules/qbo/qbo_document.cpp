@@ -366,15 +366,6 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					if (!orientation.is_normalized()) {
 						print_verbose("UNNORMALIZED ORIENTATION!!!")
 					}
-					// Convert quaternion for axis convention (QBO/BVH to Godot)
-					// QBO/BVH uses Y-up, Z-forward, X-right
-					// Godot uses Y-up, -Z-forward, X-right
-					// Swap X and Z to convert from BVH to Godot coordinate system
-					Basis basis = Basis(orientation);
-					Vector3 euler = basis.get_euler(EulerOrder::ZYX); // Get euler in ZYX order (QBO convention)
-					// Swap X and Z components for coordinate system conversion (BVH to Godot)
-					Vector3 converted_euler = Vector3(euler.z, euler.y, euler.x);
-					orientation = Basis::from_euler(converted_euler, EulerOrder::YXZ).get_quaternion(); // Convert back with YXZ (Godot default)
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
@@ -1214,14 +1205,6 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	}
 
 	err = append_from_scene(scene, p_state, 0);
-	for (int32_t player_i = 0; player_i < p_state->animation_players.size(); player_i++) {
-		AnimationPlayer *animation_player = p_state->animation_players[player_i];
-		List<StringName> animations;
-		animation_player->get_animation_list(&animations);
-		for (const StringName &animation_name : animations) {
-			_convert_animation(p_state, animation_player, animation_name);
-		}
-	}
 	if (root) {
 		memdelete(root);
 	}
