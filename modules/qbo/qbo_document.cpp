@@ -899,7 +899,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				Ref<GLTFNode> node;
 				node.instantiate();
 				node->set_original_name(bone_name);
-				node->set_name(_gen_unique_name(p_state, bone_name));
+				node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
 				node->joint = true;
 				node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
 				
@@ -947,7 +947,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				Ref<GLTFNode> node;
 				node.instantiate();
 				node->set_original_name(bone_name);
-				node->set_name(_gen_unique_name(p_state, bone_name));
+				node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
 				node->joint = true;
 				
 				int parent_bone_idx = bone_indices[bone_indices.size() - 1];
@@ -1061,7 +1061,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					Ref<GLTFNode> node;
 					node.instantiate();
 					node->set_original_name(bone_name);
-					node->set_name(_gen_unique_name(p_state, bone_name));
+					node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
 					node->joint = true;
 					node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
 					
@@ -1329,7 +1329,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					if (!weights.is_empty() && vtx < weights.size() && !weights.get(vtx).is_empty()) {
 						Vector<int> bone_indices_vec;
 						Vector<float> weight_vec;
-						for (HashMap<String, float>::Iterator itr = weights.get(vtx).begin(); itr; ++itr) {
+						for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_empty()) {
 								continue;
 							}
@@ -1378,7 +1378,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			smoothing = do_smooth;
 		} else if (l.begins_with("usemtl ") || (l.begins_with("o ") || f->eof_reached())) {
 			//commit group to mesh
-			if (surf_tool->get_vertex_count() > 0) {
+			if (surf_tool->get_vertex_array().size() > 0) {
 				Ref<StandardMaterial3D> material;
 				if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
 					material = material_map[current_material_library][current_material];
@@ -1388,9 +1388,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				if (!p_disable_compression) {
 					mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 				}
-				if (generate_tangents) {
-					mesh_flags |= RS::ARRAY_FLAG_USE_OCTAHEDRAL_COMPRESSION;
-				}
+				// Note: Octahedral compression is handled automatically by Godot
 				
 				Array array = surf_tool->commit_to_arrays();
 				
@@ -1429,7 +1427,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					gltf_mesh.instantiate();
 					if (!importer_mesh->get_name().is_empty()) {
 						gltf_mesh->set_original_name(importer_mesh->get_name());
-						gltf_mesh->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+						gltf_mesh->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
 					}
 					gltf_mesh->set_mesh(importer_mesh);
 					GLTFMeshIndex mesh_index = p_state->meshes.size();
@@ -1439,7 +1437,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					Ref<GLTFNode> mesh_node;
 					mesh_node.instantiate();
 					mesh_node->set_original_name(importer_mesh->get_name());
-					mesh_node->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+					mesh_node->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
 					mesh_node->mesh = mesh_index;
 					mesh_node->transform = Transform3D();
 					
@@ -1450,7 +1448,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
 						Ref<GLTFSkin> gltf_skin;
 						gltf_skin.instantiate();
-						gltf_skin->set_name(_gen_unique_name(p_state, "qboSkin"));
+						gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
 						
 						// Collect all unique bone names used in weights
 						HashSet<String> used_bone_names;
@@ -1458,7 +1456,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							if (weights[vtx].is_empty()) {
 								continue;
 							}
-							for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
+							for (HashMap<String, float>::ConstIterator itr = weights[vtx].begin(); itr; ++itr) {
 								if (!itr->key.is_empty() && p_bone_name_to_node.has(itr->key)) {
 									used_bone_names.insert(itr->key);
 								}
@@ -1552,7 +1550,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		gltf_mesh.instantiate();
 		if (!importer_mesh->get_name().is_empty()) {
 			gltf_mesh->set_original_name(importer_mesh->get_name());
-			gltf_mesh->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+			gltf_mesh->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
 		}
 		gltf_mesh->set_mesh(importer_mesh);
 		GLTFMeshIndex mesh_index = p_state->meshes.size();
@@ -1561,7 +1559,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		Ref<GLTFNode> mesh_node;
 		mesh_node.instantiate();
 		mesh_node->set_original_name(importer_mesh->get_name());
-		mesh_node->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+		mesh_node->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
 		mesh_node->mesh = mesh_index;
 		mesh_node->transform = Transform3D();
 		
@@ -1572,14 +1570,14 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
 			Ref<GLTFSkin> gltf_skin;
 			gltf_skin.instantiate();
-			gltf_skin->set_name(_gen_unique_name(p_state, "qboSkin"));
+			gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
 			
 			HashSet<String> used_bone_names;
 			for (int vtx = 0; vtx < weights.size(); vtx++) {
 				if (weights[vtx].is_empty()) {
 					continue;
 				}
-				for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
+				for (HashMap<String, float>::ConstIterator itr = weights[vtx].begin(); itr; ++itr) {
 					if (!itr->key.is_empty() && p_bone_name_to_node.has(itr->key)) {
 						used_bone_names.insert(itr->key);
 					}
@@ -1803,7 +1801,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 					if (!weights.is_empty() && vtx < weights.size() && !weights.get(vtx).is_empty()) {
 						Vector<int> bones;
 						Vector<float> weight;
-						for (HashMap<String, float>::Iterator itr = weights.get(vtx).begin(); itr; ++itr) {
+						for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_empty()) {
 				continue;
 			}
