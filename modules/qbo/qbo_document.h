@@ -40,8 +40,12 @@ class QBODocument : public GLTFDocument {
 	static Error _parse_obj(Ref<FileAccess> f, const String &p_base_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_optimize, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, List<String> *r_missing_deps, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation);
 
 public:
-	Node *parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path);
-	Error append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, String p_base_path = String()) override;
-	Error append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0) override;
+	Error parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path);
+	virtual Error append_from_file(const String& p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, const String& p_base_path = String()) override;
+	virtual Error append_from_buffer(const PackedByteArray &p_bytes, const String& p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0) override;
 	QBODocument() {}
+	virtual ~QBODocument();
+
+protected:
+	Node *root = nullptr;
 };

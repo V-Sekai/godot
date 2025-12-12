@@ -3327,6 +3327,7 @@ Error GLTFDocument::_serialize_skins(Ref<GLTFState> p_state) {
 	}
 
 	p_state->json["skins"] = json_skins;
+	print_verbose("glTF: Total skins: " + itos(json_skins.size()));
 	return OK;
 }
 
@@ -4149,11 +4150,22 @@ void GLTFDocument::_convert_scene_node(Ref<GLTFState> p_state, Node *p_current, 
 	gltf_node->merge_meta_from(p_current);
 	if (Object::cast_to<Node3D>(p_current)) {
 		Node3D *spatial = Object::cast_to<Node3D>(p_current);
+		//gltf_node->set_additional_data("GODOT_rest_transform", spatial->get_transform());
 		_convert_spatial(p_state, spatial, gltf_node);
 	}
 	if (Object::cast_to<MeshInstance3D>(p_current)) {
 		MeshInstance3D *mi = Object::cast_to<MeshInstance3D>(p_current);
 		_convert_mesh_instance_to_gltf(mi, p_state, gltf_node);
+	} else if (Object::cast_to<ImporterMeshInstance3D>(p_current)) {
+		ImporterMeshInstance3D *imi = Object::cast_to<ImporterMeshInstance3D>(p_current);
+		MeshInstance3D *mi = memnew(MeshInstance3D);
+		mi->set_mesh(imi->get_mesh()->get_mesh());
+		mi->set_name(imi->get_name());
+		mi->set_transform(imi->get_transform());
+		mi->set_skin(imi->get_skin());
+		mi->set_skeleton_path(imi->get_skeleton_path());
+		_convert_mesh_instance_to_gltf(mi, p_state, gltf_node);
+		memdelete(mi);
 	} else if (Object::cast_to<BoneAttachment3D>(p_current)) {
 		BoneAttachment3D *bone = Object::cast_to<BoneAttachment3D>(p_current);
 		_convert_bone_attachment_to_gltf(bone, p_state, p_gltf_parent, p_gltf_root, gltf_node);
@@ -4392,6 +4404,8 @@ void GLTFDocument::_convert_skeleton_to_gltf(Skeleton3D *p_skeleton3d, Ref<GLTFS
 		joint_node->set_original_name(skeleton->get_bone_name(bone_i));
 		joint_node->set_name(_gen_unique_name(p_state, skeleton->get_bone_name(bone_i)));
 		joint_node->transform = skeleton->get_bone_pose(bone_i);
+		joint_node->skeleton = skeleton_i;
+		joint_node->set_additional_data("GODOT_rest_transform", skeleton->get_bone_rest(bone_i));
 		joint_node->joint = true;
 
 		if (p_skeleton3d->has_bone_meta(bone_i, "extras")) {
