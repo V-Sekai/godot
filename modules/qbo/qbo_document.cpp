@@ -53,6 +53,12 @@
 #define QBO_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 #define QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
+QBODocument::~QBODocument() {
+	if (root) {
+		memdelete(root);
+	}
+}
+
 Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation) {
 	bool motion = false;
 	int frame_count = -1;
@@ -1110,9 +1116,9 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 	return OK;
 }
 
-Node *QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path) {
-	ERR_FAIL_COND_V_MSG(f.is_null(), nullptr, "Cannot open QBO file.");
-	ERR_FAIL_COND_V(p_state.is_null(), nullptr);
+Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path) {
+	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, "Cannot open QBO file.");
+	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 
 	if (p_base_path.is_empty()) {
 		p_base_path += p_path.get_base_dir();
@@ -1126,21 +1132,23 @@ Node *QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	Error err = _parse_obj(f, p_base_path, meshes, false, p_flags & QBO_IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION, &missing_deps, skeletons, (p_flags & QBO_IMPORT_ANIMATION) ? &animation : nullptr);
 
 	if (err != OK) {
-		return nullptr;
+		return err;
 	}
 
 	Node3D *scene = memnew(Node3D);
+	scene->set_name("qboRoot");
 
 	for (Ref<ImporterMesh> m : meshes) {
-		ImporterMeshInstance3D *mi = memnew(ImporterMeshInstance3D);
-		mi->set_mesh(m);
+		MeshInstance3D *mi = memnew(MeshInstance3D);
+		mi->set_mesh(m->get_mesh());
 		mi->set_name(m->get_name());
 		if (p_flags & QBO_IMPORT_ANIMATION) {
 			for (Skeleton3D *s : skeletons) {
 				Ref<Skin> skin = s->create_skin_from_rest_transforms();
 				if (!skin.is_valid()) {
-					break;
+					continue;
 				}
+				skin->set_name("qboSkin");
 				scene->add_child(s, true);
 				s->set_owner(scene);
 				s->add_child(mi, true);
@@ -1161,25 +1169,24 @@ Node *QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		animation->set_owner(scene);
 	}
 
-	//err = append_from_scene(scene, p_state, QBO_IMPORT_USE_NAMED_SKIN_BINDS);
-	//memdelete(scene);
+	err = append_from_scene(scene, p_state, 0);
+	if (root) {
+		memdelete(root);
+	}
+	root = scene;
 
-	//return err;
-	return scene;
+	return err;
 }
 
-Error QBODocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path) {
+Error QBODocument::append_from_file(const String& p_path, Ref<GLTFState> p_state, uint32_t p_flags, const String& p_base_path) {
 	ERR_FAIL_COND_V(p_path.is_empty(), ERR_FILE_NOT_FOUND);
 	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
 	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, "Cannot open QBO file.");
-	Node *node = parse_qbo_data(f, p_state, p_flags, p_base_path, p_path);
-	Error err = append_from_scene(node, p_state, QBO_IMPORT_USE_NAMED_SKIN_BINDS);
-	memdelete(node);
-	return err;
+	return parse_qbo_data(f, p_state, p_flags, p_base_path, p_path);
 }
 
-Error QBODocument::append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags) {
+Error QBODocument::append_from_buffer(const PackedByteArray& p_bytes, const String& p_base_path, Ref<GLTFState> p_state, uint32_t p_flags) {
 	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(p_bytes.is_empty(), ERR_INVALID_PARAMETER);
 	Ref<FileAccessMemory> memfile;
@@ -1187,8 +1194,5 @@ Error QBODocument::append_from_buffer(PackedByteArray p_bytes, String p_base_pat
 	const Error open_error = memfile->open_custom(p_bytes.ptr(), p_bytes.size());
 	ERR_FAIL_COND_V_MSG(open_error != OK, open_error, "Could not create memory file for QBO buffer.");
 	ERR_FAIL_COND_V_MSG(memfile.is_null(), ERR_CANT_OPEN, "Cannot open QBO file.");
-	Node *node = parse_qbo_data(memfile, p_state, p_flags, p_base_path, String());
-	Error err = append_from_scene(node, p_state, QBO_IMPORT_USE_NAMED_SKIN_BINDS);
-	memdelete(node);
-	return err;
+	return parse_qbo_data(memfile, p_state, p_flags, p_base_path, String());
 }

@@ -434,6 +434,8 @@ Error SkinTool::_determine_skeletons(
 		skeletons.push_back(skeleton);
 
 		SkinTool::_reparent_non_joint_skeleton_subtrees(nodes, skeletons.write[skel_i], non_joints);
+
+		print_verbose("glTF: Total bones: " + itos(skeleton->joints.size() + skeleton->roots.size()));
 	}
 
 	for (SkinSkeletonIndex skel_i = 0; skel_i < skeletons.size(); ++skel_i) {
@@ -450,6 +452,8 @@ Error SkinTool::_determine_skeletons(
 
 		ERR_FAIL_COND_V(SkinTool::_determine_skeleton_roots(nodes, skeletons, skel_i), ERR_PARSE_ERROR);
 	}
+
+	print_verbose("glTF: Total skeletons: " + itos(skeletons.size()));
 
 	return OK;
 }
@@ -651,9 +655,13 @@ Error SkinTool::_create_skeletons(
 
 			scene_nodes.insert(node_i, skeleton);
 		}
+
+		print_verbose("glTF: Total bones: " + itos(skeleton->get_bone_count()));
 	}
 
 	ERR_FAIL_COND_V(_map_skin_joints_indices_to_skeleton_bone_indices(skins, skeletons, nodes), ERR_PARSE_ERROR);
+
+	print_verbose("glTF: Total skeletons: " + itos(skeletons.size()));
 
 	return OK;
 }
@@ -672,7 +680,11 @@ Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 			const SkinNodeIndex node_i = skin->joints_original[joint_index];
 			const Ref<GLTFNode> node = nodes[node_i];
 
-			const int bone_index = skeleton->godot_skeleton->find_bone(node->get_name());
+			String bone_name = node->get_name();
+			const int bone_index = skeleton->godot_skeleton->find_bone(bone_name);
+			if (bone_index < 0) {
+				print_verbose(bone_name + " " + skeleton->godot_skeleton->get_concatenated_bone_names());
+			}
 			ERR_FAIL_COND_V(bone_index < 0, FAILED);
 
 			skin->joint_i_to_bone_i.insert(joint_index, bone_index);
