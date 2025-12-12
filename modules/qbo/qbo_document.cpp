@@ -124,7 +124,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 		}
 
 		if (motion) {
-			if (l.begins_with("HIERARCHY")) {
+		if (l.begins_with("HIERARCHY")) {
 				motion = false;
 			} else if (l.begins_with("Frame Time: ")) {
 				Vector<String> s = l.split(":");
@@ -207,8 +207,8 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								do {
 									bone_index++;
 									if (bone_index >= channels.size()) {
-										break;
-									}
+							break;
+						}
 								} while (channels[bone_index].size() < 2);
 								channel_index = 1;
 								if (bone_index >= channels.size()) {
@@ -366,6 +366,18 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					if (!orientation.is_normalized()) {
 						print_verbose("UNNORMALIZED ORIENTATION!!!")
 					}
+					// Convert quaternion for axis convention (QBO/BVH to Godot)
+					// BVH uses Y-up, Z-forward, X-right
+					// Godot uses Y-up, -Z-forward, X-right
+					// We swapped X and Z for OFFSET, so we need to convert the quaternion accordingly
+					// Convert by swapping X and Z axes in the rotation basis
+					Basis basis = Basis(orientation);
+					// Swap X and Z basis vectors to match coordinate system conversion
+					Vector3 x_axis = basis.get_column(0);
+					Vector3 z_axis = basis.get_column(2);
+					basis.set_column(0, z_axis);
+					basis.set_column(2, x_axis);
+					orientation = basis.get_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
@@ -544,7 +556,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 2;
 								channel_index += 2;
 								//print_verbose(position);
-							} else {
+			} else {
 								print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -576,7 +588,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 3;
 								channel_index += 3;
 								//print_verbose(rotation);
-							} else {
+		} else {
 								print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -723,7 +735,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-			} else {
+					} else {
 				path = base_path.path_join(p);
 			}
 
@@ -774,6 +786,832 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 		}
 	}
 
+	return OK;
+}
+
+Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_state, HashMap<String, GLTFNodeIndex> &r_bone_name_to_node, Vector<BoneData> &r_bone_data, Vector<GLTFNodeIndex> &r_root_nodes, AnimationPlayer **r_animation) {
+	bool motion = false;
+	int frame_count = -1;
+	double frame_time = 0.03333333;
+	HashMap<int, int> tracks;
+	HashMap<String, int> bone_names;
+	Vector<String> frames;
+	Vector<int> bone_indices; // Index into r_bone_data
+	Vector<Quaternion> orientations;
+	Vector<Vector3> offsets;
+	Vector<Vector<int>> channels;
+	Ref<Animation> animation;
+	Ref<AnimationLibrary> animation_library;
+	String animation_library_name = f->get_path().get_basename().strip_edges();
+	if (animation_library_name.contains(".")) {
+		animation_library_name = animation_library_name.substr(0, animation_library_name.find("."));
+	}
+	animation_library_name = AnimationLibrary::validate_library_name(animation_library_name);
+	if (r_animation != nullptr) {
+		if (*r_animation == nullptr) {
+			animation_library.instantiate();
+			animation_library->set_name(animation_library_name);
+			*r_animation = memnew(AnimationPlayer);
+			(*r_animation)->add_animation_library(animation_library_name, animation_library);
+		} else {
+			List<StringName> libraries;
+			(*r_animation)->get_animation_library_list(&libraries);
+			for (int i = 0; i < libraries.size(); i++) {
+				String library_name = libraries.get(i);
+				if (library_name.is_empty()) {
+					continue;
+				}
+				animation_library = (*r_animation)->get_animation_library(animation_library_name);
+				if (animation_library.is_valid()) {
+					animation_library_name = animation_library->get_name();
+					break;
+				}
+			}
+		}
+	}
+
+	int loops = 0;
+	int blanks = 0;
+	while (true) {
+		String l = f->get_line().strip_edges();
+		if (++loops % 100 == 0 && OS::get_singleton()->has_feature("debug")) {
+			print_verbose(String::num_int64(loops) + " QBO loops");
+		}
+		if (l.is_empty() && f->eof_reached()) {
+			break;
+		}
+		if (l.is_empty()) {
+			if (++blanks > 1) {
+				break;
+			}
+			continue;
+		}
+		if (l.begins_with("#")) {
+			continue;
+		}
+
+		if (motion) {
+			if (l.begins_with("HIERARCHY")) {
+				motion = false;
+			} else if (l.begins_with("Frame Time: ")) {
+				Vector<String> s = l.split(":");
+				l = s[1].strip_edges();
+				frame_time = l.to_float();
+			} else if (l.begins_with("Frames: ")) {
+				Vector<String> s = l.split(":");
+				l = s[1].strip_edges();
+				frame_count = l.to_int();
+			} else {
+				frames.append(l);
+				if (frames.size() == frame_count) {
+					motion = false;
+				}
+			}
+							continue;
+						}
+
+		if (l.begins_with("HIERARCHY")) {
+			l = l.substr(10);
+			if (!l.is_empty()) {
+				animation_library_name = l;
+			}
+			continue;
+		} else if (l.begins_with("ROOT")) {
+			String bone_name = "";
+			bone_indices.clear();
+			offsets.clear();
+			orientations.clear();
+			channels.clear();
+			l = l.substr(5);
+			if (!l.is_empty()) {
+				bone_name += l;
+			} else {
+				bone_name += "ROOT";
+			}
+			if (!bone_name.is_empty()) {
+				if (bone_names.has(bone_name)) {
+					bone_names[bone_name] += 1;
+					bone_name += String::num_int64(bone_names[bone_name]);
+				} else {
+					bone_names[bone_name] = 1;
+				}
+				// Create GLTFNode for root bone
+				Ref<GLTFNode> node;
+				node.instantiate();
+				node->set_original_name(bone_name);
+				node->set_name(_gen_unique_name(p_state, bone_name));
+				node->joint = true;
+				node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
+				
+				GLTFNodeIndex node_index = p_state->append_gltf_node(node, nullptr, -1);
+				r_root_nodes.push_back(node_index);
+				
+				BoneData bone_data;
+				bone_data.name = bone_name;
+				bone_data.gltf_node_index = node_index;
+				bone_data.parent_bone_index = -1;
+				bone_data.offset = Vector3();
+				bone_data.orientation = Quaternion();
+				bone_data.rest_transform = Transform3D();
+				r_bone_data.push_back(bone_data);
+				r_bone_name_to_node[bone_name] = node_index;
+				bone_indices.push_back(r_bone_data.size() - 1);
+				orientations.append(Quaternion());
+				offsets.append(Vector3());
+				channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
+			}
+		} else if (l.begins_with("MOTION")) {
+			motion = true;
+			// Animation parsing will be handled later if needed
+			animation.instantiate();
+			frame_count = -1;
+			frames.clear();
+			l = l.substr(7);
+			if (!l.is_empty()) {
+				animation->set_name(l.strip_edges());
+			} else {
+				animation->set_name("MOTION");
+			}
+		} else if (l.begins_with("End ")) {
+			ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
+			l = l.substr(4);
+			if (!l.is_empty()) {
+				String bone_name = l;
+				if (bone_names.has(bone_name)) {
+					bone_names[bone_name] += 1;
+					bone_name += String::num_int64(bone_names[bone_name]);
+				} else {
+					bone_names[bone_name] = 1;
+				}
+				// Create GLTFNode for end site
+				Ref<GLTFNode> node;
+				node.instantiate();
+				node->set_original_name(bone_name);
+				node->set_name(_gen_unique_name(p_state, bone_name));
+				node->joint = true;
+				
+				int parent_bone_idx = bone_indices[bone_indices.size() - 1];
+				GLTFNodeIndex parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
+				GLTFNodeIndex node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
+				
+				BoneData bone_data;
+				bone_data.name = bone_name;
+				bone_data.gltf_node_index = node_index;
+				bone_data.parent_bone_index = parent_bone_idx;
+				bone_data.offset = Vector3();
+				bone_data.orientation = Quaternion();
+				bone_data.rest_transform = Transform3D();
+				r_bone_data.push_back(bone_data);
+				r_bone_name_to_node[bone_name] = node_index;
+				bone_indices.push_back(r_bone_data.size() - 1);
+				orientations.append(Quaternion());
+				offsets.append(Vector3());
+				channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
+			}
+		} else {
+			Vector<String> s;
+			if (l.contains(" ")) {
+				s = l.split(" ");
+			} else {
+				s = l.split("\t");
+			}
+			if (s.size() > 1) {
+				if (s[0].casecmp_to("OFFSET") == 0) {
+					ERR_FAIL_COND_V(s.size() < 4, ERR_FILE_CORRUPT);
+					Vector3 offset;
+					offset.x = s[1].to_float();
+					offset.y = s[2].to_float();
+					offset.z = s[3].to_float();
+					// Convert OFFSET for axis convention (QBO/BVH to Godot)
+					offset = Vector3(offset.z, offset.y, offset.x);
+					if (offsets.is_empty()) {
+						offsets.append(offset);
+					} else {
+						offsets.set(offsets.size() - 1, offset);
+					}
+				} else if (s[0].casecmp_to("ORIENT") == 0) {
+					ERR_FAIL_COND_V(s.size() < 5, ERR_FILE_CORRUPT);
+					Quaternion orientation;
+					orientation.x = s[1].to_float();
+					orientation.y = s[2].to_float();
+					orientation.z = s[3].to_float();
+					orientation.w = s[4].to_float();
+					if (!orientation.is_normalized()) {
+						print_verbose("UNNORMALIZED ORIENTATION!!!")
+					}
+					// Convert quaternion for axis convention
+					Basis basis = Basis(orientation);
+					Vector3 x_axis = basis.get_column(0);
+					Vector3 z_axis = basis.get_column(2);
+					basis.set_column(0, z_axis);
+					basis.set_column(2, x_axis);
+					orientation = basis.get_quaternion();
+					if (orientations.is_empty()) {
+						orientations.append(orientation);
+					} else {
+						orientations.set(orientations.size() - 1, orientation);
+					}
+				} else if (s[0].casecmp_to("CHANNELS") == 0) {
+					int channel_count = s[1].to_int();
+					ERR_FAIL_COND_V(s.size() < channel_count + 2 || bone_indices.is_empty(), ERR_FILE_CORRUPT);
+					Vector<int> channel;
+					channel.append(bone_indices[bone_indices.size() - 1]);
+					for (int i = 0; i < channel_count; i++) {
+						String channel_name = s[i + 2].strip_edges();
+						if (channel_name.casecmp_to("Xposition") == 0) {
+							channel.append(BVH_X_POSITION);
+						} else if (channel_name.casecmp_to("Yposition") == 0) {
+							channel.append(BVH_Y_POSITION);
+						} else if (channel_name.casecmp_to("Zposition") == 0) {
+							channel.append(BVH_Z_POSITION);
+						} else if (channel_name.casecmp_to("Xrotation") == 0) {
+							channel.append(BVH_X_ROTATION);
+						} else if (channel_name.casecmp_to("Yrotation") == 0) {
+							channel.append(BVH_Y_ROTATION);
+						} else if (channel_name.casecmp_to("Zrotation") == 0) {
+							channel.append(BVH_Z_ROTATION);
+						} else if (channel_name.casecmp_to("Wrotation") == 0) {
+							channel.append(BVH_W_ROTATION);
+						} else {
+							channel_name.clear();
+						}
+						ERR_FAIL_COND_V(channel_name.is_empty(), ERR_FILE_CORRUPT);
+					}
+					ERR_FAIL_COND_V(channel.size() < 2, ERR_FILE_CORRUPT);
+					if (channels.is_empty()) {
+						channels.append(channel);
+					} else if (channels[channels.size() - 1].size() < 2) {
+						channels.remove_at(channels.size() - 1);
+						channels.append(channel);
+					}
+				} else if (s[0].casecmp_to("JOINT") == 0) {
+					ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
+					int parent_bone_idx = bone_indices[bone_indices.size() - 1];
+					String bone_name = s[1];
+					if (bone_names.has(bone_name)) {
+						bone_names[bone_name] += 1;
+						if (bone_name.ends_with("_")) {
+							bone_name += "_";
+						}
+						bone_name += String::num_int64(bone_names[bone_name]);
+					} else {
+						bone_names[bone_name] = 1;
+					}
+					// Create GLTFNode for joint
+					Ref<GLTFNode> node;
+					node.instantiate();
+					node->set_original_name(bone_name);
+					node->set_name(_gen_unique_name(p_state, bone_name));
+					node->joint = true;
+					node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
+					
+					GLTFNodeIndex parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
+					GLTFNodeIndex node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
+					
+					BoneData bone_data;
+					bone_data.name = bone_name;
+					bone_data.gltf_node_index = node_index;
+					bone_data.parent_bone_index = parent_bone_idx;
+					bone_data.offset = Vector3();
+					bone_data.orientation = Quaternion();
+					bone_data.rest_transform = Transform3D();
+					r_bone_data.push_back(bone_data);
+					r_bone_name_to_node[bone_name] = node_index;
+					bone_indices.push_back(r_bone_data.size() - 1);
+					orientations.append(Quaternion());
+					offsets.append(Vector3());
+					channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
+				}
+			} else {
+				if (l.casecmp_to("{") == 0) {
+					// Opening brace, continue
+				} else if (l.casecmp_to("}") == 0) {
+					ERR_FAIL_COND_V(bone_indices.is_empty() || offsets.is_empty() || orientations.is_empty() || channels.is_empty(), ERR_FILE_CORRUPT);
+					int bone_idx = bone_indices[bone_indices.size() - 1];
+					Vector3 offset = offsets[offsets.size() - 1];
+					Quaternion orientation = orientations[orientations.size() - 1];
+					bone_indices.remove_at(bone_indices.size() - 1);
+					offsets.remove_at(offsets.size() - 1);
+					orientations.remove_at(orientations.size() - 1);
+					
+					// Update bone data with rest transform
+					Transform3D rest;
+					Vector3 scale = Vector3(1.0, 1.0, 1.0);
+					rest.basis.set_quaternion_scale(orientation, scale);
+					
+					int parent_bone_idx = r_bone_data[bone_idx].parent_bone_index;
+					if (parent_bone_idx < 0) {
+						// Root bone - offset goes to transform, rest origin is zero
+						r_bone_data.write[bone_idx].offset = offset;
+						r_bone_data.write[bone_idx].orientation = orientation;
+						rest.origin = Vector3();
+			} else {
+						// Child bone - offset is rest origin
+						r_bone_data.write[bone_idx].offset = offset;
+						r_bone_data.write[bone_idx].orientation = orientation;
+						rest.origin = offset;
+					}
+					r_bone_data.write[bone_idx].rest_transform = rest;
+					
+					// Update GLTFNode transform and rest transform
+					GLTFNodeIndex node_index = r_bone_data[bone_idx].gltf_node_index;
+					Ref<GLTFNode> node = p_state->nodes[node_index];
+					node->transform = Transform3D(orientation, Vector3()); // Pose transform (rotation only for now)
+					node->set_additional_data("GODOT_rest_transform", rest);
+				}
+			}
+		}
+	}
+
+	return OK;
+}
+
+Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_path, Ref<GLTFState> p_state, const HashMap<String, GLTFNodeIndex> &p_bone_name_to_node, const Vector<BoneData> &p_bone_data, bool p_generate_tangents, bool p_disable_compression, List<String> *r_missing_deps) {
+	// Parse OBJ section and create GLTFMesh and GLTFSkin directly in GLTFState
+	// This reuses the OBJ parsing logic but converts to GLTFMesh instead of ImporterMesh
+	// and creates GLTFSkin from vertex weights using bone name to GLTFNode mapping
+	
+	Ref<ImporterMesh> importer_mesh;
+	importer_mesh.instantiate();
+	
+	bool generate_tangents = p_generate_tangents;
+	Vector3 scale_mesh = Vector3(1.0, 1.0, 1.0);
+	Vector3 offset_mesh = Vector3(0.0, 0.0, 0.0);
+	
+	Vector<HashMap<String, float>> weights; // Vertex weights: bone name -> weight
+	Vector<Vector3> vertices;
+	Vector<Vector3> normals;
+	Vector<Vector2> uvs;
+	Vector<Color> colors;
+	const String default_name = "QBO";
+	String name = default_name;
+	
+	HashMap<String, HashMap<String, Ref<StandardMaterial3D>>> material_map;
+	
+	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
+	surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+	
+	String current_material_library;
+	String current_material;
+	String current_group;
+	uint32_t smooth_group = 0;
+	bool smoothing = true;
+	const uint32_t no_smoothing_smooth_group = (uint32_t)-1;
+	
+	// Skip HIERARCHY and MOTION sections (already parsed)
+	bool in_hierarchy = false;
+	bool in_motion = false;
+	
+	while (true) {
+		String l = f->get_line().strip_edges();
+		while (l.length() && l[l.length() - 1] == '\\') {
+			String add = f->get_line().strip_edges();
+			l += add;
+			if (add.is_empty()) {
+				break;
+			}
+		}
+		
+		if (l.is_empty() && f->eof_reached()) {
+			break;
+		}
+		if (l.is_empty()) {
+			continue;
+		}
+		if (l.begins_with("#")) {
+			continue;
+		}
+		
+		// Skip HIERARCHY and MOTION sections
+		if (l.begins_with("HIERARCHY")) {
+			in_hierarchy = true;
+			continue;
+		}
+		if (l.begins_with("MOTION")) {
+			in_motion = true;
+			in_hierarchy = false;
+			continue;
+		}
+		if (in_hierarchy || in_motion) {
+			// Skip until we reach OBJ data
+			if (l.begins_with("v ") || l.begins_with("vt ") || l.begins_with("vn ") || l.begins_with("f ")) {
+				in_hierarchy = false;
+				in_motion = false;
+			} else {
+				continue;
+			}
+		}
+		
+		if (l.begins_with("v ")) {
+			//vertex
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
+			Vector3 vtx;
+			vtx.x = v[1].to_float() * scale_mesh.x + offset_mesh.x;
+			vtx.y = v[2].to_float() * scale_mesh.y + offset_mesh.y;
+			vtx.z = v[3].to_float() * scale_mesh.z + offset_mesh.z;
+			vertices.push_back(vtx);
+			//vertex color
+			if (v.size() >= 7) {
+				while (colors.size() < vertices.size() - 1) {
+					colors.push_back(Color(1.0, 1.0, 1.0));
+				}
+				Color c;
+				c.r = v[4].to_float();
+				c.g = v[5].to_float();
+				c.b = v[6].to_float();
+				colors.push_back(c);
+			} else if (!colors.is_empty()) {
+				colors.push_back(Color(1.0, 1.0, 1.0));
+			}
+		} else if (l.begins_with("vt ")) {
+			//uv
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 3, ERR_FILE_CORRUPT);
+			Vector2 uv;
+			uv.x = v[1].to_float();
+			uv.y = 1.0 - v[2].to_float();
+			uvs.push_back(uv);
+		} else if (l.begins_with("vn ")) {
+			//normal
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
+			Vector3 nrm;
+			nrm.x = v[1].to_float();
+			nrm.y = v[2].to_float();
+			nrm.z = v[3].to_float();
+			normals.push_back(nrm);
+		} else if (l.begins_with("vw ")) {
+			//weight - store for later GLTFSkin creation
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(p_bone_name_to_node.is_empty() || v.size() < 4 || (v.size() - 2) % 2 != 0, ERR_FILE_CORRUPT);
+			int vertex_idx = v[1].to_int() - 1; // Convert 1-based to 0-based
+			if (vertex_idx < 0) {
+				vertex_idx += vertices.size() + 1;
+			}
+			// Ensure weights list is large enough
+			while (weights.size() <= vertex_idx) {
+				weights.push_back(HashMap<String, float>());
+			}
+			HashMap<String, float> weight;
+			for (int i = 2; i < v.size() - 1; i += 2) {
+				String b = v[i];
+				float w = v[i + 1].to_float();
+				// Validate bone name exists in bone mapping
+				if (!p_bone_name_to_node.has(b)) {
+					continue; // Skip invalid bone names
+				}
+				weight[b] = w;
+				if (weight.size() > 4) {
+					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
+				}
+			}
+			weights.set(vertex_idx, weight);
+		} else if (l.begins_with("f ")) {
+			//face - reuse existing face parsing logic
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
+			
+			Vector<String> face[3];
+			face[0] = v[1].split("/");
+			face[1] = v[2].split("/");
+			ERR_FAIL_COND_V(face[0].is_empty(), ERR_FILE_CORRUPT);
+			ERR_FAIL_COND_V(face[0].size() != face[1].size(), ERR_FILE_CORRUPT);
+			
+			for (int i = 2; i < v.size() - 1; i++) {
+				face[2] = v[i + 1].split("/");
+				ERR_FAIL_COND_V(face[0].size() != face[2].size(), ERR_FILE_CORRUPT);
+				
+				for (int j = 0; j < 3; j++) {
+					int idx = j;
+					if (idx < 2) {
+						idx = 1 ^ idx;
+					}
+					
+					if (face[idx].size() >= 3) {
+						int norm = face[idx][2].to_int() - 1;
+						if (norm < 0) {
+							norm += normals.size() + 1;
+						}
+						ERR_FAIL_INDEX_V(norm, normals.size(), ERR_FILE_CORRUPT);
+						surf_tool->set_normal(normals[norm]);
+						if (generate_tangents && uvs.is_empty()) {
+							Vector3 tan = Vector3(normals[norm].z, -normals[norm].x, normals[norm].y).cross(normals[norm].normalized()).normalized();
+							surf_tool->set_tangent(Plane(tan.x, tan.y, tan.z, 1.0));
+						}
+					} else {
+						if (generate_tangents && uvs.is_empty()) {
+							surf_tool->set_tangent(Plane(1.0, 0.0, 0.0, 1.0));
+						}
+					}
+					
+					if (face[idx].size() >= 2 && !face[idx][1].is_empty()) {
+						int uv = face[idx][1].to_int() - 1;
+						if (uv < 0) {
+							uv += uvs.size() + 1;
+						}
+						ERR_FAIL_INDEX_V(uv, uvs.size(), ERR_FILE_CORRUPT);
+						surf_tool->set_uv(uvs[uv]);
+					}
+					
+					int vtx = face[idx][0].to_int() - 1;
+					if (vtx < 0) {
+						vtx += vertices.size() + 1;
+					}
+					ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
+					
+					Vector3 vertex = vertices[vtx];
+					if (!colors.is_empty()) {
+						surf_tool->set_color(colors[vtx]);
+					}
+					
+					// Set bones and weights for this vertex
+					if (!weights.is_empty() && vtx < weights.size() && !weights.get(vtx).is_empty()) {
+						Vector<int> bone_indices_vec;
+						Vector<float> weight_vec;
+						for (HashMap<String, float>::Iterator itr = weights.get(vtx).begin(); itr; ++itr) {
+							if (itr->key.is_empty()) {
+								continue;
+							}
+							// Map bone name to GLTFNode index (we'll convert to bone indices later)
+							// For now, store as bone name indices - we'll need to convert these
+							// when creating GLTFSkin
+							if (p_bone_name_to_node.has(itr->key)) {
+								// Store the bone name for later GLTFSkin creation
+								// The actual bone index will be determined when creating the skin
+								weight_vec.append(itr->value);
+							}
+						}
+						// Note: We can't set bone indices here because we need the final skeleton
+						// Instead, we'll create the GLTFSkin after parsing and use the bone name mapping
+						if (!weight_vec.is_empty()) {
+							// Set empty bones for now, will be filled when creating GLTFSkin
+							surf_tool->set_bones(Vector<int>());
+							surf_tool->set_weights(weight_vec);
+						} else {
+							surf_tool->set_bones(Vector<int>());
+							surf_tool->set_weights(Vector<float>());
+						}
+					} else {
+						surf_tool->set_bones(Vector<int>());
+						surf_tool->set_weights(Vector<float>());
+					}
+					surf_tool->set_smooth_group(smoothing ? smooth_group : no_smoothing_smooth_group);
+					surf_tool->add_vertex(vertex);
+				}
+				face[1] = face[2];
+			}
+		} else if (l.begins_with("s ")) {
+			//smoothing
+			String what = l.substr(2, l.length()).strip_edges();
+			bool do_smooth;
+			if (what == "off") {
+				do_smooth = false;
+			} else {
+				do_smooth = true;
+			}
+			if (do_smooth) {
+				smooth_group++;
+			} else {
+				smooth_group = no_smoothing_smooth_group;
+			}
+			smoothing = do_smooth;
+		} else if (l.begins_with("usemtl ") || (l.begins_with("o ") || f->eof_reached())) {
+			//commit group to mesh
+			if (surf_tool->get_vertex_count() > 0) {
+				Ref<StandardMaterial3D> material;
+				if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
+					material = material_map[current_material_library][current_material];
+				}
+				
+				uint32_t mesh_flags = 0;
+				if (!p_disable_compression) {
+					mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+				}
+				if (generate_tangents) {
+					mesh_flags |= RS::ARRAY_FLAG_USE_OCTAHEDRAL_COMPRESSION;
+				}
+				
+				Array array = surf_tool->commit_to_arrays();
+				
+				if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents) {
+					Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
+					Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
+					for (int vert = 0; vert < norms.size(); vert++) {
+						Vector3 tan = Vector3(tangents[vert * 4 + 0], tangents[vert * 4 + 1], tangents[vert * 4 + 2]);
+						if (abs(tan.dot(norms[vert])) > 0.0001) {
+							mesh_flags &= ~RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+						}
+					}
+				}
+				
+				importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
+				
+				if (!current_material.is_empty()) {
+					if (importer_mesh->get_surface_count() >= 1) {
+						importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_material.get_basename());
+					}
+				} else if (!current_group.is_empty()) {
+					if (importer_mesh->get_surface_count() >= 1) {
+						importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_group);
+					}
+				}
+				
+				surf_tool->clear();
+				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+			}
+			
+			if (l.begins_with("o ") || f->eof_reached()) {
+				if (importer_mesh->get_surface_count() > 0) {
+					importer_mesh->set_name(name);
+					// Convert ImporterMesh to GLTFMesh
+					Ref<GLTFMesh> gltf_mesh;
+					gltf_mesh.instantiate();
+					if (!importer_mesh->get_name().is_empty()) {
+						gltf_mesh->set_original_name(importer_mesh->get_name());
+						gltf_mesh->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+					}
+					gltf_mesh->set_mesh(importer_mesh);
+					GLTFMeshIndex mesh_index = p_state->meshes.size();
+					p_state->meshes.push_back(gltf_mesh);
+					
+					// Create GLTFNode for mesh
+					Ref<GLTFNode> mesh_node;
+					mesh_node.instantiate();
+					mesh_node->set_original_name(importer_mesh->get_name());
+					mesh_node->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+					mesh_node->mesh = mesh_index;
+					mesh_node->transform = Transform3D();
+					
+					GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
+					p_state->root_nodes.push_back(mesh_node_index);
+					
+					// Create GLTFSkin from vertex weights if we have weights and bones
+					if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
+						Ref<GLTFSkin> gltf_skin;
+						gltf_skin.instantiate();
+						gltf_skin->set_name(_gen_unique_name(p_state, "qboSkin"));
+						
+						// Collect all unique bone names used in weights
+						HashSet<String> used_bone_names;
+						for (int vtx = 0; vtx < weights.size(); vtx++) {
+							if (weights[vtx].is_empty()) {
+								continue;
+							}
+							for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
+								if (!itr->key.is_empty() && p_bone_name_to_node.has(itr->key)) {
+									used_bone_names.insert(itr->key);
+								}
+							}
+						}
+						
+						// Create joints and inverse binds from bone data
+						HashMap<String, GLTFNodeIndex> bone_name_to_gltf_node;
+						for (int i = 0; i < p_bone_data.size(); i++) {
+							bone_name_to_gltf_node[p_bone_data[i].name] = p_bone_data[i].gltf_node_index;
+						}
+						
+						// Add joints to skin (in order of bone_data to maintain hierarchy)
+						HashMap<GLTFNodeIndex, Transform3D> node_to_inverse_bind;
+						for (int i = 0; i < p_bone_data.size(); i++) {
+							if (used_bone_names.has(p_bone_data[i].name)) {
+								GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
+								gltf_skin->joints_original.push_back(node_index);
+								gltf_skin->joints.push_back(node_index);
+								
+								// Calculate inverse bind matrix from rest transform
+								Transform3D rest = p_bone_data[i].rest_transform;
+								Transform3D inverse_bind = rest.affine_inverse();
+								gltf_skin->inverse_binds.push_back(inverse_bind);
+								node_to_inverse_bind[node_index] = inverse_bind;
+								
+								// Mark as root if no parent
+								if (p_bone_data[i].parent_bone_index < 0) {
+									gltf_skin->roots.push_back(node_index);
+								}
+							}
+						}
+						
+						// Set skin_root to first root bone
+						if (!gltf_skin->roots.is_empty()) {
+							gltf_skin->skin_root = gltf_skin->roots[0];
+						}
+						
+						// Add skin to state
+						GLTFSkinIndex skin_index = p_state->skins.size();
+						p_state->skins.push_back(gltf_skin);
+						
+						// Set skin and skeleton on mesh node
+						mesh_node->skin = skin_index;
+						// Skeleton will be set after SkinTool determines it
+					}
+					
+					importer_mesh.instantiate();
+				}
+				name = default_name;
+				current_group = "";
+				current_material = "";
+			}
+			
+			if (f->eof_reached()) {
+				break;
+			}
+			
+			if (l.begins_with("o ")) {
+				name = l.substr(2, l.length()).strip_edges();
+			}
+			
+			if (l.begins_with("usemtl ")) {
+				current_material = l.replace("usemtl", "").strip_edges();
+			}
+			
+			if (l.begins_with("g ")) {
+				current_group = l.substr(2, l.length()).strip_edges();
+			}
+		} else if (l.begins_with("mtllib ")) {
+			//parse material
+			current_material_library = l.replace("mtllib", "").strip_edges();
+			if (!material_map.has(current_material_library)) {
+				HashMap<String, Ref<StandardMaterial3D>> lib;
+				String lib_path = current_material_library;
+				if (lib_path.is_relative_path()) {
+					lib_path = p_base_path.get_base_dir().path_join(current_material_library);
+				}
+				Error err = _parse_material_library(lib_path, lib, r_missing_deps);
+				if (err == OK) {
+					material_map[current_material_library] = lib;
+				}
+			}
+		}
+	}
+	
+	// Handle final mesh if any
+	if (importer_mesh->get_surface_count() > 0) {
+		importer_mesh->set_name(name);
+		Ref<GLTFMesh> gltf_mesh;
+		gltf_mesh.instantiate();
+		if (!importer_mesh->get_name().is_empty()) {
+			gltf_mesh->set_original_name(importer_mesh->get_name());
+			gltf_mesh->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+		}
+		gltf_mesh->set_mesh(importer_mesh);
+		GLTFMeshIndex mesh_index = p_state->meshes.size();
+		p_state->meshes.push_back(gltf_mesh);
+		
+		Ref<GLTFNode> mesh_node;
+		mesh_node.instantiate();
+		mesh_node->set_original_name(importer_mesh->get_name());
+		mesh_node->set_name(_gen_unique_name(p_state, importer_mesh->get_name()));
+		mesh_node->mesh = mesh_index;
+		mesh_node->transform = Transform3D();
+		
+		GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
+		p_state->root_nodes.push_back(mesh_node_index);
+		
+		// Create GLTFSkin if we have weights
+		if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
+			Ref<GLTFSkin> gltf_skin;
+			gltf_skin.instantiate();
+			gltf_skin->set_name(_gen_unique_name(p_state, "qboSkin"));
+			
+			HashSet<String> used_bone_names;
+			for (int vtx = 0; vtx < weights.size(); vtx++) {
+				if (weights[vtx].is_empty()) {
+					continue;
+				}
+				for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
+					if (!itr->key.is_empty() && p_bone_name_to_node.has(itr->key)) {
+						used_bone_names.insert(itr->key);
+					}
+				}
+			}
+			
+			for (int i = 0; i < p_bone_data.size(); i++) {
+				if (used_bone_names.has(p_bone_data[i].name)) {
+					GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
+					gltf_skin->joints_original.push_back(node_index);
+					gltf_skin->joints.push_back(node_index);
+					
+					Transform3D rest = p_bone_data[i].rest_transform;
+					Transform3D inverse_bind = rest.affine_inverse();
+					gltf_skin->inverse_binds.push_back(inverse_bind);
+					
+					if (p_bone_data[i].parent_bone_index < 0) {
+						gltf_skin->roots.push_back(node_index);
+					}
+				}
+			}
+			
+			if (!gltf_skin->roots.is_empty()) {
+				gltf_skin->skin_root = gltf_skin->roots[0];
+			}
+			
+			GLTFSkinIndex skin_index = p_state->skins.size();
+			p_state->skins.push_back(gltf_skin);
+			mesh_node->skin = skin_index;
+		}
+	}
+	
 	return OK;
 }
 
@@ -887,8 +1725,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 				for (int j = 0; j < r_skeletons.size(); j++) {
 					if (r_skeletons.get(j)->find_bone(b) > -1) {
 						bone_found = true;
-						break;
-					}
+					break;
+				}
 				}
 				ERR_FAIL_COND_V(!bone_found, ERR_FILE_CORRUPT);
 				// Only store weight if bone is valid
@@ -967,8 +1805,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 						Vector<float> weight;
 						for (HashMap<String, float>::Iterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_empty()) {
-								continue;
-							}
+				continue;
+			}
 							if (itr->key.is_numeric()) {
 								bones.append(itr->key.to_int());
 							} else if (!r_skeletons.is_empty()) {
@@ -1044,12 +1882,12 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 			if (surf_tool->get_vertex_array().size()) {
 				//another group going on, commit it
 				if (normals.size() == 0) {
-					surf_tool->generate_normals();
-				}
+			surf_tool->generate_normals();
+		}
 
 				if (generate_tangents && uvs.size()) {
-					surf_tool->generate_tangents();
-				}
+			surf_tool->generate_tangents();
+		}
 
 				surf_tool->index();
 
@@ -1157,157 +1995,55 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		p_base_path += p_path.get_base_dir();
 	}
 
-	List<String> missing_deps;
-	List<Ref<ImporterMesh>> meshes;
-	List<Skeleton3D *> skeletons;
+	// Parse QBO directly into GLTFState (proper architecture)
+	// 1. Parse HIERARCHY section → Create GLTFNode objects for bones
+	// 2. Parse OBJ section → Create GLTFMesh and GLTFSkin
+	// 3. Use SkinTool to determine skeletons
+	
+	HashMap<String, GLTFNodeIndex> bone_name_to_node;
+	Vector<BoneData> bone_data;
+	Vector<GLTFNodeIndex> root_nodes;
 	AnimationPlayer *animation = nullptr;
-	Vector<Vector<uint8_t>> mesh_lightmap_caches;
-	Error err = _parse_obj(f, p_base_path, meshes, false, p_flags & QBO_IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION, &missing_deps, skeletons, (p_flags & QBO_IMPORT_ANIMATION) ? &animation : nullptr);
-
+	
+	// Reset file to beginning
+	f->seek(0);
+	
+	// Parse HIERARCHY section to create bone GLTFNodes
+	Error err = _parse_hierarchy_to_gltf(f, p_state, bone_name_to_node, bone_data, root_nodes, (p_flags & QBO_IMPORT_ANIMATION) ? &animation : nullptr);
 	if (err != OK) {
 		return err;
 	}
-
-	Node3D *scene = memnew(Node3D);
-	scene->set_name("qboRoot");
-
-	for (Ref<ImporterMesh> m : meshes) {
-		ImporterMeshInstance3D *mi = memnew(ImporterMeshInstance3D);
-		mi->set_mesh(m);
-		mi->set_name(m->get_name());
-		// Always set up skin if skeletons exist (needed for skinned meshes, even without animations)
-		if (!skeletons.is_empty()) {
-			for (Skeleton3D *s : skeletons) {
-				Ref<Skin> skin = s->create_skin_from_rest_transforms();
-				if (!skin.is_valid()) {
-					continue;
-				}
-				skin->set_name("qboSkin");
-				scene->add_child(s, true);
-				s->set_owner(scene);
-				// Add mesh instance as child of skeleton (matches GLTFDocument behavior)
-				s->add_child(mi, true);
-				mi->set_owner(scene);
-				mi->set_skin(skin);
-				mi->set_skeleton_path(mi->get_path_to(s));
-				mi->set_transform(Transform3D());
-				break;
-			}
-		}
-		if (!mi->get_skin().is_valid()) {
-			scene->add_child(mi, true);
-			mi->set_owner(scene);
-		}
-	}
-	if (animation != nullptr) {
-		scene->add_child(animation, true);
-		animation->set_owner(scene);
-	}
-
-	err = append_from_scene(scene, p_state, 0);
+	
+	// Reset file to beginning for OBJ parsing
+	f->seek(0);
+	
+	// Parse OBJ section to create GLTFMesh and GLTFSkin
+	List<String> missing_deps;
+	err = _parse_obj_to_gltf(f, p_base_path, p_state, bone_name_to_node, bone_data, p_flags & QBO_IMPORT_GENERATE_TANGENT_ARRAYS, p_flags & QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION, &missing_deps);
 	if (err != OK) {
 		return err;
 	}
-
-	// Convert skins from ImporterMeshInstance3D to GLTFState
-	// This ensures node->skin is set so _process_mesh_instances can handle it during generate_scene
-	// Similar to _convert_mesh_instances but for ImporterMeshInstance3D nodes
-	for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
-		Ref<GLTFNode> node = p_state->nodes[node_i];
-		if (node->mesh < 0 || node->skin >= 0) {
-			continue; // Skip if no mesh or skin already set
+	
+	// Use SkinTool to determine skeletons from the skins we created
+	if (!p_state->skins.is_empty()) {
+		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, Vector<GLTFNodeIndex>(), false);
+		if (err != OK) {
+			return err;
 		}
-
-		HashMap<GLTFNodeIndex, Node *>::Iterator mi_element = p_state->scene_nodes.find(node_i);
-		if (!mi_element) {
-			continue;
-		}
-
-		ImporterMeshInstance3D *imi = Object::cast_to<ImporterMeshInstance3D>(mi_element->value);
-		if (!imi) {
-			continue;
-		}
-
-		Ref<Skin> skin = imi->get_skin();
-		if (!skin.is_valid()) {
-			continue;
-		}
-
-		Node *skel_node = imi->get_node_or_null(imi->get_skeleton_path());
-		Skeleton3D *godot_skeleton = Object::cast_to<Skeleton3D>(skel_node);
-		if (!godot_skeleton || godot_skeleton->get_bone_count() == 0) {
-			continue;
-		}
-
-		if (!p_state->skeleton3d_to_gltf_skeleton.has(godot_skeleton->get_instance_id())) {
-			continue;
-		}
-
-		const GLTFSkeletonIndex skeleton_gltf_i = p_state->skeleton3d_to_gltf_skeleton[godot_skeleton->get_instance_id()];
-		Ref<GLTFSkeleton> gltf_skeleton = p_state->skeletons[skeleton_gltf_i];
-		int bone_cnt = godot_skeleton->get_bone_count();
-		ERR_CONTINUE(bone_cnt != gltf_skeleton->joints.size());
-
-		ObjectID gltf_skin_key = skin->get_instance_id();
-		ObjectID gltf_skel_key = godot_skeleton->get_instance_id();
-		GLTFSkinIndex skin_gltf_i = -1;
-		GLTFNodeIndex root_gltf_i = -1;
-		if (!gltf_skeleton->roots.is_empty()) {
-			root_gltf_i = gltf_skeleton->roots[0];
-		}
-
-		if (p_state->skin_and_skeleton3d_to_gltf_skin.has(gltf_skin_key) && p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key].has(gltf_skel_key)) {
-			skin_gltf_i = p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key][gltf_skel_key];
-		} else {
-			Ref<GLTFSkin> gltf_skin;
-			gltf_skin.instantiate();
-			gltf_skin->godot_skin = skin;
-			gltf_skin->set_name(skin->get_name());
-			gltf_skin->skeleton = skeleton_gltf_i;
-			gltf_skin->skin_root = root_gltf_i;
-
-			HashMap<StringName, int> bone_name_to_idx;
-			for (int bone_i = 0; bone_i < bone_cnt; bone_i++) {
-				bone_name_to_idx[godot_skeleton->get_bone_name(bone_i)] = bone_i;
+		
+		// Set skeleton index on mesh nodes that have skins
+		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
+			Ref<GLTFNode> node = p_state->nodes[node_i];
+			if (node->mesh >= 0 && node->skin >= 0) {
+				Ref<GLTFSkin> skin = p_state->skins[node->skin];
+				if (skin->skeleton >= 0) {
+					node->skeleton = skin->skeleton;
+				}
 			}
-
-			for (int bind_i = 0, cnt = skin->get_bind_count(); bind_i < cnt; bind_i++) {
-				int bone_i = skin->get_bind_bone(bind_i);
-				Transform3D bind_pose = skin->get_bind_pose(bind_i);
-				StringName bind_name = skin->get_bind_name(bind_i);
-				if (bind_name != StringName()) {
-					bone_i = bone_name_to_idx[bind_name];
-				}
-				ERR_CONTINUE(bone_i < 0 || bone_i >= bone_cnt);
-				if (bind_name == StringName()) {
-					bind_name = godot_skeleton->get_bone_name(bone_i);
-				}
-				GLTFNodeIndex skeleton_bone_i = gltf_skeleton->joints[bone_i];
-				gltf_skin->joints_original.push_back(skeleton_bone_i);
-				gltf_skin->joints.push_back(skeleton_bone_i);
-				gltf_skin->inverse_binds.push_back(bind_pose);
-				if (godot_skeleton->get_bone_parent(bone_i) == -1) {
-					gltf_skin->roots.push_back(skeleton_bone_i);
-				}
-				gltf_skin->joint_i_to_bone_i[bind_i] = bone_i;
-				gltf_skin->joint_i_to_name[bind_i] = bind_name;
-			}
-
-			skin_gltf_i = p_state->skins.size();
-			p_state->skins.push_back(gltf_skin);
-			p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key][gltf_skel_key] = skin_gltf_i;
 		}
-
-		node->skin = skin_gltf_i;
-		node->skeleton = skeleton_gltf_i;
 	}
 
-	if (root) {
-		memdelete(root);
-	}
-	root = scene;
-
-	return err;
+	return OK;
 }
 
 Error QBODocument::append_from_file(const String &p_path, Ref<GLTFState> p_state, uint32_t p_flags, const String &p_base_path) {

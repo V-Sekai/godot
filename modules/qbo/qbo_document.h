@@ -35,9 +35,23 @@
 class QBODocument : public GLTFDocument {
 	GDCLASS(QBODocument, GLTFDocument);
 
+	// Legacy parsing functions (to be removed after refactor)
 	static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation);
 	static Error _parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps);
 	static Error _parse_obj(Ref<FileAccess> f, const String &p_base_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_optimize, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, List<String> *r_missing_deps, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation);
+
+	// New parsing functions that populate GLTFState directly
+	struct BoneData {
+		String name;
+		Vector3 offset;
+		Quaternion orientation;
+		Transform3D rest_transform;
+		int parent_bone_index = -1;
+		GLTFNodeIndex gltf_node_index = -1;
+	};
+	
+	static Error _parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_state, HashMap<String, GLTFNodeIndex> &r_bone_name_to_node, Vector<BoneData> &r_bone_data, Vector<GLTFNodeIndex> &r_root_nodes, AnimationPlayer **r_animation);
+	static Error _parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_path, Ref<GLTFState> p_state, const HashMap<String, GLTFNodeIndex> &p_bone_name_to_node, const Vector<BoneData> &p_bone_data, bool p_generate_tangents, bool p_disable_compression, List<String> *r_missing_deps);
 
 public:
 	Error parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path);
