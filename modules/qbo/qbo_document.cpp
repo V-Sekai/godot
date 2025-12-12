@@ -544,7 +544,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 2;
 								channel_index += 2;
 								//print_verbose(position);
-					} else {
+			} else {
 								print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -576,7 +576,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 3;
 								channel_index += 3;
 								//print_verbose(rotation);
-							} else {
+		} else {
 								print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -723,7 +723,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-			} else {
+					} else {
 				path = base_path.path_join(p);
 			}
 
@@ -977,7 +977,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 									continue;
 								}
 								bones.append(bone_idx);
-							} else {
+			} else {
 								continue;
 							}
 							if (bones.is_empty() || bones[bones.size() - 1] < 0) {
@@ -991,7 +991,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 						if (!bones.is_empty()) {
 							surf_tool->set_bones(bones);
 							surf_tool->set_weights(weight);
-						} else {
+		} else {
 							surf_tool->set_bones(Vector<int>());
 							surf_tool->set_weights(Vector<float>());
 						}
@@ -1031,7 +1031,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 				for (int i = 0; i < vertices.size(); i++) {
 					if (!Math::is_zero_approx(vertices[i].z)) {
 						is_mesh_2d = false;
-						break;
+					break;
 					}
 				}
 
@@ -1205,6 +1205,103 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	}
 
 	err = append_from_scene(scene, p_state, 0);
+	if (err != OK) {
+		return err;
+	}
+	
+	// Convert skins from ImporterMeshInstance3D to GLTFState
+	// This ensures node->skin is set so _process_mesh_instances can handle it during generate_scene
+	// Similar to _convert_mesh_instances but for ImporterMeshInstance3D nodes
+	for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
+		Ref<GLTFNode> node = p_state->nodes[node_i];
+		if (node->mesh < 0 || node->skin >= 0) {
+			continue; // Skip if no mesh or skin already set
+		}
+		
+		HashMap<GLTFNodeIndex, Node *>::Iterator mi_element = p_state->scene_nodes.find(node_i);
+		if (!mi_element) {
+			continue;
+		}
+		
+		ImporterMeshInstance3D *imi = Object::cast_to<ImporterMeshInstance3D>(mi_element->value);
+		if (!imi) {
+			continue;
+		}
+		
+		Ref<Skin> skin = imi->get_skin();
+		if (!skin.is_valid()) {
+			continue;
+		}
+		
+		Node *skel_node = imi->get_node_or_null(imi->get_skeleton_path());
+		Skeleton3D *godot_skeleton = Object::cast_to<Skeleton3D>(skel_node);
+		if (!godot_skeleton || godot_skeleton->get_bone_count() == 0) {
+			continue;
+		}
+		
+		if (!p_state->skeleton3d_to_gltf_skeleton.has(godot_skeleton->get_instance_id())) {
+			continue;
+		}
+		
+		const GLTFSkeletonIndex skeleton_gltf_i = p_state->skeleton3d_to_gltf_skeleton[godot_skeleton->get_instance_id()];
+		Ref<GLTFSkeleton> gltf_skeleton = p_state->skeletons[skeleton_gltf_i];
+		int bone_cnt = godot_skeleton->get_bone_count();
+		ERR_CONTINUE(bone_cnt != gltf_skeleton->joints.size());
+		
+		ObjectID gltf_skin_key = skin->get_instance_id();
+		ObjectID gltf_skel_key = godot_skeleton->get_instance_id();
+		GLTFSkinIndex skin_gltf_i = -1;
+		GLTFNodeIndex root_gltf_i = -1;
+		if (!gltf_skeleton->roots.is_empty()) {
+			root_gltf_i = gltf_skeleton->roots[0];
+		}
+		
+		if (p_state->skin_and_skeleton3d_to_gltf_skin.has(gltf_skin_key) && p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key].has(gltf_skel_key)) {
+			skin_gltf_i = p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key][gltf_skel_key];
+		} else {
+			Ref<GLTFSkin> gltf_skin;
+			gltf_skin.instantiate();
+			gltf_skin->godot_skin = skin;
+			gltf_skin->set_name(skin->get_name());
+			gltf_skin->skeleton = skeleton_gltf_i;
+			gltf_skin->skin_root = root_gltf_i;
+			
+			HashMap<StringName, int> bone_name_to_idx;
+			for (int bone_i = 0; bone_i < bone_cnt; bone_i++) {
+				bone_name_to_idx[godot_skeleton->get_bone_name(bone_i)] = bone_i;
+			}
+			
+			for (int bind_i = 0, cnt = skin->get_bind_count(); bind_i < cnt; bind_i++) {
+				int bone_i = skin->get_bind_bone(bind_i);
+				Transform3D bind_pose = skin->get_bind_pose(bind_i);
+				StringName bind_name = skin->get_bind_name(bind_i);
+				if (bind_name != StringName()) {
+					bone_i = bone_name_to_idx[bind_name];
+				}
+				ERR_CONTINUE(bone_i < 0 || bone_i >= bone_cnt);
+				if (bind_name == StringName()) {
+					bind_name = godot_skeleton->get_bone_name(bone_i);
+				}
+				GLTFNodeIndex skeleton_bone_i = gltf_skeleton->joints[bone_i];
+				gltf_skin->joints_original.push_back(skeleton_bone_i);
+				gltf_skin->joints.push_back(skeleton_bone_i);
+				gltf_skin->inverse_binds.push_back(bind_pose);
+				if (godot_skeleton->get_bone_parent(bone_i) == -1) {
+					gltf_skin->roots.push_back(skeleton_bone_i);
+				}
+				gltf_skin->joint_i_to_bone_i[bind_i] = bone_i;
+				gltf_skin->joint_i_to_name[bind_i] = bind_name;
+			}
+			
+			skin_gltf_i = p_state->skins.size();
+			p_state->skins.push_back(gltf_skin);
+			p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key][gltf_skel_key] = skin_gltf_i;
+		}
+		
+		node->skin = skin_gltf_i;
+		node->skeleton = skeleton_gltf_i;
+	}
+	
 	if (root) {
 		memdelete(root);
 	}
