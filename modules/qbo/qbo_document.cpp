@@ -124,7 +124,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 		}
 
 		if (motion) {
-		if (l.begins_with("HIERARCHY")) {
+			if (l.begins_with("HIERARCHY")) {
 				motion = false;
 			} else if (l.begins_with("Frame Time: ")) {
 				Vector<String> s = l.split(":");
@@ -177,7 +177,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 				bones.append(bone);
 				orientations.append(Quaternion());
 				offsets.append(Vector3());
-				channels.append(Vector<int>({bones[bones.size() - 1]}));
+				channels.append(Vector<int>({ bones[bones.size() - 1] }));
 			}
 		} else if (l.begins_with("MOTION")) {
 			motion = true;
@@ -207,8 +207,8 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								do {
 									bone_index++;
 									if (bone_index >= channels.size()) {
-							break;
-						}
+										break;
+									}
 								} while (channels[bone_index].size() < 2);
 								channel_index = 1;
 								if (bone_index >= channels.size()) {
@@ -326,7 +326,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 				bones.append(r_skeletons.back()->get()->add_bone(l));
 				orientations.append(Quaternion());
 				offsets.append(Vector3());
-				channels.append(Vector<int>({bones[bones.size() - 1]}));
+				channels.append(Vector<int>({ bones[bones.size() - 1] }));
 				if (bones.size() > 1) {
 					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], bones[bones.size() - 2]);
 					parents[bones[bones.size() - 1]] = bones[bones.size() - 2];
@@ -421,7 +421,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					bones.append(r_skeletons.back()->get()->add_bone(bone_name));
 					orientations.append(Quaternion());
 					offsets.append(Vector3());
-					channels.append(Vector<int>({bones[bones.size() - 1]}));
+					channels.append(Vector<int>({ bones[bones.size() - 1] }));
 					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], parent);
 					parents[bones[bones.size() - 1]] = parent;
 				}
@@ -448,7 +448,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					offsets.remove_at(offsets.size() - 1);
 					orientations.remove_at(orientations.size() - 1);
 					rest.basis.set_quaternion_scale(orientation, scale);
-					
+
 					// For root bone (no parent), the OFFSET is the skeleton's position
 					// Apply it to the skeleton's transform and set bone rest origin to zero
 					int bone_parent = r_skeletons.back()->get()->get_bone_parent(bone);
@@ -459,7 +459,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					} else {
 						rest.origin = offset;
 					}
-					
+
 					if (bone < r_skeletons.back()->get()->get_bone_count()) {
 						print_verbose(r_skeletons.back()->get()->get_bone_name(bone) + " @ " + String::num_int64(bone) + " = " + String(offset));
 						r_skeletons.back()->get()->set_bone_rest(bone, rest);
@@ -502,8 +502,8 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 						do {
 							bone_index++;
 							if (bone_index >= channels.size()) {
-						break;
-					}
+								break;
+							}
 						} while (channels[bone_index].size() < 2);
 						channel_index = 1;
 						if (bone_index >= channels.size()) {
@@ -544,7 +544,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 2;
 								channel_index += 2;
 								//print_verbose(position);
-			} else {
+							} else {
 								print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -576,7 +576,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 3;
 								channel_index += 3;
 								//print_verbose(rotation);
-		} else {
+							} else {
 								print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -723,7 +723,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-					} else {
+			} else {
 				path = base_path.path_join(p);
 			}
 
@@ -887,8 +887,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 				for (int j = 0; j < r_skeletons.size(); j++) {
 					if (r_skeletons.get(j)->find_bone(b) > -1) {
 						bone_found = true;
-					break;
-				}
+						break;
+					}
 				}
 				ERR_FAIL_COND_V(!bone_found, ERR_FILE_CORRUPT);
 				// Only store weight if bone is valid
@@ -967,8 +967,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 						Vector<float> weight;
 						for (HashMap<String, float>::Iterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_empty()) {
-				continue;
-			}
+								continue;
+							}
 							if (itr->key.is_numeric()) {
 								bones.append(itr->key.to_int());
 							} else if (!r_skeletons.is_empty()) {
@@ -977,7 +977,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 									continue;
 								}
 								bones.append(bone_idx);
-			} else {
+							} else {
 								continue;
 							}
 							if (bones.is_empty() || bones[bones.size() - 1] < 0) {
@@ -991,7 +991,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 						if (!bones.is_empty()) {
 							surf_tool->set_bones(bones);
 							surf_tool->set_weights(weight);
-		} else {
+						} else {
 							surf_tool->set_bones(Vector<int>());
 							surf_tool->set_weights(Vector<float>());
 						}
@@ -1031,7 +1031,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 				for (int i = 0; i < vertices.size(); i++) {
 					if (!Math::is_zero_approx(vertices[i].z)) {
 						is_mesh_2d = false;
-					break;
+						break;
 					}
 				}
 
@@ -1044,12 +1044,12 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 			if (surf_tool->get_vertex_array().size()) {
 				//another group going on, commit it
 				if (normals.size() == 0) {
-			surf_tool->generate_normals();
-		}
+					surf_tool->generate_normals();
+				}
 
 				if (generate_tangents && uvs.size()) {
-			surf_tool->generate_tangents();
-		}
+					surf_tool->generate_tangents();
+				}
 
 				surf_tool->index();
 
@@ -1208,7 +1208,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	if (err != OK) {
 		return err;
 	}
-	
+
 	// Convert skins from ImporterMeshInstance3D to GLTFState
 	// This ensures node->skin is set so _process_mesh_instances can handle it during generate_scene
 	// Similar to _convert_mesh_instances but for ImporterMeshInstance3D nodes
@@ -1217,37 +1217,37 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		if (node->mesh < 0 || node->skin >= 0) {
 			continue; // Skip if no mesh or skin already set
 		}
-		
+
 		HashMap<GLTFNodeIndex, Node *>::Iterator mi_element = p_state->scene_nodes.find(node_i);
 		if (!mi_element) {
 			continue;
 		}
-		
+
 		ImporterMeshInstance3D *imi = Object::cast_to<ImporterMeshInstance3D>(mi_element->value);
 		if (!imi) {
 			continue;
 		}
-		
+
 		Ref<Skin> skin = imi->get_skin();
 		if (!skin.is_valid()) {
 			continue;
 		}
-		
+
 		Node *skel_node = imi->get_node_or_null(imi->get_skeleton_path());
 		Skeleton3D *godot_skeleton = Object::cast_to<Skeleton3D>(skel_node);
 		if (!godot_skeleton || godot_skeleton->get_bone_count() == 0) {
 			continue;
 		}
-		
+
 		if (!p_state->skeleton3d_to_gltf_skeleton.has(godot_skeleton->get_instance_id())) {
 			continue;
 		}
-		
+
 		const GLTFSkeletonIndex skeleton_gltf_i = p_state->skeleton3d_to_gltf_skeleton[godot_skeleton->get_instance_id()];
 		Ref<GLTFSkeleton> gltf_skeleton = p_state->skeletons[skeleton_gltf_i];
 		int bone_cnt = godot_skeleton->get_bone_count();
 		ERR_CONTINUE(bone_cnt != gltf_skeleton->joints.size());
-		
+
 		ObjectID gltf_skin_key = skin->get_instance_id();
 		ObjectID gltf_skel_key = godot_skeleton->get_instance_id();
 		GLTFSkinIndex skin_gltf_i = -1;
@@ -1255,7 +1255,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		if (!gltf_skeleton->roots.is_empty()) {
 			root_gltf_i = gltf_skeleton->roots[0];
 		}
-		
+
 		if (p_state->skin_and_skeleton3d_to_gltf_skin.has(gltf_skin_key) && p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key].has(gltf_skel_key)) {
 			skin_gltf_i = p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key][gltf_skel_key];
 		} else {
@@ -1265,12 +1265,12 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			gltf_skin->set_name(skin->get_name());
 			gltf_skin->skeleton = skeleton_gltf_i;
 			gltf_skin->skin_root = root_gltf_i;
-			
+
 			HashMap<StringName, int> bone_name_to_idx;
 			for (int bone_i = 0; bone_i < bone_cnt; bone_i++) {
 				bone_name_to_idx[godot_skeleton->get_bone_name(bone_i)] = bone_i;
 			}
-			
+
 			for (int bind_i = 0, cnt = skin->get_bind_count(); bind_i < cnt; bind_i++) {
 				int bone_i = skin->get_bind_bone(bind_i);
 				Transform3D bind_pose = skin->get_bind_pose(bind_i);
@@ -1292,16 +1292,16 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 				gltf_skin->joint_i_to_bone_i[bind_i] = bone_i;
 				gltf_skin->joint_i_to_name[bind_i] = bind_name;
 			}
-			
+
 			skin_gltf_i = p_state->skins.size();
 			p_state->skins.push_back(gltf_skin);
 			p_state->skin_and_skeleton3d_to_gltf_skin[gltf_skin_key][gltf_skel_key] = skin_gltf_i;
 		}
-		
+
 		node->skin = skin_gltf_i;
 		node->skeleton = skeleton_gltf_i;
 	}
-	
+
 	if (root) {
 		memdelete(root);
 	}
@@ -1310,7 +1310,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	return err;
 }
 
-Error QBODocument::append_from_file(const String& p_path, Ref<GLTFState> p_state, uint32_t p_flags, const String& p_base_path) {
+Error QBODocument::append_from_file(const String &p_path, Ref<GLTFState> p_state, uint32_t p_flags, const String &p_base_path) {
 	ERR_FAIL_COND_V(p_path.is_empty(), ERR_FILE_NOT_FOUND);
 	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 	p_state->set_filename(p_path.get_file().get_basename());
@@ -1323,7 +1323,7 @@ Error QBODocument::append_from_file(const String& p_path, Ref<GLTFState> p_state
 	return parse_qbo_data(f, p_state, p_flags, p_base_path, p_path);
 }
 
-Error QBODocument::append_from_buffer(const PackedByteArray& p_bytes, const String& p_base_path, Ref<GLTFState> p_state, uint32_t p_flags) {
+Error QBODocument::append_from_buffer(const PackedByteArray &p_bytes, const String &p_base_path, Ref<GLTFState> p_state, uint32_t p_flags) {
 	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(p_bytes.is_empty(), ERR_INVALID_PARAMETER);
 	p_state->use_named_skin_binds = p_flags & QBO_IMPORT_USE_NAMED_SKIN_BINDS;

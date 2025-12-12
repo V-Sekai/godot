@@ -41,8 +41,8 @@ class QBODocument : public GLTFDocument {
 
 public:
 	Error parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path);
-	virtual Error append_from_file(const String& p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, const String& p_base_path = String()) override;
-	virtual Error append_from_buffer(const PackedByteArray &p_bytes, const String& p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0) override;
+	virtual Error append_from_file(const String &p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, const String &p_base_path = String()) override;
+	virtual Error append_from_buffer(const PackedByteArray &p_bytes, const String &p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0) override;
 	QBODocument() {}
 	virtual ~QBODocument();
 
