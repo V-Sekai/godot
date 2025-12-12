@@ -1170,6 +1170,14 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	}
 
 	err = append_from_scene(scene, p_state, 0);
+	for (int32_t player_i = 0; player_i < p_state->animation_players.size(); player_i++) {
+		AnimationPlayer *animation_player = p_state->animation_players[player_i];
+		List<StringName> animations;
+		animation_player->get_animation_list(&animations);
+		for (const StringName &animation_name : animations) {
+			_convert_animation(p_state, animation_player, animation_name);
+		}
+	}
 	if (root) {
 		memdelete(root);
 	}
