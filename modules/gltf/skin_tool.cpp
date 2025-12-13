@@ -682,9 +682,6 @@ Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 
 			String bone_name = node->get_name();
 			const int bone_index = skeleton->godot_skeleton->find_bone(bone_name);
-			if (bone_index < 0) {
-				print_verbose(bone_name + " " + skeleton->godot_skeleton->get_concatenated_bone_names());
-			}
 			ERR_FAIL_COND_V(bone_index < 0, FAILED);
 
 			skin->joint_i_to_bone_i.insert(joint_index, bone_index);

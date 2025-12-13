@@ -450,7 +450,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					if (bone < r_skeletons.back()->get()->get_bone_count()) {
 						print_verbose(r_skeletons.back()->get()->get_bone_name(bone) + " @ " + String::num_int64(bone) + " = " + String(offset));
 						r_skeletons.back()->get()->set_bone_rest(bone, rest);
-						//r_skeletons.back()->get()->set_bone_pose_position(bone, offset);
+						r_skeletons.back()->get()->set_bone_pose_position(bone, offset);
 						r_skeletons.back()->get()->set_bone_pose_rotation(bone, orientation);
 						r_skeletons.back()->get()->set_bone_pose_scale(bone, scale);
 					} else {
@@ -1178,6 +1178,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			_convert_animation(p_state, animation_player, animation_name);
 		}
 	}
+	_convert_mesh_instances(p_state);
 	if (root) {
 		memdelete(root);
 	}

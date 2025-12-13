@@ -3320,6 +3320,7 @@ Error GLTFDocument::_serialize_skins(Ref<GLTFState> p_state) {
 		json_skin["inverseBindMatrices"] = GLTFAccessor::encode_new_accessor_from_variants(p_state, inv_binds_arr, Variant::TRANSFORM3D, GLTFAccessor::TYPE_MAT4, GLTFAccessor::COMPONENT_TYPE_SINGLE_FLOAT);
 		json_skin["joints"] = gltf_skin->get_joints();
 		json_skin["name"] = gltf_skin->get_name();
+		json_skin["skeleton"] = gltf_skin->get_skeleton();
 		json_skins.push_back(json_skin);
 	}
 	if (!p_state->skins.size()) {
@@ -4402,7 +4403,8 @@ void GLTFDocument::_convert_skeleton_to_gltf(Skeleton3D *p_skeleton3d, Ref<GLTFS
 		// Note that we cannot use _gen_unique_bone_name here, because glTF spec requires all node
 		// names to be unique regardless of whether or not they are used as joints.
 		joint_node->set_original_name(skeleton->get_bone_name(bone_i));
-		joint_node->set_name(_gen_unique_name(p_state, skeleton->get_bone_name(bone_i)));
+		String joint_name = _gen_unique_name(p_state, skeleton->get_bone_name(bone_i));
+		joint_node->set_name(joint_name);
 		joint_node->transform = skeleton->get_bone_pose(bone_i);
 		joint_node->skeleton = skeleton_i;
 		joint_node->set_additional_data("GODOT_rest_transform", skeleton->get_bone_rest(bone_i));
