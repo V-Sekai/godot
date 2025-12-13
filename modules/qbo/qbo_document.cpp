@@ -1602,18 +1602,39 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						bone_name_to_gltf_node[p_bone_data[i].name] = p_bone_data[i].gltf_node_index;
 					}
 					
-					// Add only bones with vertex weights to joints_original
-					// SkinTool::_expand_skin will expand the skin to include all nodes in the subtree
+					// Add only bones with vertex weights to joints_original initially
+					// But we need to ensure all ancestors are included for _expand_skin to work correctly
+					HashSet<GLTFNodeIndex> nodes_to_include;
 					for (int i = 0; i < p_bone_data.size(); i++) {
 						if (used_bone_names.has(p_bone_data[i].name)) {
+							// Add this bone and all its ancestors
+							int bone_idx = i;
+							while (bone_idx >= 0) {
+								GLTFNodeIndex node_index = p_bone_data[bone_idx].gltf_node_index;
+								nodes_to_include.insert(node_index);
+								bone_idx = p_bone_data[bone_idx].parent_bone_index;
+							}
+						}
+					}
+					
+					// Add joints to skin (in order of bone_data to maintain hierarchy)
+					for (int i = 0; i < p_bone_data.size(); i++) {
+						if (nodes_to_include.has(p_bone_data[i].gltf_node_index)) {
 							GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
-							gltf_skin->joints_original.push_back(node_index);
-							gltf_skin->joints.push_back(node_index);
-							
-							// Calculate inverse bind matrix from rest transform
-							Transform3D rest = p_bone_data[i].rest_transform;
-							Transform3D inverse_bind = rest.affine_inverse();
-							gltf_skin->inverse_binds.push_back(inverse_bind);
+							// Only add to joints_original if it has weights (for inverse binds)
+							if (used_bone_names.has(p_bone_data[i].name)) {
+								gltf_skin->joints_original.push_back(node_index);
+								// Calculate inverse bind matrix from rest transform
+								Transform3D rest = p_bone_data[i].rest_transform;
+								Transform3D inverse_bind = rest.affine_inverse();
+								gltf_skin->inverse_binds.push_back(inverse_bind);
+							}
+							// Add to joints if it's a joint node, otherwise it will be added to non_joints by _expand_skin
+							if (p_state->nodes[node_index]->joint) {
+								if (!gltf_skin->joints.has(node_index)) {
+									gltf_skin->joints.push_back(node_index);
+								}
+							}
 							
 							// Mark as root if no parent and remember first root bone
 							if (p_bone_data[i].parent_bone_index < 0) {
@@ -1715,17 +1736,39 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			gltf_skin.instantiate();
 			gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
 			
-			// Add only bones with vertex weights to joints_original
-			// SkinTool::_expand_skin will expand the skin to include all nodes in the subtree
+			// Add only bones with vertex weights to joints_original initially
+			// But we need to ensure all ancestors are included for _expand_skin to work correctly
+			HashSet<GLTFNodeIndex> nodes_to_include;
 			for (int i = 0; i < p_bone_data.size(); i++) {
 				if (used_bone_names.has(p_bone_data[i].name)) {
+					// Add this bone and all its ancestors
+					int bone_idx = i;
+					while (bone_idx >= 0) {
+						GLTFNodeIndex node_index = p_bone_data[bone_idx].gltf_node_index;
+						nodes_to_include.insert(node_index);
+						bone_idx = p_bone_data[bone_idx].parent_bone_index;
+					}
+				}
+			}
+			
+			// Add joints to skin (in order of bone_data to maintain hierarchy)
+			for (int i = 0; i < p_bone_data.size(); i++) {
+				if (nodes_to_include.has(p_bone_data[i].gltf_node_index)) {
 					GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
-					gltf_skin->joints_original.push_back(node_index);
-					gltf_skin->joints.push_back(node_index);
-					
-					Transform3D rest = p_bone_data[i].rest_transform;
-					Transform3D inverse_bind = rest.affine_inverse();
-					gltf_skin->inverse_binds.push_back(inverse_bind);
+					// Only add to joints_original if it has weights (for inverse binds)
+					if (used_bone_names.has(p_bone_data[i].name)) {
+						gltf_skin->joints_original.push_back(node_index);
+						// Calculate inverse bind matrix from rest transform
+						Transform3D rest = p_bone_data[i].rest_transform;
+						Transform3D inverse_bind = rest.affine_inverse();
+						gltf_skin->inverse_binds.push_back(inverse_bind);
+					}
+					// Add to joints if it's a joint node, otherwise it will be added to non_joints by _expand_skin
+					if (p_state->nodes[node_index]->joint) {
+						if (!gltf_skin->joints.has(node_index)) {
+							gltf_skin->joints.push_back(node_index);
+						}
+					}
 					
 					if (p_bone_data[i].parent_bone_index < 0) {
 						gltf_skin->roots.push_back(node_index);
