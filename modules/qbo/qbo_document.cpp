@@ -989,13 +989,28 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 						}
 						
 						// Convert position for axis convention (QBO/BVH to Godot)
+						// BVH uses Y-up, Z-forward, X-right
+						// Godot uses Y-up, -Z-forward, X-right
+						// Swap X and Z components for coordinate system conversion
 						if (position_set) {
 							position = Vector3(position.z, position.y, position.x);
 						}
 						
-						// Convert rotation for axis convention if needed
-						if (rotation_set && !rotation.is_normalized()) {
-							rotation.normalize();
+						// Convert rotation for axis convention (same as ORIENT in skeleton)
+						// Convert quaternion for axis convention using Euler order conversion
+						// BVH/QBO may use YZX Euler order, Godot uses YXZ
+						// Convert to Euler with YZX order, swap X and Z components, then convert back with YXZ
+						if (rotation_set) {
+							if (!rotation.is_normalized()) {
+								rotation.normalize();
+							}
+							Basis basis = Basis(rotation);
+							Vector3 euler_yzx = basis.get_euler(EulerOrder::YZX);
+							// Swap X and Z Euler angles to match coordinate system conversion
+							Vector3 euler_swapped = Vector3(euler_yzx.z, euler_yzx.y, euler_yzx.x);
+							// Convert back to quaternion using Godot's YXZ order
+							Basis converted_basis = Basis::from_euler(euler_swapped, EulerOrder::YXZ);
+							rotation = converted_basis.get_rotation_quaternion();
 						}
 						
 						// Add to GLTFAnimation tracks
