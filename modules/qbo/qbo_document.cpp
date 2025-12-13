@@ -1184,6 +1184,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	
 	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
 	// Set skin weight count based on scan results
+	SurfaceTool::SkinWeightCount skin_weight_count = (max_weights_per_vertex > 4) ? SurfaceTool::SKIN_8_WEIGHTS : SurfaceTool::SKIN_4_WEIGHTS;
 	if (max_weights_per_vertex > 4) {
 		surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
 	}
@@ -1309,9 +1310,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				// which will cap and normalize weights > 4 to 4 weights.
 			}
 			weights.set(vertex_idx, weight);
-			} else if (l.begins_with("f ")) {
-			// Create mapping from bone name to joint index in skin (only for used bones, in bone_data order)
-			// This must be done once before processing faces so bone indices match skin joint indices
+			// Create mapping from bone name to joint index in skin as soon as we have used bone names
+			// This ensures the mapping exists when we process faces and set bones/weights
 			if (!bone_mapping_created && !used_bone_names.is_empty()) {
 				int joint_idx = 0;
 				for (int i = 0; i < p_bone_data.size(); i++) {
@@ -1322,6 +1322,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 				bone_mapping_created = true;
 			}
+			} else if (l.begins_with("f ")) {
 			
 			//face - reuse existing face parsing logic
 			Vector<String> v = l.split(" ", false);
@@ -1381,71 +1382,98 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					}
 					
 					// Set bones and weights for this vertex
-					if (!weights.is_empty() && vtx < weights.size() && !weights.get(vtx).is_empty()) {
-						// Collect bone indices and weights
-						struct WeightPair {
-							int bone_idx;
-							float weight;
-							bool operator<(const WeightPair &p_right) const {
-								return weight > p_right.weight; // Sort descending
-							}
-						};
-						Vector<WeightPair> bone_weight_pairs;
-						for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
-							if (itr->key.is_empty()) {
-							continue;
-						}
-							// Map bone name to joint index in skin (matches skin joint order)
-							if (bone_name_to_joint_index.has(itr->key)) {
-								int joint_idx = bone_name_to_joint_index[itr->key];
-								WeightPair wp = {};
-								wp.bone_idx = joint_idx;
-								wp.weight = itr->value;
-								bone_weight_pairs.append(wp);
-							}
-						}
-						
-						if (!bone_weight_pairs.is_empty()) {
-							// Sort by weight (descending) to keep highest weights
-							bone_weight_pairs.sort();
-							
-							// Limit to 4 or 8 weights based on skin weight count
-							int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
-							if (bone_weight_pairs.size() > max_weights) {
-								bone_weight_pairs.resize(max_weights);
-							}
-							
-							// Normalize weights
-							float total_weight = 0.0f;
-							for (int i = 0; i < bone_weight_pairs.size(); i++) {
-								total_weight += bone_weight_pairs[i].weight;
-							}
-							
-							Vector<int> bone_indices_vec;
-							Vector<float> weight_vec;
-							if (total_weight > 0.0f) {
-								for (int i = 0; i < bone_weight_pairs.size(); i++) {
-									bone_indices_vec.append(bone_weight_pairs[i].bone_idx);
-									weight_vec.append(bone_weight_pairs[i].weight / total_weight);
+					// If we have any weights in the mesh, we must set bones/weights on ALL vertices
+					// to ensure the format flag is set and the mesh is detected as rigged
+					if (!weights.is_empty() && bone_mapping_created) {
+						if (vtx < weights.size() && !weights.get(vtx).is_empty()) {
+							// Collect bone indices and weights
+							struct WeightPair {
+								int bone_idx;
+								float weight;
+								bool operator<(const WeightPair &p_right) const {
+									return weight > p_right.weight; // Sort descending
+								}
+							};
+							Vector<WeightPair> bone_weight_pairs;
+							for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
+								if (itr->key.is_empty()) {
+									continue;
+								}
+								// Map bone name to joint index in skin (matches skin joint order)
+								if (bone_name_to_joint_index.has(itr->key)) {
+									int joint_idx = bone_name_to_joint_index[itr->key];
+									WeightPair wp = {};
+									wp.bone_idx = joint_idx;
+									wp.weight = itr->value;
+									bone_weight_pairs.append(wp);
 								}
 							}
 							
-							// Pad to required size (4 or 8)
-							int required_size = max_weights;
-							while (bone_indices_vec.size() < required_size) {
-								bone_indices_vec.append(0);
-								weight_vec.append(0.0f);
+							if (!bone_weight_pairs.is_empty()) {
+								// Sort by weight (descending) to keep highest weights
+								bone_weight_pairs.sort();
+								
+								// Limit to 4 or 8 weights based on skin weight count
+								int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
+								if (bone_weight_pairs.size() > max_weights) {
+									bone_weight_pairs.resize(max_weights);
+								}
+								
+								// Normalize weights
+								float total_weight = 0.0f;
+								for (int i = 0; i < bone_weight_pairs.size(); i++) {
+									total_weight += bone_weight_pairs[i].weight;
+								}
+								
+								Vector<int> bone_indices_vec;
+								Vector<float> weight_vec;
+								if (total_weight > 0.0f) {
+									for (int i = 0; i < bone_weight_pairs.size(); i++) {
+										bone_indices_vec.append(bone_weight_pairs[i].bone_idx);
+										weight_vec.append(bone_weight_pairs[i].weight / total_weight);
+									}
+								}
+								
+								// Pad to required size (4 or 8)
+								int required_size = max_weights;
+								while (bone_indices_vec.size() < required_size) {
+									bone_indices_vec.append(0);
+									weight_vec.append(0.0f);
+								}
+								
+								surf_tool->set_bones(bone_indices_vec);
+								surf_tool->set_weights(weight_vec);
+							} else {
+								// Vertex has no weights, but mesh is rigged - pad with zeros
+								int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
+								Vector<int> bone_indices_vec;
+								Vector<float> weight_vec;
+								bone_indices_vec.resize(max_weights);
+								weight_vec.resize(max_weights);
+								for (int i = 0; i < max_weights; i++) {
+									bone_indices_vec.write[i] = 0;
+									weight_vec.write[i] = 0.0f;
+								}
+								surf_tool->set_bones(bone_indices_vec);
+								surf_tool->set_weights(weight_vec);
 							}
-							
+						} else {
+							// Vertex index out of range or no weights for this vertex, but mesh is rigged - pad with zeros
+							int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
+							Vector<int> bone_indices_vec;
+							Vector<float> weight_vec;
+							bone_indices_vec.resize(max_weights);
+							weight_vec.resize(max_weights);
+							for (int i = 0; i < max_weights; i++) {
+								bone_indices_vec.write[i] = 0;
+								weight_vec.write[i] = 0.0f;
+							}
 							surf_tool->set_bones(bone_indices_vec);
 							surf_tool->set_weights(weight_vec);
-			} else {
-							surf_tool->set_bones(Vector<int>());
-							surf_tool->set_weights(Vector<float>());
-			}
-		} else {
-						surf_tool->set_bones(Vector<int>());
-						surf_tool->set_weights(Vector<float>());
+						}
+					} else {
+						// No weights in mesh - don't set bones/weights
+						// (This allows unrigged meshes to work correctly)
 					}
 					surf_tool->set_smooth_group(smoothing ? smooth_group : no_smoothing_smooth_group);
 					surf_tool->add_vertex(vertex);
@@ -1520,6 +1548,10 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 				
 				surf_tool->clear();
+				// Restore skin weight count after clear (clear resets it to SKIN_4_WEIGHTS)
+				if (skin_weight_count == SurfaceTool::SKIN_8_WEIGHTS) {
+					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
+				}
 				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 			}
 		} else if (l.begins_with("o ") || is_eof) {
@@ -1576,6 +1608,10 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 				
 				surf_tool->clear();
+				// Restore skin weight count after clear (clear resets it to SKIN_4_WEIGHTS)
+				if (skin_weight_count == SurfaceTool::SKIN_8_WEIGHTS) {
+					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
+				}
 				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 			}
 			
