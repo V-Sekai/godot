@@ -796,7 +796,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 			animation_library->set_name(animation_library_name);
 			*r_animation = memnew(AnimationPlayer);
 			(*r_animation)->add_animation_library(animation_library_name, animation_library);
-					} else {
+			} else {
 			List<StringName> libraries;
 			(*r_animation)->get_animation_library_list(&libraries);
 			for (int i = 0; i < libraries.size(); i++) {
@@ -1111,6 +1111,54 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	// This reuses the OBJ parsing logic but converts to GLTFMesh instead of ImporterMesh
 	// and creates GLTFSkin from vertex weights using bone name to GLTFNode mapping
 	
+	// First pass: Scan for weights to determine if we need 8 weights per vertex
+	uint64_t file_start_pos = f->get_position();
+	int max_weights_per_vertex = 0;
+	bool in_hierarchy_scan = false;
+	bool in_motion_scan = false;
+	
+	while (true) {
+		String l = f->get_line().strip_edges();
+		if (f->eof_reached()) {
+			break;
+		}
+		
+		// Skip HIERARCHY and MOTION sections
+		if (l.begins_with("HIERARCHY")) {
+			in_hierarchy_scan = true;
+			continue;
+		}
+		if (l.begins_with("MOTION")) {
+			in_hierarchy_scan = false;
+			in_motion_scan = true;
+			continue;
+		}
+		if (in_hierarchy_scan || in_motion_scan) {
+			continue;
+		}
+		
+		// Count weights per vertex
+		if (l.begins_with("vw ") && !p_bone_name_to_node.is_empty()) {
+			Vector<String> v = l.split(" ", false);
+			if (v.size() >= 4 && (v.size() - 2) % 2 == 0) {
+				// Count only valid bone names
+				int valid_weight_count = 0;
+				for (int i = 2; i < v.size() - 1; i += 2) {
+					String b = v[i];
+					if (p_bone_name_to_node.has(b)) {
+						valid_weight_count++;
+					}
+				}
+				if (valid_weight_count > max_weights_per_vertex) {
+					max_weights_per_vertex = valid_weight_count;
+				}
+			}
+		}
+	}
+	
+	// Reset file position for actual parsing
+	f->seek(file_start_pos);
+	
 	Ref<ImporterMesh> importer_mesh;
 	importer_mesh.instantiate();
 	
@@ -1135,6 +1183,10 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	HashMap<String, HashMap<String, Ref<StandardMaterial3D>>> material_map;
 	
 	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
+	// Set skin weight count based on scan results
+	if (max_weights_per_vertex > 4) {
+		surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
+	}
 	surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 
 	String current_material_library;
@@ -1154,7 +1206,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			String add = f->get_line().strip_edges();
 			l += add;
 			if (add.is_empty()) {
-				break;
+						break;
 			}
 		}
 		
@@ -1250,12 +1302,14 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				weight[b] = w;
 				// Track used bone names for joint index mapping
 				used_bone_names.insert(b);
-				if (weight.size() > 4) {
-					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
-				}
+				// Note: set_skin_weight_count must be called before begin(), but we don't know
+				// if we need 8 weights until we parse vw lines. SurfaceTool's add_vertex will
+				// automatically handle capping to 4 weights if we set more, but if we need 8,
+				// we'd need to restart. For now, we'll let SurfaceTool handle it in add_vertex
+				// which will cap and normalize weights > 4 to 4 weights.
 			}
 			weights.set(vertex_idx, weight);
-		} else if (l.begins_with("f ")) {
+			} else if (l.begins_with("f ")) {
 			// Create mapping from bone name to joint index in skin (only for used bones, in bone_data order)
 			// This must be done once before processing faces so bone indices match skin joint indices
 			if (!bone_mapping_created && !used_bone_names.is_empty()) {
@@ -1328,27 +1382,68 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					
 					// Set bones and weights for this vertex
 					if (!weights.is_empty() && vtx < weights.size() && !weights.get(vtx).is_empty()) {
-						Vector<int> bone_indices_vec;
-						Vector<float> weight_vec;
+						// Collect bone indices and weights
+						struct WeightPair {
+							int bone_idx;
+							float weight;
+							bool operator<(const WeightPair &p_right) const {
+								return weight > p_right.weight; // Sort descending
+							}
+						};
+						Vector<WeightPair> bone_weight_pairs;
 						for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_empty()) {
-								continue;
-							}
+							continue;
+						}
 							// Map bone name to joint index in skin (matches skin joint order)
 							if (bone_name_to_joint_index.has(itr->key)) {
 								int joint_idx = bone_name_to_joint_index[itr->key];
-								bone_indices_vec.append(joint_idx);
-								weight_vec.append(itr->value);
+								WeightPair wp = {};
+								wp.bone_idx = joint_idx;
+								wp.weight = itr->value;
+								bone_weight_pairs.append(wp);
 							}
 						}
-						if (!bone_indices_vec.is_empty() && !weight_vec.is_empty()) {
+						
+						if (!bone_weight_pairs.is_empty()) {
+							// Sort by weight (descending) to keep highest weights
+							bone_weight_pairs.sort();
+							
+							// Limit to 4 or 8 weights based on skin weight count
+							int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
+							if (bone_weight_pairs.size() > max_weights) {
+								bone_weight_pairs.resize(max_weights);
+							}
+							
+							// Normalize weights
+							float total_weight = 0.0f;
+							for (int i = 0; i < bone_weight_pairs.size(); i++) {
+								total_weight += bone_weight_pairs[i].weight;
+							}
+							
+							Vector<int> bone_indices_vec;
+							Vector<float> weight_vec;
+							if (total_weight > 0.0f) {
+								for (int i = 0; i < bone_weight_pairs.size(); i++) {
+									bone_indices_vec.append(bone_weight_pairs[i].bone_idx);
+									weight_vec.append(bone_weight_pairs[i].weight / total_weight);
+								}
+							}
+							
+							// Pad to required size (4 or 8)
+							int required_size = max_weights;
+							while (bone_indices_vec.size() < required_size) {
+								bone_indices_vec.append(0);
+								weight_vec.append(0.0f);
+							}
+							
 							surf_tool->set_bones(bone_indices_vec);
 							surf_tool->set_weights(weight_vec);
-						} else {
+			} else {
 							surf_tool->set_bones(Vector<int>());
 							surf_tool->set_weights(Vector<float>());
-						}
-					} else {
+			}
+		} else {
 						surf_tool->set_bones(Vector<int>());
 						surf_tool->set_weights(Vector<float>());
 					}
@@ -1918,9 +2013,11 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 				ERR_FAIL_COND_V(!bone_found, ERR_FILE_CORRUPT);
 				// Only store weight if bone is valid
 				weight[b] = w;
-				if (weight.size() > 4) {
-					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
-				}
+				// Note: set_skin_weight_count must be called before begin(), but we don't know
+				// if we need 8 weights until we parse vw lines. SurfaceTool's add_vertex will
+				// automatically handle capping to 4 weights if we set more, but if we need 8,
+				// we'd need to restart. For now, we'll let SurfaceTool handle it in add_vertex
+				// which will cap and normalize weights > 4 to 4 weights.
 			}
 			weights.set(vertex_idx, weight);
 		} else if (l.begins_with("f ")) {
