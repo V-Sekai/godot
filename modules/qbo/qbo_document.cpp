@@ -118,7 +118,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 		}
 
 		if (motion) {
-			if (l.begins_with("HIERARCHY")) {
+		if (l.begins_with("HIERARCHY")) {
 				motion = false;
 			} else if (l.begins_with("Frame Time: ")) {
 				Vector<String> s = l.split(":");
@@ -178,8 +178,8 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								do {
 									bone_index++;
 									if (bone_index >= channels.size()) {
-										break;
-									}
+							break;
+						}
 								} while (channels[bone_index].size() < 2);
 								channel_index = 1;
 								if (bone_index >= channels.size()) {
@@ -286,7 +286,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 			}
 		} else if (l.begins_with("End ")) {
 			// End sites are not bones - just skip them
-			continue;
+				continue;
 		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
@@ -492,7 +492,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 2;
 								channel_index += 2;
 								//print_verbose(position);
-							} else {
+			} else {
 								print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -524,7 +524,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 3;
 								channel_index += 3;
 								//print_verbose(rotation);
-							} else {
+				} else {
 								print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -651,7 +651,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-			} else {
+		} else {
 				path = base_path.path_join(p);
 			}
 
@@ -691,7 +691,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-			} else {
+					} else {
 				path = base_path.path_join(p);
 			}
 
@@ -754,77 +754,13 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 
 		if (l.begins_with("HIERARCHY")) {
 			// HIERARCHY section - continue parsing
-			continue;
-		} else if (l.begins_with("ROOT")) {
-			String bone_name = "";
 			bone_indices.clear();
 			offsets.clear();
 			orientations.clear();
-			l = l.substr(5);
-			if (!l.is_empty()) {
-				bone_name += l;
-			} else {
-				bone_name += "ROOT";
-			}
-			if (!bone_name.is_empty()) {
-				// Find existing GLTFNode by original name or create if it doesn't exist
-				GLTFNodeIndex node_index = -1;
-				bool node_exists = r_bone_name_to_node.has(bone_name);
-				int bone_data_idx = -1;
-
-				if (node_exists) {
-					// Node already exists - find existing BoneData
-					node_index = r_bone_name_to_node[bone_name];
-					Ref<GLTFNode> node = p_state->nodes[node_index];
-					if (node.is_valid()) {
-						node->joint = true;
-					}
-					// Only add to root_nodes if not already there
-					if (r_root_nodes.find(node_index) == -1) {
-						r_root_nodes.push_back(node_index);
-					}
-					// Find existing BoneData for this node
-					for (int i = 0; i < r_bone_data.size(); i++) {
-						if (r_bone_data[i].gltf_node_index == node_index) {
-							bone_data_idx = i;
-							break;
-						}
-					}
-				} else {
-					// Create new GLTFNode for root bone
-					Ref<GLTFNode> node;
-					node.instantiate();
-					node->set_original_name(bone_name);
-					node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
-					node->joint = true;
-					node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
-
-					node_index = p_state->append_gltf_node(node, nullptr, -1);
-					r_bone_name_to_node[bone_name] = node_index;
-					r_root_nodes.push_back(node_index);
-
-					// Create new BoneData
-					BoneData bone_data;
-					bone_data.name = bone_name;
-					bone_data.gltf_node_index = node_index;
-					bone_data.parent_bone_index = -1;
-					bone_data.offset = Vector3();
-					bone_data.orientation = Quaternion();
-					bone_data.rest_transform = Transform3D();
-					r_bone_data.push_back(bone_data);
-					bone_data_idx = r_bone_data.size() - 1;
-				}
-
-				// Track in bone_indices for closing brace processing
-				if (bone_data_idx >= 0) {
-					bone_indices.push_back(bone_data_idx);
-					orientations.append(Quaternion());
-					offsets.append(Vector3());
-				}
-			}
+			continue;
 		} else if (l.begins_with("MOTION")) {
 			// Skip MOTION section - animation support removed
-			continue;
+							continue;
 		} else if (l.begins_with("End ")) {
 			// End sites are just markers, not actual bones - skip them
 			in_end_site = true;
@@ -867,46 +803,28 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					}
 				} else if (s[0].casecmp_to("CHANNELS") == 0) {
 					// Skip CHANNELS line - animation support removed
-				} else if (s[0].casecmp_to("JOINT") == 0) {
-					ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
-					int parent_bone_idx = bone_indices[bone_indices.size() - 1];
+				} else if (s[0].casecmp_to("JOINT") == 0 || s[0].casecmp_to("ROOT") == 0) {
 					String bone_name = s[1];
+					bool is_root = (s[0].casecmp_to("ROOT") == 0);
+					
+					// ROOT is just a joint with no parent
+					int parent_bone_idx = -1;
+					GLTFNodeIndex parent_node_index = -1;
+					if (!is_root) {
+						ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
+						parent_bone_idx = bone_indices[bone_indices.size() - 1];
+						parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
+					}
 
-					// Find existing GLTFNode by original name or create if it doesn't exist
 					GLTFNodeIndex node_index = -1;
-					GLTFNodeIndex parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
 					int bone_data_idx = -1;
 
 					if (r_bone_name_to_node.has(bone_name)) {
 						// Node already exists - find existing BoneData
 						node_index = r_bone_name_to_node[bone_name];
-						Ref<GLTFNode> node = p_state->nodes[node_index];
-						if (node.is_valid()) {
-							node->joint = true;
-							// Update parent if different
-							if (node->parent != parent_node_index) {
-								// Remove from old parent's children
-								if (node->parent >= 0 && node->parent < p_state->nodes.size()) {
-									Ref<GLTFNode> old_parent = p_state->nodes[node->parent];
-									if (old_parent.is_valid()) {
-										int child_idx = old_parent->children.find(node_index);
-										if (child_idx >= 0) {
-											old_parent->children.remove_at(child_idx);
-										}
-									}
-								}
-								// Set new parent
-								node->parent = parent_node_index;
-								// Add to new parent's children
-								if (parent_node_index >= 0 && parent_node_index < p_state->nodes.size()) {
-									Ref<GLTFNode> new_parent = p_state->nodes[parent_node_index];
-									if (new_parent.is_valid()) {
-										if (new_parent->children.find(node_index) == -1) {
-											new_parent->children.push_back(node_index);
-										}
-									}
-								}
-							}
+						// Add to root_nodes if this is a ROOT and not already there
+						if (is_root && r_root_nodes.find(node_index) == -1) {
+							r_root_nodes.push_back(node_index);
 						}
 						// Find existing BoneData for this node
 						for (int i = 0; i < r_bone_data.size(); i++) {
@@ -915,17 +833,46 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 								break;
 							}
 						}
+						// Update parent if different
+						Ref<GLTFNode> node = p_state->nodes[node_index];
+						if (node.is_valid() && node->parent != parent_node_index) {
+							// Remove from old parent's children
+							if (node->parent >= 0 && node->parent < p_state->nodes.size()) {
+								Ref<GLTFNode> old_parent = p_state->nodes[node->parent];
+								if (old_parent.is_valid()) {
+									int child_idx = old_parent->children.find(node_index);
+									if (child_idx >= 0) {
+										old_parent->children.remove_at(child_idx);
+									}
+								}
+							}
+							// Set new parent
+							node->parent = parent_node_index;
+							// Add to new parent's children
+							if (parent_node_index >= 0 && parent_node_index < p_state->nodes.size()) {
+								Ref<GLTFNode> new_parent = p_state->nodes[parent_node_index];
+								if (new_parent.is_valid()) {
+									if (new_parent->children.find(node_index) == -1) {
+										new_parent->children.push_back(node_index);
+									}
+								}
+							}
+						}
 					} else {
 						// Create new GLTFNode for joint
 						Ref<GLTFNode> node;
 						node.instantiate();
 						node->set_original_name(bone_name);
 						node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
-						node->joint = true;
 						node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
 
 						node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
 						r_bone_name_to_node[bone_name] = node_index;
+						
+						// Add to root_nodes if this is a ROOT
+						if (is_root) {
+							r_root_nodes.push_back(node_index);
+						}
 
 						// Create new BoneData
 						BoneData bone_data;
@@ -945,8 +892,8 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 						orientations.append(Quaternion());
 						offsets.append(Vector3());
 					}
-				}
-			} else {
+			}
+		} else {
 				if (l.casecmp_to("{") == 0) {
 					// Opening brace, continue
 				} else if (l.casecmp_to("}") == 0) {
@@ -1003,8 +950,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	while (true) {
 		String l = f->get_line().strip_edges();
 		if (f->eof_reached()) {
-			break;
-		}
+				break;
+			}
 
 		// Skip HIERARCHY and MOTION sections
 		if (l.begins_with("HIERARCHY")) {
@@ -1091,7 +1038,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			String add = f->get_line().strip_edges();
 			l += add;
 			if (add.is_empty()) {
-				break;
+					break;
 			}
 		}
 
@@ -1317,8 +1264,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							}
 							for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 								if (itr->key.is_empty()) {
-									continue;
-								}
+				continue;
+			}
 								if (vtx == 0) {
 									print_line(vformat("QBO: Processing weight for bone '%s' = %.3f", itr->key, itr->value));
 								}
@@ -1475,7 +1422,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 
 				// Index the mesh for better performance
-				surf_tool->index();
+		surf_tool->index();
 
 				uint32_t mesh_flags = 0;
 				if (!p_disable_compression) {
@@ -1525,14 +1472,14 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 
 				// Generate normals if they don't exist
-				if (normals.is_empty()) {
-					surf_tool->generate_normals();
-				}
+		if (normals.is_empty()) {
+			surf_tool->generate_normals();
+		}
 
 				// Generate tangents if needed
 				if (generate_tangents && !uvs.is_empty()) {
-					surf_tool->generate_tangents();
-				}
+			surf_tool->generate_tangents();
+		}
 
 				// Index the mesh for better performance
 				surf_tool->index();
@@ -1690,7 +1637,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 									}
 								}
 							}
-						} else {
+			} else {
 							// No weights - include all bones in the hierarchy
 							for (int i = 0; i < p_bone_data.size(); i++) {
 								GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
@@ -1969,8 +1916,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 							// We can't generate tangents without UVs, so create dummy tangents.
 							Vector3 tan = Vector3(normals[norm].z, -normals[norm].x, normals[norm].y).cross(normals[norm].normalized()).normalized();
 							surf_tool->set_tangent(Plane(tan.x, tan.y, tan.z, 1.0));
-						}
-					} else {
+			}
+		} else {
 						// No normals, use a dummy tangent since normals and tangents will be generated.
 						if (generate_tangents && uvs.is_empty()) {
 							// We can't generate tangents without UVs, so create dummy tangents.
@@ -2012,7 +1959,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 									continue;
 								}
 								bones.append(bone_idx);
-							} else {
+			} else {
 								continue;
 							}
 							if (bones.is_empty() || bones[bones.size() - 1] < 0) {
@@ -2214,6 +2161,17 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	// Compute node heights (required for _find_highest_node to work correctly)
 	// This sets height=0 for root nodes, height=1 for their children, etc.
 	_compute_node_heights(p_state);
+
+	// Mark all bone nodes as joints (hierarchy parsing creates nodes but doesn't set joint flag)
+	for (int i = 0; i < bone_data.size(); i++) {
+		GLTFNodeIndex node_index = bone_data[i].gltf_node_index;
+		if (node_index >= 0 && node_index < p_state->nodes.size()) {
+			Ref<GLTFNode> node = p_state->nodes[node_index];
+			if (node.is_valid()) {
+				node->joint = true;
+			}
+		}
+	}
 
 	// Determine skeletons from hierarchy (before parsing OBJ so we can use skeleton bone indices directly)
 	HashMap<String, int> bone_name_to_skeleton_bone_index;
