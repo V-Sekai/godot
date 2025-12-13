@@ -51,7 +51,7 @@ class QBODocument : public GLTFDocument {
 	};
 	
 	static Error _parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_state, HashMap<String, GLTFNodeIndex> &r_bone_name_to_node, Vector<BoneData> &r_bone_data, Vector<GLTFNodeIndex> &r_root_nodes);
-	static Error _parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_path, Ref<GLTFState> p_state, const HashMap<String, GLTFNodeIndex> &p_bone_name_to_node, const Vector<BoneData> &p_bone_data, bool p_generate_tangents, bool p_disable_compression, List<String> *r_missing_deps);
+	static Error _parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_path, Ref<GLTFState> p_state, const HashMap<String, GLTFNodeIndex> &p_bone_name_to_node, const Vector<BoneData> &p_bone_data, const HashMap<String, int> &p_bone_name_to_skeleton_bone_index, bool p_generate_tangents, bool p_disable_compression, List<String> *r_missing_deps);
 
 public:
 	Error parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path, String p_path);

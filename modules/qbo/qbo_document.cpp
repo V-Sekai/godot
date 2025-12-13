@@ -1233,7 +1233,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 	return OK;
 }
 
-Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_path, Ref<GLTFState> p_state, const HashMap<String, GLTFNodeIndex> &p_bone_name_to_node, const Vector<BoneData> &p_bone_data, bool p_generate_tangents, bool p_disable_compression, List<String> *r_missing_deps) {
+Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_path, Ref<GLTFState> p_state, const HashMap<String, GLTFNodeIndex> &p_bone_name_to_node, const Vector<BoneData> &p_bone_data, const HashMap<String, int> &p_bone_name_to_skeleton_bone_index, bool p_generate_tangents, bool p_disable_compression, List<String> *r_missing_deps) {
 	// Parse OBJ section and create GLTFMesh and GLTFSkin directly in GLTFState
 	// This reuses the OBJ parsing logic but converts to GLTFMesh instead of ImporterMesh
 	// and creates GLTFSkin from vertex weights using bone name to GLTFNode mapping
@@ -1304,6 +1304,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		// Track bone names used in weights to determine skin joint order
 		HashSet<String> used_bone_names;
 		// Mapping from bone name to joint index in skin (created when we first process faces)
+		// This is still needed for skin creation (skins use joint indices)
 		HashMap<String, int> bone_name_to_joint_index;
 		bool bone_mapping_created = false;
 	
@@ -1512,7 +1513,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					// Set bones and weights for this vertex
 					// If we have any weights in the mesh, we must set bones/weights on ALL vertices
 					// to ensure the format flag is set and the mesh is detected as rigged
-					if (!weights.is_empty() && bone_mapping_created) {
+					// Use skeleton bone indices directly (from p_bone_name_to_skeleton_bone_index)
+					if (!weights.is_empty() && (!p_bone_name_to_skeleton_bone_index.is_empty() || bone_mapping_created)) {
 						if (vtx < weights.size() && !weights.get(vtx).is_empty()) {
 							// Collect bone indices and weights
 							struct WeightPair {
@@ -1527,8 +1529,17 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 								if (itr->key.is_empty()) {
 							continue;
 						}
-								// Map bone name to joint index in skin (matches skin joint order)
-								if (bone_name_to_joint_index.has(itr->key)) {
+								// Map bone name to skeleton bone index (for mesh vertices)
+								// Use skeleton bone index directly instead of joint index
+								if (p_bone_name_to_skeleton_bone_index.has(itr->key)) {
+									int skeleton_bone_idx = p_bone_name_to_skeleton_bone_index[itr->key];
+									WeightPair wp = {};
+									wp.bone_idx = skeleton_bone_idx;
+									wp.weight = itr->value;
+									bone_weight_pairs.append(wp);
+								} else if (bone_name_to_joint_index.has(itr->key)) {
+									// Fallback: if skeleton bone index not found, use joint index
+									// (This shouldn't happen if skeletons were created properly)
 									int joint_idx = bone_name_to_joint_index[itr->key];
 									WeightPair wp = {};
 									wp.bone_idx = joint_idx;
@@ -2478,22 +2489,64 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		return err;
 	}
 	
+	// Compute node heights (required for _find_highest_node to work correctly)
+	// This sets height=0 for root nodes, height=1 for their children, etc.
+	_compute_node_heights(p_state);
+	
+	// Determine skeletons from hierarchy (before parsing OBJ so we can use skeleton bone indices directly)
+	HashMap<String, int> bone_name_to_skeleton_bone_index;
+	if (!hierarchy_root_nodes.is_empty()) {
+		// Determine skeletons from hierarchy root nodes
+		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, hierarchy_root_nodes, false);
+		if (err != OK) {
+			return err;
+		}
+		
+		// Create skeletons to get bone order and joint_i_to_bone_i mapping
+		HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
+		HashMap<GLTFNodeIndex, Node *> scene_nodes;
+		err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes,
+				skeleton_map, p_state->skeletons, scene_nodes, get_naming_version());
+		if (err != OK) {
+			return err;
+		}
+		
+		// Create mapping from bone name to skeleton bone index
+		// This allows us to set skeleton bone indices directly during OBJ parsing
+		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+			if (skeleton.is_valid() && skeleton->godot_skeleton != nullptr) {
+				Skeleton3D *godot_skeleton = skeleton->godot_skeleton;
+				for (int bone_i = 0; bone_i < godot_skeleton->get_bone_count(); ++bone_i) {
+					String bone_name = godot_skeleton->get_bone_name(bone_i);
+					bone_name_to_skeleton_bone_index[bone_name] = bone_i;
+				}
+			}
+		}
+		
+		// Clear scene_nodes and godot_skeleton pointers so they can be recreated later
+		// But keep joint_i_to_bone_i mapping as it's still valid
+		p_state->scene_nodes.clear();
+		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+			if (skeleton.is_valid()) {
+				skeleton->godot_skeleton = nullptr;
+			}
+		}
+	}
+	
 	// Reset file to beginning for OBJ parsing
 	f->seek(0);
 	
 	// Parse OBJ section to create GLTFMesh and GLTFSkin
+	// Pass bone_name_to_skeleton_bone_index so we can set skeleton bone indices directly
 	List<String> missing_deps;
-	err = _parse_obj_to_gltf(f, p_base_path, p_state, bone_name_to_node, bone_data, p_flags & QBO_IMPORT_GENERATE_TANGENT_ARRAYS, p_flags & QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION, &missing_deps);
+	err = _parse_obj_to_gltf(f, p_base_path, p_state, bone_name_to_node, bone_data, bone_name_to_skeleton_bone_index, p_flags & QBO_IMPORT_GENERATE_TANGENT_ARRAYS, p_flags & QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION, &missing_deps);
 	if (err != OK) {
 		return err;
 	}
 	
-	// Compute node heights (required for _find_highest_node to work correctly)
-	// This sets height=0 for root nodes, height=1 for their children, etc.
-	_compute_node_heights(p_state);
-
-	// Create skeletons from skins (if any) or from bone nodes (if no skins)
-	// Use SkinTool to determine skeletons from skins or bone nodes
+	// Re-determine skeletons from skins (in case skins changed the skeleton structure)
 	if (!p_state->skins.is_empty()) {
 		// Skins exist - use them to determine skeletons
 		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, Vector<GLTFNodeIndex>(), false);
@@ -2525,130 +2578,12 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			}
 		}
 	} else if (!hierarchy_root_nodes.is_empty()) {
-		// No skins - use hierarchy root nodes to create skeletons
-		// Pass hierarchy root nodes as single_skeleton_roots to create skeletons without skins
-		// This will automatically set node->skeleton indices for all bone nodes
-		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, hierarchy_root_nodes, false);
-		if (err != OK) {
-			return err;
-		}
-		
-		// Add skeleton root nodes to root_nodes (after skeleton creation)
+		// No skins - skeleton root nodes were already added above
 		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
 			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
 			for (GLTFNodeIndex root_node : skeleton->roots) {
 				if (!p_state->root_nodes.has(root_node)) {
 					p_state->root_nodes.push_back(root_node);
-				}
-			}
-		}
-	}
-
-	// Remap bone indices from joint indices to skeleton bone indices
-	// This is needed because QBO sets bone indices as joint indices (into gltf_skin->joints_original),
-	// but MeshInstance3D expects Skeleton3D bone indices
-	if (!p_state->skins.is_empty() && !p_state->skeletons.is_empty()) {
-		// Create skeletons early to get joint_i_to_bone_i mapping
-		HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
-		HashMap<GLTFNodeIndex, Node *> scene_nodes;
-		Error err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes,
-				skeleton_map, p_state->skeletons, scene_nodes, get_naming_version());
-		if (err == OK) {
-			// Remap bone indices in all meshes
-			for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
-				Ref<GLTFNode> node = p_state->nodes[node_i];
-				if (node->mesh >= 0 && node->skin >= 0) {
-					Ref<GLTFMesh> gltf_mesh = p_state->meshes[node->mesh];
-					Ref<ImporterMesh> importer_mesh = gltf_mesh->get_mesh();
-					if (importer_mesh.is_valid()) {
-						Ref<GLTFSkin> skin = p_state->skins[node->skin];
-						GLTFSkeletonIndex skeleton_index = skin->get_skeleton();
-						if (skeleton_index >= 0 && skeleton_index < p_state->skeletons.size()) {
-							Ref<GLTFSkeleton> skeleton = p_state->skeletons[skeleton_index];
-							if (skeleton.is_valid() && skeleton->godot_skeleton != nullptr) {
-								// Create mapping from joint index to skeleton bone index
-								HashMap<int, int> joint_to_bone_map;
-								for (int joint_i = 0; joint_i < skin->joints_original.size(); ++joint_i) {
-									if (skin->joint_i_to_bone_i.has(joint_i)) {
-										int bone_i = skin->joint_i_to_bone_i[joint_i];
-										joint_to_bone_map[joint_i] = bone_i;
-									}
-								}
-								
-								// Create new ImporterMesh with remapped bone indices
-								Ref<ImporterMesh> new_importer_mesh;
-								new_importer_mesh.instantiate();
-								
-								for (int surface_i = 0; surface_i < importer_mesh->get_surface_count(); ++surface_i) {
-									Array arrays = importer_mesh->get_surface_arrays(surface_i);
-									
-									if (arrays.size() > Mesh::ARRAY_BONES && arrays[Mesh::ARRAY_BONES].get_type() == Variant::PACKED_INT32_ARRAY) {
-										PackedInt32Array bones = arrays[Mesh::ARRAY_BONES];
-										PackedInt32Array new_bones;
-										new_bones.resize(bones.size());
-										
-										int max_weights = (importer_mesh->get_surface_format(surface_i) & Mesh::ARRAY_FLAG_USE_8_BONE_WEIGHTS) ? 8 : 4;
-										for (int i = 0; i < bones.size(); i += max_weights) {
-											for (int j = 0; j < max_weights; j++) {
-												int joint_idx = bones[i + j];
-												if (joint_to_bone_map.has(joint_idx)) {
-													new_bones.write[i + j] = joint_to_bone_map[joint_idx];
-												} else {
-													new_bones.write[i + j] = 0; // Invalid joint index, set to 0
-												}
-											}
-										}
-										
-										arrays[Mesh::ARRAY_BONES] = new_bones;
-									}
-									
-									// Get blend shape arrays
-									TypedArray<Array> blend_shapes;
-									int blend_shape_count = importer_mesh->get_blend_shape_count();
-									for (int bs_i = 0; bs_i < blend_shape_count; ++bs_i) {
-										Array bs_arrays = importer_mesh->get_surface_blend_shape_arrays(surface_i, bs_i);
-										blend_shapes.push_back(bs_arrays);
-									}
-									
-									// Get LOD data
-									Dictionary lods;
-									int lod_count = importer_mesh->get_surface_lod_count(surface_i);
-									for (int lod_i = 0; lod_i < lod_count; ++lod_i) {
-										Vector<int> lod_indices = importer_mesh->get_surface_lod_indices(surface_i, lod_i);
-										float lod_size = importer_mesh->get_surface_lod_size(surface_i, lod_i);
-										Dictionary lod_dict;
-										lod_dict["indices"] = lod_indices;
-										lod_dict["distance"] = lod_size;
-										lods[lod_i] = lod_dict;
-									}
-									
-									new_importer_mesh->add_surface(
-										importer_mesh->get_surface_primitive_type(surface_i),
-										arrays,
-										blend_shapes,
-										lods,
-										importer_mesh->get_surface_material(surface_i),
-										importer_mesh->get_surface_name(surface_i),
-										importer_mesh->get_surface_format(surface_i)
-									);
-								}
-								
-								gltf_mesh->set_mesh(new_importer_mesh);
-							}
-						}
-					}
-				}
-			}
-			
-			// Clear scene_nodes and godot_skeleton pointers so parent can recreate them
-			// But keep joint_i_to_bone_i mapping as it's still valid
-			p_state->scene_nodes.clear();
-			for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
-				Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
-				if (skeleton.is_valid()) {
-					// Don't delete the skeleton, just clear the pointer
-					// The parent will recreate it
-					skeleton->godot_skeleton = nullptr;
 				}
 			}
 		}
