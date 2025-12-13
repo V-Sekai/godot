@@ -1099,17 +1099,13 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					rest.basis.set_quaternion_scale(orientation, scale);
 					
 					int parent_bone_idx = r_bone_data[bone_idx].parent_bone_index;
-					if (parent_bone_idx < 0) {
-						// Root bone - offset goes to transform, rest origin is zero
-						r_bone_data.write[bone_idx].offset = offset;
-						r_bone_data.write[bone_idx].orientation = orientation;
-						rest.origin = Vector3();
-			} else {
-						// Child bone - offset is rest origin
-						r_bone_data.write[bone_idx].offset = offset;
-						r_bone_data.write[bone_idx].orientation = orientation;
-						rest.origin = offset;
-					}
+					// Store offset and orientation
+					r_bone_data.write[bone_idx].offset = offset;
+					r_bone_data.write[bone_idx].orientation = orientation;
+					// Rest transform origin is always the offset (position relative to parent)
+					// For root bones, offset is usually (0,0,0) but could be model position
+					// For child bones, offset positions the bone relative to parent
+					rest.origin = offset;
 					r_bone_data.write[bone_idx].rest_transform = rest;
 					
 					// Update GLTFNode transform and rest transform
