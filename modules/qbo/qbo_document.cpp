@@ -361,20 +361,6 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					if (!orientation.is_normalized()) {
 						print_verbose("UNNORMALIZED ORIENTATION!!!")
 					}
-					// Convert quaternion for axis convention (QBO/BVH to Godot)
-					// BVH uses Y-up, Z-forward, X-right
-					// Godot uses Y-up, -Z-forward, X-right
-					// We swapped X and Z for OFFSET, so we need to convert the quaternion accordingly
-					// Convert by swapping X and Z axes in the rotation basis
-					Basis basis = Basis(orientation);
-					// Swap X and Z basis vectors to match coordinate system conversion
-					Vector3 x_axis = basis.get_column(0);
-					Vector3 z_axis = basis.get_column(2);
-					basis.set_column(0, z_axis);
-					basis.set_column(2, x_axis);
-					// Orthonormalize the basis before converting to quaternion
-					basis = basis.orthonormalized();
-					orientation = basis.get_rotation_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
@@ -996,15 +982,16 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					if (!orientation.is_normalized()) {
 						print_verbose("UNNORMALIZED ORIENTATION!!!")
 					}
-					// Convert quaternion for axis convention
+					// Convert quaternion for axis convention using Euler order conversion
+					// BVH/QBO may use YZX Euler order, Godot uses YXZ
+					// Convert to Euler with YZX order, swap X and Z components, then convert back with YXZ
 					Basis basis = Basis(orientation);
-					Vector3 x_axis = basis.get_column(0);
-					Vector3 z_axis = basis.get_column(2);
-					basis.set_column(0, z_axis);
-					basis.set_column(2, x_axis);
-					// Orthonormalize the basis before converting to quaternion
-					basis = basis.orthonormalized();
-					orientation = basis.get_rotation_quaternion();
+					Vector3 euler_yzx = basis.get_euler(EulerOrder::YZX);
+					// Swap X and Z Euler angles to match coordinate system conversion
+					Vector3 euler_swapped = Vector3(euler_yzx.z, euler_yzx.y, euler_yzx.x);
+					// Convert back to quaternion using Godot's YXZ order
+					Basis converted_basis = Basis::from_euler(euler_swapped, EulerOrder::YXZ);
+					orientation = converted_basis.get_rotation_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
@@ -1093,25 +1080,22 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					offsets.remove_at(offsets.size() - 1);
 					orientations.remove_at(orientations.size() - 1);
 					
-					// Update bone data with rest transform
+					// Store global orientation first (will convert to local in second pass)
+					// ORIENT in QBO/BVH is typically in global space
+					r_bone_data.write[bone_idx].offset = offset;
+					r_bone_data.write[bone_idx].orientation = orientation; // Store global orientation for now
+					
+					// For now, use global orientation for rest transform
+					// We'll convert to local space in a second pass after all bones are parsed
 					Transform3D rest;
 					Vector3 scale = Vector3(1.0, 1.0, 1.0);
 					rest.basis.set_quaternion_scale(orientation, scale);
-					
-					// Store offset and orientation
-					r_bone_data.write[bone_idx].offset = offset;
-					r_bone_data.write[bone_idx].orientation = orientation;
-					// Rest transform origin is always the offset (position relative to parent)
-					// For root bones, offset is usually (0,0,0) but could be model position
-					// For child bones, offset positions the bone relative to parent
 					rest.origin = offset;
 					r_bone_data.write[bone_idx].rest_transform = rest;
 					
-					// Update GLTFNode transform and rest transform
+					// Update GLTFNode transform (will be updated in second pass with local orientation)
 					GLTFNodeIndex node_index = r_bone_data[bone_idx].gltf_node_index;
 					Ref<GLTFNode> node = p_state->nodes[node_index];
-					// For bones, node->transform should be the rest transform (includes offset position)
-					// This is what positions the bone relative to its parent
 					node->transform = rest;
 					node->set_additional_data("GODOT_rest_transform", rest);
 				}
@@ -1360,11 +1344,11 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						if (!bone_indices_vec.is_empty() && !weight_vec.is_empty()) {
 							surf_tool->set_bones(bone_indices_vec);
 							surf_tool->set_weights(weight_vec);
-		} else {
+						} else {
 							surf_tool->set_bones(Vector<int>());
 							surf_tool->set_weights(Vector<float>());
 						}
-				} else {
+					} else {
 						surf_tool->set_bones(Vector<int>());
 						surf_tool->set_weights(Vector<float>());
 					}
@@ -2230,7 +2214,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	// Compute node heights (required for _find_highest_node to work correctly)
 	// This sets height=0 for root nodes, height=1 for their children, etc.
 	_compute_node_heights(p_state);
-	
+
 	// Create skeletons from skins (if any) or from bone nodes (if no skins)
 	// Use SkinTool to determine skeletons from skins or bone nodes
 	if (!p_state->skins.is_empty()) {
@@ -2241,6 +2225,8 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		}
 		
 		// Set skeleton index on mesh nodes that have skins
+		// Note: We don't set the parent here - _process_mesh_instances will handle
+		// moving the ImporterMeshInstance3D to be a child of the Skeleton3D in the generated scene tree
 		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
 			Ref<GLTFNode> node = p_state->nodes[node_i];
 			if (node->mesh >= 0 && node->skin >= 0) {
