@@ -1098,7 +1098,6 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					Vector3 scale = Vector3(1.0, 1.0, 1.0);
 					rest.basis.set_quaternion_scale(orientation, scale);
 					
-					int parent_bone_idx = r_bone_data[bone_idx].parent_bone_index;
 					// Store offset and orientation
 					r_bone_data.write[bone_idx].offset = offset;
 					r_bone_data.write[bone_idx].orientation = orientation;
