@@ -2544,6 +2544,116 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		}
 	}
 
+	// Remap bone indices from joint indices to skeleton bone indices
+	// This is needed because QBO sets bone indices as joint indices (into gltf_skin->joints_original),
+	// but MeshInstance3D expects Skeleton3D bone indices
+	if (!p_state->skins.is_empty() && !p_state->skeletons.is_empty()) {
+		// Create skeletons early to get joint_i_to_bone_i mapping
+		HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
+		HashMap<GLTFNodeIndex, Node *> scene_nodes;
+		Error err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes,
+				skeleton_map, p_state->skeletons, scene_nodes, get_naming_version());
+		if (err == OK) {
+			// Remap bone indices in all meshes
+			for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
+				Ref<GLTFNode> node = p_state->nodes[node_i];
+				if (node->mesh >= 0 && node->skin >= 0) {
+					Ref<GLTFMesh> gltf_mesh = p_state->meshes[node->mesh];
+					Ref<ImporterMesh> importer_mesh = gltf_mesh->get_mesh();
+					if (importer_mesh.is_valid()) {
+						Ref<GLTFSkin> skin = p_state->skins[node->skin];
+						GLTFSkeletonIndex skeleton_index = skin->get_skeleton();
+						if (skeleton_index >= 0 && skeleton_index < p_state->skeletons.size()) {
+							Ref<GLTFSkeleton> skeleton = p_state->skeletons[skeleton_index];
+							if (skeleton.is_valid() && skeleton->godot_skeleton != nullptr) {
+								// Create mapping from joint index to skeleton bone index
+								HashMap<int, int> joint_to_bone_map;
+								for (int joint_i = 0; joint_i < skin->joints_original.size(); ++joint_i) {
+									if (skin->joint_i_to_bone_i.has(joint_i)) {
+										int bone_i = skin->joint_i_to_bone_i[joint_i];
+										joint_to_bone_map[joint_i] = bone_i;
+									}
+								}
+								
+								// Create new ImporterMesh with remapped bone indices
+								Ref<ImporterMesh> new_importer_mesh;
+								new_importer_mesh.instantiate();
+								
+								for (int surface_i = 0; surface_i < importer_mesh->get_surface_count(); ++surface_i) {
+									Array arrays = importer_mesh->get_surface_arrays(surface_i);
+									
+									if (arrays.size() > Mesh::ARRAY_BONES && arrays[Mesh::ARRAY_BONES].get_type() == Variant::PACKED_INT32_ARRAY) {
+										PackedInt32Array bones = arrays[Mesh::ARRAY_BONES];
+										PackedInt32Array new_bones;
+										new_bones.resize(bones.size());
+										
+										int max_weights = (importer_mesh->get_surface_format(surface_i) & Mesh::ARRAY_FLAG_USE_8_BONE_WEIGHTS) ? 8 : 4;
+										for (int i = 0; i < bones.size(); i += max_weights) {
+											for (int j = 0; j < max_weights; j++) {
+												int joint_idx = bones[i + j];
+												if (joint_to_bone_map.has(joint_idx)) {
+													new_bones.write[i + j] = joint_to_bone_map[joint_idx];
+												} else {
+													new_bones.write[i + j] = 0; // Invalid joint index, set to 0
+												}
+											}
+										}
+										
+										arrays[Mesh::ARRAY_BONES] = new_bones;
+									}
+									
+									// Get blend shape arrays
+									TypedArray<Array> blend_shapes;
+									int blend_shape_count = importer_mesh->get_blend_shape_count();
+									for (int bs_i = 0; bs_i < blend_shape_count; ++bs_i) {
+										Array bs_arrays = importer_mesh->get_surface_blend_shape_arrays(surface_i, bs_i);
+										blend_shapes.push_back(bs_arrays);
+									}
+									
+									// Get LOD data
+									Dictionary lods;
+									int lod_count = importer_mesh->get_surface_lod_count(surface_i);
+									for (int lod_i = 0; lod_i < lod_count; ++lod_i) {
+										Vector<int> lod_indices = importer_mesh->get_surface_lod_indices(surface_i, lod_i);
+										float lod_size = importer_mesh->get_surface_lod_size(surface_i, lod_i);
+										Dictionary lod_dict;
+										lod_dict["indices"] = lod_indices;
+										lod_dict["distance"] = lod_size;
+										lods[lod_i] = lod_dict;
+									}
+									
+									new_importer_mesh->add_surface(
+										importer_mesh->get_surface_primitive_type(surface_i),
+										arrays,
+										blend_shapes,
+										lods,
+										importer_mesh->get_surface_material(surface_i),
+										importer_mesh->get_surface_name(surface_i),
+										importer_mesh->get_surface_format(surface_i)
+									);
+								}
+								
+								gltf_mesh->set_mesh(new_importer_mesh);
+							}
+						}
+					}
+				}
+			}
+			
+			// Clear scene_nodes and godot_skeleton pointers so parent can recreate them
+			// But keep joint_i_to_bone_i mapping as it's still valid
+			p_state->scene_nodes.clear();
+			for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+				Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+				if (skeleton.is_valid()) {
+					// Don't delete the skeleton, just clear the pointer
+					// The parent will recreate it
+					skeleton->godot_skeleton = nullptr;
+				}
+			}
+		}
+	}
+
 	return OK;
 }
 
