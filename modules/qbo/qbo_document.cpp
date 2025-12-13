@@ -982,6 +982,16 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					if (!orientation.is_normalized()) {
 						print_verbose("UNNORMALIZED ORIENTATION!!!")
 					}
+					// Convert quaternion for axis convention using Euler order conversion
+					// BVH/QBO may use YZX Euler order, Godot uses YXZ
+					// Convert to Euler with YZX order, swap X and Z components, then convert back with YXZ
+					Basis basis = Basis(orientation);
+					Vector3 euler_yzx = basis.get_euler(EulerOrder::YZX);
+					// Swap X and Z Euler angles to match coordinate system conversion
+					Vector3 euler_swapped = Vector3(euler_yzx.z, euler_yzx.y, euler_yzx.x);
+					// Convert back to quaternion using Godot's YXZ order
+					Basis converted_basis = Basis::from_euler(euler_swapped, EulerOrder::YXZ);
+					orientation = converted_basis.get_rotation_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 					} else {
