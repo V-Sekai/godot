@@ -145,35 +145,21 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 			}
 			continue;
 		} else if (l.begins_with("ROOT")) {
+			// Bones should already exist in GLTFState from _parse_hierarchy_to_gltf
+			// Don't create bones here - just track the bone name for animation parsing
 			String bone_name = "";
-			int bone = -1;
 			bones.clear();
 			offsets.clear();
 			orientations.clear();
 			channels.clear();
-			r_skeletons.push_back(memnew(Skeleton3D));
 			l = l.substr(5);
 			if (!l.is_empty()) {
 				bone_name += l;
 			} else {
 				bone_name += "ROOT";
 			}
-			if (!bone_name.is_empty()) {
-				if (bone_names.has(bone_name)) {
-					bone_names[bone_name] += 1;
-					bone_name += String::num_int64(bone_names[bone_name]);
-				} else {
-					bone_names[bone_name] = 1;
-				}
-				r_skeletons.back()->get()->set_name(animation_library_name);
-				bone = r_skeletons.back()->get()->add_bone(bone_name);
-			}
-			if (bone >= 0) {
-				bones.append(bone);
-				orientations.append(Quaternion());
-				offsets.append(Vector3());
-				channels.append(Vector<int>({ bones[bones.size() - 1] }));
-			}
+			// Track bone name but don't create skeleton/bone here
+			// The skeleton and bones should already exist in GLTFState
 		} else if (l.begins_with("MOTION")) {
 			motion = true;
 			if (animation_library.is_valid() && animation.is_valid() && r_animation != nullptr && frames.size() == frame_count) {
@@ -309,24 +295,8 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 				animation->set_name("MOTION");
 			}
 		} else if (l.begins_with("End ")) {
-			ERR_FAIL_COND_V(r_skeletons.is_empty(), ERR_FILE_CORRUPT);
-			l = l.substr(4);
-			if (!l.is_empty()) {
-				if (bone_names.has(l)) {
-					bone_names[l] += 1;
-					l += String::num_int64(bone_names[l]);
-				} else {
-					bone_names[l] = 1;
-				}
-				bones.append(r_skeletons.back()->get()->add_bone(l));
-				orientations.append(Quaternion());
-				offsets.append(Vector3());
-				channels.append(Vector<int>({ bones[bones.size() - 1] }));
-				if (bones.size() > 1) {
-					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], bones[bones.size() - 2]);
-					parents[bones[bones.size() - 1]] = bones[bones.size() - 2];
-				}
-			}
+			// End sites are not bones - just skip them
+			continue;
 		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
@@ -396,24 +366,22 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 						channels.append(channel);
 					}
 				} else if (s[0].casecmp_to("JOINT") == 0) {
-					ERR_FAIL_COND_V(r_skeletons.is_empty() || bones.is_empty(), ERR_FILE_CORRUPT);
-					int parent = bones[bones.size() - 1];
+					// Bones should already exist in GLTFState from _parse_hierarchy_to_gltf
+					// Don't create bones here - just track the bone name for animation parsing
+					ERR_FAIL_COND_V(bones.is_empty(), ERR_FILE_CORRUPT);
 					String bone_name = s[1];
-					if (bone_names.has(bone_name)) {
-						bone_names[bone_name] += 1;
-						if (bone_name.ends_with("_")) {
-							bone_name += "_";
-						}
-						bone_name += String::num_int64(bone_names[bone_name]);
-					} else {
-						bone_names[bone_name] = 1;
-					}
-					bones.append(r_skeletons.back()->get()->add_bone(bone_name));
+					// Track bone name but don't create bone here
+					// The bones should already exist in GLTFState
+					// We still need to track the hierarchy for animation channel mapping
+					// Use a placeholder index since we can't look up the actual bone index without GLTFState
+					int placeholder_bone = bones.size(); // Use sequential index as placeholder
+					bones.append(placeholder_bone);
 					orientations.append(Quaternion());
 					offsets.append(Vector3());
-					channels.append(Vector<int>({ bones[bones.size() - 1] }));
-					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], parent);
-					parents[bones[bones.size() - 1]] = parent;
+					channels.append(Vector<int>({ placeholder_bone }));
+					if (bones.size() > 1) {
+						parents[placeholder_bone] = bones[bones.size() - 2];
+					}
 				}
 			} else {
 				if (l.casecmp_to("{") == 0) {
@@ -1336,7 +1304,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		}
 		if (in_hierarchy || in_motion) {
 			// Skip until we reach OBJ data
-			if (l.begins_with("v ") || l.begins_with("vt ") || l.begins_with("vn ") || l.begins_with("f ")) {
+			if (l.begins_with("v ") || l.begins_with("vt ") || l.begins_with("vn ") || l.begins_with("f ") || l.begins_with("vw ")) {
 				in_hierarchy = false;
 				in_motion = false;
 			} else {
@@ -1386,6 +1354,12 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			} else if (l.begins_with("vw ")) {
 			//weight - store for later GLTFSkin creation
 			Vector<String> v = l.split(" ", false);
+			if (p_bone_name_to_node.is_empty()) {
+				print_line("QBO: WARNING - vw line found but p_bone_name_to_node is empty!");
+				print_line(vformat("QBO: p_bone_name_to_node size: %d", p_bone_name_to_node.size()));
+			} else {
+				print_line(vformat("QBO: Processing vw line, p_bone_name_to_node has %d entries", p_bone_name_to_node.size()));
+			}
 			ERR_FAIL_COND_V(p_bone_name_to_node.is_empty() || v.size() < 4 || (v.size() - 2) % 2 != 0, ERR_FILE_CORRUPT);
 			int vertex_idx = v[1].to_int() - 1; // Convert 1-based to 0-based
 			if (vertex_idx < 0) {
@@ -1396,16 +1370,19 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				weights.push_back(HashMap<String, float>());
 			}
 			HashMap<String, float> weight;
+			String weight_log = vformat("QBO: Vertex %d weights: ", vertex_idx);
 			for (int i = 2; i < v.size() - 1; i += 2) {
 				String b = v[i];
 				float w = v[i + 1].to_float();
 				// Validate bone name exists in bone mapping
 					if (!p_bone_name_to_node.has(b)) {
+					print_line(vformat("QBO: WARNING - Bone name '%s' not found in p_bone_name_to_node", b));
 					continue; // Skip invalid bone names
 				}
 				weight[b] = w;
 				// Track used bone names for joint index mapping
 				used_bone_names.insert(b);
+				weight_log += vformat("%s=%.3f ", b, w);
 				// Note: set_skin_weight_count must be called before begin(), but we don't know
 				// if we need 8 weights until we parse vw lines. SurfaceTool's add_vertex will
 				// automatically handle capping to 4 weights if we set more, but if we need 8,
@@ -1413,6 +1390,11 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				// which will cap and normalize weights > 4 to 4 weights.
 			}
 			weights.set(vertex_idx, weight);
+			if (weight.is_empty()) {
+				print_line(vformat("QBO: WARNING - Vertex %d has no valid weights after parsing", vertex_idx));
+			} else {
+				print_line(weight_log);
+			}
 			} else if (l.begins_with("f ")) {
 			// Create mapping from bone name to joint index in skin when we first process a face
 			// This ensures we've seen all weights before creating the mapping
@@ -1490,7 +1472,17 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					// to ensure the format flag is set and the mesh is detected as rigged
 					// Use skeleton bone indices directly (from p_bone_name_to_skeleton_bone_index)
 					if (!weights.is_empty() && (!p_bone_name_to_skeleton_bone_index.is_empty() || bone_mapping_created)) {
-						if (vtx < weights.size() && !weights.get(vtx).is_empty()) {
+						if (vtx == 0) {
+							print_line(vformat("QBO: Setting weights on vertex %d: weights.size()=%d, p_bone_name_to_skeleton_bone_index.size()=%d, bone_mapping_created=%s", 
+								vtx, weights.size(), p_bone_name_to_skeleton_bone_index.size(), bone_mapping_created ? "true" : "false"));
+						}
+						bool has_weights = (vtx < weights.size() && !weights.get(vtx).is_empty());
+						if (vtx == 0) {
+							print_line(vformat("QBO: Vertex %d has_weights=%s, vtx < weights.size()=%s, weights.get(vtx).is_empty()=%s", 
+								vtx, has_weights ? "true" : "false", (vtx < weights.size()) ? "true" : "false", 
+								(vtx < weights.size()) ? (weights.get(vtx).is_empty() ? "true" : "false") : "N/A"));
+						}
+						if (has_weights) {
 							// Collect bone indices and weights
 							struct WeightPair {
 								int bone_idx;
@@ -1500,10 +1492,23 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 								}
 							};
 							Vector<WeightPair> bone_weight_pairs;
+							if (vtx == 0) {
+								print_line("QBO: Available bone names in p_bone_name_to_skeleton_bone_index:");
+								for (HashMap<String, int>::ConstIterator it = p_bone_name_to_skeleton_bone_index.begin(); it; ++it) {
+									print_line(vformat("  '%s' -> bone index %d", it->key, it->value));
+								}
+								print_line("QBO: Available bone names in bone_name_to_joint_index:");
+								for (HashMap<String, int>::ConstIterator it = bone_name_to_joint_index.begin(); it; ++it) {
+									print_line(vformat("  '%s' -> joint index %d", it->key, it->value));
+								}
+							}
 							for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 								if (itr->key.is_empty()) {
 							continue;
 						}
+								if (vtx == 0) {
+									print_line(vformat("QBO: Processing weight for bone '%s' = %.3f", itr->key, itr->value));
+								}
 								// Map bone name to skeleton bone index (for mesh vertices)
 								// Use skeleton bone index directly instead of joint index
 								if (p_bone_name_to_skeleton_bone_index.has(itr->key)) {
@@ -1512,6 +1517,9 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 									wp.bone_idx = skeleton_bone_idx;
 									wp.weight = itr->value;
 									bone_weight_pairs.append(wp);
+									if (vtx == 0) {
+										print_line(vformat("QBO: Found '%s' in p_bone_name_to_skeleton_bone_index -> bone index %d", itr->key, skeleton_bone_idx));
+									}
 								} else if (bone_name_to_joint_index.has(itr->key)) {
 									// Fallback: if skeleton bone index not found, use joint index
 									// (This shouldn't happen if skeletons were created properly)
@@ -1520,7 +1528,18 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 									wp.bone_idx = joint_idx;
 									wp.weight = itr->value;
 									bone_weight_pairs.append(wp);
+									if (vtx == 0) {
+										print_line(vformat("QBO: Found '%s' in bone_name_to_joint_index -> joint index %d", itr->key, joint_idx));
+									}
+								} else {
+									if (vtx == 0) {
+										print_line(vformat("QBO: WARNING - Bone name '%s' not found in p_bone_name_to_skeleton_bone_index or bone_name_to_joint_index", itr->key));
+									}
 								}
+							}
+							
+							if (vtx == 0) {
+								print_line(vformat("QBO: Vertex %d bone_weight_pairs.size()=%d", vtx, bone_weight_pairs.size()));
 							}
 							
 							if (!bone_weight_pairs.is_empty()) {
@@ -1557,6 +1576,21 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 								
 								surf_tool->set_bones(bone_indices_vec);
 								surf_tool->set_weights(weight_vec);
+								// Log vertex weighting
+								String bone_log = vformat("QBO: Vertex %d -> bones=[", vtx);
+								String weight_log = vformat("QBO: Vertex %d -> weights=[", vtx);
+								for (int i = 0; i < bone_indices_vec.size(); i++) {
+									if (i > 0) {
+										bone_log += ", ";
+										weight_log += ", ";
+									}
+									bone_log += vformat("%d", bone_indices_vec[i]);
+									weight_log += vformat("%.3f", weight_vec[i]);
+								}
+								bone_log += "]";
+								weight_log += "]";
+								print_line(bone_log);
+								print_line(weight_log);
 			} else {
 								// Vertex has no weights, but mesh is rigged - pad with zeros
 								int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
@@ -2486,15 +2520,26 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			return err;
 		}
 		
-		// Create mapping from bone name to skeleton bone index
-		// This allows us to set skeleton bone indices directly during OBJ parsing
+		// Create mapping from original bone name to skeleton bone index
+		// Use skeleton->joints to map GLTFNodeIndex to skeleton bone index, then find original name from bone_data
 		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
 			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
 			if (skeleton.is_valid() && skeleton->godot_skeleton != nullptr) {
 				Skeleton3D *godot_skeleton = skeleton->godot_skeleton;
-				for (int bone_i = 0; bone_i < godot_skeleton->get_bone_count(); ++bone_i) {
-					String bone_name = godot_skeleton->get_bone_name(bone_i);
-					bone_name_to_skeleton_bone_index[bone_name] = bone_i;
+				// Iterate through joints in order (matches skeleton bone order)
+				for (int joint_idx = 0; joint_idx < skeleton->joints.size(); ++joint_idx) {
+					GLTFNodeIndex joint_node = skeleton->joints[joint_idx];
+					if (joint_node >= 0 && joint_node < p_state->nodes.size()) {
+						// Find original bone name from bone_data
+						for (int bone_data_idx = 0; bone_data_idx < bone_data.size(); ++bone_data_idx) {
+							if (bone_data[bone_data_idx].gltf_node_index == joint_node) {
+								String original_bone_name = bone_data[bone_data_idx].name;
+								// joint_idx corresponds to skeleton bone index
+								bone_name_to_skeleton_bone_index[original_bone_name] = joint_idx;
+								break;
+							}
+						}
+					}
 				}
 			}
 		}
