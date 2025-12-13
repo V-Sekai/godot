@@ -1586,10 +1586,9 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				mesh_node->mesh = mesh_index;
 				mesh_node->transform = Transform3D();
 				
-				// TODO: Re-enable rigged mesh support after unrigged meshes work
 				// Create GLTFSkin from vertex weights if we have weights and bones
 				GLTFNodeIndex skeleton_root_node = -1;
-				if (false && !weights.is_empty() && !p_bone_name_to_node.is_empty()) {
+				if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
 					Ref<GLTFSkin> gltf_skin;
 					gltf_skin.instantiate();
 					gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
@@ -1603,8 +1602,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						bone_name_to_gltf_node[p_bone_data[i].name] = p_bone_data[i].gltf_node_index;
 					}
 					
-					// Add joints to skin (in order of bone_data to maintain hierarchy)
-					HashMap<GLTFNodeIndex, Transform3D> node_to_inverse_bind;
+					// Add only bones with vertex weights to joints_original
+					// SkinTool::_expand_skin will expand the skin to include all nodes in the subtree
 					for (int i = 0; i < p_bone_data.size(); i++) {
 						if (used_bone_names.has(p_bone_data[i].name)) {
 							GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
@@ -1615,7 +1614,6 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							Transform3D rest = p_bone_data[i].rest_transform;
 							Transform3D inverse_bind = rest.affine_inverse();
 							gltf_skin->inverse_binds.push_back(inverse_bind);
-							node_to_inverse_bind[node_index] = inverse_bind;
 							
 							// Mark as root if no parent and remember first root bone
 							if (p_bone_data[i].parent_bone_index < 0) {
@@ -1635,6 +1633,13 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					// Add skin to state
 					GLTFSkinIndex skin_index = p_state->skins.size();
 					p_state->skins.push_back(gltf_skin);
+					
+					// Expand and verify the skin (like FBXDocument does)
+					// This will include all nodes in the subtree, not just bones with weights
+					Error skin_err = SkinTool::_expand_skin(p_state->nodes, gltf_skin);
+					ERR_FAIL_COND_V(skin_err != OK, skin_err);
+					skin_err = SkinTool::_verify_skin(p_state->nodes, gltf_skin);
+					ERR_FAIL_COND_V(skin_err != OK, skin_err);
 					
 					// Set skin on mesh node
 					mesh_node->skin = skin_index;
@@ -1703,17 +1708,15 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		mesh_node->mesh = mesh_index;
 		mesh_node->transform = Transform3D();
 		
-		// TODO: Re-enable rigged mesh support after unrigged meshes work
 		// Create GLTFSkin if we have weights
 		GLTFNodeIndex skeleton_root_node = -1;
-		if (false && !weights.is_empty() && !p_bone_name_to_node.is_empty()) {
+		if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
 			Ref<GLTFSkin> gltf_skin;
 			gltf_skin.instantiate();
 			gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
 			
-			// Use the function-level used_bone_names that was populated during vw parsing
-			// No need to re-collect - it's already been tracked
-			
+			// Add only bones with vertex weights to joints_original
+			// SkinTool::_expand_skin will expand the skin to include all nodes in the subtree
 			for (int i = 0; i < p_bone_data.size(); i++) {
 				if (used_bone_names.has(p_bone_data[i].name)) {
 					GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
@@ -1739,6 +1742,14 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			
 			GLTFSkinIndex skin_index = p_state->skins.size();
 			p_state->skins.push_back(gltf_skin);
+			
+			// Expand and verify the skin (like FBXDocument does)
+			// This will include all nodes in the subtree, not just bones with weights
+			Error skin_err = SkinTool::_expand_skin(p_state->nodes, gltf_skin);
+			ERR_FAIL_COND_V(skin_err != OK, skin_err);
+			skin_err = SkinTool::_verify_skin(p_state->nodes, gltf_skin);
+			ERR_FAIL_COND_V(skin_err != OK, skin_err);
+			
 			mesh_node->skin = skin_index;
 		}
 		
@@ -2159,9 +2170,38 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		return err;
 	}
 	
-	// Create skeletons from bone nodes (but not from skins since skinning is disabled)
-	// Use SkinTool to determine skeletons from bone nodes, even without skins
-	if (!hierarchy_root_nodes.is_empty()) {
+	// Create skeletons from skins (if any) or from bone nodes (if no skins)
+	// Use SkinTool to determine skeletons from skins or bone nodes
+	if (!p_state->skins.is_empty()) {
+		// Skins exist - use them to determine skeletons
+		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, Vector<GLTFNodeIndex>(), false);
+		if (err != OK) {
+			return err;
+		}
+		
+		// Set skeleton index on mesh nodes that have skins
+		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
+			Ref<GLTFNode> node = p_state->nodes[node_i];
+			if (node->mesh >= 0 && node->skin >= 0) {
+				Ref<GLTFSkin> skin = p_state->skins[node->skin];
+				GLTFSkeletonIndex skeleton_index = skin->get_skeleton();
+				if (skeleton_index >= 0) {
+					node->skeleton = skeleton_index;
+				}
+			}
+		}
+		
+		// Add skeleton root nodes to root_nodes (after skeleton creation)
+		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+			for (GLTFNodeIndex root_node : skeleton->roots) {
+				if (!p_state->root_nodes.has(root_node)) {
+					p_state->root_nodes.push_back(root_node);
+				}
+			}
+		}
+	} else if (!hierarchy_root_nodes.is_empty()) {
+		// No skins - use hierarchy root nodes to create skeletons
 		// Pass hierarchy root nodes as single_skeleton_roots to create skeletons without skins
 		// This will automatically set node->skeleton indices for all bone nodes
 		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, hierarchy_root_nodes, false);
@@ -2179,10 +2219,6 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			}
 		}
 	}
-	
-	// TODO: Re-enable skinning support after unrigged meshes work
-	// When skinning is enabled, skins will be created in _parse_obj_to_gltf and
-	// SkinTool::_determine_skeletons will use them instead of single_skeleton_roots
 
 	return OK;
 }
