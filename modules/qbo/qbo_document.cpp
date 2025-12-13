@@ -341,11 +341,6 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					offset.x = s[1].to_float();
 					offset.y = s[2].to_float();
 					offset.z = s[3].to_float();
-					// Convert OFFSET for axis convention (QBO/BVH to Godot)
-					// BVH uses Y-up, Z-forward, X-right
-					// Godot uses Y-up, -Z-forward, X-right
-					// Swap X and Z components for coordinate system conversion
-					offset = Vector3(offset.z, offset.y, offset.x);
 					if (offsets.is_empty()) {
 						offsets.append(offset);
 					} else {
@@ -988,31 +983,6 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 							data_idx++;
 						}
 						
-						// Convert position for axis convention (QBO/BVH to Godot)
-						// BVH uses Y-up, Z-forward, X-right
-						// Godot uses Y-up, -Z-forward, X-right
-						// Swap X and Z components for coordinate system conversion
-						if (position_set) {
-							position = Vector3(position.z, position.y, position.x);
-						}
-						
-						// Convert rotation for axis convention (same as ORIENT in skeleton)
-						// Convert quaternion for axis convention using Euler order conversion
-						// BVH/QBO may use YZX Euler order, Godot uses YXZ
-						// Convert to Euler with YZX order, swap X and Z components, then convert back with YXZ
-						if (rotation_set) {
-							if (!rotation.is_normalized()) {
-								rotation.normalize();
-							}
-							Basis basis = Basis(rotation);
-							Vector3 euler_yzx = basis.get_euler(EulerOrder::YZX);
-							// Swap X and Z Euler angles to match coordinate system conversion
-							Vector3 euler_swapped = Vector3(euler_yzx.z, euler_yzx.y, euler_yzx.x);
-							// Convert back to quaternion using Godot's YXZ order
-							Basis converted_basis = Basis::from_euler(euler_swapped, EulerOrder::YXZ);
-							rotation = converted_basis.get_rotation_quaternion();
-						}
-						
 						// Add to GLTFAnimation tracks
 						double time = frame_time * static_cast<double>(frame_i);
 						if (position_set) {
@@ -1124,16 +1094,6 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					if (!orientation.is_normalized()) {
 						print_verbose("UNNORMALIZED ORIENTATION!!!")
 					}
-					// Convert quaternion for axis convention using Euler order conversion
-					// BVH/QBO may use YZX Euler order, Godot uses YXZ
-					// Convert to Euler with YZX order, swap X and Z components, then convert back with YXZ
-					Basis basis = Basis(orientation);
-					Vector3 euler_yzx = basis.get_euler(EulerOrder::YZX);
-					// Swap X and Z Euler angles to match coordinate system conversion
-					Vector3 euler_swapped = Vector3(euler_yzx.z, euler_yzx.y, euler_yzx.x);
-					// Convert back to quaternion using Godot's YXZ order
-					Basis converted_basis = Basis::from_euler(euler_swapped, EulerOrder::YXZ);
-					orientation = converted_basis.get_rotation_quaternion();
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
 		} else {
@@ -2507,7 +2467,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	// Compute node heights (required for _find_highest_node to work correctly)
 	// This sets height=0 for root nodes, height=1 for their children, etc.
 	_compute_node_heights(p_state);
-	
+
 	// Determine skeletons from hierarchy (before parsing OBJ so we can use skeleton bone indices directly)
 	HashMap<String, int> bone_name_to_skeleton_bone_index;
 	if (!hierarchy_root_nodes.is_empty()) {
