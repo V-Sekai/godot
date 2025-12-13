@@ -51,7 +51,7 @@ Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t 
 	}
 	if (p_options.has("gltf/embedded_image_handling")) {
 		int32_t enum_option = p_options["gltf/embedded_image_handling"];
-		state->set_handle_binary_image(enum_option);
+		state->set_handle_binary_image_mode((GLTFState::HandleBinaryImageMode)enum_option);
 	}
 	if (p_options.has(SNAME("nodes/import_as_skeleton_bones")) ? (bool)p_options[SNAME("nodes/import_as_skeleton_bones")] : false) {
 		state->set_import_as_skeleton_bones(true);
@@ -70,8 +70,13 @@ Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t 
 	if (p_options.has("animation/import")) {
 		state->set_create_animations(bool(p_options["animation/import"]));
 	}
-	//qbo->write_to_filesystem(state, p_path + ".gltf");
+
+#ifndef DISABLE_DEPRECATED
+	bool trimming = p_options.has("animation/trimming") ? (bool)p_options["animation/trimming"] : false;
+	return qbo->generate_scene(state, state->get_bake_fps(), trimming, false);
+#else
 	return qbo->generate_scene(state, state->get_bake_fps(), (bool)p_options["animation/trimming"], false);
+#endif
 }
 
 #endif // TOOLS_ENABLED

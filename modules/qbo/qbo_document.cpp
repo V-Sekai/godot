@@ -772,7 +772,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 	return OK;
 }
 
-Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_state, HashMap<String, GLTFNodeIndex> &r_bone_name_to_node, Vector<BoneData> &r_bone_data, Vector<GLTFNodeIndex> &r_root_nodes, Ref<GLTFAnimation> *r_gltf_animation) {
+Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_state, HashMap<String, GLTFNodeIndex> &r_bone_name_to_node, Vector<BoneData> &r_bone_data, Vector<GLTFNodeIndex> &r_root_nodes) {
 	bool motion = false;
 	int frame_count = -1;
 	double frame_time = 0.03333333;
@@ -782,6 +782,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 	Vector<Quaternion> orientations;
 	Vector<Vector3> offsets;
 	Vector<Vector<int>> channels;
+	Ref<GLTFAnimation> gltf_animation;
 	String animation_name;
 
 	int loops = 0;
@@ -803,26 +804,6 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 		if (l.begins_with("#")) {
 			continue;
 		}
-
-		if (motion) {
-			if (l.begins_with("HIERARCHY")) {
-				motion = false;
-			} else if (l.begins_with("Frame Time: ")) {
-				Vector<String> s = l.split(":");
-				l = s[1].strip_edges();
-				frame_time = l.to_float();
-			} else if (l.begins_with("Frames: ")) {
-				Vector<String> s = l.split(":");
-				l = s[1].strip_edges();
-				frame_count = l.to_int();
-				} else {
-				frames.append(l);
-				if (frames.size() == frame_count) {
-					motion = false;
-				}
-			}
-							continue;
-						}
 
 		if (l.begins_with("HIERARCHY")) {
 			// HIERARCHY section - continue parsing
@@ -874,53 +855,56 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 		} else if (l.begins_with("MOTION")) {
 			motion = true;
 			// Create GLTFAnimation directly (not AnimationPlayer)
-			if (r_gltf_animation != nullptr) {
-				*r_gltf_animation = Ref<GLTFAnimation>();
-				(*r_gltf_animation).instantiate();
-				frame_count = -1;
-				frames.clear();
-				l = l.substr(7);
-				if (!l.is_empty()) {
-					animation_name = l.strip_edges();
-				} else {
-					animation_name = "MOTION";
-				}
-				(*r_gltf_animation)->set_original_name(animation_name);
-				// Generate unique animation name
-				String u_name = animation_name;
-				int index = 1;
-				while (p_state->unique_animation_names.has(u_name)) {
-					u_name = animation_name + itos(index);
-					index++;
-				}
-				p_state->unique_animation_names.insert(u_name);
-				(*r_gltf_animation)->set_name(u_name);
+			gltf_animation = Ref<GLTFAnimation>();
+			gltf_animation.instantiate();
+			frame_count = -1;
+			frames.clear();
+			print_line(vformat("QBO: Found MOTION section, creating GLTFAnimation"));
+			l = l.substr(7);
+			if (!l.is_empty()) {
+				animation_name = l.strip_edges();
+			} else {
+				animation_name = "MOTION";
 			}
+			gltf_animation->set_original_name(animation_name);
+			// Generate unique animation name
+			String u_name = animation_name;
+			int index = 1;
+			while (p_state->unique_animation_names.has(u_name)) {
+				u_name = animation_name + itos(index);
+				index++;
+			}
+			p_state->unique_animation_names.insert(u_name);
+			gltf_animation->set_name(u_name);
 		} else if (motion && l.begins_with("Frame Time: ")) {
 			Vector<String> s = l.split(":");
 			if (s.size() >= 2) {
 				frame_time = s[1].strip_edges().to_float();
+				print_line(vformat("QBO: Frame Time: %f", frame_time));
 			}
 		} else if (motion && l.begins_with("Frames: ")) {
 			Vector<String> s = l.split(":");
 			if (s.size() >= 2) {
 				frame_count = s[1].strip_edges().to_int();
+				print_line(vformat("QBO: Frames: %d", frame_count));
 			}
 		} else if (motion && frame_count > 0 && !l.is_empty() && !l.begins_with("#")) {
 			// Parse frame data
 			frames.append(l);
-			if (frames.size() == frame_count && r_gltf_animation != nullptr && (*r_gltf_animation).is_valid()) {
+			if (frames.size() == frame_count && gltf_animation.is_valid()) {
+				print_line(vformat("QBO: Processing animation '%s' with %d frames, %d channels (r_bone_data has %d entries).", gltf_animation->get_name(), frame_count, channels.size(), r_bone_data.size()));
 				// Create GLTFAnimation NodeTracks for each bone
 				// Map from bone_data_idx to GLTFNodeIndex for tracking
 				HashMap<int, GLTFNodeIndex> bone_data_to_node;
 				HashMap<GLTFNodeIndex, GLTFAnimation::NodeTrack> node_tracks;
 				
 				// First pass: identify which bones have animation channels
-				for (int bone_idx = 0; bone_idx < bone_indices.size(); bone_idx++) {
-					if (bone_idx >= channels.size() || channels[bone_idx].size() < 2) {
+				// Iterate over channels (not bone_indices) since channels contains the bone_data_idx
+				for (int channel_idx = 0; channel_idx < channels.size(); channel_idx++) {
+					if (channels[channel_idx].size() < 2) {
 						continue;
 					}
-					int bone_data_idx = channels[bone_idx][0];
+					int bone_data_idx = channels[channel_idx][0];
 					if (bone_data_idx < 0 || bone_data_idx >= r_bone_data.size()) {
 						continue;
 					}
@@ -943,18 +927,18 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 						s = frame.split("\t");
 					}
 					
-					int bone_idx = 0;
+					int channel_idx = 0;
 					int data_idx = 0;
 					
-					while (data_idx < s.size() && bone_idx < channels.size()) {
-						if (channels[bone_idx].size() < 2) {
-							bone_idx++;
+					while (data_idx < s.size() && channel_idx < channels.size()) {
+						if (channels[channel_idx].size() < 2) {
+							channel_idx++;
 							continue;
 						}
 						
-						int bone_data_idx = channels[bone_idx][0];
+						int bone_data_idx = channels[channel_idx][0];
 						if (bone_data_idx < 0 || bone_data_idx >= r_bone_data.size() || !bone_data_to_node.has(bone_data_idx)) {
-							bone_idx++;
+							channel_idx++;
 							continue;
 						}
 						
@@ -967,8 +951,8 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 						bool rotation_set = false;
 						
 						// Parse channels for this bone
-						for (int ch = 1; ch < channels[bone_idx].size() && data_idx < s.size(); ch++) {
-							int channel_type = channels[bone_idx][ch];
+						for (int ch = 1; ch < channels[channel_idx].size() && data_idx < s.size(); ch++) {
+							int channel_type = channels[channel_idx][ch];
 							float value = s[data_idx].strip_edges().to_float();
 							
 							switch (channel_type) {
@@ -1025,11 +1009,12 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 							track.rotation_track.values.push_back(rotation);
 						}
 						
-						bone_idx++;
+						channel_idx++;
 					}
 				}
 				
 				// Set interpolation and add tracks to GLTFAnimation
+				int tracks_added = 0;
 				for (KeyValue<GLTFNodeIndex, GLTFAnimation::NodeTrack> &kv : node_tracks) {
 					GLTFAnimation::NodeTrack &track = kv.value;
 					if (!track.position_track.times.is_empty()) {
@@ -1040,13 +1025,18 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					}
 					// Only add track if it has data
 					if (!track.position_track.times.is_empty() || !track.rotation_track.times.is_empty() || !track.scale_track.times.is_empty()) {
-						(*r_gltf_animation)->get_node_tracks()[kv.key] = track;
+						gltf_animation->get_node_tracks()[kv.key] = track;
+						tracks_added++;
 					}
 				}
 				
 				// Add GLTFAnimation to GLTFState
-				if (!(*r_gltf_animation)->is_empty_of_tracks()) {
-					p_state->animations.push_back(*r_gltf_animation);
+				print_line(vformat("QBO: Animation '%s' has %d tracks added, is_empty_of_tracks=%s", gltf_animation->get_name(), tracks_added, gltf_animation->is_empty_of_tracks() ? "true" : "false"));
+				if (!gltf_animation->is_empty_of_tracks()) {
+					p_state->animations.push_back(gltf_animation);
+					print_line(vformat("QBO: Added animation '%s' with %d tracks to GLTFState (total animations: %d).", gltf_animation->get_name(), tracks_added, p_state->animations.size()));
+			} else {
+					WARN_PRINT(vformat("QBO: Animation '%s' has no tracks (node_tracks had %d entries, but none had data) and will not be imported.", gltf_animation->get_name(), node_tracks.size()));
 				}
 				
 				// Animation parsing complete
@@ -1060,7 +1050,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				if (bone_names.has(bone_name)) {
 					bone_names[bone_name] += 1;
 					bone_name += String::num_int64(bone_names[bone_name]);
-			} else {
+				} else {
 					bone_names[bone_name] = 1;
 				}
 				// Create GLTFNode for end site
@@ -1088,7 +1078,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				offsets.append(Vector3());
 				channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
 			}
-				} else {
+		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
 				s = l.split(" ");
@@ -2477,14 +2467,13 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	HashMap<String, GLTFNodeIndex> bone_name_to_node;
 	Vector<BoneData> bone_data;
 	Vector<GLTFNodeIndex> hierarchy_root_nodes;
-	Ref<GLTFAnimation> gltf_animation;
 	
 	// Reset file to beginning
 	f->seek(0);
 	
 	// Parse HIERARCHY section to create bone GLTFNodes (for skeletons, but not skinning)
 	// Always import animations by default (unless explicitly disabled via GLTFState::create_animations)
-	Error err = _parse_hierarchy_to_gltf(f, p_state, bone_name_to_node, bone_data, hierarchy_root_nodes, &gltf_animation);
+	Error err = _parse_hierarchy_to_gltf(f, p_state, bone_name_to_node, bone_data, hierarchy_root_nodes);
 	if (err != OK) {
 		return err;
 	}
