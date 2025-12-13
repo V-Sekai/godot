@@ -1115,7 +1115,9 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					// Update GLTFNode transform and rest transform
 					GLTFNodeIndex node_index = r_bone_data[bone_idx].gltf_node_index;
 					Ref<GLTFNode> node = p_state->nodes[node_index];
-					node->transform = Transform3D(orientation, Vector3()); // Pose transform (rotation only for now)
+					// For bones, node->transform should be the rest transform (includes offset position)
+					// This is what positions the bone relative to its parent
+					node->transform = rest;
 					node->set_additional_data("GODOT_rest_transform", rest);
 				}
 			}
