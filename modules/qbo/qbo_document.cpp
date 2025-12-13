@@ -1177,10 +1177,10 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			}
 		}
 		
-		if (l.is_empty() && f->eof_reached()) {
-			break;
-		}
-		if (l.is_empty()) {
+		// Check for EOF - if EOF reached, process it before breaking
+		bool is_eof = f->eof_reached();
+		
+		if (l.is_empty() && !is_eof) {
 			continue;
 		}
 		if (l.begins_with("#")) {
@@ -1399,6 +1399,19 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					material = material_map[current_material_library][current_material];
 				}
 				
+				// Generate normals if they don't exist
+				if (normals.is_empty()) {
+					surf_tool->generate_normals();
+				}
+				
+				// Generate tangents if needed
+				if (generate_tangents && !uvs.is_empty()) {
+					surf_tool->generate_tangents();
+				}
+				
+				// Index the mesh for better performance
+				surf_tool->index();
+				
 				uint32_t mesh_flags = 0;
 				if (!p_disable_compression) {
 					mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
@@ -1433,7 +1446,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				surf_tool->clear();
 				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 			}
-		} else if (l.begins_with("o ") || f->eof_reached()) {
+		} else if (l.begins_with("o ") || is_eof) {
 			// When we see 'o' or EOF, finish the current mesh and create mesh node
 			// First, commit any pending surface from surf_tool
 			if (surf_tool->get_vertex_array().size() > 0) {
@@ -1441,6 +1454,19 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
 					material = material_map[current_material_library][current_material];
 				}
+				
+				// Generate normals if they don't exist
+				if (normals.is_empty()) {
+					surf_tool->generate_normals();
+				}
+				
+				// Generate tangents if needed
+				if (generate_tangents && !uvs.is_empty()) {
+					surf_tool->generate_tangents();
+				}
+				
+				// Index the mesh for better performance
+				surf_tool->index();
 				
 				uint32_t mesh_flags = 0;
 				if (!p_disable_compression) {
@@ -1490,6 +1516,19 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
 						material = material_map[current_material_library][current_material];
 					}
+					
+					// Generate normals if they don't exist
+					if (normals.is_empty()) {
+						surf_tool->generate_normals();
+					}
+					
+					// Generate tangents if needed
+					if (generate_tangents && !uvs.is_empty()) {
+						surf_tool->generate_tangents();
+					}
+					
+					// Index the mesh for better performance
+					surf_tool->index();
 					
 					uint32_t mesh_flags = 0;
 					if (!p_disable_compression) {
@@ -1547,9 +1586,10 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				mesh_node->mesh = mesh_index;
 				mesh_node->transform = Transform3D();
 				
+				// TODO: Re-enable rigged mesh support after unrigged meshes work
 				// Create GLTFSkin from vertex weights if we have weights and bones
 				GLTFNodeIndex skeleton_root_node = -1;
-				if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
+				if (false && !weights.is_empty() && !p_bone_name_to_node.is_empty()) {
 					Ref<GLTFSkin> gltf_skin;
 					gltf_skin.instantiate();
 					gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
@@ -1602,9 +1642,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 				
 				// Add mesh node to scene as root node
-				// _process_mesh_instances will handle moving skinned meshes to be children of skeletons
+				// append_gltf_node with parent=-1 already adds to root_nodes, so no need to push_back again
 				GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
-				p_state->root_nodes.push_back(mesh_node_index);
 				
 					// Reset importer_mesh for next mesh group
 					importer_mesh.instantiate();
@@ -1618,7 +1657,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				current_material = "";
 			}
 			
-			if (f->eof_reached()) {
+			if (is_eof) {
 				break;
 			}
 		} else if (l.begins_with("usemtl ")) {
@@ -1664,9 +1703,10 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		mesh_node->mesh = mesh_index;
 		mesh_node->transform = Transform3D();
 		
+		// TODO: Re-enable rigged mesh support after unrigged meshes work
 		// Create GLTFSkin if we have weights
 		GLTFNodeIndex skeleton_root_node = -1;
-		if (!weights.is_empty() && !p_bone_name_to_node.is_empty()) {
+		if (false && !weights.is_empty() && !p_bone_name_to_node.is_empty()) {
 			Ref<GLTFSkin> gltf_skin;
 			gltf_skin.instantiate();
 			gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
@@ -1703,9 +1743,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		}
 		
 		// Add mesh node to scene as root node
-		// _process_mesh_instances will handle moving skinned meshes to be children of skeletons
+		// append_gltf_node with parent=-1 already adds to root_nodes, so no need to push_back again
 		GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
-		p_state->root_nodes.push_back(mesh_node_index);
 	}
 	
 	return OK;
@@ -2101,14 +2140,17 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	Vector<GLTFNodeIndex> hierarchy_root_nodes;
 	AnimationPlayer *animation = nullptr;
 	
+	// TODO: Re-enable hierarchy parsing after unrigged meshes work
 	// Reset file to beginning
 	f->seek(0);
 	
+	// Skip HIERARCHY parsing for now - focus on unrigged meshes only
 	// Parse HIERARCHY section to create bone GLTFNodes
-	Error err = _parse_hierarchy_to_gltf(f, p_state, bone_name_to_node, bone_data, hierarchy_root_nodes, (p_flags & QBO_IMPORT_ANIMATION) ? &animation : nullptr);
-	if (err != OK) {
-		return err;
-	}
+	Error err = OK;
+	// Error err = _parse_hierarchy_to_gltf(f, p_state, bone_name_to_node, bone_data, hierarchy_root_nodes, (p_flags & QBO_IMPORT_ANIMATION) ? &animation : nullptr);
+	// if (err != OK) {
+	// 	return err;
+	// }
 	
 	// Reset file to beginning for OBJ parsing
 	f->seek(0);
@@ -2120,8 +2162,9 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		return err;
 	}
 	
+	// TODO: Re-enable skeleton creation after unrigged meshes work
 	// Use SkinTool to determine skeletons from the skins we created
-	if (!p_state->skins.is_empty()) {
+	if (false && !p_state->skins.is_empty()) {
 		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, Vector<GLTFNodeIndex>(), false);
 		if (err != OK) {
 			return err;
