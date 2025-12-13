@@ -905,15 +905,174 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 			}
 		} else if (l.begins_with("MOTION")) {
 			motion = true;
-			// Animation parsing will be handled later if needed
-			animation.instantiate();
-			frame_count = -1;
-			frames.clear();
-			l = l.substr(7);
-			if (!l.is_empty()) {
-				animation->set_name(l.strip_edges());
-			} else {
-				animation->set_name("MOTION");
+			if (r_animation != nullptr && animation_library.is_valid()) {
+				animation.instantiate();
+				frame_count = -1;
+				frames.clear();
+				l = l.substr(7);
+				if (!l.is_empty()) {
+					animation->set_name(l.strip_edges());
+				} else {
+					animation->set_name("MOTION");
+				}
+				animation_library->add_animation(animation->get_name(), animation);
+			}
+		} else if (motion && l.begins_with("Frame Time: ")) {
+			Vector<String> s = l.split(":");
+			if (s.size() >= 2) {
+				frame_time = s[1].strip_edges().to_float();
+			}
+		} else if (motion && l.begins_with("Frames: ")) {
+			Vector<String> s = l.split(":");
+			if (s.size() >= 2) {
+				frame_count = s[1].strip_edges().to_int();
+			}
+		} else if (motion && frame_count > 0 && !l.is_empty() && !l.begins_with("#")) {
+			// Parse frame data
+			frames.append(l);
+			if (frames.size() == frame_count && animation.is_valid() && r_animation != nullptr) {
+				// Create animation tracks for each bone
+				HashMap<int, int> position_tracks; // bone_idx -> track_index
+				HashMap<int, int> rotation_tracks; // bone_idx -> track_index
+				
+				for (int bone_idx = 0; bone_idx < bone_indices.size(); bone_idx++) {
+					if (bone_idx >= channels.size() || channels[bone_idx].size() < 2) {
+						continue;
+					}
+					int bone_data_idx = channels[bone_idx][0];
+					if (bone_data_idx < 0 || bone_data_idx >= r_bone_data.size()) {
+						continue;
+					}
+					String bone_name = r_bone_data[bone_data_idx].name;
+					GLTFNodeIndex node_index = r_bone_data[bone_data_idx].gltf_node_index;
+					
+					// Check if bone has position or rotation channels
+					bool has_position = false;
+					bool has_rotation = false;
+					for (int ch = 1; ch < channels[bone_idx].size(); ch++) {
+						int channel_type = channels[bone_idx][ch];
+						if (channel_type == BVH_X_POSITION || channel_type == BVH_Y_POSITION || channel_type == BVH_Z_POSITION) {
+							has_position = true;
+						}
+						if (channel_type == BVH_X_ROTATION || channel_type == BVH_Y_ROTATION || channel_type == BVH_Z_ROTATION || channel_type == BVH_W_ROTATION) {
+							has_rotation = true;
+						}
+					}
+					
+					// Create tracks if needed
+					if (has_position) {
+						int track = animation->add_track(Animation::TrackType::TYPE_POSITION_3D);
+						position_tracks[bone_data_idx] = track;
+						// Set track path to reference the GLTFNode
+						// Format: "NodeName" or "Skeleton3D:bone_name" for bones
+						Ref<GLTFNode> node = p_state->nodes[node_index];
+						String node_path = node->get_name();
+						animation->track_set_path(track, node_path);
+						animation->track_set_imported(track, true);
+					}
+					if (has_rotation) {
+						int track = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
+						rotation_tracks[bone_data_idx] = track;
+						Ref<GLTFNode> node = p_state->nodes[node_index];
+						String node_path = node->get_name();
+						animation->track_set_path(track, node_path);
+						animation->track_set_imported(track, true);
+					}
+				}
+				
+				// Parse frames and insert keys
+				for (int frame_i = 0; frame_i < frame_count; frame_i++) {
+					String frame = frames[frame_i];
+					Vector<String> s;
+					if (frame.contains(" ")) {
+						s = frame.split(" ");
+					} else {
+						s = frame.split("\t");
+					}
+					
+					int bone_idx = 0;
+					int data_idx = 0;
+					
+					while (data_idx < s.size() && bone_idx < channels.size()) {
+						if (channels[bone_idx].size() < 2) {
+							bone_idx++;
+							continue;
+						}
+						
+						int bone_data_idx = channels[bone_idx][0];
+						if (bone_data_idx < 0 || bone_data_idx >= r_bone_data.size()) {
+							bone_idx++;
+							continue;
+						}
+						
+						Vector3 position;
+						Quaternion rotation;
+						bool position_set = false;
+						bool rotation_set = false;
+						
+						// Parse channels for this bone
+						for (int ch = 1; ch < channels[bone_idx].size() && data_idx < s.size(); ch++) {
+							int channel_type = channels[bone_idx][ch];
+							float value = s[data_idx].strip_edges().to_float();
+							
+							switch (channel_type) {
+								case BVH_X_POSITION:
+									position.x = value;
+									position_set = true;
+									break;
+								case BVH_Y_POSITION:
+									position.y = value;
+									position_set = true;
+									break;
+								case BVH_Z_POSITION:
+									position.z = value;
+									position_set = true;
+									break;
+								case BVH_X_ROTATION:
+									rotation.x = value;
+									rotation_set = true;
+									break;
+								case BVH_Y_ROTATION:
+									rotation.y = value;
+									rotation_set = true;
+									break;
+								case BVH_Z_ROTATION:
+									rotation.z = value;
+									rotation_set = true;
+									break;
+								case BVH_W_ROTATION:
+									rotation.w = value;
+									rotation_set = true;
+									break;
+							}
+							data_idx++;
+						}
+						
+						// Convert position for axis convention (QBO/BVH to Godot)
+						if (position_set) {
+							position = Vector3(position.z, position.y, position.x);
+						}
+						
+						// Convert rotation for axis convention if needed
+						if (rotation_set && !rotation.is_normalized()) {
+							rotation.normalize();
+						}
+						
+						// Insert keys
+						double time = frame_time * static_cast<double>(frame_i);
+						if (position_set && position_tracks.has(bone_data_idx)) {
+							animation->position_track_insert_key(position_tracks[bone_data_idx], time, position);
+						}
+						if (rotation_set && rotation_tracks.has(bone_data_idx)) {
+							animation->rotation_track_insert_key(rotation_tracks[bone_data_idx], time, rotation);
+						}
+						
+						bone_idx++;
+					}
+				}
+				
+				// Animation parsing complete
+				motion = false;
 			}
 		} else if (l.begins_with("End ")) {
 			ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
@@ -1101,6 +1260,11 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				}
 			}
 		}
+	}
+	
+	// Add AnimationPlayer to GLTFState if it was created
+	if (r_animation != nullptr && *r_animation != nullptr) {
+		p_state->animation_players.push_back(*r_animation);
 	}
 
 	return OK;
