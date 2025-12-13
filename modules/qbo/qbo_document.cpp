@@ -1657,8 +1657,25 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					
 					// Expand and verify the skin (like FBXDocument does)
 					// This will include all nodes in the subtree, not just bones with weights
+					// Save the ancestors we added to joints before _expand_skin
+					HashSet<GLTFNodeIndex> ancestors_in_joints;
+					for (GLTFNodeIndex node_index : gltf_skin->joints) {
+						if (nodes_to_include.has(node_index) && !used_bone_names.has(p_state->nodes[node_index]->get_original_name())) {
+							// This is an ancestor (in nodes_to_include but not in used_bone_names)
+							ancestors_in_joints.insert(node_index);
+						}
+					}
+					
 					Error skin_err = SkinTool::_expand_skin(p_state->nodes, gltf_skin);
 					ERR_FAIL_COND_V(skin_err != OK, skin_err);
+					
+					// Ensure ancestors are still in joints after _expand_skin
+					for (GLTFNodeIndex ancestor_node : ancestors_in_joints) {
+						if (p_state->nodes[ancestor_node]->joint && !gltf_skin->joints.has(ancestor_node)) {
+							gltf_skin->joints.push_back(ancestor_node);
+						}
+					}
+					
 					skin_err = SkinTool::_verify_skin(p_state->nodes, gltf_skin);
 					ERR_FAIL_COND_V(skin_err != OK, skin_err);
 					
@@ -2212,6 +2229,10 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	if (err != OK) {
 		return err;
 	}
+	
+	// Compute node heights (required for _find_highest_node to work correctly)
+	// This sets height=0 for root nodes, height=1 for their children, etc.
+	_compute_node_heights(p_state);
 	
 	// Create skeletons from skins (if any) or from bone nodes (if no skins)
 	// Use SkinTool to determine skeletons from skins or bone nodes
