@@ -2561,17 +2561,77 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		return err;
 	}
 	
-	// Re-determine skeletons from skins (in case skins changed the skeleton structure)
-	if (!p_state->skins.is_empty()) {
-		// Skins exist - use them to determine skeletons
+	// Assign skins to existing skeletons (if skeletons were already determined from hierarchy)
+	// Or determine skeletons from skins if no skeletons exist yet
+	if (!p_state->skins.is_empty() && !p_state->skeletons.is_empty()) {
+		// Skeletons already determined from hierarchy - assign skins to them
+		// Match skins to skeletons by checking if skin roots/joints are in skeleton
+		for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
+			Ref<GLTFSkin> skin = p_state->skins[skin_i];
+			if (skin.is_null() || skin->get_skeleton() >= 0) {
+				continue; // Already assigned or invalid
+			}
+			
+			// Find which skeleton contains this skin's nodes
+			for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+				Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+				if (skeleton.is_null()) {
+					continue;
+				}
+				
+				// Check if any of the skin's roots or joints are in this skeleton
+				bool matches = false;
+				for (GLTFNodeIndex root : skin->roots) {
+					if (skeleton->roots.has(root) || skeleton->joints.has(root)) {
+						matches = true;
+						break;
+					}
+				}
+				if (!matches) {
+					for (GLTFNodeIndex joint : skin->joints) {
+						if (skeleton->joints.has(joint)) {
+							matches = true;
+							break;
+						}
+					}
+				}
+				
+				if (matches) {
+					skin->skeleton = skel_i;
+					break;
+				}
+			}
+		}
+		
+		// Set skeleton index on mesh nodes that have skins
+		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
+			Ref<GLTFNode> node = p_state->nodes[node_i];
+			if (node->mesh >= 0 && node->skin >= 0) {
+				Ref<GLTFSkin> skin = p_state->skins[node->skin];
+				GLTFSkeletonIndex skeleton_index = skin->get_skeleton();
+				if (skeleton_index >= 0 && skeleton_index < p_state->skeletons.size()) {
+					node->skeleton = skeleton_index;
+				}
+			}
+		}
+		
+		// Add skeleton root nodes to root_nodes (if not already added)
+		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
+			for (GLTFNodeIndex root_node : skeleton->roots) {
+				if (!p_state->root_nodes.has(root_node)) {
+					p_state->root_nodes.push_back(root_node);
+				}
+			}
+		}
+	} else if (!p_state->skins.is_empty() && p_state->skeletons.is_empty()) {
+		// Skins exist but no skeletons yet - use skins to determine skeletons
 		err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons, Vector<GLTFNodeIndex>(), false);
 		if (err != OK) {
 			return err;
 		}
 		
 		// Set skeleton index on mesh nodes that have skins
-		// Note: We don't set the parent here - _process_mesh_instances will handle
-		// moving the ImporterMeshInstance3D to be a child of the Skeleton3D in the generated scene tree
 		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
 			Ref<GLTFNode> node = p_state->nodes[node_i];
 			if (node->mesh >= 0 && node->skin >= 0) {
