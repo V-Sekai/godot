@@ -4407,7 +4407,7 @@ void GLTFDocument::_convert_skeleton_to_gltf(Skeleton3D *p_skeleton3d, Ref<GLTFS
 		joint_node->set_name(joint_name);
 		joint_node->transform = skeleton->get_bone_pose(bone_i);
 		joint_node->skeleton = skeleton_i;
-		joint_node->set_additional_data("GODOT_rest_transform", skeleton->get_bone_rest(bone_i));
+		//joint_node->set_additional_data("GODOT_rest_transform", skeleton->get_bone_rest(bone_i));
 		joint_node->joint = true;
 
 		if (p_skeleton3d->has_bone_meta(bone_i, "extras")) {

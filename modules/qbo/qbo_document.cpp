@@ -245,7 +245,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 										}
 										animation->track_set_imported(position_track, true);
 										animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-										//insertion = animation->position_track_insert_key(position_track, frame_time * static_cast<double>(i), position);
+										insertion = animation->position_track_insert_key(position_track, frame_time * static_cast<double>(i), position/* - r_skeletons.back()->get()->get_bone_rest(channels[bone_index][0]).origin*/);
 										j += 2;
 										channel_index += 2;
 										//print_verbose(position);
@@ -277,7 +277,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 										}
 										animation->track_set_imported(rotation_track, true);
 										animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-										insertion = animation->rotation_track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
+										insertion = animation->rotation_track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation/*.inverse() * r_skeletons.back()->get()->get_bone_rest(channels[bone_index][0]).get_basis().get_rotation_quaternion()*/);
 										j += 3;
 										channel_index += 3;
 										//print_verbose(rotation);
@@ -438,26 +438,20 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 					ERR_FAIL_COND_V(r_skeletons.is_empty() || bones.is_empty() || offsets.is_empty() || orientations.is_empty() || channels.is_empty(), ERR_FILE_CORRUPT);
 					int bone = bones[bones.size() - 1];
 					Transform3D rest;
-					Quaternion rotation;
 					Vector3 scale = Vector3(1.0, 1.0, 1.0);
 					Vector3 offset = offsets[offsets.size() - 1];
 					Quaternion orientation = orientations[orientations.size() - 1];
 					bones.remove_at(bones.size() - 1);
 					offsets.remove_at(offsets.size() - 1);
 					orientations.remove_at(orientations.size() - 1);
-					rest.basis.set_quaternion_scale(rotation, scale);
+					//rest.basis.set_quaternion_scale(orientation, scale);
 					rest.origin = offset;
 					if (bone < r_skeletons.back()->get()->get_bone_count()) {
-						print_verbose(r_skeletons.back()->get()->get_bone_name(bone) + " @ " + String::num_int64(bone) + " = " + String(offset));
 						r_skeletons.back()->get()->set_bone_rest(bone, rest);
-						r_skeletons.back()->get()->set_bone_pose_position(bone, offset);
-						r_skeletons.back()->get()->set_bone_pose_rotation(bone, orientation);
-						r_skeletons.back()->get()->set_bone_pose_scale(bone, scale);
-					} else {
-						print_verbose(r_skeletons.back()->get()->get_bone_name(bone) + " @ " + String::num_int64(bone));
+						//r_skeletons.back()->get()->set_bone_pose_position(bone, offset);
+						//r_skeletons.back()->get()->set_bone_pose_rotation(bone, orientation);
+						//r_skeletons.back()->get()->set_bone_pose_scale(bone, scale);
 					}
-					print_verbose(String::num_int64(bones.size()));
-					//r_skeletons.back()->get()->set_bone_rest(bone, Transform3D(Basis(), offset));
 				}
 			}
 		}
@@ -529,7 +523,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								}
 								animation->track_set_imported(position_track, true);
 								animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-								//insertion = animation->position_track_insert_key(position_track, frame_time * static_cast<double>(i), position);
+								insertion = animation->position_track_insert_key(position_track, frame_time * static_cast<double>(i), position/* - r_skeletons.back()->get()->get_bone_rest(channels[bone_index][0]).origin*/);
 								j += 2;
 								channel_index += 2;
 								//print_verbose(position);
@@ -561,7 +555,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								}
 								animation->track_set_imported(rotation_track, true);
 								animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-								insertion = animation->rotation_track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
+								insertion = animation->rotation_track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation/*.inverse() * r_skeletons.back()->get()->get_bone_rest(channels[bone_index][0]).get_basis().get_rotation_quaternion()*/);
 								j += 3;
 								channel_index += 3;
 								//print_verbose(rotation);
@@ -574,7 +568,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 							break;
 					}
 					if (insertion < 0 && OS::get_singleton()->has_feature("debug")) {
-						//rint_verbose(String::num_int64(insertion) + " BVH track insertion");
+						//print_verbose(String::num_int64(insertion) + " BVH track insertion");
 					}
 				}
 			}
@@ -1148,6 +1142,11 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 				if (!skin.is_valid()) {
 					continue;
 				}
+#if 0
+				for (int i = 0; i < s->get_bone_count(); i++) {
+					s->set_bone_rest(i, Transform3D());
+				}
+#endif
 				skin->set_name("qboSkin");
 				scene->add_child(s, true);
 				s->set_owner(scene);
