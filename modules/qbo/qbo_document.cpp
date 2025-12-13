@@ -33,19 +33,25 @@
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "modules/gltf/skin_tool.h"
-#include "modules/gltf/structures/gltf_animation.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/surface_tool.h"
 
+// Legacy animation channel types (only used in deprecated _parse_motion function)
+#define BVH_X_POSITION 1
+#define BVH_Y_POSITION 2
+#define BVH_Z_POSITION 3
+#define BVH_X_ROTATION 4
+#define BVH_Y_ROTATION 5
+#define BVH_Z_ROTATION 6
+#define BVH_W_ROTATION 7
 
 // FIXME: Hardcoded to avoid editor dependency.
 #define QBO_IMPORT_GENERATE_TANGENT_ARRAYS 8
 #define QBO_IMPORT_USE_NAMED_SKIN_BINDS 16
 #define QBO_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 #define QBO_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
-
 
 Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation) {
 	bool motion = false;
@@ -112,7 +118,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 		}
 
 		if (motion) {
-		if (l.begins_with("HIERARCHY")) {
+			if (l.begins_with("HIERARCHY")) {
 				motion = false;
 			} else if (l.begins_with("Frame Time: ")) {
 				Vector<String> s = l.split(":");
@@ -172,8 +178,8 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								do {
 									bone_index++;
 									if (bone_index >= channels.size()) {
-							break;
-						}
+										break;
+									}
 								} while (channels[bone_index].size() < 2);
 								channel_index = 1;
 								if (bone_index >= channels.size()) {
@@ -280,7 +286,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 			}
 		} else if (l.begins_with("End ")) {
 			// End sites are not bones - just skip them
-				continue;
+			continue;
 		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
@@ -423,7 +429,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 			for (int i = 0; i < channels.size(); i++) {
 				//print_verbose(channels[i]);
 				if (channels[i].size() < 2) {
-				continue;
+					continue;
 				}
 				tracks[channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_POSITION_3D);
 				tracks[r_skeletons.back()->get()->get_bone_count() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
@@ -486,7 +492,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 2;
 								channel_index += 2;
 								//print_verbose(position);
-			} else {
+							} else {
 								print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -518,7 +524,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 								j += 3;
 								channel_index += 3;
 								//print_verbose(rotation);
-				} else {
+							} else {
 								print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
@@ -645,7 +651,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-		} else {
+			} else {
 				path = base_path.path_join(p);
 			}
 
@@ -665,7 +671,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 			String path;
 			if (p.is_absolute_path()) {
 				path = p;
-					} else {
+			} else {
 				path = base_path.path_join(p);
 			}
 
@@ -712,7 +718,7 @@ Error QBODocument::_parse_material_library(const String &p_path, HashMap<String,
 				r_missing_deps->push_back(path);
 			}
 		} else if (f->eof_reached()) {
-						break;
+			break;
 		}
 	}
 
@@ -754,11 +760,10 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 			bone_indices.clear();
 			offsets.clear();
 			orientations.clear();
-			channels.clear();
 			l = l.substr(5);
 			if (!l.is_empty()) {
 				bone_name += l;
-		} else {
+			} else {
 				bone_name += "ROOT";
 			}
 			if (!bone_name.is_empty()) {
@@ -766,7 +771,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				GLTFNodeIndex node_index = -1;
 				bool node_exists = r_bone_name_to_node.has(bone_name);
 				int bone_data_idx = -1;
-				
+
 				if (node_exists) {
 					// Node already exists - find existing BoneData
 					node_index = r_bone_name_to_node[bone_name];
@@ -793,11 +798,11 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
 					node->joint = true;
 					node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
-					
+
 					node_index = p_state->append_gltf_node(node, nullptr, -1);
 					r_bone_name_to_node[bone_name] = node_index;
 					r_root_nodes.push_back(node_index);
-					
+
 					// Create new BoneData
 					BoneData bone_data;
 					bone_data.name = bone_name;
@@ -809,7 +814,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					r_bone_data.push_back(bone_data);
 					bone_data_idx = r_bone_data.size() - 1;
 				}
-				
+
 				// Track in bone_indices for closing brace processing
 				if (bone_data_idx >= 0) {
 					bone_indices.push_back(bone_data_idx);
@@ -824,7 +829,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 			// End sites are just markers, not actual bones - skip them
 			in_end_site = true;
 			continue;
-				} else {
+		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
 				s = l.split(" ");
@@ -857,7 +862,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					}
 					if (orientations.is_empty()) {
 						orientations.append(orientation);
-		} else {
+					} else {
 						orientations.set(orientations.size() - 1, orientation);
 					}
 				} else if (s[0].casecmp_to("CHANNELS") == 0) {
@@ -866,12 +871,12 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
 					int parent_bone_idx = bone_indices[bone_indices.size() - 1];
 					String bone_name = s[1];
-					
+
 					// Find existing GLTFNode by original name or create if it doesn't exist
 					GLTFNodeIndex node_index = -1;
 					GLTFNodeIndex parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
 					int bone_data_idx = -1;
-					
+
 					if (r_bone_name_to_node.has(bone_name)) {
 						// Node already exists - find existing BoneData
 						node_index = r_bone_name_to_node[bone_name];
@@ -918,10 +923,10 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 						node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
 						node->joint = true;
 						node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
-						
+
 						node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
 						r_bone_name_to_node[bone_name] = node_index;
-						
+
 						// Create new BoneData
 						BoneData bone_data;
 						bone_data.name = bone_name;
@@ -933,7 +938,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 						r_bone_data.push_back(bone_data);
 						bone_data_idx = r_bone_data.size() - 1;
 					}
-					
+
 					// Track in bone_indices for closing brace processing
 					if (bone_data_idx >= 0) {
 						bone_indices.push_back(bone_data_idx);
@@ -957,12 +962,12 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					bone_indices.remove_at(bone_indices.size() - 1);
 					offsets.remove_at(offsets.size() - 1);
 					orientations.remove_at(orientations.size() - 1);
-					
+
 					// Store global orientation first (will convert to local in second pass)
 					// ORIENT in QBO/BVH is typically in global space
 					r_bone_data.write[bone_idx].offset = offset;
 					r_bone_data.write[bone_idx].orientation = orientation; // Store global orientation for now
-					
+
 					// For now, use global orientation for rest transform
 					// We'll convert to local space in a second pass after all bones are parsed
 					Transform3D rest;
@@ -970,7 +975,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					rest.basis.set_quaternion_scale(orientation, scale);
 					rest.origin = offset;
 					r_bone_data.write[bone_idx].rest_transform = rest;
-					
+
 					// Update GLTFNode transform (will be updated in second pass with local orientation)
 					GLTFNodeIndex node_index = r_bone_data[bone_idx].gltf_node_index;
 					Ref<GLTFNode> node = p_state->nodes[node_index];
@@ -988,18 +993,18 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	// Parse OBJ section and create GLTFMesh and GLTFSkin directly in GLTFState
 	// This reuses the OBJ parsing logic but converts to GLTFMesh instead of ImporterMesh
 	// and creates GLTFSkin from vertex weights using bone name to GLTFNode mapping
-	
+
 	// First pass: Scan for weights to determine if we need 8 weights per vertex
 	uint64_t file_start_pos = f->get_position();
 	int max_weights_per_vertex = 0;
 	bool in_hierarchy_scan = false;
 	bool in_motion_scan = false;
-	
+
 	while (true) {
 		String l = f->get_line().strip_edges();
 		if (f->eof_reached()) {
-						break;
-					}
+			break;
+		}
 
 		// Skip HIERARCHY and MOTION sections
 		if (l.begins_with("HIERARCHY")) {
@@ -1014,7 +1019,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 		if (in_hierarchy_scan || in_motion_scan) {
 			continue;
 		}
-		
+
 		// Count weights per vertex
 		if (l.begins_with("vw ") && !p_bone_name_to_node.is_empty()) {
 			Vector<String> v = l.split(" ", false);
@@ -1033,17 +1038,17 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			}
 		}
 	}
-	
+
 	// Reset file position for actual parsing
 	f->seek(file_start_pos);
-	
+
 	Ref<ImporterMesh> importer_mesh;
 	importer_mesh.instantiate();
-	
+
 	bool generate_tangents = p_generate_tangents;
 	Vector3 scale_mesh = Vector3(1.0, 1.0, 1.0);
 	Vector3 offset_mesh = Vector3(0.0, 0.0, 0.0);
-	
+
 	Vector<HashMap<String, float>> weights; // Vertex weights: bone name -> weight
 	Vector<Vector3> vertices;
 	Vector<Vector3> normals;
@@ -1051,16 +1056,16 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	Vector<Color> colors;
 	const String default_name = "QBO";
 	String name = default_name;
-	
-		// Track bone names used in weights to determine skin joint order
-		HashSet<String> used_bone_names;
-		// Mapping from bone name to joint index in skin (created when we first process faces)
-		// This is still needed for skin creation (skins use joint indices)
-		HashMap<String, int> bone_name_to_joint_index;
-		bool bone_mapping_created = false;
-	
+
+	// Track bone names used in weights to determine skin joint order
+	HashSet<String> used_bone_names;
+	// Mapping from bone name to joint index in skin (created when we first process faces)
+	// This is still needed for skin creation (skins use joint indices)
+	HashMap<String, int> bone_name_to_joint_index;
+	bool bone_mapping_created = false;
+
 	HashMap<String, HashMap<String, Ref<StandardMaterial3D>>> material_map;
-	
+
 	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
 	// Set skin weight count based on scan results
 	SurfaceTool::SkinWeightCount skin_weight_count = (max_weights_per_vertex > 4) ? SurfaceTool::SKIN_8_WEIGHTS : SurfaceTool::SKIN_4_WEIGHTS;
@@ -1075,27 +1080,27 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 	uint32_t smooth_group = 0;
 	bool smoothing = true;
 	const uint32_t no_smoothing_smooth_group = (uint32_t)-1;
-	
+
 	// Skip HIERARCHY and MOTION sections (already parsed)
 	bool in_hierarchy = false;
 	bool in_motion = false;
-	
+
 	while (true) {
 		String l = f->get_line().strip_edges();
 		while (l.length() && l[l.length() - 1] == '\\') {
 			String add = f->get_line().strip_edges();
 			l += add;
 			if (add.is_empty()) {
-						break;
+				break;
 			}
 		}
-		
+
 		// Check for EOF - if EOF reached, process it before breaking
 		bool is_eof = f->eof_reached();
-		
+
 		if (l.is_empty() && !is_eof) {
-							continue;
-						}
+			continue;
+		}
 		if (l.begins_with("#")) {
 			continue;
 		}
@@ -1119,7 +1124,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				continue;
 			}
 		}
-		
+
 		if (l.begins_with("v ")) {
 			//vertex
 			Vector<String> v = l.split(" ", false);
@@ -1141,16 +1146,16 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				colors.push_back(c);
 			} else if (!colors.is_empty()) {
 				colors.push_back(Color(1.0, 1.0, 1.0));
-				}
-			} else if (l.begins_with("vt ")) {
+			}
+		} else if (l.begins_with("vt ")) {
 			//uv
 			Vector<String> v = l.split(" ", false);
 			ERR_FAIL_COND_V(v.size() < 3, ERR_FILE_CORRUPT);
 			Vector2 uv;
 			uv.x = v[1].to_float();
 			uv.y = 1.0 - v[2].to_float();
-				uvs.push_back(uv);
-			} else if (l.begins_with("vn ")) {
+			uvs.push_back(uv);
+		} else if (l.begins_with("vn ")) {
 			//normal
 			Vector<String> v = l.split(" ", false);
 			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
@@ -1159,7 +1164,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			nrm.y = v[2].to_float();
 			nrm.z = v[3].to_float();
 			normals.push_back(nrm);
-			} else if (l.begins_with("vw ")) {
+		} else if (l.begins_with("vw ")) {
 			//weight - store for later GLTFSkin creation
 			Vector<String> v = l.split(" ", false);
 			if (p_bone_name_to_node.is_empty()) {
@@ -1183,7 +1188,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				String b = v[i];
 				float w = v[i + 1].to_float();
 				// Validate bone name exists in bone mapping
-					if (!p_bone_name_to_node.has(b)) {
+				if (!p_bone_name_to_node.has(b)) {
 					print_line(vformat("QBO: WARNING - Bone name '%s' not found in p_bone_name_to_node", b));
 					continue; // Skip invalid bone names
 				}
@@ -1203,7 +1208,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			} else {
 				print_line(weight_log);
 			}
-			} else if (l.begins_with("f ")) {
+		} else if (l.begins_with("f ")) {
 			// Create mapping from bone name to joint index in skin when we first process a face
 			// This ensures we've seen all weights before creating the mapping
 			// The mapping must match the skin joint order (based on p_bone_data order)
@@ -1217,27 +1222,27 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 				bone_mapping_created = true;
 			}
-			
+
 			//face - reuse existing face parsing logic
 			Vector<String> v = l.split(" ", false);
 			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
-			
+
 			Vector<String> face[3];
 			face[0] = v[1].split("/");
 			face[1] = v[2].split("/");
 			ERR_FAIL_COND_V(face[0].is_empty(), ERR_FILE_CORRUPT);
 			ERR_FAIL_COND_V(face[0].size() != face[1].size(), ERR_FILE_CORRUPT);
-			
+
 			for (int i = 2; i < v.size() - 1; i++) {
 				face[2] = v[i + 1].split("/");
 				ERR_FAIL_COND_V(face[0].size() != face[2].size(), ERR_FILE_CORRUPT);
-				
+
 				for (int j = 0; j < 3; j++) {
 					int idx = j;
 					if (idx < 2) {
 						idx = 1 ^ idx;
 					}
-					
+
 					if (face[idx].size() >= 3) {
 						int norm = face[idx][2].to_int() - 1;
 						if (norm < 0) {
@@ -1249,12 +1254,12 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							Vector3 tan = Vector3(normals[norm].z, -normals[norm].x, normals[norm].y).cross(normals[norm].normalized()).normalized();
 							surf_tool->set_tangent(Plane(tan.x, tan.y, tan.z, 1.0));
 						}
-			} else {
+					} else {
 						if (generate_tangents && uvs.is_empty()) {
 							surf_tool->set_tangent(Plane(1.0, 0.0, 0.0, 1.0));
 						}
 					}
-					
+
 					if (face[idx].size() >= 2 && !face[idx][1].is_empty()) {
 						int uv = face[idx][1].to_int() - 1;
 						if (uv < 0) {
@@ -1263,32 +1268,32 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						ERR_FAIL_INDEX_V(uv, uvs.size(), ERR_FILE_CORRUPT);
 						surf_tool->set_uv(uvs[uv]);
 					}
-					
+
 					int vtx = face[idx][0].to_int() - 1;
 					if (vtx < 0) {
 						vtx += vertices.size() + 1;
 					}
 					ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
-					
+
 					Vector3 vertex = vertices[vtx];
 					if (!colors.is_empty()) {
 						surf_tool->set_color(colors[vtx]);
 					}
-					
+
 					// Set bones and weights for this vertex
 					// If we have any weights in the mesh, we must set bones/weights on ALL vertices
 					// to ensure the format flag is set and the mesh is detected as rigged
 					// Use skeleton bone indices directly (from p_bone_name_to_skeleton_bone_index)
 					if (!weights.is_empty() && (!p_bone_name_to_skeleton_bone_index.is_empty() || bone_mapping_created)) {
 						if (vtx == 0) {
-							print_line(vformat("QBO: Setting weights on vertex %d: weights.size()=%d, p_bone_name_to_skeleton_bone_index.size()=%d, bone_mapping_created=%s", 
-								vtx, weights.size(), p_bone_name_to_skeleton_bone_index.size(), bone_mapping_created ? "true" : "false"));
+							print_line(vformat("QBO: Setting weights on vertex %d: weights.size()=%d, p_bone_name_to_skeleton_bone_index.size()=%d, bone_mapping_created=%s",
+									vtx, weights.size(), p_bone_name_to_skeleton_bone_index.size(), bone_mapping_created ? "true" : "false"));
 						}
 						bool has_weights = (vtx < weights.size() && !weights.get(vtx).is_empty());
 						if (vtx == 0) {
-							print_line(vformat("QBO: Vertex %d has_weights=%s, vtx < weights.size()=%s, weights.get(vtx).is_empty()=%s", 
-								vtx, has_weights ? "true" : "false", (vtx < weights.size()) ? "true" : "false", 
-								(vtx < weights.size()) ? (weights.get(vtx).is_empty() ? "true" : "false") : "N/A"));
+							print_line(vformat("QBO: Vertex %d has_weights=%s, vtx < weights.size()=%s, weights.get(vtx).is_empty()=%s",
+									vtx, has_weights ? "true" : "false", (vtx < weights.size()) ? "true" : "false",
+									(vtx < weights.size()) ? (weights.get(vtx).is_empty() ? "true" : "false") : "N/A"));
 						}
 						if (has_weights) {
 							// Collect bone indices and weights
@@ -1312,8 +1317,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							}
 							for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 								if (itr->key.is_empty()) {
-							continue;
-						}
+									continue;
+								}
 								if (vtx == 0) {
 									print_line(vformat("QBO: Processing weight for bone '%s' = %.3f", itr->key, itr->value));
 								}
@@ -1345,27 +1350,27 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 									}
 								}
 							}
-							
+
 							if (vtx == 0) {
 								print_line(vformat("QBO: Vertex %d bone_weight_pairs.size()=%d", vtx, bone_weight_pairs.size()));
 							}
-							
+
 							if (!bone_weight_pairs.is_empty()) {
 								// Sort by weight (descending) to keep highest weights
 								bone_weight_pairs.sort();
-								
+
 								// Limit to 4 or 8 weights based on skin weight count
 								int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
 								if (bone_weight_pairs.size() > max_weights) {
 									bone_weight_pairs.resize(max_weights);
 								}
-								
+
 								// Normalize weights
 								float total_weight = 0.0f;
 								for (int i = 0; i < bone_weight_pairs.size(); i++) {
 									total_weight += bone_weight_pairs[i].weight;
 								}
-								
+
 								Vector<int> bone_indices_vec;
 								Vector<float> weight_vec;
 								if (total_weight > 0.0f) {
@@ -1374,14 +1379,14 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 										weight_vec.append(bone_weight_pairs[i].weight / total_weight);
 									}
 								}
-								
+
 								// Pad to required size (4 or 8)
 								int required_size = max_weights;
 								while (bone_indices_vec.size() < required_size) {
 									bone_indices_vec.append(0);
 									weight_vec.append(0.0f);
 								}
-								
+
 								surf_tool->set_bones(bone_indices_vec);
 								surf_tool->set_weights(weight_vec);
 								// Log vertex weighting
@@ -1399,7 +1404,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 								weight_log += "]";
 								print_line(bone_log);
 								print_line(weight_log);
-			} else {
+							} else {
 								// Vertex has no weights, but mesh is rigged - pad with zeros
 								int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
 								Vector<int> bone_indices_vec;
@@ -1412,8 +1417,8 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 								}
 								surf_tool->set_bones(bone_indices_vec);
 								surf_tool->set_weights(weight_vec);
-			}
-		} else {
+							}
+						} else {
 							// Vertex index out of range or no weights for this vertex, but mesh is rigged - pad with zeros
 							int max_weights = (surf_tool->get_skin_weight_count() == SurfaceTool::SKIN_8_WEIGHTS) ? 8 : 4;
 							Vector<int> bone_indices_vec;
@@ -1442,7 +1447,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			bool do_smooth;
 			if (what == "off") {
 				do_smooth = false;
-		} else {
+			} else {
 				do_smooth = true;
 			}
 			if (do_smooth) {
@@ -1458,28 +1463,28 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
 					material = material_map[current_material_library][current_material];
 				}
-				
+
 				// Generate normals if they don't exist
 				if (normals.is_empty()) {
 					surf_tool->generate_normals();
 				}
-				
+
 				// Generate tangents if needed
 				if (generate_tangents && !uvs.is_empty()) {
 					surf_tool->generate_tangents();
 				}
-				
+
 				// Index the mesh for better performance
 				surf_tool->index();
-				
+
 				uint32_t mesh_flags = 0;
 				if (!p_disable_compression) {
 					mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 				}
 				// Note: Octahedral compression is handled automatically by Godot
-				
+
 				Array array = surf_tool->commit_to_arrays();
-				
+
 				if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents) {
 					Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
 					Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
@@ -1490,9 +1495,9 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						}
 					}
 				}
-				
+
 				importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
-				
+
 				if (!current_material.is_empty()) {
 					if (importer_mesh->get_surface_count() >= 1) {
 						importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_material.get_basename());
@@ -1502,7 +1507,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_group);
 					}
 				}
-				
+
 				surf_tool->clear();
 				// Restore skin weight count after clear (clear resets it to SKIN_4_WEIGHTS)
 				if (skin_weight_count == SurfaceTool::SKIN_8_WEIGHTS) {
@@ -1518,28 +1523,28 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
 					material = material_map[current_material_library][current_material];
 				}
-				
+
 				// Generate normals if they don't exist
 				if (normals.is_empty()) {
 					surf_tool->generate_normals();
 				}
-				
+
 				// Generate tangents if needed
 				if (generate_tangents && !uvs.is_empty()) {
 					surf_tool->generate_tangents();
 				}
-				
+
 				// Index the mesh for better performance
-		surf_tool->index();
+				surf_tool->index();
 
 				uint32_t mesh_flags = 0;
 				if (!p_disable_compression) {
 					mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 				}
 				// Note: Octahedral compression is handled automatically by Godot
-				
+
 				Array array = surf_tool->commit_to_arrays();
-				
+
 				if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents) {
 					Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
 					Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
@@ -1550,9 +1555,9 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						}
 					}
 				}
-				
+
 				importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
-				
+
 				if (!current_material.is_empty()) {
 					if (importer_mesh->get_surface_count() >= 1) {
 						importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_material.get_basename());
@@ -1562,7 +1567,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 						importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_group);
 					}
 				}
-				
+
 				surf_tool->clear();
 				// Restore skin weight count after clear (clear resets it to SKIN_4_WEIGHTS)
 				if (skin_weight_count == SurfaceTool::SKIN_8_WEIGHTS) {
@@ -1570,13 +1575,13 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 				}
 				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 			}
-			
+
 			// Create mesh node if we have surfaces (when we see 'o', finish previous mesh)
 			// Check both importer_mesh (previous object) and surf_tool (current object)
 			// to ensure we create a mesh even if surfaces were just committed
 			bool has_surfaces = importer_mesh->get_surface_count() > 0;
 			bool has_pending_vertices = surf_tool->get_vertex_array().size() > 0;
-			
+
 			if (has_surfaces || has_pending_vertices) {
 				// If we have pending vertices but no surfaces yet, commit them first
 				if (has_pending_vertices && !has_surfaces) {
@@ -1584,27 +1589,27 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 					if (!current_material.is_empty() && material_map.has(current_material_library) && material_map[current_material_library].has(current_material)) {
 						material = material_map[current_material_library][current_material];
 					}
-					
+
 					// Generate normals if they don't exist
-		if (normals.is_empty()) {
-			surf_tool->generate_normals();
-		}
-					
+					if (normals.is_empty()) {
+						surf_tool->generate_normals();
+					}
+
 					// Generate tangents if needed
 					if (generate_tangents && !uvs.is_empty()) {
-			surf_tool->generate_tangents();
-		}
+						surf_tool->generate_tangents();
+					}
 
 					// Index the mesh for better performance
 					surf_tool->index();
-					
+
 					uint32_t mesh_flags = 0;
 					if (!p_disable_compression) {
 						mesh_flags |= RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 					}
-					
+
 					Array array = surf_tool->commit_to_arrays();
-					
+
 					if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents) {
 						Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
 						Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
@@ -1615,9 +1620,9 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							}
 						}
 					}
-					
+
 					importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
-					
+
 					if (!current_material.is_empty()) {
 						if (importer_mesh->get_surface_count() >= 1) {
 							importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_material.get_basename());
@@ -1627,155 +1632,155 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 							importer_mesh->set_surface_name(importer_mesh->get_surface_count() - 1, current_group);
 						}
 					}
-					
+
 					surf_tool->clear();
 					surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 				}
-				
+
 				// Now create mesh node if we have surfaces
 				if (importer_mesh->get_surface_count() > 0) {
 					importer_mesh->set_name(name);
-				// Convert ImporterMesh to GLTFMesh
-				Ref<GLTFMesh> gltf_mesh;
-				gltf_mesh.instantiate();
-				if (!importer_mesh->get_name().is_empty()) {
-					gltf_mesh->set_original_name(importer_mesh->get_name());
-					gltf_mesh->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
-				}
-				gltf_mesh->set_mesh(importer_mesh);
-				GLTFMeshIndex mesh_index = p_state->meshes.size();
-		p_state->meshes.push_back(gltf_mesh);
-				
-				// Create GLTFNode for mesh
-				Ref<GLTFNode> mesh_node;
-				mesh_node.instantiate();
-				mesh_node->set_original_name(importer_mesh->get_name());
-				mesh_node->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
-				mesh_node->mesh = mesh_index;
-				mesh_node->transform = Transform3D();
-				
-				// Create GLTFSkin if we have bones/joints (always create for meshes with joints)
-				GLTFNodeIndex skeleton_root_node = -1;
-				if (!p_bone_name_to_node.is_empty()) {
-					Ref<GLTFSkin> gltf_skin;
-					gltf_skin.instantiate();
-					gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
-					
-					// Use the function-level used_bone_names that was populated during vw parsing
-					// No need to re-collect - it's already been tracked
-					
-					// Create joints and inverse binds from bone data
-					HashMap<String, GLTFNodeIndex> bone_name_to_gltf_node;
-					for (int i = 0; i < p_bone_data.size(); i++) {
-						bone_name_to_gltf_node[p_bone_data[i].name] = p_bone_data[i].gltf_node_index;
+					// Convert ImporterMesh to GLTFMesh
+					Ref<GLTFMesh> gltf_mesh;
+					gltf_mesh.instantiate();
+					if (!importer_mesh->get_name().is_empty()) {
+						gltf_mesh->set_original_name(importer_mesh->get_name());
+						gltf_mesh->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
 					}
-					
-					// Determine which nodes to include in the skin
-					HashSet<GLTFNodeIndex> nodes_to_include;
-					if (!used_bone_names.is_empty()) {
-						// We have weights - include only bones with weights and their ancestors
+					gltf_mesh->set_mesh(importer_mesh);
+					GLTFMeshIndex mesh_index = p_state->meshes.size();
+					p_state->meshes.push_back(gltf_mesh);
+
+					// Create GLTFNode for mesh
+					Ref<GLTFNode> mesh_node;
+					mesh_node.instantiate();
+					mesh_node->set_original_name(importer_mesh->get_name());
+					mesh_node->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
+					mesh_node->mesh = mesh_index;
+					mesh_node->transform = Transform3D();
+
+					// Create GLTFSkin if we have bones/joints (always create for meshes with joints)
+					GLTFNodeIndex skeleton_root_node = -1;
+					if (!p_bone_name_to_node.is_empty()) {
+						Ref<GLTFSkin> gltf_skin;
+						gltf_skin.instantiate();
+						gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
+
+						// Use the function-level used_bone_names that was populated during vw parsing
+						// No need to re-collect - it's already been tracked
+
+						// Create joints and inverse binds from bone data
+						HashMap<String, GLTFNodeIndex> bone_name_to_gltf_node;
 						for (int i = 0; i < p_bone_data.size(); i++) {
-							if (used_bone_names.has(p_bone_data[i].name)) {
-								// Add this bone and all its ancestors
-								int bone_idx = i;
-								while (bone_idx >= 0) {
-									GLTFNodeIndex node_index = p_bone_data[bone_idx].gltf_node_index;
-									nodes_to_include.insert(node_index);
-									bone_idx = p_bone_data[bone_idx].parent_bone_index;
+							bone_name_to_gltf_node[p_bone_data[i].name] = p_bone_data[i].gltf_node_index;
+						}
+
+						// Determine which nodes to include in the skin
+						HashSet<GLTFNodeIndex> nodes_to_include;
+						if (!used_bone_names.is_empty()) {
+							// We have weights - include only bones with weights and their ancestors
+							for (int i = 0; i < p_bone_data.size(); i++) {
+								if (used_bone_names.has(p_bone_data[i].name)) {
+									// Add this bone and all its ancestors
+									int bone_idx = i;
+									while (bone_idx >= 0) {
+										GLTFNodeIndex node_index = p_bone_data[bone_idx].gltf_node_index;
+										nodes_to_include.insert(node_index);
+										bone_idx = p_bone_data[bone_idx].parent_bone_index;
+									}
 								}
 							}
+						} else {
+							// No weights - include all bones in the hierarchy
+							for (int i = 0; i < p_bone_data.size(); i++) {
+								GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
+								nodes_to_include.insert(node_index);
+							}
 						}
-				} else {
-						// No weights - include all bones in the hierarchy
+
+						// Add joints to skin (in order of bone_data to maintain hierarchy)
 						for (int i = 0; i < p_bone_data.size(); i++) {
-							GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
-							nodes_to_include.insert(node_index);
-						}
-					}
-					
-					// Add joints to skin (in order of bone_data to maintain hierarchy)
-					for (int i = 0; i < p_bone_data.size(); i++) {
-						if (nodes_to_include.has(p_bone_data[i].gltf_node_index)) {
-							GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
-							// Add to joints_original if it has weights (for inverse binds), or if no weights at all (include all)
-							if (used_bone_names.is_empty() || used_bone_names.has(p_bone_data[i].name)) {
-								gltf_skin->joints_original.push_back(node_index);
-								// Calculate inverse bind matrix from rest transform
-								Transform3D rest = p_bone_data[i].rest_transform;
-								Transform3D inverse_bind = rest.affine_inverse();
-								gltf_skin->inverse_binds.push_back(inverse_bind);
-							}
-							// Add to joints if it's a joint node, otherwise it will be added to non_joints by _expand_skin
-							if (p_state->nodes[node_index]->joint) {
-								if (!gltf_skin->joints.has(node_index)) {
-									gltf_skin->joints.push_back(node_index);
+							if (nodes_to_include.has(p_bone_data[i].gltf_node_index)) {
+								GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
+								// Add to joints_original if it has weights (for inverse binds), or if no weights at all (include all)
+								if (used_bone_names.is_empty() || used_bone_names.has(p_bone_data[i].name)) {
+									gltf_skin->joints_original.push_back(node_index);
+									// Calculate inverse bind matrix from rest transform
+									Transform3D rest = p_bone_data[i].rest_transform;
+									Transform3D inverse_bind = rest.affine_inverse();
+									gltf_skin->inverse_binds.push_back(inverse_bind);
 								}
-							}
-							
-							// Mark as root if no parent and remember first root bone
-							if (p_bone_data[i].parent_bone_index < 0) {
-								gltf_skin->roots.push_back(node_index);
-								if (skeleton_root_node < 0) {
-									skeleton_root_node = node_index;
+								// Add to joints if it's a joint node, otherwise it will be added to non_joints by _expand_skin
+								if (p_state->nodes[node_index]->joint) {
+									if (!gltf_skin->joints.has(node_index)) {
+										gltf_skin->joints.push_back(node_index);
+									}
+								}
+
+								// Mark as root if no parent and remember first root bone
+								if (p_bone_data[i].parent_bone_index < 0) {
+									gltf_skin->roots.push_back(node_index);
+									if (skeleton_root_node < 0) {
+										skeleton_root_node = node_index;
+									}
 								}
 							}
 						}
-					}
-					
-					// Set skin_root to first root bone
-					if (!gltf_skin->roots.is_empty()) {
-						gltf_skin->skin_root = gltf_skin->roots[0];
-					}
-					
-					// Add skin to state
-					GLTFSkinIndex skin_index = p_state->skins.size();
-					p_state->skins.push_back(gltf_skin);
-					
-					// Expand and verify the skin (like FBXDocument does)
-					// This will include all nodes in the subtree, not just bones with weights
-					// Save the ancestors we added to joints before _expand_skin
-					HashSet<GLTFNodeIndex> ancestors_in_joints;
-					for (GLTFNodeIndex node_index : gltf_skin->joints) {
-						if (nodes_to_include.has(node_index) && !used_bone_names.has(p_state->nodes[node_index]->get_original_name())) {
-							// This is an ancestor (in nodes_to_include but not in used_bone_names)
-							ancestors_in_joints.insert(node_index);
+
+						// Set skin_root to first root bone
+						if (!gltf_skin->roots.is_empty()) {
+							gltf_skin->skin_root = gltf_skin->roots[0];
 						}
-					}
-					
-					Error skin_err = SkinTool::_expand_skin(p_state->nodes, gltf_skin);
-					ERR_FAIL_COND_V(skin_err != OK, skin_err);
-					
-					// Ensure ancestors are still in joints after _expand_skin
-					for (GLTFNodeIndex ancestor_node : ancestors_in_joints) {
-						if (p_state->nodes[ancestor_node]->joint && !gltf_skin->joints.has(ancestor_node)) {
-							gltf_skin->joints.push_back(ancestor_node);
+
+						// Add skin to state
+						GLTFSkinIndex skin_index = p_state->skins.size();
+						p_state->skins.push_back(gltf_skin);
+
+						// Expand and verify the skin (like FBXDocument does)
+						// This will include all nodes in the subtree, not just bones with weights
+						// Save the ancestors we added to joints before _expand_skin
+						HashSet<GLTFNodeIndex> ancestors_in_joints;
+						for (GLTFNodeIndex node_index : gltf_skin->joints) {
+							if (nodes_to_include.has(node_index) && !used_bone_names.has(p_state->nodes[node_index]->get_original_name())) {
+								// This is an ancestor (in nodes_to_include but not in used_bone_names)
+								ancestors_in_joints.insert(node_index);
+							}
 						}
+
+						Error skin_err = SkinTool::_expand_skin(p_state->nodes, gltf_skin);
+						ERR_FAIL_COND_V(skin_err != OK, skin_err);
+
+						// Ensure ancestors are still in joints after _expand_skin
+						for (GLTFNodeIndex ancestor_node : ancestors_in_joints) {
+							if (p_state->nodes[ancestor_node]->joint && !gltf_skin->joints.has(ancestor_node)) {
+								gltf_skin->joints.push_back(ancestor_node);
+							}
+						}
+
+						skin_err = SkinTool::_verify_skin(p_state->nodes, gltf_skin);
+						ERR_FAIL_COND_V(skin_err != OK, skin_err);
+
+						// Set skin on mesh node
+						mesh_node->skin = skin_index;
+						// Skeleton will be set after SkinTool determines it
 					}
-					
-					skin_err = SkinTool::_verify_skin(p_state->nodes, gltf_skin);
-					ERR_FAIL_COND_V(skin_err != OK, skin_err);
-					
-					// Set skin on mesh node
-					mesh_node->skin = skin_index;
-					// Skeleton will be set after SkinTool determines it
-				}
-				
-				// Add mesh node to scene as root node
-				// append_gltf_node with parent=-1 already adds to root_nodes, so no need to push_back again
-				GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
-				
+
+					// Add mesh node to scene as root node
+					// append_gltf_node with parent=-1 already adds to root_nodes, so no need to push_back again
+					GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
+
 					// Reset importer_mesh for next mesh group
 					importer_mesh.instantiate();
 				}
 			}
-			
+
 			// Handle object name and reset state for new object
 			if (l.begins_with("o ")) {
 				name = l.substr(2, l.length()).strip_edges();
 				current_group = "";
 				current_material = "";
 			}
-			
+
 			if (is_eof) {
 				break;
 			}
@@ -1801,107 +1806,7 @@ Error QBODocument::_parse_obj_to_gltf(Ref<FileAccess> f, const String &p_base_pa
 			}
 		}
 	}
-	
-	// Handle final mesh if any
-	if (importer_mesh->get_surface_count() > 0) {
-		importer_mesh->set_name(name);
-		Ref<GLTFMesh> gltf_mesh;
-		gltf_mesh.instantiate();
-		if (!importer_mesh->get_name().is_empty()) {
-			gltf_mesh->set_original_name(importer_mesh->get_name());
-			gltf_mesh->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
-		}
-		gltf_mesh->set_mesh(importer_mesh);
-		GLTFMeshIndex mesh_index = p_state->meshes.size();
-		p_state->meshes.push_back(gltf_mesh);
 
-			Ref<GLTFNode> mesh_node;
-			mesh_node.instantiate();
-		mesh_node->set_original_name(importer_mesh->get_name());
-		mesh_node->set_name(_gen_unique_name_static(p_state->unique_names, importer_mesh->get_name()));
-		mesh_node->mesh = mesh_index;
-		mesh_node->transform = Transform3D();
-		
-		// Create GLTFSkin if we have bones/joints (always create for meshes with joints)
-		GLTFNodeIndex skeleton_root_node = -1;
-		if (!p_bone_name_to_node.is_empty()) {
-			Ref<GLTFSkin> gltf_skin;
-			gltf_skin.instantiate();
-			gltf_skin->set_name(_gen_unique_name_static(p_state->unique_names, "qboSkin"));
-			
-			// Determine which nodes to include in the skin
-			HashSet<GLTFNodeIndex> nodes_to_include;
-			if (!used_bone_names.is_empty()) {
-				// We have weights - include only bones with weights and their ancestors
-				for (int i = 0; i < p_bone_data.size(); i++) {
-					if (used_bone_names.has(p_bone_data[i].name)) {
-						// Add this bone and all its ancestors
-						int bone_idx = i;
-						while (bone_idx >= 0) {
-							GLTFNodeIndex node_index = p_bone_data[bone_idx].gltf_node_index;
-							nodes_to_include.insert(node_index);
-							bone_idx = p_bone_data[bone_idx].parent_bone_index;
-						}
-					}
-				}
-			} else {
-				// No weights - include all bones in the hierarchy
-				for (int i = 0; i < p_bone_data.size(); i++) {
-					GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
-					nodes_to_include.insert(node_index);
-				}
-			}
-			
-			// Add joints to skin (in order of bone_data to maintain hierarchy)
-			for (int i = 0; i < p_bone_data.size(); i++) {
-				if (nodes_to_include.has(p_bone_data[i].gltf_node_index)) {
-					GLTFNodeIndex node_index = p_bone_data[i].gltf_node_index;
-					// Add to joints_original if it has weights (for inverse binds), or if no weights at all (include all)
-					if (used_bone_names.is_empty() || used_bone_names.has(p_bone_data[i].name)) {
-						gltf_skin->joints_original.push_back(node_index);
-						// Calculate inverse bind matrix from rest transform
-						Transform3D rest = p_bone_data[i].rest_transform;
-						Transform3D inverse_bind = rest.affine_inverse();
-						gltf_skin->inverse_binds.push_back(inverse_bind);
-					}
-					// Add to joints if it's a joint node, otherwise it will be added to non_joints by _expand_skin
-					if (p_state->nodes[node_index]->joint) {
-						if (!gltf_skin->joints.has(node_index)) {
-							gltf_skin->joints.push_back(node_index);
-						}
-					}
-					
-					if (p_bone_data[i].parent_bone_index < 0) {
-						gltf_skin->roots.push_back(node_index);
-						if (skeleton_root_node < 0) {
-							skeleton_root_node = node_index;
-						}
-					}
-				}
-			}
-			
-			if (!gltf_skin->roots.is_empty()) {
-				gltf_skin->skin_root = gltf_skin->roots[0];
-			}
-			
-			GLTFSkinIndex skin_index = p_state->skins.size();
-			p_state->skins.push_back(gltf_skin);
-			
-			// Expand and verify the skin (like FBXDocument does)
-			// This will include all nodes in the subtree, not just bones with weights
-			Error skin_err = SkinTool::_expand_skin(p_state->nodes, gltf_skin);
-			ERR_FAIL_COND_V(skin_err != OK, skin_err);
-			skin_err = SkinTool::_verify_skin(p_state->nodes, gltf_skin);
-			ERR_FAIL_COND_V(skin_err != OK, skin_err);
-			
-			mesh_node->skin = skin_index;
-		}
-		
-		// Add mesh node to scene as root node
-		// append_gltf_node with parent=-1 already adds to root_nodes, so no need to push_back again
-		GLTFNodeIndex mesh_node_index = p_state->append_gltf_node(mesh_node, nullptr, -1);
-	}
-	
 	return OK;
 }
 
@@ -2015,8 +1920,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 				for (int j = 0; j < r_skeletons.size(); j++) {
 					if (r_skeletons.get(j)->find_bone(b) > -1) {
 						bone_found = true;
-					break;
-				}
+						break;
+					}
 				}
 				ERR_FAIL_COND_V(!bone_found, ERR_FILE_CORRUPT);
 				// Only store weight if bone is valid
@@ -2064,8 +1969,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 							// We can't generate tangents without UVs, so create dummy tangents.
 							Vector3 tan = Vector3(normals[norm].z, -normals[norm].x, normals[norm].y).cross(normals[norm].normalized()).normalized();
 							surf_tool->set_tangent(Plane(tan.x, tan.y, tan.z, 1.0));
-			}
-		} else {
+						}
+					} else {
 						// No normals, use a dummy tangent since normals and tangents will be generated.
 						if (generate_tangents && uvs.is_empty()) {
 							// We can't generate tangents without UVs, so create dummy tangents.
@@ -2097,8 +2002,8 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 						Vector<float> weight;
 						for (HashMap<String, float>::ConstIterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_empty()) {
-				continue;
-			}
+								continue;
+							}
 							if (itr->key.is_numeric()) {
 								bones.append(itr->key.to_int());
 							} else if (!r_skeletons.is_empty()) {
@@ -2107,7 +2012,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 									continue;
 								}
 								bones.append(bone_idx);
-			} else {
+							} else {
 								continue;
 							}
 							if (bones.is_empty() || bones[bones.size() - 1] < 0) {
@@ -2121,7 +2026,7 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 						if (!bones.is_empty()) {
 							surf_tool->set_bones(bones);
 							surf_tool->set_weights(weight);
-			} else {
+						} else {
 							surf_tool->set_bones(Vector<int>());
 							surf_tool->set_weights(Vector<float>());
 						}
@@ -2174,12 +2079,12 @@ Error QBODocument::_parse_obj(Ref<FileAccess> f, const String &p_base_path, List
 			if (surf_tool->get_vertex_array().size()) {
 				//another group going on, commit it
 				if (normals.size() == 0) {
-			surf_tool->generate_normals();
-		}
+					surf_tool->generate_normals();
+				}
 
 				if (generate_tangents && uvs.size()) {
-			surf_tool->generate_tangents();
-		}
+					surf_tool->generate_tangents();
+				}
 
 				surf_tool->index();
 
@@ -2291,21 +2196,21 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	// 1. Parse HIERARCHY section → Create GLTFNode objects for bones
 	// 2. Parse OBJ section → Create GLTFMesh and GLTFSkin
 	// 3. Use SkinTool to determine skeletons
-	
+
 	HashMap<String, GLTFNodeIndex> bone_name_to_node;
 	Vector<BoneData> bone_data;
 	Vector<GLTFNodeIndex> hierarchy_root_nodes;
-	
+
 	// Reset file to beginning
 	f->seek(0);
-	
+
 	// Parse HIERARCHY section to create bone GLTFNodes (for skeletons, but not skinning)
 	// Always import animations by default (unless explicitly disabled via GLTFState::create_animations)
 	Error err = _parse_hierarchy_to_gltf(f, p_state, bone_name_to_node, bone_data, hierarchy_root_nodes);
 	if (err != OK) {
 		return err;
 	}
-	
+
 	// Compute node heights (required for _find_highest_node to work correctly)
 	// This sets height=0 for root nodes, height=1 for their children, etc.
 	_compute_node_heights(p_state);
@@ -2318,7 +2223,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		if (err != OK) {
 			return err;
 		}
-		
+
 		// Create skeletons to get bone order and joint_i_to_bone_i mapping
 		HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
 		HashMap<GLTFNodeIndex, Node *> scene_nodes;
@@ -2327,7 +2232,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		if (err != OK) {
 			return err;
 		}
-		
+
 		// Create mapping from original bone name to skeleton bone index
 		// Use skeleton->joints to map GLTFNodeIndex to skeleton bone index, then find original name from bone_data
 		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
@@ -2351,7 +2256,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 				}
 			}
 		}
-		
+
 		// Clear scene_nodes and godot_skeleton pointers so they can be recreated later
 		// But keep joint_i_to_bone_i mapping as it's still valid
 		p_state->scene_nodes.clear();
@@ -2362,10 +2267,10 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			}
 		}
 	}
-	
+
 	// Reset file to beginning for OBJ parsing
 	f->seek(0);
-	
+
 	// Parse OBJ section to create GLTFMesh and GLTFSkin
 	// Pass bone_name_to_skeleton_bone_index so we can set skeleton bone indices directly
 	List<String> missing_deps;
@@ -2373,7 +2278,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 	if (err != OK) {
 		return err;
 	}
-	
+
 	// Assign skins to existing skeletons (if skeletons were already determined from hierarchy)
 	// Or determine skeletons from skins if no skeletons exist yet
 	if (!p_state->skins.is_empty() && !p_state->skeletons.is_empty()) {
@@ -2384,14 +2289,14 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 			if (skin.is_null() || skin->get_skeleton() >= 0) {
 				continue; // Already assigned or invalid
 			}
-			
+
 			// Find which skeleton contains this skin's nodes
 			for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
 				Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
 				if (skeleton.is_null()) {
 					continue;
 				}
-				
+
 				// Check if any of the skin's roots or joints are in this skeleton
 				bool matches = false;
 				for (GLTFNodeIndex root : skin->roots) {
@@ -2408,14 +2313,14 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 						}
 					}
 				}
-				
+
 				if (matches) {
 					skin->skeleton = skel_i;
 					break;
 				}
 			}
 		}
-		
+
 		// Set skeleton index on mesh nodes that have skins
 		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
 			Ref<GLTFNode> node = p_state->nodes[node_i];
@@ -2427,7 +2332,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 				}
 			}
 		}
-		
+
 		// Add skeleton root nodes to root_nodes (if not already added)
 		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
 			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
@@ -2443,7 +2348,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 		if (err != OK) {
 			return err;
 		}
-		
+
 		// Set skeleton index on mesh nodes that have skins
 		for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
 			Ref<GLTFNode> node = p_state->nodes[node_i];
@@ -2455,7 +2360,7 @@ Error QBODocument::parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, uin
 				}
 			}
 		}
-		
+
 		// Add skeleton root nodes to root_nodes (after skeleton creation)
 		for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
 			Ref<GLTFSkeleton> skeleton = p_state->skeletons[skel_i];
