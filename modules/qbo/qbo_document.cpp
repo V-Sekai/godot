@@ -146,20 +146,11 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 			continue;
 		} else if (l.begins_with("ROOT")) {
 			// Bones should already exist in GLTFState from _parse_hierarchy_to_gltf
-			// Don't create bones here - just track the bone name for animation parsing
-			String bone_name = "";
 			bones.clear();
 			offsets.clear();
 			orientations.clear();
 			channels.clear();
-			l = l.substr(5);
-			if (!l.is_empty()) {
-				bone_name += l;
-			} else {
-				bone_name += "ROOT";
-			}
-			// Track bone name but don't create skeleton/bone here
-			// The skeleton and bones should already exist in GLTFState
+			continue;
 		} else if (l.begins_with("MOTION")) {
 			motion = true;
 			if (animation_library.is_valid() && animation.is_valid() && r_animation != nullptr && frames.size() == frame_count) {
@@ -296,7 +287,7 @@ Error QBODocument::_parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skelet
 			}
 		} else if (l.begins_with("End ")) {
 			// End sites are not bones - just skip them
-			continue;
+				continue;
 		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
@@ -747,6 +738,7 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 	Vector<Vector<int>> channels;
 	Ref<GLTFAnimation> gltf_animation;
 	String animation_name;
+	bool in_end_site = false; // Track if we're inside an End Site block
 
 	int loops = 0;
 	int blanks = 0;
@@ -784,36 +776,61 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				bone_name += "ROOT";
 			}
 			if (!bone_name.is_empty()) {
-				if (bone_names.has(bone_name)) {
-					bone_names[bone_name] += 1;
-					bone_name += String::num_int64(bone_names[bone_name]);
+				// Find existing GLTFNode by original name or create if it doesn't exist
+				GLTFNodeIndex node_index = -1;
+				bool node_exists = r_bone_name_to_node.has(bone_name);
+				int bone_data_idx = -1;
+				
+				if (node_exists) {
+					// Node already exists - find existing BoneData
+					node_index = r_bone_name_to_node[bone_name];
+					Ref<GLTFNode> node = p_state->nodes[node_index];
+					if (node.is_valid()) {
+						node->joint = true;
+					}
+					// Only add to root_nodes if not already there
+					if (r_root_nodes.find(node_index) == -1) {
+						r_root_nodes.push_back(node_index);
+					}
+					// Find existing BoneData for this node
+					for (int i = 0; i < r_bone_data.size(); i++) {
+						if (r_bone_data[i].gltf_node_index == node_index) {
+							bone_data_idx = i;
+							break;
+						}
+					}
 				} else {
-					bone_names[bone_name] = 1;
+					// Create new GLTFNode for root bone
+					Ref<GLTFNode> node;
+					node.instantiate();
+					node->set_original_name(bone_name);
+					node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
+					node->joint = true;
+					node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
+					
+					node_index = p_state->append_gltf_node(node, nullptr, -1);
+					r_bone_name_to_node[bone_name] = node_index;
+					r_root_nodes.push_back(node_index);
+					
+					// Create new BoneData
+					BoneData bone_data;
+					bone_data.name = bone_name;
+					bone_data.gltf_node_index = node_index;
+					bone_data.parent_bone_index = -1;
+					bone_data.offset = Vector3();
+					bone_data.orientation = Quaternion();
+					bone_data.rest_transform = Transform3D();
+					r_bone_data.push_back(bone_data);
+					bone_data_idx = r_bone_data.size() - 1;
 				}
-				// Create GLTFNode for root bone
-				Ref<GLTFNode> node;
-				node.instantiate();
-				node->set_original_name(bone_name);
-				node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
-				node->joint = true;
-				node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
 				
-				GLTFNodeIndex node_index = p_state->append_gltf_node(node, nullptr, -1);
-				r_root_nodes.push_back(node_index);
-				
-				BoneData bone_data;
-				bone_data.name = bone_name;
-				bone_data.gltf_node_index = node_index;
-				bone_data.parent_bone_index = -1;
-				bone_data.offset = Vector3();
-				bone_data.orientation = Quaternion();
-				bone_data.rest_transform = Transform3D();
-				r_bone_data.push_back(bone_data);
-				r_bone_name_to_node[bone_name] = node_index;
-				bone_indices.push_back(r_bone_data.size() - 1);
-				orientations.append(Quaternion());
-				offsets.append(Vector3());
-				channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
+				// Track in bone_indices for closing brace processing
+				if (bone_data_idx >= 0) {
+					bone_indices.push_back(bone_data_idx);
+					orientations.append(Quaternion());
+					offsets.append(Vector3());
+					channels.append(Vector<int>({ bone_data_idx }));
+				}
 			}
 		} else if (l.begins_with("MOTION")) {
 			motion = true;
@@ -996,42 +1013,10 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 				motion = false;
 			}
 		} else if (l.begins_with("End ")) {
-			ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
-			l = l.substr(4);
-			if (!l.is_empty()) {
-				String bone_name = l;
-				if (bone_names.has(bone_name)) {
-					bone_names[bone_name] += 1;
-					bone_name += String::num_int64(bone_names[bone_name]);
+			// End sites are just markers, not actual bones - skip them
+			in_end_site = true;
+			continue;
 				} else {
-					bone_names[bone_name] = 1;
-				}
-				// Create GLTFNode for end site
-				Ref<GLTFNode> node;
-				node.instantiate();
-				node->set_original_name(bone_name);
-				node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
-				node->joint = true;
-				
-				int parent_bone_idx = bone_indices[bone_indices.size() - 1];
-				GLTFNodeIndex parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
-				GLTFNodeIndex node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
-				
-				BoneData bone_data;
-				bone_data.name = bone_name;
-				bone_data.gltf_node_index = node_index;
-				bone_data.parent_bone_index = parent_bone_idx;
-				bone_data.offset = Vector3();
-				bone_data.orientation = Quaternion();
-				bone_data.rest_transform = Transform3D();
-				r_bone_data.push_back(bone_data);
-				r_bone_name_to_node[bone_name] = node_index;
-				bone_indices.push_back(r_bone_data.size() - 1);
-				orientations.append(Quaternion());
-				offsets.append(Vector3());
-				channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
-			}
-		} else {
 			Vector<String> s;
 			if (l.contains(" ")) {
 				s = l.split(" ");
@@ -1104,44 +1089,91 @@ Error QBODocument::_parse_hierarchy_to_gltf(Ref<FileAccess> f, Ref<GLTFState> p_
 					ERR_FAIL_COND_V(bone_indices.is_empty(), ERR_FILE_CORRUPT);
 					int parent_bone_idx = bone_indices[bone_indices.size() - 1];
 					String bone_name = s[1];
-					if (bone_names.has(bone_name)) {
-						bone_names[bone_name] += 1;
-						if (bone_name.ends_with("_")) {
-							bone_name += "_";
-						}
-						bone_name += String::num_int64(bone_names[bone_name]);
-					} else {
-						bone_names[bone_name] = 1;
-					}
-					// Create GLTFNode for joint
-					Ref<GLTFNode> node;
-					node.instantiate();
-					node->set_original_name(bone_name);
-					node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
-					node->joint = true;
-					node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
 					
+					// Find existing GLTFNode by original name or create if it doesn't exist
+					GLTFNodeIndex node_index = -1;
 					GLTFNodeIndex parent_node_index = r_bone_data[parent_bone_idx].gltf_node_index;
-					GLTFNodeIndex node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
+					int bone_data_idx = -1;
 					
-					BoneData bone_data;
-					bone_data.name = bone_name;
-					bone_data.gltf_node_index = node_index;
-					bone_data.parent_bone_index = parent_bone_idx;
-					bone_data.offset = Vector3();
-					bone_data.orientation = Quaternion();
-					bone_data.rest_transform = Transform3D();
-					r_bone_data.push_back(bone_data);
-					r_bone_name_to_node[bone_name] = node_index;
-					bone_indices.push_back(r_bone_data.size() - 1);
-					orientations.append(Quaternion());
-					offsets.append(Vector3());
-					channels.append(Vector<int>({ bone_indices[bone_indices.size() - 1] }));
+					if (r_bone_name_to_node.has(bone_name)) {
+						// Node already exists - find existing BoneData
+						node_index = r_bone_name_to_node[bone_name];
+						Ref<GLTFNode> node = p_state->nodes[node_index];
+						if (node.is_valid()) {
+							node->joint = true;
+							// Update parent if different
+							if (node->parent != parent_node_index) {
+								// Remove from old parent's children
+								if (node->parent >= 0 && node->parent < p_state->nodes.size()) {
+									Ref<GLTFNode> old_parent = p_state->nodes[node->parent];
+									if (old_parent.is_valid()) {
+										int child_idx = old_parent->children.find(node_index);
+										if (child_idx >= 0) {
+											old_parent->children.remove_at(child_idx);
+										}
+									}
+								}
+								// Set new parent
+								node->parent = parent_node_index;
+								// Add to new parent's children
+								if (parent_node_index >= 0 && parent_node_index < p_state->nodes.size()) {
+									Ref<GLTFNode> new_parent = p_state->nodes[parent_node_index];
+									if (new_parent.is_valid()) {
+										if (new_parent->children.find(node_index) == -1) {
+											new_parent->children.push_back(node_index);
+										}
+									}
+								}
+							}
+						}
+						// Find existing BoneData for this node
+						for (int i = 0; i < r_bone_data.size(); i++) {
+							if (r_bone_data[i].gltf_node_index == node_index) {
+								bone_data_idx = i;
+								break;
+							}
+						}
+					} else {
+						// Create new GLTFNode for joint
+						Ref<GLTFNode> node;
+						node.instantiate();
+						node->set_original_name(bone_name);
+						node->set_name(_gen_unique_name_static(p_state->unique_names, bone_name));
+						node->joint = true;
+						node->transform = Transform3D(); // Will be set when we parse OFFSET/ORIENT
+						
+						node_index = p_state->append_gltf_node(node, nullptr, parent_node_index);
+						r_bone_name_to_node[bone_name] = node_index;
+						
+						// Create new BoneData
+						BoneData bone_data;
+						bone_data.name = bone_name;
+						bone_data.gltf_node_index = node_index;
+						bone_data.parent_bone_index = parent_bone_idx;
+						bone_data.offset = Vector3();
+						bone_data.orientation = Quaternion();
+						bone_data.rest_transform = Transform3D();
+						r_bone_data.push_back(bone_data);
+						bone_data_idx = r_bone_data.size() - 1;
+					}
+					
+					// Track in bone_indices for closing brace processing
+					if (bone_data_idx >= 0) {
+						bone_indices.push_back(bone_data_idx);
+						orientations.append(Quaternion());
+						offsets.append(Vector3());
+						channels.append(Vector<int>({ bone_data_idx }));
+					}
 				}
 			} else {
 				if (l.casecmp_to("{") == 0) {
 					// Opening brace, continue
 				} else if (l.casecmp_to("}") == 0) {
+					// If we're inside an End Site, just skip this closing brace
+					if (in_end_site) {
+						in_end_site = false;
+						continue;
+					}
 					ERR_FAIL_COND_V(bone_indices.is_empty() || offsets.is_empty() || orientations.is_empty() || channels.is_empty(), ERR_FILE_CORRUPT);
 					int bone_idx = bone_indices[bone_indices.size() - 1];
 					Vector3 offset = offsets[offsets.size() - 1];
