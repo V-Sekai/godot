@@ -41,13 +41,13 @@ void EditorSceneFormatImporterQBO::get_extensions(List<String> *r_extensions) co
 Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t p_flags,
 		const HashMap<StringName, Variant> &p_options,
 		List<String> *r_missing_deps, Error *r_err) {
-	Ref<QBODocument> gltf;
-	gltf.instantiate();
+	Ref<QBODocument> qbo;
+	qbo.instantiate();
 	Ref<GLTFState> state;
 	state.instantiate();
 	if (p_options.has("gltf/naming_version")) {
 		int naming_version = p_options["gltf/naming_version"];
-		gltf->set_naming_version(naming_version);
+		qbo->set_naming_version(naming_version);
 	}
 	if (p_options.has("gltf/embedded_image_handling")) {
 		int32_t enum_option = p_options["gltf/embedded_image_handling"];
@@ -60,7 +60,7 @@ Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t 
 		state->set_extract_path(p_options["extract_path"]);
 	}
 	state->set_bake_fps(p_options["animation/fps"]);
-	Error err = gltf->append_from_file(p_path, state, p_flags);
+	Error err = qbo->append_from_file(p_path, state, p_flags);
 	if (err != OK) {
 		if (r_err) {
 			*r_err = err;
@@ -70,8 +70,8 @@ Node *EditorSceneFormatImporterQBO::import_scene(const String &p_path, uint32_t 
 	if (p_options.has("animation/import")) {
 		state->set_create_animations(bool(p_options["animation/import"]));
 	}
-
-	return gltf->generate_scene(state, state->get_bake_fps(), (bool)p_options["animation/trimming"], false);
+	//qbo->write_to_filesystem(state, p_path + ".gltf");
+	return qbo->generate_scene(state, state->get_bake_fps(), (bool)p_options["animation/trimming"], false);
 }
 
 #endif // TOOLS_ENABLED

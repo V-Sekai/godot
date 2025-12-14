@@ -207,11 +207,6 @@ typedef void(GLAPIENTRY *DebugMessageCallbackARB)(DEBUGPROCARB callback, const v
 
 void RasterizerGLES3::initialize() {
 	Engine::get_singleton()->print_header(vformat("OpenGL API %s - Compatibility - Using Device: %s - %s", RS::get_singleton()->get_video_adapter_api_version(), RS::get_singleton()->get_video_adapter_vendor(), RS::get_singleton()->get_video_adapter_name()));
-
-	// FLIP XY Bug: Are more devices affected?
-	// Confirmed so far: all Adreno 3xx with old driver (until 2018)
-	// ok on some tested Adreno devices: 4xx, 5xx and 6xx
-	flip_xy_workaround = GLES3::Config::get_singleton()->flip_xy_workaround;
 }
 
 void RasterizerGLES3::finalize() {
@@ -415,7 +410,7 @@ void RasterizerGLES3::_blit_render_target_to_screen(DisplayServer::WindowID p_sc
 	}
 #endif
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLES3::TextureStorage::system_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, GLES3::TextureStorage::system_fbo);
 
 	if (p_first) {
 		if (p_blit.dst_rect.position != Vector2() || p_blit.dst_rect.size != rt->size) {
@@ -431,19 +426,11 @@ void RasterizerGLES3::_blit_render_target_to_screen(DisplayServer::WindowID p_sc
 
 	Vector2 screen_rect_end = p_blit.dst_rect.get_end();
 
-	// Adreno (TM) 3xx devices have a bug that create wrong Landscape rotation of 180 degree
-	// Reversing both the X and Y axis is equivalent to rotating 180 degrees
-	bool flip_x = false;
-	if (flip_xy_workaround && screen_rect_end.x > screen_rect_end.y) {
-		flip_y = !flip_y;
-		flip_x = !flip_x;
-	}
-
-	Vector2 p1 = Vector2(flip_x ? screen_rect_end.x : p_blit.dst_rect.position.x, flip_y ? screen_rect_end.y : p_blit.dst_rect.position.y);
-	Vector2 p2 = Vector2(flip_x ? p_blit.dst_rect.position.x : screen_rect_end.x, flip_y ? p_blit.dst_rect.position.y : screen_rect_end.y);
+	Vector2 p1 = Vector2(p_blit.dst_rect.position.x, flip_y ? screen_rect_end.y : p_blit.dst_rect.position.y);
+	Vector2 p2 = Vector2(screen_rect_end.x, flip_y ? p_blit.dst_rect.position.y : screen_rect_end.y);
 	Vector2 size = p2 - p1;
 
-	Rect2 screenrect = Rect2(Vector2(flip_x ? 1.0 : 0.0, flip_y ? 1.0 : 0.0), Vector2(flip_x ? -1.0 : 1.0, flip_y ? -1.0 : 1.0));
+	Rect2 screenrect = Rect2(Vector2(0.0, flip_y ? 1.0 : 0.0), Vector2(1.0, flip_y ? -1.0 : 1.0));
 
 	glViewport(int(MIN(p1.x, p2.x)), int(MIN(p1.y, p2.y)), Math::abs(size.x), Math::abs(size.y));
 
@@ -476,7 +463,7 @@ void RasterizerGLES3::blit_render_targets_to_screen(DisplayServer::WindowID p_sc
 	}
 }
 
-void RasterizerGLES3::set_boot_image(const Ref<Image> &p_image, const Color &p_color, bool p_scale, bool p_use_filter) {
+void RasterizerGLES3::set_boot_image_with_stretch(const Ref<Image> &p_image, const Color &p_color, RenderingServer::SplashStretchMode p_stretch_mode, bool p_use_filter) {
 	if (p_image.is_null() || p_image->is_empty()) {
 		return;
 	}
@@ -494,25 +481,7 @@ void RasterizerGLES3::set_boot_image(const Ref<Image> &p_image, const Color &p_c
 	RID texture = texture_storage->texture_allocate();
 	texture_storage->texture_2d_initialize(texture, p_image);
 
-	Rect2 imgrect(0, 0, p_image->get_width(), p_image->get_height());
-	Rect2 screenrect;
-	if (p_scale) {
-		if (win_size.width > win_size.height) {
-			//scale horizontally
-			screenrect.size.y = win_size.height;
-			screenrect.size.x = imgrect.size.x * win_size.height / imgrect.size.y;
-			screenrect.position.x = (win_size.width - screenrect.size.x) / 2;
-
-		} else {
-			//scale vertically
-			screenrect.size.x = win_size.width;
-			screenrect.size.y = imgrect.size.y * win_size.width / imgrect.size.x;
-			screenrect.position.y = (win_size.height - screenrect.size.y) / 2;
-		}
-	} else {
-		screenrect = imgrect;
-		screenrect.position += ((Size2(win_size.width, win_size.height) - screenrect.size) / 2.0).floor();
-	}
+	Rect2 screenrect = RenderingServer::get_splash_stretched_screen_rect(p_image->get_size(), win_size, p_stretch_mode);
 
 #ifdef WINDOWS_ENABLED
 	if (!screen_flipped_y)

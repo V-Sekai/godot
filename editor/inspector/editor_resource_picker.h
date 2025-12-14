@@ -31,6 +31,8 @@
 #pragma once
 
 #include "scene/gui/box_container.h"
+#include "scene/resources/material.h"
+#include "scene/resources/3d/skin.h"
 
 class Button;
 class ConfirmationDialog;
@@ -48,12 +50,14 @@ class EditorResourcePicker : public HBoxContainer {
 
 	bool editable = true;
 	bool dropping = false;
+	bool force_allow_unique = false;
 
 	Vector<String> inheritors_array;
 	mutable HashSet<StringName> allowed_types_without_convert;
 	mutable HashSet<StringName> allowed_types_with_convert;
 
 	Button *assign_button = nullptr;
+	Button *make_unique_button = nullptr;
 	TextureRect *preview_rect = nullptr;
 	Button *edit_button = nullptr;
 	Button *quick_load_button = nullptr;
@@ -83,6 +87,7 @@ class EditorResourcePicker : public HBoxContainer {
 	};
 
 	Object *resource_owner = nullptr;
+	StringName property_path;
 
 	PopupMenu *edit_menu = nullptr;
 
@@ -100,6 +105,7 @@ class EditorResourcePicker : public HBoxContainer {
 
 	void _button_draw();
 	void _button_input(const Ref<InputEvent> &p_event);
+	void _on_unique_button_pressed();
 
 	String _get_owner_path() const;
 	String _get_resource_type(const Ref<Resource> &p_resource) const;
@@ -115,6 +121,8 @@ class EditorResourcePicker : public HBoxContainer {
 	void _ensure_resource_menu();
 	void _gather_resources_to_duplicate(const Ref<Resource> p_resource, TreeItem *p_item, const String &p_property_name = "") const;
 	void _duplicate_selected_resources();
+	bool _is_uniqueness_enabled(bool p_check_recursive = false);
+	Ref<Resource> _has_parent_resource();
 
 protected:
 	virtual void _update_resource();
@@ -136,6 +144,7 @@ public:
 	void set_edited_resource(Ref<Resource> p_resource);
 	void set_edited_resource_no_check(Ref<Resource> p_resource);
 	Ref<Resource> get_edited_resource();
+	void set_force_allow_unique(bool p_force) { force_allow_unique = p_force; }
 
 	void set_toggle_mode(bool p_enable);
 	bool is_toggle_mode() const;
@@ -143,6 +152,8 @@ public:
 	bool is_toggle_pressed() const;
 
 	void set_resource_owner(Object *p_object);
+	Object *get_resource_owner() const;
+	void set_property_path(const StringName &p_path) { property_path = p_path; }
 
 	void set_editable(bool p_editable);
 	bool is_editable() const;
@@ -191,6 +202,23 @@ public:
 	void set_edited_material(ShaderMaterial *p_material);
 	ShaderMaterial *get_edited_material() const;
 	void set_preferred_mode(int p_preferred_mode);
+};
+
+class EditorSkinPicker : public EditorResourcePicker {
+	GDCLASS(EditorSkinPicker, EditorResourcePicker);
+
+	enum ExtraMenuOption {
+		OBJ_MENU_REST_SKIN = 50,
+	};
+
+	Ref<Skin> rest_skin = nullptr;
+
+public:
+	virtual void set_create_options(Object *p_menu_node) override;
+	virtual bool handle_menu_selected(int p_which) override;
+
+	void set_rest_skin(Ref<Skin> p_reset_skin);
+	Ref<Skin> get_rest_skin() const;
 };
 
 class EditorAudioStreamPicker : public EditorResourcePicker {

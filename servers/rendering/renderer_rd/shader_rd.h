@@ -36,7 +36,7 @@
 #include "core/templates/local_vector.h"
 #include "core/templates/rid_owner.h"
 #include "core/templates/self_list.h"
-#include "servers/rendering_server.h"
+#include "servers/rendering/rendering_server.h"
 
 class ShaderRD {
 public:
@@ -60,13 +60,12 @@ private:
 	CharString general_defines;
 	Vector<VariantDefine> variant_defines;
 	Vector<bool> variants_enabled;
-	HashMap<int, HashMap<String, bool>> variants_bake_for;
-	HashMap<int, bool> variants_bake_for_def;
 	Vector<uint32_t> variant_to_group;
 	HashMap<int, LocalVector<int>> group_to_variant_map;
 	Vector<bool> group_enabled;
 
 	Vector<RD::PipelineImmutableSampler> immutable_samplers;
+	Vector<uint64_t> dynamic_buffers;
 
 	struct Version {
 		Mutex *mutex = nullptr;
@@ -144,6 +143,7 @@ private:
 	static bool shader_cache_save_compressed_zstd;
 	static bool shader_cache_save_debug;
 	bool shader_cache_user_dir_valid = false;
+	bool shader_cache_res_dir_valid = false;
 
 	enum StageType {
 		STAGE_TYPE_VERTEX,
@@ -218,25 +218,6 @@ public:
 	int64_t get_variant_count() const;
 	int get_variant_to_group(int p_variant) const;
 
-	bool has_variant_bake_for(int p_variant) const {
-		return variants_bake_for.has(p_variant);
-	}
-
-	bool get_variant_bake_for(int p_variant, const String &p_name) const {
-		if (!variants_bake_for.has(p_variant)) {
-			return is_variant_enabled(p_variant);
-		}
-		if (!variants_bake_for[p_variant].has(p_name.to_lower())) {
-			return variants_bake_for_def[p_variant];
-		}
-		return variants_bake_for[p_variant][p_name.to_lower()];
-	}
-
-	void set_variants_bake_for(int p_variant, const String &p_name, bool p_enable, bool p_default) {
-		variants_bake_for[p_variant][p_name.to_lower()] = p_enable;
-		variants_bake_for_def[p_variant] = p_default;
-	}
-
 	// Enable/disable groups for things that might be enabled at run time.
 	void enable_group(int p_group);
 	bool is_group_enabled(int p_group) const;
@@ -244,6 +225,8 @@ public:
 	const LocalVector<int> &get_group_to_variants(int p_group) const;
 
 	const String &get_name() const;
+
+	const Vector<uint64_t> &get_dynamic_buffers() const;
 
 	static void shaders_embedded_set_lock();
 	static const ShaderVersionPairSet &shaders_embedded_set_get();
@@ -257,15 +240,26 @@ public:
 	static void set_shader_cache_save_compressed_zstd(bool p_enable);
 	static void set_shader_cache_save_debug(bool p_enable);
 
-	static Vector<RD::ShaderStageSPIRVData> compile_stages(const Vector<String> &p_stage_sources);
+	static Vector<RD::ShaderStageSPIRVData> compile_stages(const Vector<String> &p_stage_sources, const Vector<uint64_t> &p_dynamic_buffers);
 	static PackedByteArray save_shader_cache_bytes(const LocalVector<int> &p_variants, const Vector<Vector<uint8_t>> &p_variant_data);
 
 	Vector<String> version_build_variant_stage_sources(RID p_version, int p_variant);
 	RS::ShaderNativeSourceCode version_get_native_source_code(RID p_version);
 	String version_get_cache_file_relative_path(RID p_version, int p_group, const String &p_api_name);
 
-	void initialize(const Vector<String> &p_variant_defines, const String &p_general_defines = "", const Vector<RD::PipelineImmutableSampler> &p_immutable_samplers = Vector<RD::PipelineImmutableSampler>());
-	void initialize(const Vector<VariantDefine> &p_variant_defines, const String &p_general_defines = "", const Vector<RD::PipelineImmutableSampler> &p_immutable_samplers = Vector<RD::PipelineImmutableSampler>());
+	struct DynamicBuffer {
+		static uint64_t encode(uint32_t p_set_id, uint32_t p_binding) {
+			return uint64_t(p_set_id) << 32ul | uint64_t(p_binding);
+		}
+	};
+
+	// Dynamic Buffers specifies Which buffers will be persistent/dynamic when used.
+	// See DynamicBuffer::encode. We need this argument because SPIR-V does not distinguish between a
+	// uniform buffer and a dynamic uniform buffer. At shader level they're the same thing, but the PSO
+	// is created slightly differently and they're bound differently.
+	// On D3D12 the Root Layout is also different.
+	void initialize(const Vector<String> &p_variant_defines, const String &p_general_defines = "", const Vector<RD::PipelineImmutableSampler> &p_immutable_samplers = Vector<RD::PipelineImmutableSampler>(), const Vector<uint64_t> &p_dynamic_buffers = Vector<uint64_t>());
+	void initialize(const Vector<VariantDefine> &p_variant_defines, const String &p_general_defines = "", const Vector<RD::PipelineImmutableSampler> &p_immutable_samplers = Vector<RD::PipelineImmutableSampler>(), const Vector<uint64_t> &p_dynamic_buffers = Vector<uint64_t>());
 
 	virtual ~ShaderRD();
 };

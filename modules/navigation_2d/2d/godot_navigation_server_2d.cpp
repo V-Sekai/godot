@@ -1189,7 +1189,7 @@ void GodotNavigationServer2D::flush_queries() {
 	commands.clear();
 }
 
-COMMAND_1(free, RID, p_object) {
+COMMAND_1(free_rid, RID, p_object) {
 	if (geometry_parser_owner.owns(p_object)) {
 		RWLockWrite write_lock(geometry_parser_rwlock);
 
@@ -1197,7 +1197,7 @@ COMMAND_1(free, RID, p_object) {
 		ERR_FAIL_NULL(parser);
 
 		generator_parsers.erase(parser);
-#ifndef CLIPPER2_ENABLED
+#ifdef CLIPPER2_ENABLED
 		NavMeshGenerator2D::get_singleton()->set_generator_parsers(generator_parsers);
 #endif
 		geometry_parser_owner.free(parser->self);
