@@ -1072,6 +1072,9 @@ void GDScript::_get_property_list(List<PropertyInfo> *p_properties) const {
 
 void GDScript::_bind_methods() {
 	ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "new", &GDScript::_new, MethodInfo("new"));
+
+	ClassDB::bind_method(D_METHOD("compile_all_functions_to_elf64", "mode"), &GDScript::compile_all_functions_to_elf64, DEFVAL(2));
+	ClassDB::bind_method(D_METHOD("can_compile_to_elf64", "mode"), &GDScript::can_compile_to_elf64, DEFVAL(2));
 }
 
 void GDScript::set_path_cache(const String &p_path) {
