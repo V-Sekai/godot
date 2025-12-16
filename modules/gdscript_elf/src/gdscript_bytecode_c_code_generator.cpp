@@ -350,12 +350,12 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				opcode_code += vformat("    // Type test: check if %s matches type\n", value.utf8().get_data());
 				opcode_code += vformat("    Variant type_test_args[0] = {};\n");
 				opcode_code += generate_vcall_syscall(
-					value,                     // vp (value to test)
-					"\"get_type\"",            // method name
-					8,                         // method length
-					"type_test_args",         // args_ptr (empty)
-					0,                         // args_size (0 arguments)
-					result                     // vret_addr (result: type matches)
+						value, // vp (value to test)
+						"\"get_type\"", // method name
+						8, // method length
+						"type_test_args", // args_ptr (empty)
+						0, // args_size (0 arguments)
+						result // vret_addr (result: type matches)
 				);
 				// TODO: Compare result with expected type
 			}
@@ -377,17 +377,17 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				String result = resolve_address(target_addr, p_function, true);
 
 				// Create temporary array for arguments [index, source]
-				opcode_code += vformat("    // Set keyed/indexed: %s[%s] = %s\n", 
+				opcode_code += vformat("    // Set keyed/indexed: %s[%s] = %s\n",
 						target.utf8().get_data(), index.utf8().get_data(), source.utf8().get_data());
-				opcode_code += vformat("    Variant set_args[2] = {%s, %s};\n", 
+				opcode_code += vformat("    Variant set_args[2] = {%s, %s};\n",
 						index.utf8().get_data(), source.utf8().get_data());
 				opcode_code += generate_vcall_syscall(
-					target,                    // vp (target variant)
-					"\"set\"",                 // method name
-					3,                         // method length
-					"set_args",                // args_ptr (array with [index, source])
-					2,                         // args_size (2 arguments)
-					result                     // vret_addr (result stored in target)
+						target, // vp (target variant)
+						"\"set\"", // method name
+						3, // method length
+						"set_args", // args_ptr (array with [index, source])
+						2, // args_size (2 arguments)
+						result // vret_addr (result stored in target)
 				);
 			}
 			// Advance IP: SET_KEYED=4, SET_KEYED_VALIDATED=5, SET_INDEXED_VALIDATED=5
@@ -412,16 +412,16 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				String target = resolve_address(target_addr, p_function, true);
 
 				// Create temporary array for arguments [index]
-				opcode_code += vformat("    // Get keyed/indexed: %s = %s[%s]\n", 
+				opcode_code += vformat("    // Get keyed/indexed: %s = %s[%s]\n",
 						target.utf8().get_data(), source.utf8().get_data(), index.utf8().get_data());
 				opcode_code += vformat("    Variant get_args[1] = {%s};\n", index.utf8().get_data());
 				opcode_code += generate_vcall_syscall(
-					source,                    // vp (source variant)
-					"\"get\"",                 // method name
-					3,                         // method length
-					"get_args",                // args_ptr (array with [index])
-					1,                         // args_size (1 argument)
-					target                     // vret_addr (result stored in target)
+						source, // vp (source variant)
+						"\"get\"", // method name
+						3, // method length
+						"get_args", // args_ptr (array with [index])
+						1, // args_size (1 argument)
+						target // vret_addr (result stored in target)
 				);
 			}
 			// Advance IP: GET_KEYED=4, GET_KEYED_VALIDATED=5, GET_INDEXED_VALIDATED=5
@@ -560,7 +560,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				String target = resolve_address(target_addr, p_function, true);
 
 				// Cast is essentially assignment with type conversion (handled by VM)
-				opcode_code += vformat("    %s = %s; // Cast (type conversion handled by VM)\n", 
+				opcode_code += vformat("    %s = %s; // Cast (type conversion handled by VM)\n",
 						target.utf8().get_data(), source.utf8().get_data());
 			}
 			p_ip += 4; // opcode + source + target + type info
@@ -581,7 +581,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				if (p_ip + target_offset < p_code_size) {
 					int target_addr = p_code_ptr[p_ip + target_offset];
 					String target = resolve_address(target_addr, p_function, true);
-					
+
 					opcode_code += vformat("    // Construct variant (type info at bytecode level)\n");
 					opcode_code += vformat("    // Use ECALL_VCREATE to create variant\n");
 					// For now, generate assignment to target (proper implementation needs ECALL_VCREATE with type and data)
@@ -635,9 +635,12 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 					String method_name = p_function->get_global_name(method_idx);
 
 					// Build arguments array from variable args
-					opcode_code += vformat("    // Method call: %s.%s()\n", base.utf8().get_data(), method_name.utf8().get_data());
+					// Array-based marshaling supports unlimited arguments (16+)
+					opcode_code += vformat("    // Method call: %s.%s() with %d arguments\n", base.utf8().get_data(), method_name.utf8().get_data(), argc);
 					opcode_code += vformat("    Variant call_args[%d];\n", argc);
-					for (int i = 0; i < argc && (p_ip + 2 + i < p_code_size); i++) {
+					// Read arguments from bytecode: arguments start at p_ip + 2, count is var_args_count
+					int actual_arg_count = MIN(argc, var_args_count);
+					for (int i = 0; i < actual_arg_count && (p_ip + 2 + i < p_code_size); i++) {
 						int arg_addr = p_code_ptr[p_ip + 2 + i];
 						String arg = resolve_address(arg_addr, p_function);
 						opcode_code += vformat("    call_args[%d] = %s;\n", i, arg.utf8().get_data());
@@ -645,12 +648,12 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 
 					// Use ECALL_VCALL
 					opcode_code += generate_vcall_syscall(
-						base,                    // vp (base object)
-						"\"" + method_name + "\"", // method name
-						method_name.length(),      // method length
-						"call_args",             // args_ptr
-						argc,                     // args_size
-						target                    // vret_addr (if CALL_RETURN)
+							base, // vp (base object)
+							"\"" + method_name + "\"", // method name
+							method_name.length(), // method length
+							"call_args", // args_ptr
+							argc, // args_size
+							target // vret_addr (if CALL_RETURN)
 					);
 				}
 				// Advance IP: opcode(1) + var_args_count(1) + args(var_args_count) + base(1) + target(1) + argc(1) + method(1)
@@ -667,7 +670,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				int operand_addr = p_code_ptr[p_ip + 1];
 				int resume_target = p_code_ptr[p_ip + 2];
 				String operand = resolve_address(operand_addr, p_function);
-				
+
 				opcode_code += vformat("    // Await: %s (async handling via VM)\n", operand.utf8().get_data());
 				opcode_code += vformat("    // Use ECALL_VCALL for await operation\n");
 				// TODO: Proper await implementation via ECALL_VCALL
@@ -681,7 +684,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 			if (p_ip + 2 < p_code_size) {
 				int target_addr = p_code_ptr[p_ip + 1];
 				String target = resolve_address(target_addr, p_function, true);
-				
+
 				opcode_code += vformat("    // Lambda creation (via ECALL_CALLABLE_CREATE)\n");
 				Vector<String> syscall_args;
 				syscall_args.push_back(target); // callable result

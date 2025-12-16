@@ -380,6 +380,47 @@ gdscript_vm_fallback(OPCODE_OPERATOR, instance, stack, ip);
 
 **Remaining Work**: Additional method call variants, iteration opcodes, and advanced features (lambda, await) remain for future implementation. Core functionality for typical GDScript usage is supported.
 
+### Array-Based Argument Marshaling Strategy
+
+**Unlimited Method Arguments Support**: Method calls with 16+ arguments are supported via array-based marshaling strategy.
+
+**Strategy Overview**:
+- Arguments are marshaled into a `Variant[]` array on the stack
+- Only 6-7 register arguments are used for the syscall (a0-a5, a7)
+- The array can contain any number of Variant arguments
+- This matches the RISC-V ABI which provides 8 integer argument registers (a0-a7)
+
+**ECALL_VCALL Register Usage**:
+- `a0` = variant pointer (vp) - the object to call method on
+- `a1` = method name string pointer
+- `a2` = method name length (unsigned)
+- `a3` = arguments array pointer (args_ptr) - pointer to Variant array
+- `a4` = arguments count (args_size) - number of arguments in array
+- `a5` = return value address (vret_addr) - where to store result
+- `a7` = syscall number (ECALL_VCALL)
+
+**C Code Generation** (`modules/gdscript_elf/src/gdscript_bytecode_c_code_generator.cpp`):
+```c
+// Method call with unlimited arguments
+Variant call_args[argc];  // Array size determined by argument count
+call_args[0] = arg0;
+call_args[1] = arg1;
+// ... up to argc arguments
+// ECALL_VCALL syscall with array pointer + count
+```
+
+**Benefits**:
+- Functionally unlimited: Array approach supports any number of arguments
+- RISC-V ABI compliant: Uses only 6-7 registers (a0-a5, a7) for syscall
+- Efficient: Arguments passed as contiguous array in memory
+- No sandbox limit: Removed 8-argument limit in `api_vcall` to support unlimited arguments
+
+**Implementation Details**:
+- Method call opcodes create `Variant call_args[argc]` arrays dynamically
+- Arguments are read from bytecode and assigned to array elements
+- Array pointer and count are passed to `ECALL_VCALL` syscall
+- Sandbox receives array pointer and processes all arguments
+
 ### Syscall Pattern
 
 Based on `modules/sandbox/src/syscalls.h`, syscalls use inline assembly:

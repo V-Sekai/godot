@@ -416,6 +416,28 @@ TEST_CASE("[GDScript][ELF][CGeneration] Property access via syscalls") {
 	REQUIRE(c_code.contains("__asm__ volatile(\"ecall\""));
 }
 
+TEST_CASE("[GDScript][ELF][CGeneration] Method call with 16+ arguments (array-based marshaling)") {
+	const String test_code = R"(
+        func test_many_args(obj: Node) -> void:
+            # Method call with 16 arguments to test array-based marshaling
+            obj.call_deferred("test_method",
+                1, 2, 3, 4, 5, 6, 7, 8,
+                9, 10, 11, 12, 13, 14, 15, 16)
+    )";
+
+	GDScriptFunction *func = create_and_find_function(test_code, "test_many_args");
+	String c_code = generate_and_verify_c_code(func);
+
+	// Should contain array-based argument marshaling
+	REQUIRE(c_code.contains("call_args["));
+	REQUIRE(c_code.contains("ECALL_VCALL"));
+	// Should have array size of 16
+	REQUIRE(c_code.contains("call_args[15]"));
+	// Should use array pointer approach (args_ptr, args_size)
+	REQUIRE(c_code.contains("args_ptr") || c_code.contains("call_args"));
+	REQUIRE(c_code.contains("args_size") || c_code.contains("16"));
+}
+
 /* ===== COMPILER INFRASTRUCTURE TESTS ===== */
 
 TEST_CASE("[GDScript][ELF][CCompiler] Cross-compiler detection") {

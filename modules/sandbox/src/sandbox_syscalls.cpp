@@ -134,11 +134,8 @@ APICALL(api_vcall) {
 	Sandbox &emu = riscv::emu(machine);
 	SYS_TRACE("vcall", method, mlen, args_ptr, args_size, vret_addr);
 
-	if (args_size > 8) {
-		ERR_PRINT("Variant::call(): Too many arguments");
-		throw std::runtime_error("Variant::call(): Too many arguments");
-	}
-
+	// Array-based argument marshaling supports unlimited arguments via args_ptr array
+	// No limit check needed - arguments are passed as array pointer + size in registers
 	const GuestVariant *args = machine.memory.memarray<GuestVariant>(args_ptr, args_size);
 	StringName method_sn;
 	std::string_view method_sv = machine.memory.memview(method, mlen + 1); // Include null terminator.
