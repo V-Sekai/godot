@@ -3,6 +3,10 @@
 #include "../internal_common.hpp"
 #include "../threads.hpp"
 
+// Include standard library headers before Apple frameworks to establish namespace context
+#include <type_traits>
+#include <cmath>
+
 //#define SYSCALL_VERBOSE 1
 #ifdef SYSCALL_VERBOSE
 #define SYSPRINT(fmt, ...) \
@@ -36,6 +40,13 @@ extern "C" int dup3(int oldfd, int newfd, int flags);
 #endif
 #define LINUX_SA_ONSTACK	0x08000000
 
+#if defined(__APPLE__)
+#include <mach/mach_time.h>
+// Include time.h before Security.h to ensure timespec is fully defined
+#include <time.h>
+#include <Security/Security.h>
+#endif
+
 namespace riscv {
 template <int W>
 extern void add_socket_syscalls(Machine<W>&);
@@ -47,8 +58,6 @@ struct guest_iovec {
 };
 
 #if defined(__APPLE__)
-#include <mach/mach_time.h>
-#include <Security/Security.h>
 static int get_time(int clkid, struct timespec* ts) {
 	if (clkid == CLOCK_REALTIME) {
 		struct timeval tv;
