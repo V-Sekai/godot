@@ -63,30 +63,30 @@ This guide shows how to add `--gdscript-elf64-compile` CLI option to Godot.
 				OS::get_singleton()->print("Error: Failed to load script: " + gdscript_elf64_compile_input + "\n");
 				goto error;
 			}
-			
+
 			if (!script->can_compile_to_elf64()) {
 				OS::get_singleton()->print("Error: Script cannot be compiled to ELF64\n");
 				goto error;
 			}
-			
+
 			Dictionary elf64_dict = script->compile_all_functions_to_elf64();
 			if (elf64_dict.is_empty()) {
 				OS::get_singleton()->print("Error: No functions were compiled\n");
 				goto error;
 			}
-			
+
 			Ref<DirAccess> dir = DirAccess::open(gdscript_elf64_compile_output);
 			if (dir.is_null()) {
 				OS::get_singleton()->print("Error: Cannot open output directory: " + gdscript_elf64_compile_output + "\n");
 				goto error;
 			}
-			
+
 			String base_name = gdscript_elf64_compile_input.get_file().get_basename();
 			for (int i = 0; i < elf64_dict.size(); i++) {
 				StringName func_name = elf64_dict.get_key_at_index(i);
 				PackedByteArray elf_data = elf64_dict[func_name];
 				String output_path = gdscript_elf64_compile_output.path_join(base_name + "_" + func_name + ".elf");
-				
+
 				Ref<FileAccess> file = FileAccess::open(output_path, FileAccess::WRITE);
 				if (file.is_null()) {
 					OS::get_singleton()->print("Error: Cannot write to: " + output_path + "\n");
@@ -96,7 +96,7 @@ This guide shows how to add `--gdscript-elf64-compile` CLI option to Godot.
 				file->close();
 				OS::get_singleton()->print("Compiled: " + func_name + " -> " + output_path + " (" + itos(elf_data.size()) + " bytes)\n");
 			}
-			
+
 			OS::get_singleton()->print("Successfully compiled " + itos(elf64_dict.size()) + " function(s)\n");
 			exit_err = OK;
 			goto error;

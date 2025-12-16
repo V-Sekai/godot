@@ -7,7 +7,7 @@ extends SceneTree
 
 func _init():
 	var args = OS.get_cmdline_args()
-	
+
 	# Find the script name in arguments to get user arguments after it
 	var script_name = "gdscript_elf64_compiler.gd"
 	var script_index = -1
@@ -15,12 +15,12 @@ func _init():
 		if args[i].ends_with(script_name):
 			script_index = i
 			break
-	
+
 	# Parse arguments
 	var input_path = ""
 	var output_dir = "."
 	var mode = 2  # 0 = GODOT_SYSCALL, 1 = LINUX_SYSCALL, 2 = HYBRID (default)
-	
+
 	if script_index >= 0:
 		var i = script_index + 1
 		while i < args.size():
@@ -46,7 +46,7 @@ func _init():
 				elif output_dir == ".":
 					output_dir = arg
 			i += 1
-	
+
 	if input_path.is_empty():
 		print("Usage: godot --headless --script tools/gdscript_elf64_compiler.gd <input.gd> [output_dir] [--mode godot|linux|hybrid|0|1|2]")
 		print("  --mode: Compilation mode (default: hybrid)")
@@ -55,34 +55,34 @@ func _init():
 		print("    hybrid or 2: Hybrid - Godot syscalls by default, Linux syscalls when needed (recommended)")
 		quit(1)
 		return
-	
+
 	# Load GDScript
 	var script = load(input_path) as GDScript
 	if script == null:
 		print("Error: Failed to load script: ", input_path)
 		quit(1)
 		return
-	
+
 	# Check if script can be compiled
 	if not script.can_compile_to_elf64(mode):
 		print("Error: Script cannot be compiled to ELF64 in mode ", mode)
 		quit(1)
 		return
-	
+
 	# Compile all functions with specified mode
 	var elf64_dict = script.compile_all_functions_to_elf64(mode)
 	if elf64_dict.is_empty():
 		print("Error: No functions were compiled")
 		quit(1)
 		return
-	
+
 	# Ensure output directory exists
 	var dir = DirAccess.open(".")
 	if dir == null:
 		print("Error: Cannot access current directory")
 		quit(1)
 		return
-	
+
 	# Create output directory if it doesn't exist
 	if not dir.dir_exists(output_dir):
 		var err = dir.make_dir_recursive(output_dir)
@@ -90,14 +90,14 @@ func _init():
 			print("Error: Cannot create output directory: ", output_dir)
 			quit(1)
 			return
-	
+
 	# Open output directory for writing
 	dir = DirAccess.open(output_dir)
 	if dir == null:
 		print("Error: Cannot open output directory: ", output_dir)
 		quit(1)
 		return
-	
+
 	# Save each function's ELF64 binary
 	var base_name = input_path.get_file().get_basename()
 	var success_count = 0
@@ -106,7 +106,7 @@ func _init():
 		if elf_data.is_empty():
 			print("Warning: Function ", func_name, " produced empty ELF64 binary, skipping")
 			continue
-		
+
 		var output_path = output_dir.path_join(base_name + "_" + func_name + ".elf")
 		var file = FileAccess.open(output_path, FileAccess.WRITE)
 		if file == null:
@@ -117,7 +117,7 @@ func _init():
 		var mode_str = "godot" if mode == 0 else ("linux" if mode == 1 else "hybrid")
 		print("Compiled (", mode_str, "): ", func_name, " -> ", output_path, " (", elf_data.size(), " bytes)")
 		success_count += 1
-	
+
 	if success_count > 0:
 		var mode_str = "godot" if mode == 0 else ("linux" if mode == 1 else "hybrid")
 		print("Successfully compiled ", success_count, " function(s) in ", mode_str, " mode")
