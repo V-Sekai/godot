@@ -570,25 +570,25 @@ extern "C" void gdscript_)" +
 int main() {
 	// Create SandboxDummy instance
 	SandboxDummy* sandbox = new SandboxDummy();
-	
+
 	// Set up test arguments (empty for now - can be extended)
 	GuestVariant args[0];
 	GuestVariant result;
 	result.type = Variant::NIL;
 	result.v.i = 0;
-	
+
 	GuestVariant constants[0];
 	Variant::ValidatedOperatorEvaluator* operator_funcs = nullptr;
-	
+
 	// Call generated function
 	gdscript_)" +
 			p_function_name + R"((sandbox, args, 0, &result, constants, operator_funcs);
-	
+
 	// Check result (basic validation)
 	if (result.type == Variant::NIL) {
 		return 0; // Success
 	}
-	
+
 	return 1; // Failure
 }
 )";
