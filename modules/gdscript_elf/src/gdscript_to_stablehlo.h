@@ -43,8 +43,12 @@ public:
 	static String convert_function_to_stablehlo_text(const GDScriptFunction *p_function);
 	
 	// Write StableHLO text to file (MLIR text format)
-	// Returns path to the .mlir file, or empty string on error
+	// Returns path to the .stablehlo file, or empty string on error
 	static String convert_function_to_stablehlo_bytecode(const GDScriptFunction *p_function, const String &p_output_path);
+	
+	// Generate StableHLO file directly from GDScript function (bypasses C++ generation)
+	// Returns path to the .stablehlo file, or empty string on error
+	static String generate_mlir_file(const GDScriptFunction *p_function, const String &p_output_path);
 	
 	// Check if function can be converted (only basic opcodes)
 	static bool can_convert_function(const GDScriptFunction *p_function);

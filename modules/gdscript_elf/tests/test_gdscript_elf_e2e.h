@@ -44,6 +44,7 @@
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
+#include "core/os/os.h"
 #include "scene/main/scene_tree.h"
 #include "tests/core/config/test_project_settings.h"
 #include "tests/test_macros.h"
@@ -148,8 +149,7 @@ static void test_cpp_generation(const String &p_source_code, const StringName &p
 	CHECK(stablehlo_text.contains("func.func"));
 	CHECK(stablehlo_text.contains("stablehlo"));
 	
-	// Test full compilation workflow (requires external tool)
-	// Note: This test may be skipped if opcode_to_cpp tool is not available
+	// Test full compilation workflow (requires external tool for StableHLO to C++ conversion)
 	Ref<GDScriptBytecodeELFCompiler> compiler;
 	compiler.instantiate();
 	
@@ -323,6 +323,61 @@ TEST_CASE("[SceneTree][GDScriptELF] Script instance creation and function call")
 	// Cleanup
 	test_node->queue_free();
 	SceneTree::get_singleton()->process(0); // Process deletion
+}
+
+TEST_CASE("[SceneTree][GDScriptELF] GDScript to StableHLO compilation") {
+	init("gdscript_elf_e2e"); // Initialize engine components
+	
+	// Test compiling GDScript function to StableHLO
+	const String test_code = "func compile_to_stablehlo(x: int, y: int) -> int:\n\tvar sum = x + y\n\treturn sum * 2\n";
+	
+	Ref<GDScript> script = create_and_compile_script(test_code);
+	REQUIRE(script.is_valid());
+	
+	const HashMap<StringName, GDScriptFunction *> &funcs = script->get_member_functions();
+	REQUIRE(funcs.has("compile_to_stablehlo"));
+	
+	GDScriptFunction *func = funcs.get("compile_to_stablehlo");
+	REQUIRE(func != nullptr);
+	
+	// Check if function can be converted to StableHLO
+	REQUIRE(GDScriptToStableHLO::can_convert_function(func));
+	
+	// Generate StableHLO text
+	String stablehlo_text = GDScriptToStableHLO::convert_function_to_stablehlo_text(func);
+	REQUIRE(!stablehlo_text.is_empty());
+	
+	// Verify StableHLO structure
+	CHECK(stablehlo_text.contains("module"));
+	CHECK(stablehlo_text.contains("func.func @compile_to_stablehlo"));
+	CHECK(stablehlo_text.contains("stablehlo"));
+	
+	// Generate StableHLO file
+	String output_path = OS::get_singleton()->get_cache_path();
+	if (output_path.is_empty()) {
+		output_path = OS::get_singleton()->get_user_data_dir();
+	}
+	output_path = output_path.path_join("test_compile_to_stablehlo");
+	
+	String stablehlo_file = GDScriptToStableHLO::generate_mlir_file(func, output_path);
+	REQUIRE(!stablehlo_file.is_empty());
+	CHECK(stablehlo_file.ends_with(".stablehlo"));
+	
+	// Verify file exists and contains content
+	Ref<FileAccess> file = FileAccess::open(stablehlo_file, FileAccess::READ);
+	REQUIRE(file.is_valid());
+	String file_content = file->get_as_text();
+	file->close();
+	
+	CHECK(!file_content.is_empty());
+	CHECK(file_content.contains("module"));
+	CHECK(file_content.contains("func.func"));
+	
+	// Cleanup
+	Ref<DirAccess> dir = DirAccess::create_for_path(stablehlo_file.get_base_dir());
+	if (dir.is_valid()) {
+		dir->remove(stablehlo_file);
+	}
 }
 
 } // namespace TestGDScriptELFE2E

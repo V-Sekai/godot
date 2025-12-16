@@ -287,7 +287,10 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_bytecode(const GDScrip
 	}
 
 	// Write text to temporary file
-	String temp_text_path = p_output_path + ".mlir";
+	String temp_text_path = p_output_path;
+	if (!temp_text_path.ends_with(".stablehlo")) {
+		temp_text_path += ".stablehlo";
+	}
 	Ref<FileAccess> text_file = FileAccess::open(temp_text_path, FileAccess::WRITE);
 	if (!text_file.is_valid()) {
 		print_error("GDScriptToStableHLO: Failed to write StableHLO text file");
@@ -297,5 +300,33 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_bytecode(const GDScrip
 	text_file->close();
 
 	return temp_text_path;
+}
+
+String GDScriptToStableHLO::generate_mlir_file(const GDScriptFunction *p_function, const String &p_output_path) {
+	if (!p_function) {
+		return String();
+	}
+
+	// Generate StableHLO text
+	String stablehlo_text = convert_function_to_stablehlo_text(p_function);
+	if (stablehlo_text.is_empty()) {
+		return String();
+	}
+
+	// Write StableHLO text to file
+	String stablehlo_path = p_output_path;
+	if (!stablehlo_path.ends_with(".stablehlo")) {
+		stablehlo_path += ".stablehlo";
+	}
+	
+	Ref<FileAccess> stablehlo_file = FileAccess::open(stablehlo_path, FileAccess::WRITE);
+	if (!stablehlo_file.is_valid()) {
+		print_error("GDScriptToStableHLO: Failed to write StableHLO file");
+		return String();
+	}
+	stablehlo_file->store_string(stablehlo_text);
+	stablehlo_file->close();
+
+	return stablehlo_path;
 }
 

@@ -34,14 +34,12 @@
 #include "core/templates/vector.h"
 #include "modules/gdscript/gdscript_function.h"
 
-class GDScriptBytecodeCCodeGenerator;
 class GDScriptCCompiler;
 
 class GDScriptBytecodeELFCompiler : public RefCounted {
 	GDCLASS(GDScriptBytecodeELFCompiler, RefCounted);
 
 private:
-	Ref<GDScriptBytecodeCCodeGenerator> code_generator;
 	Ref<GDScriptCCompiler> compiler;
 
 	Vector<String> include_paths;

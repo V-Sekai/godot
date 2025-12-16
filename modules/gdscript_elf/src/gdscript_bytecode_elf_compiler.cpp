@@ -33,12 +33,10 @@
 #include "core/os/os.h"
 #include "core/io/file_access.h"
 #include "core/io/dir_access.h"
-#include "gdscript_bytecode_c_code_generator.h"
 #include "gdscript_c_compiler.h"
 #include "gdscript_to_stablehlo.h"
 
 GDScriptBytecodeELFCompiler::GDScriptBytecodeELFCompiler() {
-	code_generator.instantiate();
 	compiler.instantiate();
 }
 
@@ -296,7 +294,7 @@ Error GDScriptBytecodeELFCompiler::compile_function_to_elf64(GDScriptFunction *p
 	// Generate unique filenames
 	uint64_t timestamp = OS::get_singleton()->get_ticks_msec();
 	String base_name = vformat("gdscript_%llu", timestamp);
-	String stablehlo_path = temp_dir.path_join(base_name + ".mlir");
+	String stablehlo_path = temp_dir.path_join(base_name + ".stablehlo");
 	String cpp_path = temp_dir.path_join(base_name + ".cpp");
 
 	// Step 1: Convert GDScript to StableHLO
@@ -306,19 +304,19 @@ Error GDScriptBytecodeELFCompiler::compile_function_to_elf64(GDScriptFunction *p
 		return ERR_INVALID_DATA;
 	}
 
-	// Step 2: Execute external tool to generate C++
-	// Try to find opcode_to_cpp tool
-	String tool_path = "opcode_to_cpp";
+	// Step 2: Execute external tool to convert StableHLO to C++
+	// Try to find stablehlo-to-cpp tool
+	String tool_path = "stablehlo-to-cpp";
 	
 	// Check environment variable for custom tool path
-	String env_tool_path = OS::get_singleton()->get_environment("GODOT_OPCODE_TO_CPP_PATH");
+	String env_tool_path = OS::get_singleton()->get_environment("GODOT_STABLEHLO_TO_CPP_PATH");
 	if (!env_tool_path.is_empty()) {
 		tool_path = env_tool_path;
 	} else {
 		// Try relative path from executable
 		String exe_path = OS::get_singleton()->get_executable_path();
 		String exe_dir = exe_path.get_base_dir();
-		String relative_tool = exe_dir.path_join("opcode_to_cpp");
+		String relative_tool = exe_dir.path_join("stablehlo-to-cpp");
 		if (FileAccess::file_exists(relative_tool)) {
 			tool_path = relative_tool;
 		}
