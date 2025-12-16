@@ -634,6 +634,8 @@ bool Sandbox::load(const PackedByteArray *buffer, const std::vector<std::string>
 
 		// Run the program through to its main() function
 		if (!this->m_resumable_mode) {
+			// Set RA to exit address to ensure proper function return
+			m.cpu.reg(riscv::REG_RA) = m.memory.exit_address();
 			if (!this->get_precise_simulation()) {
 				if (get_instructions_max() <= 0) {
 					m.cpu.simulate_inaccurate(m.cpu.pc());
