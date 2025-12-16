@@ -90,16 +90,16 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	// Get function name
 	StringName func_name = p_function->get_name();
 	String func_name_str = func_name;
-	
+
 	// Create string table section
 	ELFIO::section *str_sec = writer.sections.add(".strtab");
 	str_sec->set_type(ELFIO::SHT_STRTAB);
-	
+
 	// Create string table accessor
 	ELFIO::string_section_accessor stra(str_sec);
 	// Add function name to string table
 	ELFIO::Elf_Word str_index = stra.add_string(func_name_str.utf8().get_data());
-	
+
 	// Create symbol table section
 	ELFIO::section *sym_sec = writer.sections.add(".symtab");
 	sym_sec->set_type(ELFIO::SHT_SYMTAB);
@@ -107,7 +107,7 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	sym_sec->set_addr_align(0x8);
 	sym_sec->set_entry_size(writer.get_default_entry_size(ELFIO::SHT_SYMTAB));
 	sym_sec->set_link(str_sec->get_index()); // Link to string table
-	
+
 	// Create symbol table accessor
 	ELFIO::symbol_section_accessor syma(writer, sym_sec);
 	// Add function symbol (value is ENTRY_POINT, size is code size)

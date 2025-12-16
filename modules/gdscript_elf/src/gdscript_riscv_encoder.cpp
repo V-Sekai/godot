@@ -243,7 +243,6 @@ PackedByteArray GDScriptRISCVEncoder::encode_godot_syscall(int p_ecall_number) {
 	return result;
 }
 
-
 PackedByteArray GDScriptRISCVEncoder::encode_vm_call(int p_opcode, int p_ip, ELF64CompilationMode p_mode) {
 	// Map GDScript opcodes to Godot syscalls
 	PackedByteArray result;

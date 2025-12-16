@@ -14,11 +14,11 @@ func _init():
 		if args[i].ends_with(script_name):
 			script_index = i
 			break
-	
+
 	var elf_path = ""
 	var function_name = ""
 	var function_args = []
-	
+
 	if script_index >= 0:
 		var i = script_index + 1
 		while i < args.size():
@@ -31,12 +31,12 @@ func _init():
 				else:
 					function_args.append(arg)
 			i += 1
-	
+
 	if elf_path.is_empty():
 		print("Usage: godot --headless --script tools/test_elf64_with_sandbox.gd <elf_file> [function_name] [args...]")
 		quit(1)
 		return
-	
+
 	# Check if Sandbox module is available
 	if not ClassDB.class_exists("Sandbox"):
 		print("Error: Sandbox module is not available.")
@@ -48,34 +48,34 @@ func _init():
 		print("File size: ", FileAccess.get_file_as_bytes(elf_path).size(), " bytes")
 		quit(1)
 		return
-	
+
 	# Create a root node to hold the sandbox
 	var root = Node.new()
 	get_root().add_child(root)
-	
+
 	# Create ELFScript and load from file path
 	var elf_script = ClassDB.instantiate("ELFScript")
 	if elf_script == null:
 		print("Error: Failed to instantiate ELFScript")
 		return
-	
+
 	# Use set_file to load the ELF file
 	elf_script.set_file(elf_path)
-	
+
 	# Create a Sandbox node to execute the ELF
 	var sandbox = ClassDB.instantiate("Sandbox")
 	root.add_child(sandbox)
-	
+
 	# Set program - this may trigger execution, but entry point is 0 so it should be safe
 	sandbox.set_program(elf_script)
-	
+
 	# Wait for sandbox to initialize - use call_deferred to process next frame
 	call_deferred("_execute_test", sandbox, elf_script, function_name, function_args)
 
 func _execute_test(sandbox, elf_script, function_name, function_args):
 	# Wait one more frame for full initialization
 	await process_frame
-	
+
 	# Check if sandbox has the function
 	if not function_name.is_empty():
 		if not sandbox.has_function(function_name):
@@ -84,7 +84,7 @@ func _execute_test(sandbox, elf_script, function_name, function_args):
 			print("Try calling the function directly or check Sandbox.has_function()")
 			quit(1)
 			return
-		
+
 		# Convert string args to integers if they look like numbers
 		var converted_args = []
 		for arg in function_args:
@@ -94,7 +94,7 @@ func _execute_test(sandbox, elf_script, function_name, function_args):
 				converted_args.append(arg.to_float())
 			else:
 				converted_args.append(arg)
-		
+
 		print("Calling function: ", function_name, " with args: ", converted_args)
 		var callable = sandbox.vmcallable(function_name, converted_args)
 		var result = callable.call()
