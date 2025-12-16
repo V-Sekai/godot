@@ -51,4 +51,7 @@ public:
 	bool is_cross_compiler_available() const;
 
 	Error compile_c_to_elf(const String &p_c_source, const Vector<String> &p_include_paths, PackedByteArray &r_elf_data) const;
+	
+	// Native C++ compilation for testing (not RISC-V)
+	Error compile_cpp_to_native(const String &p_cpp_source, const Vector<String> &p_include_paths, String &r_executable_path) const;
 };

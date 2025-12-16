@@ -34,23 +34,25 @@
 
 #ifdef MODULE_SANDBOX_ENABLED
 #include "modules/sandbox/src/syscalls.h"
+#include "modules/sandbox/src/guest_datatypes.h"
 #endif
 
 String GDScriptBytecodeCCodeGenerator::generate_function_signature(const String &p_function_name, bool p_is_static) const {
-	// Generate C function signature that matches sandbox expectations
-	return vformat("void gdscript_%s(void* instance, Variant* args, int argcount, Variant* result, Variant* constants, Variant::ValidatedOperatorEvaluator* operator_funcs)", p_function_name);
+	// Generate C++ function signature using Sandbox API types
+	return vformat("void gdscript_%s(void* instance, GuestVariant* args, int argcount, GuestVariant* result, GuestVariant* constants, Variant::ValidatedOperatorEvaluator* operator_funcs)", p_function_name);
 }
 
 String GDScriptBytecodeCCodeGenerator::generate_prelogue(int p_stack_size, const GDScriptFunction *p_function) const {
 	String prologue = "{\n";
-	prologue += vformat("    Variant stack[%d];\n", p_stack_size);
+	prologue += vformat("    GuestVariant stack[%d];\n", p_stack_size);
 	prologue += "    int ip = 0;\n";
 	prologue += "\n";
 
-	// Initialize stack with null variants
-	prologue += "    // Initialize stack\n";
+	// Initialize stack with null variants (GuestVariant defaults to NIL)
+	prologue += "    // Initialize stack (GuestVariant defaults to NIL type)\n";
 	for (int i = 0; i < p_stack_size; i++) {
-		prologue += vformat("    stack[%d] = Variant();\n", i);
+		prologue += vformat("    stack[%d].type = Variant::NIL;\n", i);
+		prologue += vformat("    stack[%d].v.i = 0;\n", i);
 	}
 	prologue += "\n";
 
@@ -81,50 +83,47 @@ String GDScriptBytecodeCCodeGenerator::resolve_address(int p_address, const GDSc
 			return vformat("get_global_name_cstr(%d)", addr_index); // Placeholder for syscall
 		}
 		default: {
-			return "Variant()"; // Error case
+			// Error case - return a reference to a default GuestVariant
+			return "stack[0]"; // Fallback (shouldn't happen)
 		}
 	}
 }
 
 String GDScriptBytecodeCCodeGenerator::resolve_assign_source(GDScriptFunction::Opcode p_opcode, const int *p_code_ptr, int p_ip, int p_code_size, const GDScriptFunction *p_function) const {
-	// Helper to resolve assign source, handling special cases (NULL, TRUE, FALSE) as constants
-	if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_NULL) {
-		return "Variant()";
-	} else if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_TRUE) {
-		return "true";
-	} else if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_FALSE) {
-		return "false";
-	} else if (p_opcode == GDScriptFunction::OPCODE_ASSIGN) {
+	// Helper to resolve assign source for regular assigns (special cases handled in opcode generation)
+	// This is only called for regular ASSIGN and typed ASSIGN variants
+	if (p_opcode == GDScriptFunction::OPCODE_ASSIGN) {
 		// Regular assign: source is at p_ip + 2
 		if (p_ip + 2 < p_code_size) {
 			int src_addr = p_code_ptr[p_ip + 2];
 			return resolve_address(src_addr, p_function);
 		}
-		return "Variant()";
+		return "stack[0]"; // Fallback (shouldn't happen)
 	} else {
 		// Typed assigns: source is at p_ip + 2 (same as regular assign)
 		if (p_ip + 2 < p_code_size) {
 			int src_addr = p_code_ptr[p_ip + 2];
 			return resolve_address(src_addr, p_function);
 		}
-		return "Variant()";
+		return "stack[0]"; // Fallback (shouldn't happen)
 	}
 }
 
 String GDScriptBytecodeCCodeGenerator::generate_syscall(int p_ecall_number, const Vector<String> &p_args) const {
 	String syscall_code;
-	syscall_code += "// Syscall " + itos(p_ecall_number) + "\n";
+	syscall_code += "    // Syscall " + itos(p_ecall_number) + "\n";
 
 	// RISC-V syscall ABI: up to 7 arguments in a0-a6, syscall number in a7
 	int max_args = p_args.size() < 7 ? p_args.size() : 7;
 
-	// Set up registers for syscall (inline assembly style for C code)
+	// Set up registers for syscall (inline assembly style for C++ code)
+	// Use GuestVariant* instead of Variant*
 	for (int i = 0; i < max_args; i++) {
-		syscall_code += vformat("register Variant* a%d asm(\"a%d\") = &(%s);\n", i, i, p_args[i].utf8().get_data());
+		syscall_code += vformat("    register GuestVariant* a%d asm(\"a%d\") = &(%s);\n", i, i, p_args[i].utf8().get_data());
 	}
 
-	syscall_code += vformat("register int syscall_number asm(\"a7\") = %d;\n", p_ecall_number);
-	syscall_code += "__asm__ volatile(\"ecall\" : : \"r\"(syscall_number)";
+	syscall_code += vformat("    register int syscall_number asm(\"a7\") = %d;\n", p_ecall_number);
+	syscall_code += "    __asm__ volatile(\"ecall\" : : \"r\"(syscall_number)";
 
 	for (int i = 0; i < max_args; i++) {
 		syscall_code += vformat(", \"r\"(a%d)", i);
@@ -137,17 +136,17 @@ String GDScriptBytecodeCCodeGenerator::generate_syscall(int p_ecall_number, cons
 String GDScriptBytecodeCCodeGenerator::generate_vcall_syscall(const String &p_variant_ptr, const String &p_method_str, int p_method_len, const String &p_args_ptr, int p_args_size, const String &p_ret_ptr) const {
 	// Specialized syscall generation for ECALL_VCALL (6 arguments)
 	// Signature: (GuestVariant* vp, gaddr_t method, unsigned mlen, gaddr_t args_ptr, gaddr_t args_size, gaddr_t vret_addr)
-	// Note: In generated C code, we use Variant* instead of GuestVariant* (sandbox handles conversion)
+	// Use GuestVariant* directly in C++ code
 	String syscall_code;
 	syscall_code += "    // ECALL_VCALL syscall\n";
 
 	// Set up registers: a0-a5 for arguments, a7 for syscall number
-	syscall_code += vformat("    register Variant* a0 asm(\"a0\") = &(%s);\n", p_variant_ptr.utf8().get_data());
+	syscall_code += vformat("    register GuestVariant* a0 asm(\"a0\") = &(%s);\n", p_variant_ptr.utf8().get_data());
 	syscall_code += vformat("    register const char* a1 asm(\"a1\") = %s;\n", p_method_str.utf8().get_data());
 	syscall_code += vformat("    register unsigned a2 asm(\"a2\") = %d;\n", p_method_len);
-	syscall_code += vformat("    register Variant* a3 asm(\"a3\") = %s;\n", p_args_ptr.utf8().get_data());
+	syscall_code += vformat("    register GuestVariant* a3 asm(\"a3\") = %s;\n", p_args_ptr.utf8().get_data());
 	syscall_code += vformat("    register int a4 asm(\"a4\") = %d;\n", p_args_size);
-	syscall_code += vformat("    register Variant* a5 asm(\"a5\") = &(%s);\n", p_ret_ptr.utf8().get_data());
+	syscall_code += vformat("    register GuestVariant* a5 asm(\"a5\") = &(%s);\n", p_ret_ptr.utf8().get_data());
 	syscall_code += "    register int syscall_number asm(\"a7\") = ECALL_VCALL;\n";
 	syscall_code += "    __asm__ volatile(\"ecall\" : : \"r\"(syscall_number), \"r\"(a0), \"r\"(a1), \"r\"(a2), \"r\"(a3), \"r\"(a4), \"r\"(a5));\n";
 
@@ -232,14 +231,29 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 		case GDScriptFunction::OPCODE_ASSIGN_TYPED_DICTIONARY:
 		case GDScriptFunction::OPCODE_ASSIGN_TYPED_NATIVE:
 		case GDScriptFunction::OPCODE_ASSIGN_TYPED_SCRIPT: {
-			// All assign variants use the same C code pattern: dst = src;
-			// Special cases (NULL, TRUE, FALSE) are handled via resolve_assign_source()
-			// Typed assigns generate same code (type checking happens at bytecode level)
+			// All assign variants use GuestVariant struct assignment
+			// Special cases (NULL, TRUE, FALSE) handled directly
 			if (p_ip + 1 < p_code_size) {
 				int dst_addr = p_code_ptr[p_ip + 1];
 				String dst = resolve_address(dst_addr, p_function, true);
-				String src = resolve_assign_source(p_opcode, p_code_ptr, p_ip, p_code_size, p_function);
-				opcode_code += vformat("    %s = %s;\n", dst.utf8().get_data(), src.utf8().get_data());
+				
+				if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_NULL) {
+					// Direct field assignment for NIL
+					opcode_code += vformat("    %s.type = Variant::NIL;\n", dst.utf8().get_data());
+					opcode_code += vformat("    %s.v.i = 0;\n", dst.utf8().get_data());
+				} else if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_TRUE) {
+					// Direct field assignment for BOOL true
+					opcode_code += vformat("    %s.type = Variant::BOOL;\n", dst.utf8().get_data());
+					opcode_code += vformat("    %s.v.b = true;\n", dst.utf8().get_data());
+				} else if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_FALSE) {
+					// Direct field assignment for BOOL false
+					opcode_code += vformat("    %s.type = Variant::BOOL;\n", dst.utf8().get_data());
+					opcode_code += vformat("    %s.v.b = false;\n", dst.utf8().get_data());
+				} else {
+					// Regular assign: struct copy (GuestVariant is POD)
+					String src = resolve_assign_source(p_opcode, p_code_ptr, p_ip, p_code_size, p_function);
+					opcode_code += vformat("    %s = %s;\n", dst.utf8().get_data(), src.utf8().get_data());
+				}
 			}
 			// Advance IP based on opcode type (from disassembler)
 			if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_NULL ||
@@ -276,6 +290,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 		case GDScriptFunction::OPCODE_JUMP_IF_SHARED: {
 			// Conditional jump (true) - both opcodes generate same code
 			// JUMP_IF_SHARED treats shared check as condition (handled at bytecode level)
+			// For GuestVariant, check type and value for boolean conversion
 			if (p_ip + 2 < p_code_size) {
 				int condition_addr = p_code_ptr[p_ip + 1];
 				int target_ip = p_code_ptr[p_ip + 2];
@@ -283,8 +298,11 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				HashMap<int, int> jump_labels;
 				generate_jump_labels(p_code_ptr, p_code_size, jump_labels);
 				int label_id = jump_labels[target_ip];
-				opcode_code += vformat("    if (%s.booleanize()) goto label_%d;\n",
-						condition.utf8().get_data(), label_id);
+				// GuestVariant boolean check: type == BOOL && v.b == true, or non-zero numeric
+				opcode_code += vformat("    if ((%s.type == Variant::BOOL && %s.v.b) || (%s.type == Variant::INT && %s.v.i != 0) || (%s.type == Variant::FLOAT && %s.v.f != 0.0)) goto label_%d;\n",
+						condition.utf8().get_data(), condition.utf8().get_data(),
+						condition.utf8().get_data(), condition.utf8().get_data(),
+						condition.utf8().get_data(), condition.utf8().get_data(), label_id);
 			}
 			p_ip += 3; // opcode + condition + target
 			break;
@@ -297,13 +315,18 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				HashMap<int, int> jump_labels;
 				generate_jump_labels(p_code_ptr, p_code_size, jump_labels);
 				int label_id = jump_labels[target_ip];
-				opcode_code += vformat("    if (!(%s).booleanize()) goto label_%d;\n",
-						condition.utf8().get_data(), label_id);
+				// GuestVariant boolean check (negated)
+				opcode_code += vformat("    if (!((%s.type == Variant::BOOL && %s.v.b) || (%s.type == Variant::INT && %s.v.i != 0) || (%s.type == Variant::FLOAT && %s.v.f != 0.0))) goto label_%d;\n",
+						condition.utf8().get_data(), condition.utf8().get_data(),
+						condition.utf8().get_data(), condition.utf8().get_data(),
+						condition.utf8().get_data(), condition.utf8().get_data(), label_id);
 			}
 			p_ip += 3; // opcode + condition + target
 			break;
 		}
 		case GDScriptFunction::OPCODE_OPERATOR_VALIDATED: {
+			// Validated operators work with Variant*, but we need to convert GuestVariant to Variant
+			// For now, use syscall ECALL_VEVAL for operator evaluation (sandbox handles conversion)
 			if (p_ip + 4 < p_code_size) {
 				int result_addr = p_code_ptr[p_ip + 1];
 				int left_addr = p_code_ptr[p_ip + 2];
@@ -314,10 +337,15 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				String left = resolve_address(left_addr, p_function);
 				String right = resolve_address(right_addr, p_function);
 
+				// Use ECALL_VEVAL syscall for operator evaluation with GuestVariant
 				opcode_code += vformat("    {\n");
-				opcode_code += vformat("        Variant::ValidatedOperatorEvaluator op_func = operator_funcs[%d];\n", op_index);
-				opcode_code += vformat("        op_func(&%s, &%s, &%s);\n",
-						left.utf8().get_data(), right.utf8().get_data(), result.utf8().get_data());
+				opcode_code += vformat("        // ECALL_VEVAL: operator evaluation\n");
+				opcode_code += vformat("        register GuestVariant* a0 asm(\"a0\") = &(%s);\n", left.utf8().get_data());
+				opcode_code += vformat("        register GuestVariant* a1 asm(\"a1\") = &(%s);\n", right.utf8().get_data());
+				opcode_code += vformat("        register GuestVariant* a2 asm(\"a2\") = &(%s);\n", result.utf8().get_data());
+				opcode_code += vformat("        register int a3 asm(\"a3\") = %d;\n", op_index);
+				opcode_code += vformat("        register int syscall_number asm(\"a7\") = ECALL_VEVAL;\n");
+				opcode_code += vformat("        __asm__ volatile(\"ecall\" : : \"r\"(syscall_number), \"r\"(a0), \"r\"(a1), \"r\"(a2), \"r\"(a3));\n");
 				opcode_code += vformat("    }\n");
 			}
 			p_ip += 5; // opcode + result + left + right + op_index
@@ -348,7 +376,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 
 				// Use ECALL_VCALL to get type and compare
 				opcode_code += vformat("    // Type test: check if %s matches type\n", value.utf8().get_data());
-				opcode_code += vformat("    Variant type_test_args[0] = {};\n");
+				opcode_code += vformat("    GuestVariant type_test_args[0] = {};\n");
 				opcode_code += generate_vcall_syscall(
 						value, // vp (value to test)
 						"\"get_type\"", // method name
@@ -379,7 +407,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				// Create temporary array for arguments [index, source]
 				opcode_code += vformat("    // Set keyed/indexed: %s[%s] = %s\n",
 						target.utf8().get_data(), index.utf8().get_data(), source.utf8().get_data());
-				opcode_code += vformat("    Variant set_args[2] = {%s, %s};\n",
+				opcode_code += vformat("    GuestVariant set_args[2] = {%s, %s};\n",
 						index.utf8().get_data(), source.utf8().get_data());
 				opcode_code += generate_vcall_syscall(
 						target, // vp (target variant)
@@ -414,7 +442,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				// Create temporary array for arguments [index]
 				opcode_code += vformat("    // Get keyed/indexed: %s = %s[%s]\n",
 						target.utf8().get_data(), source.utf8().get_data(), index.utf8().get_data());
-				opcode_code += vformat("    Variant get_args[1] = {%s};\n", index.utf8().get_data());
+				opcode_code += vformat("    GuestVariant get_args[1] = {%s};\n", index.utf8().get_data());
 				opcode_code += generate_vcall_syscall(
 						source, // vp (source variant)
 						"\"get\"", // method name
@@ -485,7 +513,9 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 
 				String result = resolve_address(result_addr, p_function, true);
 				Vector<String> syscall_args;
-				syscall_args.push_back("*(Variant*)instance"); // object
+				// instance is void*, need to cast to GuestVariant* for syscall
+				// Note: In actual execution, instance would be converted by sandbox
+				syscall_args.push_back("(GuestVariant*)instance"); // object (cast to GuestVariant*)
 				syscall_args.push_back("\"" + member_name + "\""); // property name
 				syscall_args.push_back(itos(member_name.length())); // name length
 				syscall_args.push_back(result); // result pointer
@@ -504,7 +534,8 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 
 				String value = resolve_address(value_addr, p_function);
 				Vector<String> syscall_args;
-				syscall_args.push_back("*(Variant*)instance"); // object
+				// instance is void*, need to cast to GuestVariant* for syscall
+				syscall_args.push_back("(GuestVariant*)instance"); // object (cast to GuestVariant*)
 				syscall_args.push_back("\"" + member_name + "\""); // property name
 				syscall_args.push_back(itos(member_name.length())); // name length
 				syscall_args.push_back(value); // value
@@ -530,18 +561,18 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 					opcode_code += vformat("    // Get static variable[%d]\n", index);
 					Vector<String> syscall_args;
 					syscall_args.push_back(itos(index)); // index
-					syscall_args.push_back("(gaddr_t)0"); // gdata (0 for Variant fetch)
+					syscall_args.push_back("(gaddr_t)0"); // gdata (0 for GuestVariant fetch)
 					syscall_args.push_back("0"); // method
 					opcode_code += generate_syscall(ECALL_VFETCH, syscall_args);
-					opcode_code += vformat("    %s = stack[0]; // Result from VFETCH\n", result.utf8().get_data());
+					opcode_code += vformat("    %s = stack[0]; // Result from VFETCH (GuestVariant)\n", result.utf8().get_data());
 				} else {
 					// Use ECALL_VSTORE to set static variable
 					opcode_code += vformat("    // Set static variable[%d] = %s\n", index, value.utf8().get_data());
 					Vector<String> syscall_args;
 					syscall_args.push_back("&static_var_idx"); // vidx (output)
 					syscall_args.push_back("Variant::NIL"); // type (will be determined from value)
-					syscall_args.push_back("(gaddr_t)&" + value); // gdata
-					syscall_args.push_back("sizeof(Variant)"); // gsize
+					syscall_args.push_back("(gaddr_t)&" + value); // gdata (GuestVariant*)
+					syscall_args.push_back("sizeof(GuestVariant)"); // gsize
 					opcode_code += generate_syscall(ECALL_VSTORE, syscall_args);
 				}
 			}
@@ -585,7 +616,8 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 					opcode_code += vformat("    // Construct variant (type info at bytecode level)\n");
 					opcode_code += vformat("    // Use ECALL_VCREATE to create variant\n");
 					// For now, generate assignment to target (proper implementation needs ECALL_VCREATE with type and data)
-					opcode_code += vformat("    %s = Variant(); // Constructor result\n", target.utf8().get_data());
+					opcode_code += vformat("    %s.type = Variant::NIL; // Constructor result (default to NIL)\n", target.utf8().get_data());
+					opcode_code += vformat("    %s.v.i = 0;\n", target.utf8().get_data());
 				}
 				// Advance IP: opcode(1) + var_args_count(1) + args(var_args_count) + target(1) + argc(1) + type_info(variable)
 				p_ip += 2 + var_args_count + 2; // Minimum: opcode + var_args_count + args + target + argc
@@ -637,7 +669,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 					// Build arguments array from variable args
 					// Array-based marshaling supports unlimited arguments (16+)
 					opcode_code += vformat("    // Method call: %s.%s() with %d arguments\n", base.utf8().get_data(), method_name.utf8().get_data(), argc);
-					opcode_code += vformat("    Variant call_args[%d];\n", argc);
+					opcode_code += vformat("    GuestVariant call_args[%d];\n", argc);
 					// Read arguments from bytecode: arguments start at p_ip + 2, count is var_args_count
 					int actual_arg_count = MIN(argc, var_args_count);
 					for (int i = 0; i < actual_arg_count && (p_ip + 2 + i < p_code_size); i++) {
@@ -865,10 +897,13 @@ String GDScriptBytecodeCCodeGenerator::generate_c_code(GDScriptFunction *p_funct
 	String function_name = p_function->get_name();
 	bool is_static = p_function->is_static();
 
-	// Generate complete C function
+	// Generate complete C++ function using Sandbox API
 	String code;
 	code += "#include <stdint.h>\n";
-	code += "#include \"variant.h\"  // Godot Variant type\n\n";
+	code += "#include \"core/variant/variant.h\"  // Godot Variant type\n";
+	code += "#include \"modules/sandbox/src/guest_datatypes.h\"  // GuestVariant type\n";
+	code += "#include \"modules/sandbox/src/syscalls.h\"  // ECALL_* definitions\n";
+	code += "\n";
 
 	// Function signature
 	code += generate_function_signature(function_name, is_static);

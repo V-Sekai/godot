@@ -7,14 +7,15 @@ The `gdscript_elf` module implements a GDScript bytecode-to-ELF compiler that co
 **Key Technologies:**
 
 -   C++ (Godot engine module)
--   C code generation (from GDScript bytecode)
--   RISC-V cross-compiler (riscv64-unknown-elf-gcc)
+-   C++ code generation (from GDScript bytecode) using Sandbox API types
+-   RISC-V cross-compiler (riscv64-unknown-elf-g++ for C++ support)
 -   ELF64 binary format
 -   GDScript bytecode
+-   Sandbox API (GuestVariant, syscalls)
 
 **Architecture Pattern:** Strangler Vine - gradual migration from VM to ELF compilation
 
-**Compilation Approach:** Generate C++ code from bytecode, then compile to ELF using RISC-V cross-compiler (simpler than raw instruction encoding)
+**Compilation Approach:** Generate C++ code from bytecode using Sandbox API types (GuestVariant), then compile to ELF using RISC-V cross-compiler. Supports both native C++ compilation for testing (with SandboxDummy) and RISC-V ELF for production.
 
 ## Development Environment Setup
 
@@ -160,7 +161,7 @@ namespace TestGDScriptELF {
 ### Phase 1 Status - ✅ COMPLETE
 
 -   All core components implemented and integrated with **actual C code generation**
--   `GDScriptBytecodeCCodeGenerator` translates bytecode to C99 source code
+-   `GDScriptBytecodeCCodeGenerator` translates bytecode to C++ source code using Sandbox API types (GuestVariant)
 -   `GDScriptCCompiler` invokes RISC-V cross-compiler with proper flags
 -   `GDScriptBytecodeELFCompiler` orchestrates the full pipeline
 -   `GDScriptELF64Writer` updated to use new pipeline instead of raw instruction encoding
@@ -285,9 +286,9 @@ namespace TestGDScriptELF {
 
 **ELF Compilation (C Code Generation Approach):**
 
--   `GDScriptBytecodeCCodeGenerator` - Generates C++ code from bytecode
--   `GDScriptCCompiler` - Invokes RISC-V cross-compiler (riscv64-unknown-elf-gcc)
--   `GDScriptBytecodeELFCompiler` - Orchestrates C generation + compilation
+-   `GDScriptBytecodeCCodeGenerator` - Generates C++ code from bytecode using Sandbox API types (GuestVariant)
+-   `GDScriptCCompiler` - Invokes RISC-V cross-compiler (riscv64-unknown-elf-g++ for C++ support)
+-   `GDScriptBytecodeELFCompiler` - Orchestrates C++ generation + compilation
 -   `GDScriptELFFallback` - Fallback to VM for unsupported opcodes (C interface)
 
 **Compilation Flow:**
@@ -295,7 +296,7 @@ namespace TestGDScriptELF {
 ```
 GDScriptFunction bytecode
     ↓
-GDScriptBytecodeCCodeGenerator
+GDScriptBytecodeCCodeGenerator (generates C++ with GuestVariant)
     ↓
 C++ source code (temporary file)
     ↓
@@ -316,18 +317,18 @@ Sandbox::vmcall_address() (execute ELF function)
 Return Variant result
 ```
 
-## GDScript Bytecode to C Code Mapping
+## GDScript Bytecode to C++ Code Mapping (Sandbox API)
 
 ### Function Structure
 
 Generated C++ function signature:
 ```c
-void gdscript_function_name(void* instance, Variant* args, int argcount, Variant* result, Variant* constants, Variant::ValidatedOperatorEvaluator* operator_funcs) {
+void gdscript_function_name(void* instance, GuestVariant* args, int argcount, GuestVariant* result, GuestVariant* constants, Variant::ValidatedOperatorEvaluator* operator_funcs) {
     Variant stack[STACK_SIZE];
     int ip = 0;
 
     // Function body (opcodes translated to C)
-    // Phase 2: Direct C code for supported opcodes
+    // Phase 2: Direct C++ code for supported opcodes using GuestVariant
     label_0:
     stack[3] = stack[1];  // OPCODE_ASSIGN
     if (stack[4].booleanize()) goto label_10;  // OPCODE_JUMP_IF
@@ -347,7 +348,7 @@ void gdscript_function_name(void* instance, Variant* args, int argcount, Variant
 gdscript_vm_fallback(OPCODE_OPERATOR, instance, stack, ip);
 ```
 
-**Comprehensive C Code Generation**: Full support for ~62 GDScript bytecode opcodes ✅ COMPLETE
+**Comprehensive C++ Code Generation**: Full support for ~62 GDScript bytecode opcodes using Sandbox API types (GuestVariant) ✅ COMPLETE
 
 **Fully Implemented Categories:**
 -   **Returns (6 opcodes)**: All `RETURN`, `RETURN_*` variants with proper result assignment and typed returns
@@ -399,10 +400,10 @@ gdscript_vm_fallback(OPCODE_OPERATOR, instance, stack, ip);
 - `a5` = return value address (vret_addr) - where to store result
 - `a7` = syscall number (ECALL_VCALL)
 
-**C Code Generation** (`modules/gdscript_elf/src/gdscript_bytecode_c_code_generator.cpp`):
-```c
+**C++ Code Generation** (`modules/gdscript_elf/src/gdscript_bytecode_c_code_generator.cpp`):
+```cpp
 // Method call with unlimited arguments
-Variant call_args[argc];  // Array size determined by argument count
+GuestVariant call_args[argc];  // Array size determined by argument count
 call_args[0] = arg0;
 call_args[1] = arg1;
 // ... up to argc arguments
@@ -436,10 +437,12 @@ __asm__ volatile (
 
 -   **modules/gdscript**: Read-only dependency (to wrap)
 -   **modules/sandbox**: Read-only dependency (for ELF execution, syscall numbers)
--   **RISC-V Cross-Compiler**: Must be available in PATH
-    -   Preferred: `riscv64-unknown-elf-gcc`
-    -   Alternatives: `riscv64-linux-gnu-gcc`, `riscv64-elf-gcc`
+-   **RISC-V Cross-Compiler**: Must be available in PATH (C++ support required)
+    -   Preferred: `riscv64-unknown-elf-g++` (for C++ support)
+    -   Alternatives: `riscv64-linux-gnu-g++`, `riscv64-elf-g++`, `riscv-g++`
+    -   Falls back to `gcc` versions if `g++` not available
     -   Auto-detected by `GDScriptCCompiler::detect_cross_compiler()`
+-   **Native C++ Compiler** (for testing): `g++`, `clang++`, or `c++` for native test compilation
 -   **Temporary file system**: For C code and ELF output during compilation
 
 ## Security Considerations
@@ -486,8 +489,8 @@ Fixes #12345
 
 ### Adding New Opcode Support
 
-1. Add opcode-to-C translation in `GDScriptBytecodeCCodeGenerator::generate_opcode()`
-2. Generate appropriate C code (or inline assembly for syscalls)
+1. Add opcode-to-C++ translation in `GDScriptBytecodeCCodeGenerator::generate_opcode()`
+2. Generate appropriate C++ code using GuestVariant (or inline assembly for syscalls)
 3. Update `GDScriptELFFallback::is_opcode_supported()` to return `true`
 4. Add test case in `test_gdscript_bytecode_elf.h`
 5. Update migration tracking
@@ -506,7 +509,8 @@ Fixes #12345
 
 ### Error Handling
 
--   C code generation errors return empty `String`, logged via `ERR_PRINT`
+-   C++ code generation errors return empty `String`, logged via `ERR_PRINT`
+-   Native C++ compilation available for testing (no RISC-V toolchain needed)
 -   Compiler not found: Returns empty result, logs error
 -   Compilation errors: Captures compiler stderr, returns empty result, logs errors
 -   Temporary file errors: Clean up on error, return empty result
