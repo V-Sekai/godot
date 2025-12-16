@@ -75,14 +75,14 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 
 	// 4. Create loadable segment
 	const ELFIO::Elf64_Addr ENTRY_POINT = 0x10000;
-	const ELFIO::Elf_Xword PAGE_SIZE = 0x1000;
+	const ELFIO::Elf_Xword ELF_PAGE_SIZE = 0x1000;
 
 	ELFIO::segment *text_seg = writer.segments.add();
 	text_seg->set_type(ELFIO::PT_LOAD);
 	text_seg->set_virtual_address(ENTRY_POINT);
 	text_seg->set_physical_address(ENTRY_POINT);
 	text_seg->set_flags(ELFIO::PF_X | ELFIO::PF_R); // Executable + Readable
-	text_seg->set_align(PAGE_SIZE);
+	text_seg->set_align(ELF_PAGE_SIZE);
 	text_seg->add_section(text_sec, text_sec->get_addr_align());
 
 	// 5. Set entry point
