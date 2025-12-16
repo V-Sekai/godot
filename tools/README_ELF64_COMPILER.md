@@ -1,32 +1,23 @@
 # GDScript ELF64 Compiler Tool
 
-A command-line tool to compile GDScript functions to ELF64 binaries.
+A command-line tool to compile GDScript functions to ELF64 binaries for execution in Godot Sandbox.
 
 ## Usage
 
 ```bash
-godot --headless --script tools/gdscript_elf64_compiler.gd <input.gd> [output_dir] [--mode mode]
+godot --headless --script tools/gdscript_elf64_compiler.gd <input.gd> [output_dir]
 ```
 
 ### Arguments
 
 - `<input.gd>` - Path to the GDScript file to compile (required)
 - `[output_dir]` - Directory where ELF64 binaries will be saved (optional, defaults to current directory)
-- `[--mode mode]` - Compilation mode (optional, defaults to `hybrid`)
-  - `godot` or `0`: Pure Godot sandbox syscalls (ECALL 500+)
-  - `linux` or `1`: Pure Linux syscalls (1-400+)
-  - `hybrid` or `2`: **Recommended** - Hybrid mode uses Godot syscalls by default, Linux syscalls when needed
 
 ### Examples
 
 ```bash
-# Compile script.gd with hybrid mode (default - recommended)
+# Compile script.gd
 godot --headless --script tools/gdscript_elf64_compiler.gd script.gd
-
-# Compile with specific mode
-godot --headless --script tools/gdscript_elf64_compiler.gd script.gd --mode hybrid
-godot --headless --script tools/gdscript_elf64_compiler.gd script.gd --mode godot
-godot --headless --script tools/gdscript_elf64_compiler.gd script.gd --mode linux
 
 # Compile to specific output directory
 godot --headless --script tools/gdscript_elf64_compiler.gd script.gd output/
@@ -35,46 +26,27 @@ godot --headless --script tools/gdscript_elf64_compiler.gd script.gd output/
 godot --headless --script tools/gdscript_elf64_compiler.gd /path/to/script.gd /path/to/output/
 ```
 
-## Compilation Modes
+## Testing ELF Files
 
-### Hybrid Mode (Default - Recommended)
+Use the test harness to execute ELF files in Godot Sandbox:
 
-**Mode:** `hybrid` or `2`
+```bash
+godot --headless --script tools/test_elf64_with_sandbox.gd <elf_file> [function_name] [args...]
+```
 
-The hybrid mode creates a single ELF64 binary that uses both syscall types:
-- **Default**: Uses Godot sandbox syscalls (ECALL 500+) for Godot-specific operations
-- **When needed**: Uses Linux syscalls (1-400+) for standard operations that don't require Godot runtime
+### Example
 
-**Benefits:**
-- Single binary works in both Godot sandbox and standalone libriscv
-- Optimal syscall selection based on operation type
-- Maximum compatibility
+```bash
+# Test an ELF file
+godot --headless --script tools/test_elf64_with_sandbox.gd output_elf/test_elf64_sample_add.elf
 
-**Use when:** You want a binary that works in both environments (recommended for most cases)
+# Call a specific function
+godot --headless --script tools/test_elf64_with_sandbox.gd output_elf/test_elf64_sample_add.elf add 5 3
+```
 
-### Godot Mode
+## Compilation Mode
 
-**Mode:** `godot` or `0`
-
-Pure Godot sandbox mode - all operations use Godot ECALLs (500+).
-
-**Benefits:**
-- Full access to Godot API via ECALLs
-- Works only in Godot sandbox environment
-
-**Use when:** Binary will only run in Godot sandbox
-
-### Linux Mode
-
-**Mode:** `linux` or `1`
-
-Pure Linux syscall mode - uses standard Linux syscalls (1-400+).
-
-**Limitations:**
-- Many GDScript features require Godot runtime and are unsupported
-- Only simple operations (arithmetic, basic control flow) are supported
-
-**Use when:** You need a standalone binary for simple operations (limited support)
+All ELF files are compiled using **Godot syscalls** (ECALL 500+). The binaries are designed to run in the Godot Sandbox environment, which provides the necessary syscall handlers for Godot API access.
 
 ## Output
 

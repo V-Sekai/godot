@@ -49,26 +49,14 @@ PackedByteArray GDScriptFunction::compile_to_elf64(int p_mode) const {
 	if (_code_ptr == nullptr || _code_size == 0) {
 		return PackedByteArray();
 	}
-	ELF64CompilationMode mode;
-	if (p_mode == 1) {
-		mode = ELF64CompilationMode::LINUX_SYSCALL;
-	} else if (p_mode == 2) {
-		mode = ELF64CompilationMode::HYBRID;
-	} else {
-		mode = ELF64CompilationMode::GODOT_SYSCALL; // 0 or default
-	}
+	// Only GODOT_SYSCALL mode is supported
+	ELF64CompilationMode mode = ELF64CompilationMode::GODOT_SYSCALL;
 	return GDScriptELF64Writer::write_elf64(const_cast<GDScriptFunction *>(this), mode);
 }
 
 bool GDScriptFunction::can_compile_to_elf64(int p_mode) const {
-	ELF64CompilationMode mode;
-	if (p_mode == 1) {
-		mode = ELF64CompilationMode::LINUX_SYSCALL;
-	} else if (p_mode == 2) {
-		mode = ELF64CompilationMode::HYBRID;
-	} else {
-		mode = ELF64CompilationMode::GODOT_SYSCALL; // 0 or default
-	}
+	// Only GODOT_SYSCALL mode is supported
+	ELF64CompilationMode mode = ELF64CompilationMode::GODOT_SYSCALL;
 	return GDScriptELF64Writer::can_write_elf64(const_cast<GDScriptFunction *>(this), mode);
 }
 

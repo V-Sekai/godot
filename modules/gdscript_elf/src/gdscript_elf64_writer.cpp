@@ -52,13 +52,8 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	ELFIO::elfio writer;
 	writer.create(ELFIO::ELFCLASS64, ELFIO::ELFDATA2LSB);
 
-	// Set OS ABI based on mode
-	// Hybrid mode uses SYSV (can work in both environments)
-	if (p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-		writer.set_os_abi(ELFIO::ELFOSABI_LINUX); // Linux mode
-	} else {
-		writer.set_os_abi(ELFIO::ELFOSABI_NONE); // Godot/Hybrid mode (SYSV)
-	}
+	// Set OS ABI for Godot sandbox
+	writer.set_os_abi(ELFIO::ELFOSABI_NONE); // SYSV
 
 	writer.set_type(ELFIO::ET_EXEC);
 	writer.set_machine(ELFIO::EM_RISCV); // From elfio/elf_types.hpp
@@ -102,17 +97,7 @@ bool GDScriptELF64Writer::can_write_elf64(GDScriptFunction *p_function, ELF64Com
 		return false;
 	}
 
-	// Mode-specific validation
-	if (p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-		// Pure Linux mode: Limited support, most opcodes require Godot runtime
-		// Encoding will fail for unsupported opcodes during compilation
-	} else if (p_mode == ELF64CompilationMode::HYBRID) {
-		// Hybrid mode: Always allowed - uses Godot syscalls by default,
-		// can use Linux syscalls when appropriate
-		// This allows the binary to work in both Godot sandbox and standalone libriscv
-	} else {
-		// Mode 1 (Godot): Always allowed (sandbox handles everything via ECALLs)
-	}
+	// Godot syscall mode: Always allowed (sandbox handles everything via ECALLs)
 
 	return true;
 }

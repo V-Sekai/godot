@@ -60,10 +60,9 @@ PackedByteArray GDScriptRISCVEncoder::encode_function(GDScriptFunction *p_functi
 	while (ip < code_size) {
 		PackedByteArray opcode_instructions = encode_opcode(code_ptr[ip], code_ptr, ip, code_size, p_mode);
 
-		// Check if opcode is unsupported in current mode
-		if (opcode_instructions.is_empty() && p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-			// Unsupported opcode in pure Linux mode - return empty to indicate failure
-			// Hybrid mode should always have a fallback (Godot syscall)
+		// All opcodes should have a fallback (Godot syscall)
+		if (opcode_instructions.is_empty()) {
+			// This should not happen - all opcodes should encode to Godot syscalls
 			return PackedByteArray();
 		}
 
@@ -110,12 +109,6 @@ PackedByteArray GDScriptRISCVEncoder::encode_opcode(int p_opcode, const int *p_c
 			// For now, fall through to VM call - proper implementation would need
 			// to handle stack values and condition evaluation
 			result = encode_vm_call(p_opcode, p_ip, p_mode);
-			// Hybrid mode always has a fallback (Godot syscall), so result should never be empty
-			if (result.is_empty() && p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-				// Unsupported in pure Linux mode
-				p_ip += 1;
-				return result;
-			}
 			p_ip += 1;
 			break;
 		}
@@ -123,39 +116,21 @@ PackedByteArray GDScriptRISCVEncoder::encode_opcode(int p_opcode, const int *p_c
 		case GDScriptFunction::OPCODE_ASSIGN_NULL:
 		case GDScriptFunction::OPCODE_ASSIGN_TRUE:
 		case GDScriptFunction::OPCODE_ASSIGN_FALSE: {
-			// Simple assignments - could be optimized to direct RISC-V
-			// For now, use VM call (Godot syscall in hybrid/default mode)
+			// Simple assignments - use VM call (Godot syscall)
 			result = encode_vm_call(p_opcode, p_ip, p_mode);
-			if (result.is_empty() && p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-				// Unsupported in pure Linux mode
-				p_ip += 1;
-				return result;
-			}
 			p_ip += 1;
 			break;
 		}
 		case GDScriptFunction::OPCODE_OPERATOR:
 		case GDScriptFunction::OPCODE_OPERATOR_VALIDATED: {
-			// Arithmetic operations - could be optimized to direct RISC-V
-			// For now, use VM call (Godot syscall in hybrid/default mode)
+			// Arithmetic operations - use VM call (Godot syscall)
 			result = encode_vm_call(p_opcode, p_ip, p_mode);
-			if (result.is_empty() && p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-				// Unsupported in pure Linux mode
-				p_ip += 1;
-				return result;
-			}
 			p_ip += 1;
 			break;
 		}
 		default: {
-			// Fallback: encode syscall to VM (mode-specific)
-			// Hybrid mode defaults to Godot syscalls, can use Linux syscalls when appropriate
+			// Fallback: encode syscall to VM (Godot syscall)
 			result = encode_vm_call(p_opcode, p_ip, p_mode);
-			if (result.is_empty() && p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
-				// Unsupported opcode in pure Linux mode
-				p_ip += 1;
-				return result;
-			}
 			p_ip += 1; // Advance by 1 for unknown opcodes
 			break;
 		}
@@ -261,100 +236,53 @@ PackedByteArray GDScriptRISCVEncoder::encode_godot_syscall(int p_ecall_number) {
 	return result;
 }
 
-PackedByteArray GDScriptRISCVEncoder::encode_linux_syscall(int p_syscall_number) {
-	// Encode Linux syscall: li a7, <syscall_number>; ecall
-	// Same encoding as Godot syscall
-	return encode_godot_syscall(p_syscall_number);
-}
 
 PackedByteArray GDScriptRISCVEncoder::encode_vm_call(int p_opcode, int p_ip, ELF64CompilationMode p_mode) {
-	// Map GDScript opcodes to syscalls based on mode
+	// Map GDScript opcodes to Godot syscalls
 	PackedByteArray result;
 
-	// Linux syscall numbers (RISC-V 64-bit) - used in hybrid and Linux modes
-	// const int LINUX_WRITE = 64;   // write syscall
-	// const int LINUX_EXIT = 93;    // exit syscall
-	// const int LINUX_READ = 63;    // read syscall
-
-	if (p_mode == ELF64CompilationMode::HYBRID) {
-		// Hybrid mode: Choose syscall type based on operation
-		// Default to Godot syscalls, use Linux syscalls for standard I/O
 #ifdef MODULE_SANDBOX_ENABLED
-		// Use ECALL numbers from sandbox syscalls.h
-		int ecall_num = ECALL_VCALL; // Default to variant call
+	// Use ECALL numbers from sandbox syscalls.h
+	int ecall_num = ECALL_VCALL; // Default to variant call
 
-		// Map specific opcodes
-		switch (p_opcode) {
-			case GDScriptFunction::OPCODE_GET_MEMBER:
-				ecall_num = ECALL_OBJ_PROP_GET; // 545 - Godot-specific
-				result = encode_godot_syscall(ecall_num);
-				break;
-			case GDScriptFunction::OPCODE_SET_MEMBER:
-				ecall_num = ECALL_OBJ_PROP_SET; // 546 - Godot-specific
-				result = encode_godot_syscall(ecall_num);
-				break;
-			case GDScriptFunction::OPCODE_CALL:
-			case GDScriptFunction::OPCODE_CALL_RETURN:
-			case GDScriptFunction::OPCODE_CALL_UTILITY:
-			case GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED:
-				// Check if this is a print/IO utility call
-				// For now, use Godot ECALL_PRINT for print operations
-				// In the future, we could detect print() and use Linux write syscall
-				ecall_num = ECALL_VCALL; // 501 - Use Godot variant call
-				result = encode_godot_syscall(ecall_num);
-				break;
-			default:
-				// Default: Use Godot syscalls
-				ecall_num = ECALL_VCALL; // 501
-				result = encode_godot_syscall(ecall_num);
-				break;
-		}
-#else
-		// Fallback if sandbox module not available
-		const int ECALL_VCALL_FALLBACK = 501;
-		const int ECALL_OBJ_PROP_GET_FALLBACK = 545;
-		const int ECALL_OBJ_PROP_SET_FALLBACK = 546;
-
-		int ecall_num = ECALL_VCALL_FALLBACK;
-		switch (p_opcode) {
-			case GDScriptFunction::OPCODE_GET_MEMBER:
-				ecall_num = ECALL_OBJ_PROP_GET_FALLBACK;
-				break;
-			case GDScriptFunction::OPCODE_SET_MEMBER:
-				ecall_num = ECALL_OBJ_PROP_SET_FALLBACK;
-				break;
-			default:
-				ecall_num = ECALL_VCALL_FALLBACK;
-				break;
-		}
-		result = encode_godot_syscall(ecall_num);
-#endif
-	} else if (p_mode == ELF64CompilationMode::GODOT_SYSCALL) {
-		// Mode 1: Pure Godot syscalls
-#ifdef MODULE_SANDBOX_ENABLED
-		int ecall_num = ECALL_VCALL;
-		switch (p_opcode) {
-			case GDScriptFunction::OPCODE_GET_MEMBER:
-				ecall_num = ECALL_OBJ_PROP_GET;
-				break;
-			case GDScriptFunction::OPCODE_SET_MEMBER:
-				ecall_num = ECALL_OBJ_PROP_SET;
-				break;
-			default:
-				ecall_num = ECALL_VCALL;
-				break;
-		}
-		result = encode_godot_syscall(ecall_num);
-#else
-		const int ECALL_VCALL_FALLBACK = 501;
-		result = encode_godot_syscall(ECALL_VCALL_FALLBACK);
-#endif
-	} else {
-		// Mode 2: Pure Linux syscalls
-		// Most GDScript opcodes require Godot runtime
-		// Return empty to indicate unsupported
-		result = PackedByteArray();
+	// Map specific opcodes
+	switch (p_opcode) {
+		case GDScriptFunction::OPCODE_GET_MEMBER:
+			ecall_num = ECALL_OBJ_PROP_GET; // 545 - Get object property
+			break;
+		case GDScriptFunction::OPCODE_SET_MEMBER:
+			ecall_num = ECALL_OBJ_PROP_SET; // 546 - Set object property
+			break;
+		case GDScriptFunction::OPCODE_CALL:
+		case GDScriptFunction::OPCODE_CALL_RETURN:
+		case GDScriptFunction::OPCODE_CALL_UTILITY:
+		case GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED:
+		default:
+			// Default: Use Godot variant call
+			ecall_num = ECALL_VCALL; // 501
+			break;
 	}
+	result = encode_godot_syscall(ecall_num);
+#else
+	// Fallback if sandbox module not available
+	const int ECALL_VCALL_FALLBACK = 501;
+	const int ECALL_OBJ_PROP_GET_FALLBACK = 545;
+	const int ECALL_OBJ_PROP_SET_FALLBACK = 546;
+
+	int ecall_num = ECALL_VCALL_FALLBACK;
+	switch (p_opcode) {
+		case GDScriptFunction::OPCODE_GET_MEMBER:
+			ecall_num = ECALL_OBJ_PROP_GET_FALLBACK;
+			break;
+		case GDScriptFunction::OPCODE_SET_MEMBER:
+			ecall_num = ECALL_OBJ_PROP_SET_FALLBACK;
+			break;
+		default:
+			ecall_num = ECALL_VCALL_FALLBACK;
+			break;
+	}
+	result = encode_godot_syscall(ecall_num);
+#endif
 
 	return result;
 }

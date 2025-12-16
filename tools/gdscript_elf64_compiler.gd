@@ -19,28 +19,12 @@ func _init():
 	# Parse arguments
 	var input_path = ""
 	var output_dir = "."
-	var mode = 2  # 0 = GODOT_SYSCALL, 1 = LINUX_SYSCALL, 2 = HYBRID (default)
 
 	if script_index >= 0:
 		var i = script_index + 1
 		while i < args.size():
 			var arg = args[i]
-			if arg == "--mode":
-				if i + 1 < args.size():
-					var mode_str = args[i + 1].to_lower()
-					if mode_str == "godot" or mode_str == "0":
-						mode = 0
-					elif mode_str == "linux" or mode_str == "1":
-						mode = 1
-					elif mode_str == "hybrid" or mode_str == "2":
-						mode = 2
-					else:
-						print("Error: Invalid mode '", args[i + 1], "'. Use 'godot'/'0', 'linux'/'1', or 'hybrid'/'2'")
-						quit(1)
-						return
-					i += 2
-					continue
-			elif not arg.begins_with("--"):
+			if not arg.begins_with("--"):
 				if input_path.is_empty():
 					input_path = arg
 				elif output_dir == ".":
@@ -48,11 +32,7 @@ func _init():
 			i += 1
 
 	if input_path.is_empty():
-		print("Usage: godot --headless --script tools/gdscript_elf64_compiler.gd <input.gd> [output_dir] [--mode godot|linux|hybrid|0|1|2]")
-		print("  --mode: Compilation mode (default: hybrid)")
-		print("    godot or 0: Pure Godot sandbox syscalls (ECALL 500+)")
-		print("    linux or 1: Pure Linux syscalls (1-400+)")
-		print("    hybrid or 2: Hybrid - Godot syscalls by default, Linux syscalls when needed (recommended)")
+		print("Usage: godot --headless --script tools/gdscript_elf64_compiler.gd <input.gd> [output_dir]")
 		quit(1)
 		return
 
@@ -64,13 +44,13 @@ func _init():
 		return
 
 	# Check if script can be compiled
-	if not script.can_compile_to_elf64(mode):
-		print("Error: Script cannot be compiled to ELF64 in mode ", mode)
+	if not script.can_compile_to_elf64():
+		print("Error: Script cannot be compiled to ELF64")
 		quit(1)
 		return
 
-	# Compile all functions with specified mode
-	var elf64_dict = script.compile_all_functions_to_elf64(mode)
+	# Compile all functions to ELF64 (Godot syscall mode)
+	var elf64_dict = script.compile_all_functions_to_elf64()
 	if elf64_dict.is_empty():
 		print("Error: No functions were compiled")
 		quit(1)
@@ -114,13 +94,11 @@ func _init():
 			continue
 		file.store_buffer(elf_data)
 		file.close()
-		var mode_str = "godot" if mode == 0 else ("linux" if mode == 1 else "hybrid")
-		print("Compiled (", mode_str, "): ", func_name, " -> ", output_path, " (", elf_data.size(), " bytes)")
+		print("Compiled: ", func_name, " -> ", output_path, " (", elf_data.size(), " bytes)")
 		success_count += 1
 
 	if success_count > 0:
-		var mode_str = "godot" if mode == 0 else ("linux" if mode == 1 else "hybrid")
-		print("Successfully compiled ", success_count, " function(s) in ", mode_str, " mode")
+		print("Successfully compiled ", success_count, " function(s)")
 		quit(0)
 	else:
 		print("Error: No functions were successfully compiled")
