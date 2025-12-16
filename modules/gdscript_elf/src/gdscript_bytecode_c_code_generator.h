@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GDSCRIPT_BYTECODE_C_CODE_GENERATOR_H
-#define GDSCRIPT_BYTECODE_C_CODE_GENERATOR_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 #include "core/templates/hash_map.h"
@@ -51,5 +50,3 @@ private:
 public:
 	String generate_c_code(GDScriptFunction *p_function) const;
 };
-
-#endif // GDSCRIPT_BYTECODE_C_CODE_GENERATOR_H

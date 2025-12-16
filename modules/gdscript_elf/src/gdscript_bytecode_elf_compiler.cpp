@@ -29,9 +29,9 @@
 /**************************************************************************/
 
 #include "gdscript_bytecode_elf_compiler.h"
+#include "core/string/print_string.h"
 #include "gdscript_bytecode_c_code_generator.h"
 #include "gdscript_c_compiler.h"
-#include "core/string/print_string.h"
 
 GDScriptBytecodeELFCompiler::GDScriptBytecodeELFCompiler() {
 	code_generator.instantiate();
@@ -185,7 +185,7 @@ Error GDScriptBytecodeELFCompiler::compile_function_to_elf64(GDScriptFunction *p
 	}
 
 	print_verbose(vformat("GDScriptBytecodeELFCompiler: Successfully compiled function '%s' to ELF (%d bytes)",
-	                      p_function->get_name(), r_elf_data.size()));
+			p_function->get_name(), r_elf_data.size()));
 
 	return OK;
 }

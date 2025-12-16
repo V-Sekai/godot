@@ -31,9 +31,9 @@
 #include "gdscript_elf64_writer.h"
 #include "gdscript_elf64_mode.h"
 
+#include "core/string/print_string.h"
 #include "gdscript_bytecode_elf_compiler.h"
 #include "modules/gdscript/gdscript_function.h"
-#include "core/string/print_string.h"
 
 PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, ELF64CompilationMode p_mode) {
 	if (!p_function || p_function->_code_ptr == nullptr || p_function->_code_size == 0) {
@@ -47,8 +47,8 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 
 	// Set up include paths for Godot and sandbox headers
 	Vector<String> include_paths;
-	include_paths.push_back("core/variant");  // For Variant type
-	include_paths.push_back("modules/sandbox/src");  // For syscall numbers
+	include_paths.push_back("core/variant"); // For Variant type
+	include_paths.push_back("modules/sandbox/src"); // For syscall numbers
 	compiler->set_include_paths(include_paths);
 
 	PackedByteArray elf_data;
@@ -56,7 +56,7 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 
 	if (err != OK) {
 		print_error(vformat("GDScriptELF64Writer: Failed to compile function '%s' to ELF (%s)",
-		                    p_function->get_name(), error_names[err]));
+				p_function->get_name(), error_names[err]));
 		return PackedByteArray();
 	}
 

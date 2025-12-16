@@ -371,7 +371,7 @@ gdscript_vm_fallback(OPCODE_OPERATOR, instance, stack, ip);
 
 **Supported opcodes include but are not limited to:**
 - All basic assignments, arithmetic, and control flow ✅
-- Property access and method calls ✅  
+- Property access and method calls ✅
 - Array/dictionary operations ✅
 - Iterator loops over all builtin types ✅
 - Function calls and returns ✅

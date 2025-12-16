@@ -111,9 +111,9 @@ Error GDScriptCCompiler::compile_to_object_file(const String &p_c_source_path, c
 	for (const String &arg : args) {
 		args_list.push_back(arg);
 	}
-	List<String> output;
+	String output;
 	int exit_code;
-	Error err = OS::get_singleton()->execute(detected_compiler_path, args_list, &output, true, false, &exit_code);
+	Error err = OS::get_singleton()->execute(detected_compiler_path, args_list, &output, &exit_code, false);
 
 	if (err != OK || exit_code != 0) {
 		print_error("GDScriptCCompiler: Compilation failed:");
@@ -145,9 +145,9 @@ Error GDScriptCCompiler::link_to_executable(const String &p_object_path, const S
 	for (const String &arg : args) {
 		args_list.push_back(arg);
 	}
-	List<String> output;
+	String output;
 	int exit_code;
-	Error err = OS::get_singleton()->execute(detected_compiler_path, args_list, &output, true, false, &exit_code);
+	Error err = OS::get_singleton()->execute(detected_compiler_path, args_list, &output, &exit_code, false);
 
 	if (err != OK || exit_code != 0) {
 		print_error("GDScriptCCompiler: Linking failed:");

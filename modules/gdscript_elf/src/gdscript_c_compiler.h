@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GDSCRIPT_C_COMPILER_H
-#define GDSCRIPT_C_COMPILER_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 #include "core/templates/vector.h"
@@ -53,5 +52,3 @@ public:
 
 	Error compile_c_to_elf(const String &p_c_source, const Vector<String> &p_include_paths, PackedByteArray &r_elf_data) const;
 };
-
-#endif // GDSCRIPT_C_COMPILER_H

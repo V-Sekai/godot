@@ -247,7 +247,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				generate_jump_labels(p_code_ptr, p_code_size, jump_labels);
 				int label_id = jump_labels[target_ip];
 				opcode_code += vformat("    if (%s.booleanize()) goto label_%d;\n",
-				                      condition.utf8().get_data(), label_id);
+						condition.utf8().get_data(), label_id);
 			}
 			p_ip += 3; // opcode + condition + target
 			break;
@@ -261,7 +261,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				generate_jump_labels(p_code_ptr, p_code_size, jump_labels);
 				int label_id = jump_labels[target_ip];
 				opcode_code += vformat("    if (!(%s).booleanize()) goto label_%d;\n",
-				                      condition.utf8().get_data(), label_id);
+						condition.utf8().get_data(), label_id);
 			}
 			p_ip += 3; // opcode + condition + target
 			break;
@@ -305,7 +305,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 				opcode_code += vformat("    {\n");
 				opcode_code += vformat("        Variant::ValidatedOperatorEvaluator op_func = operator_funcs[%d];\n", op_index);
 				opcode_code += vformat("        op_func(&%s, &%s, &%s);\n",
-				                      left.utf8().get_data(), right.utf8().get_data(), result.utf8().get_data());
+						left.utf8().get_data(), right.utf8().get_data(), result.utf8().get_data());
 				opcode_code += vformat("    }\n");
 			}
 			p_ip += 5; // opcode + result + left + right + op_index

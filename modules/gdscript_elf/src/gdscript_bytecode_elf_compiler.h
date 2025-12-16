@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GDSCRIPT_BYTECODE_ELF_COMPILER_H
-#define GDSCRIPT_BYTECODE_ELF_COMPILER_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 #include "core/templates/vector.h"
@@ -58,5 +57,3 @@ public:
 	Error compile_function_to_elf64(GDScriptFunction *p_function, PackedByteArray &r_elf_data) const;
 	bool can_compile_function_to_elf64(const GDScriptFunction *p_function) const;
 };
-
-#endif // GDSCRIPT_BYTECODE_ELF_COMPILER_H

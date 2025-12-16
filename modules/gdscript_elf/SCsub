@@ -20,4 +20,7 @@ sources = [
     "src/gdscript_bytecode_elf_compiler.cpp",
 ]
 
+# Test files are header-only and included via doctest framework in tests/
+# No need to explicitly add them to the build - they get included by the test runner
+
 env_gdscript_elf.add_source_files(env.modules_sources, sources)
