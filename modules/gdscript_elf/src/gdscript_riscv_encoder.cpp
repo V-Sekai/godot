@@ -58,17 +58,22 @@ PackedByteArray GDScriptRISCVEncoder::encode_function(GDScriptFunction *p_functi
 
 	// Encode each bytecode opcode
 	while (ip < code_size) {
-		PackedByteArray opcode_instructions = encode_opcode(code_ptr[ip], code_ptr, ip, code_size, p_mode);
+		int opcode = code_ptr[ip];
+		PackedByteArray opcode_instructions = encode_opcode(opcode, code_ptr, ip, code_size, p_mode);
 
-		// All opcodes should have a fallback (Godot syscall)
-		if (opcode_instructions.is_empty()) {
+		// OPCODE_RETURN produces empty (epilogue handles return)
+		// All other opcodes should encode to something
+		if (opcode_instructions.is_empty() && opcode != GDScriptFunction::OPCODE_RETURN) {
 			// This should not happen - all opcodes should encode to Godot syscalls
 			return PackedByteArray();
 		}
 
-		old_size = instructions.size();
-		instructions.resize(old_size + opcode_instructions.size());
-		memcpy(instructions.ptrw() + old_size, opcode_instructions.ptr(), opcode_instructions.size());
+		// Only append if we have instructions (RETURN is handled by epilogue)
+		if (!opcode_instructions.is_empty()) {
+			old_size = instructions.size();
+			instructions.resize(old_size + opcode_instructions.size());
+			memcpy(instructions.ptrw() + old_size, opcode_instructions.ptr(), opcode_instructions.size());
+		}
 	}
 
 	// Function epilogue: restore stack and return
@@ -85,9 +90,11 @@ PackedByteArray GDScriptRISCVEncoder::encode_opcode(int p_opcode, const int *p_c
 
 	switch (p_opcode) {
 		case GDScriptFunction::OPCODE_RETURN: {
-			// Simple return - will be handled by epilogue
-			// Just advance IP
+			// Simple return - epilogue will handle the actual return
+			// But we still need to encode something, so just advance IP
+			// The epilogue will provide the ret instruction
 			p_ip += 2; // OPCODE + return value count
+			// Return empty - epilogue will handle return
 			break;
 		}
 		case GDScriptFunction::OPCODE_JUMP: {
