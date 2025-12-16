@@ -51,7 +51,7 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	// 2. Create ELF64 file using elfio
 	ELFIO::elfio writer;
 	writer.create(ELFIO::ELFCLASS64, ELFIO::ELFDATA2LSB);
-	
+
 	// Set OS ABI based on mode
 	// Hybrid mode uses SYSV (can work in both environments)
 	if (p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
@@ -59,7 +59,7 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	} else {
 		writer.set_os_abi(ELFIO::ELFOSABI_NONE); // Godot/Hybrid mode (SYSV)
 	}
-	
+
 	writer.set_type(ELFIO::ET_EXEC);
 	writer.set_machine(ELFIO::EM_RISCV); // From elfio/elf_types.hpp
 
@@ -96,12 +96,12 @@ bool GDScriptELF64Writer::can_write_elf64(GDScriptFunction *p_function, ELF64Com
 	if (!p_function) {
 		return false;
 	}
-	
+
 	// Check if function has bytecode
 	if (p_function->_code_ptr == nullptr || p_function->_code_size == 0) {
 		return false;
 	}
-	
+
 	// Mode-specific validation
 	if (p_mode == ELF64CompilationMode::LINUX_SYSCALL) {
 		// Pure Linux mode: Limited support, most opcodes require Godot runtime
@@ -113,7 +113,7 @@ bool GDScriptELF64Writer::can_write_elf64(GDScriptFunction *p_function, ELF64Com
 	} else {
 		// Mode 1 (Godot): Always allowed (sandbox handles everything via ECALLs)
 	}
-	
+
 	return true;
 }
 

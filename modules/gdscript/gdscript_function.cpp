@@ -32,8 +32,8 @@
 
 #include "gdscript.h"
 
-#include "modules/gdscript_elf/src/gdscript_elf64_writer.h"
 #include "modules/gdscript_elf/src/gdscript_elf64_mode.h"
+#include "modules/gdscript_elf/src/gdscript_elf64_writer.h"
 
 Variant GDScriptFunction::get_constant(int p_idx) const {
 	ERR_FAIL_INDEX_V(p_idx, constants.size(), "<errconst>");

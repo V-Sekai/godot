@@ -228,7 +228,7 @@ PackedByteArray GDScriptRISCVEncoder::encode_godot_syscall(int p_ecall_number) {
 	// For values > 2047 or < -2048, use lui + addi
 	if (p_ecall_number > 2047 || p_ecall_number < -2048) {
 		result.resize(12); // 3 instructions: lui + addi + ecall
-		
+
 		// lui a7, upper 20 bits (sign-extended)
 		int32_t value = static_cast<int32_t>(p_ecall_number);
 		// lui loads imm[31:12] into rd, sign-extends to 32 bits
@@ -244,7 +244,7 @@ PackedByteArray GDScriptRISCVEncoder::encode_godot_syscall(int p_ecall_number) {
 		int16_t lower = static_cast<int16_t>(value & 0xFFF);
 		uint32_t addi = encode_i_type(0x13, 17, 0, 17, lower); // addi a7, a7, lower
 		*reinterpret_cast<uint32_t *>(result.ptrw() + 4) = addi;
-		
+
 		// ecall
 		uint32_t ecall = 0x00000073; // ecall
 		*reinterpret_cast<uint32_t *>(result.ptrw() + 8) = ecall;
@@ -282,7 +282,7 @@ PackedByteArray GDScriptRISCVEncoder::encode_vm_call(int p_opcode, int p_ip, ELF
 #ifdef MODULE_SANDBOX_ENABLED
 		// Use ECALL numbers from sandbox syscalls.h
 		int ecall_num = ECALL_VCALL; // Default to variant call
-		
+
 		// Map specific opcodes
 		switch (p_opcode) {
 			case GDScriptFunction::OPCODE_GET_MEMBER:
@@ -314,7 +314,7 @@ PackedByteArray GDScriptRISCVEncoder::encode_vm_call(int p_opcode, int p_ip, ELF
 		const int ECALL_VCALL_FALLBACK = 501;
 		const int ECALL_OBJ_PROP_GET_FALLBACK = 545;
 		const int ECALL_OBJ_PROP_SET_FALLBACK = 546;
-		
+
 		int ecall_num = ECALL_VCALL_FALLBACK;
 		switch (p_opcode) {
 			case GDScriptFunction::OPCODE_GET_MEMBER:

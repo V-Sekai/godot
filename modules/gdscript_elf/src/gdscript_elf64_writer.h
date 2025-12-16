@@ -36,7 +36,7 @@
 // Forward declarations
 class GDScriptFunction;
 namespace ELFIO {
-	class elfio;
+class elfio;
 }
 
 // Write ELF64 binary format from GDScript bytecode using elfio library
