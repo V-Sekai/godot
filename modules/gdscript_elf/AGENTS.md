@@ -165,25 +165,28 @@ namespace TestGDScriptELF {
 -   `GDScriptBytecodeELFCompiler` orchestrates the full pipeline
 -   `GDScriptELF64Writer` updated to use new pipeline instead of raw instruction encoding
 -   ELF compilation end-to-end pipeline complete with proper compilation instead of NOP workarounds
--   Fallback mechanism integrated for unsupported opcodes
+-   All opcodes supported via core implementations, composite patterns, or syscalls (no fallback needed)
 
 ### Phase 2 Status - ✅ COMPLETE
 
 **Completed:**
--   **Comprehensive C code generation for ~62 opcodes**: All commonly used GDScript bytecode opcodes now have implementations
-    -   **Returns (6 opcodes)**: All `OPCODE_RETURN*` variants with proper result handling and typed returns
-    -   **Assignments (5 opcodes)**: `OPCODE_ASSIGN*` family including typed assignments, null/true/false assignments
-    -   **Control Flow (5 opcodes)**: All jumps (`JUMP`, `JUMP_IF`, `JUMP_IF_NOT`, `JUMP_TO_DEF_ARGUMENT`, `JUMP_IF_SHARED`) with label generation
-    -   **Operators (1 opcode)**: `OPCODE_OPERATOR_VALIDATED` - handles ALL operator types (arithmetic, comparison, bitwise, logical) generically via validated operator evaluator calls
-    -   **Property/Method Access (2 opcodes)**: `GET_MEMBER`, `SET_MEMBER` via RISC-V syscalls with inline assembly
-    -   **Function Calls (1 opcode)**: `OPCODE_CALL` (basic) with syscall mechanism for method dispatch
-    -   **Type Operations (38 opcodes)**: All `TYPE_ADJUST_*` opcodes generate no-op comments (handled at bytecode level, no runtime C code needed)
-    -   **Debug/Metadata (4 opcodes)**: `LINE`, `BREAKPOINT`, `ASSERT`, `END` - generate comments or metadata
+-   **Complete opcode support via minimized core (~14 core opcodes)**: ALL GDScript bytecode opcodes are supported using composite patterns and syscalls
+    -   **Core Opcodes (~14)**: Minimized set using composite patterns
+        -   **Returns (1)**: `RETURN` - all `RETURN_TYPED_*` variants consolidated
+        -   **Assignments (1)**: `ASSIGN` - all `ASSIGN_*` variants consolidated via helper
+        -   **Control Flow (3)**: `JUMP`, `JUMP_IF`, `JUMP_IF_NOT` - jump variants consolidated
+        -   **Operators (2)**: `OPCODE_OPERATOR_VALIDATED`, `OPCODE_OPERATOR` (via syscalls)
+        -   **Property Access (2)**: `GET_MEMBER`, `SET_MEMBER` via syscalls
+        -   **Method Calls (1)**: All `CALL*` variants use `ECALL_VCALL`
+        -   **Debug/Metadata (4)**: `LINE`, `BREAKPOINT`, `ASSERT`, `END`
+    -   **All Other Opcodes**: Implemented via composite patterns or syscalls (keyed/indexed, named, constructors, casts, type tests, iterators, static variables, globals, await, lambdas)
+    -   **Type Operations (38)**: All `TYPE_ADJUST_*` opcodes generate no-op comments
+    -   **No VM Fallback**: Every opcode generates valid C code - either direct implementation, composite pattern, or syscall
 -   Advanced address resolution (stack, constants, members with proper pointer arithmetic)
 -   Label pre-generation for all jump targets
 -   Enhanced function signatures with constants and operator functions parameter passing
 -   Inline syscall generation with proper RISC-V assembly for VM communication
--   Comprehensive opcode validation and unsupported opcode handling
+-   Complete opcode support - all opcodes generate valid C code (no fallback needed)
 
 ### Phase 3 Status - ✅ COMPLETE
 

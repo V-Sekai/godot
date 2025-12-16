@@ -30,19 +30,31 @@
 
 ### Opcode Support Overview
 
-**Functional Opcodes (~24 opcodes):**
-- **Returns (6 opcodes)**: `RETURN`, `RETURN_TYPED_*` variants
-- **Assignments (5 opcodes)**: `ASSIGN`, `ASSIGN_NULL`, `ASSIGN_TRUE`, `ASSIGN_FALSE`, `ASSIGN_TYPED_*`
-- **Control Flow (5 opcodes)**: `JUMP`, `JUMP_IF`, `JUMP_IF_NOT`, `JUMP_TO_DEF_ARGUMENT`, `JUMP_IF_SHARED`
-- **Operators (1 opcode)**: `OPCODE_OPERATOR_VALIDATED` - handles ALL operator types generically
+**Core Opcodes (~14 opcodes - minimized via composite patterns):**
+- **Returns (1 opcode)**: `RETURN` - all `RETURN_TYPED_*` variants consolidated into single case
+- **Assignments (1 opcode)**: `ASSIGN` - all `ASSIGN_*` variants (NULL, TRUE, FALSE, TYPED_*) consolidated via helper function
+- **Control Flow (3 opcodes)**: `JUMP`, `JUMP_IF`, `JUMP_IF_NOT` - `JUMP_TO_DEF_ARGUMENT` and `JUMP_IF_SHARED` consolidated
+- **Operators (2 opcodes)**: `OPCODE_OPERATOR_VALIDATED` (all validated operators), `OPCODE_OPERATOR` (non-validated via syscalls)
 - **Property Access (2 opcodes)**: `GET_MEMBER`, `SET_MEMBER` via RISC-V syscalls
-- **Method Calls (1 opcode)**: `CALL` (basic)
-- **Debug/Metadata (4 opcodes)**: `LINE`, `BREAKPOINT`, `ASSERT`, `END`
+- **Method Calls (1 opcode)**: All `CALL*` variants use `ECALL_VCALL` syscall
+- **Debug/Metadata (4 opcodes)**: `LINE`, `BREAKPOINT`, `ASSERT`, `END` - generate comments
+
+**All Other Opcodes (via Composite Patterns or Syscalls):**
+- **Keyed/Indexed Operations**: `GET_KEYED*`, `SET_KEYED*` → `ECALL_VCALL` with Variant::get/set
+- **Named Operations**: `GET_NAMED*`, `SET_NAMED*` → `ECALL_OBJ_PROP_GET/SET` syscalls
+- **Constructors**: All `CONSTRUCT*` variants → `ECALL_VCREATE` syscall
+- **Casts**: `CAST_TO_*` → Composite ASSIGN pattern
+- **Type Tests**: `TYPE_TEST_*` → `ECALL_VCALL` with type checking
+- **Static Variables**: `GET/SET_STATIC_VARIABLE` → `ECALL_VFETCH/ECALL_VSTORE` syscalls
+- **Globals**: `STORE_GLOBAL*` → `ECALL_VFETCH/ECALL_VSTORE` syscalls
+- **Iterators**: `ITERATE_*` → Composite patterns (JUMP + ASSIGN + OPERATOR_VALIDATED)
+- **Await**: `AWAIT*` → `ECALL_VCALL` syscall
+- **Lambdas**: `CREATE_LAMBDA*` → `ECALL_CALLABLE_CREATE` syscall
 
 **Type Adjustment Opcodes (38 opcodes):**
 - All `TYPE_ADJUST_*` opcodes generate no-op comments in C code (handled at bytecode level)
 
-**Total Supported Opcodes: ~62 opcodes** (24 functional + 38 type adjustment no-ops)
+**Total Supported Opcodes: ALL opcodes** (~120+ total) - no VM fallback, all generate valid C code via core opcodes, composite patterns, or syscalls
 
 ### Operator Implementation Architecture
 

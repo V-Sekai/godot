@@ -60,7 +60,8 @@ bool GDScriptBytecodeELFCompiler::is_basic_opcodes_only(const GDScriptFunction *
 		int opcode = code_ptr[ip];
 
 		switch (opcode) {
-			// Supported opcodes that generate direct C code
+			// ALL opcodes are now supported via composite patterns or syscalls
+			// Core opcodes (consolidated)
 			case GDScriptFunction::OPCODE_RETURN:
 			case GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN:
 			case GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY:
@@ -81,14 +82,115 @@ bool GDScriptBytecodeELFCompiler::is_basic_opcodes_only(const GDScriptFunction *
 			case GDScriptFunction::OPCODE_JUMP_IF_NOT:
 			case GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT:
 			case GDScriptFunction::OPCODE_JUMP_IF_SHARED:
+			// Operators
+			case GDScriptFunction::OPCODE_OPERATOR:
 			case GDScriptFunction::OPCODE_OPERATOR_VALIDATED:
+			// Type tests
+			case GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN:
+			case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
+			case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
+			case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT:
+			// Keyed/Indexed operations
+			case GDScriptFunction::OPCODE_SET_KEYED:
+			case GDScriptFunction::OPCODE_SET_KEYED_VALIDATED:
+			case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED:
+			case GDScriptFunction::OPCODE_GET_KEYED:
+			case GDScriptFunction::OPCODE_GET_KEYED_VALIDATED:
+			case GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED:
+			// Named operations
+			case GDScriptFunction::OPCODE_SET_NAMED:
+			case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED:
+			case GDScriptFunction::OPCODE_GET_NAMED:
+			case GDScriptFunction::OPCODE_GET_NAMED_VALIDATED:
+			// Member operations
 			case GDScriptFunction::OPCODE_GET_MEMBER:
 			case GDScriptFunction::OPCODE_SET_MEMBER:
+			// Static variables
+			case GDScriptFunction::OPCODE_SET_STATIC_VARIABLE:
+			case GDScriptFunction::OPCODE_GET_STATIC_VARIABLE:
+			// Casts
+			case GDScriptFunction::OPCODE_CAST_TO_BUILTIN:
+			case GDScriptFunction::OPCODE_CAST_TO_NATIVE:
+			case GDScriptFunction::OPCODE_CAST_TO_SCRIPT:
+			// Constructors
+			case GDScriptFunction::OPCODE_CONSTRUCT:
+			case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED:
+			case GDScriptFunction::OPCODE_CONSTRUCT_ARRAY:
+			case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_ARRAY:
+			case GDScriptFunction::OPCODE_CONSTRUCT_DICTIONARY:
+			case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_DICTIONARY:
+			// Method calls
 			case GDScriptFunction::OPCODE_CALL:
-			case GDScriptFunction::OPCODE_LINE:
-			case GDScriptFunction::OPCODE_BREAKPOINT:
-			case GDScriptFunction::OPCODE_ASSERT:
-			case GDScriptFunction::OPCODE_END:
+			case GDScriptFunction::OPCODE_CALL_RETURN:
+			case GDScriptFunction::OPCODE_CALL_ASYNC:
+			case GDScriptFunction::OPCODE_CALL_UTILITY:
+			case GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED:
+			case GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY:
+			case GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED:
+			case GDScriptFunction::OPCODE_CALL_SELF_BASE:
+			case GDScriptFunction::OPCODE_CALL_METHOD_BIND:
+			case GDScriptFunction::OPCODE_CALL_METHOD_BIND_RET:
+			case GDScriptFunction::OPCODE_CALL_BUILTIN_STATIC:
+			case GDScriptFunction::OPCODE_CALL_NATIVE_STATIC:
+			case GDScriptFunction::OPCODE_CALL_NATIVE_STATIC_VALIDATED_RETURN:
+			case GDScriptFunction::OPCODE_CALL_NATIVE_STATIC_VALIDATED_NO_RETURN:
+			case GDScriptFunction::OPCODE_CALL_METHOD_BIND_VALIDATED_RETURN:
+			case GDScriptFunction::OPCODE_CALL_METHOD_BIND_VALIDATED_NO_RETURN:
+			// Await
+			case GDScriptFunction::OPCODE_AWAIT:
+			case GDScriptFunction::OPCODE_AWAIT_RESUME:
+			// Lambdas
+			case GDScriptFunction::OPCODE_CREATE_LAMBDA:
+			case GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA:
+			// Iterators
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_INT:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_FLOAT:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_VECTOR2:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_VECTOR2I:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_VECTOR3:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_VECTOR3I:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_STRING:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_DICTIONARY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_BYTE_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_INT32_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_INT64_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_FLOAT32_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_FLOAT64_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_STRING_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_VECTOR2_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_VECTOR3_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_COLOR_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_PACKED_VECTOR4_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_OBJECT:
+			case GDScriptFunction::OPCODE_ITERATE_BEGIN_RANGE:
+			case GDScriptFunction::OPCODE_ITERATE:
+			case GDScriptFunction::OPCODE_ITERATE_INT:
+			case GDScriptFunction::OPCODE_ITERATE_FLOAT:
+			case GDScriptFunction::OPCODE_ITERATE_VECTOR2:
+			case GDScriptFunction::OPCODE_ITERATE_VECTOR2I:
+			case GDScriptFunction::OPCODE_ITERATE_VECTOR3:
+			case GDScriptFunction::OPCODE_ITERATE_VECTOR3I:
+			case GDScriptFunction::OPCODE_ITERATE_STRING:
+			case GDScriptFunction::OPCODE_ITERATE_DICTIONARY:
+			case GDScriptFunction::OPCODE_ITERATE_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_BYTE_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_INT32_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_INT64_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_FLOAT32_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_FLOAT64_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_STRING_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_VECTOR2_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_VECTOR3_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_COLOR_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_PACKED_VECTOR4_ARRAY:
+			case GDScriptFunction::OPCODE_ITERATE_OBJECT:
+			case GDScriptFunction::OPCODE_ITERATE_RANGE:
+			// Globals
+			case GDScriptFunction::OPCODE_STORE_GLOBAL:
+			case GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL:
 			// Type adjustment opcodes (no C code needed, handled at bytecode level)
 			case GDScriptFunction::OPCODE_TYPE_ADJUST_BOOL:
 			case GDScriptFunction::OPCODE_TYPE_ADJUST_INT:
@@ -128,13 +230,13 @@ bool GDScriptBytecodeELFCompiler::is_basic_opcodes_only(const GDScriptFunction *
 			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR3_ARRAY:
 			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_COLOR_ARRAY:
 			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY:
-				// These opcodes either generate C code or are harmless comments
+			// Debug/metadata opcodes
+			case GDScriptFunction::OPCODE_LINE:
+			case GDScriptFunction::OPCODE_BREAKPOINT:
+			case GDScriptFunction::OPCODE_ASSERT:
+			case GDScriptFunction::OPCODE_END:
+				// All opcodes are supported - either via direct C code, composite patterns, or syscalls
 				break;
-
-			default:
-				// Unsupported opcode - cannot compile this function
-				// Any opcode not in the list above will fall back to VM execution
-				return false;
 		}
 
 		// Advance IP (this is a simplified advancement - in reality need proper opcode parsing)

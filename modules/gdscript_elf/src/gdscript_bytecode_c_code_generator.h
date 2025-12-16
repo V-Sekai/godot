@@ -44,7 +44,9 @@ private:
 	String generate_epilogue() const;
 	String generate_opcode(GDScriptFunction::Opcode p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, const GDScriptFunction *p_function) const;
 	String resolve_address(int p_address, const GDScriptFunction *p_function, bool p_is_destination = false) const;
+	String resolve_assign_source(GDScriptFunction::Opcode p_opcode, const int *p_code_ptr, int p_ip, int p_code_size, const GDScriptFunction *p_function) const;
 	String generate_syscall(int p_ecall_number, const Vector<String> &p_args) const;
+	String generate_vcall_syscall(const String &p_variant_ptr, const String &p_method_str, int p_method_len, const String &p_args_ptr, int p_args_size, const String &p_ret_ptr) const;
 	void generate_jump_labels(const int *p_code_ptr, int p_code_size, HashMap<int, int> &r_jump_labels) const;
 
 public:
