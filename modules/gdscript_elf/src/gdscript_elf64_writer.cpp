@@ -80,8 +80,10 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	text_seg->set_align(ELF_PAGE_SIZE);
 	text_seg->add_section(text_sec, text_sec->get_addr_align());
 
-	// 5. Set entry point
-	writer.set_entry(ENTRY_POINT);
+	// 5. Set entry point to 0 (no auto-execution)
+	// ELF files are function libraries, not executables
+	// Functions will be called by address, not via entry point
+	writer.set_entry(0);
 
 	// 6. Save to string stream and convert to PackedByteArray
 	return elfio_to_packed_byte_array(writer);

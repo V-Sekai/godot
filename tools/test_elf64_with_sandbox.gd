@@ -53,13 +53,19 @@ func _init():
 	var root = Node.new()
 	get_root().add_child(root)
 	
-	# Create ELFScript and load from file path
-	var elf_script = ClassDB.instantiate("ELFScript")
-	elf_script.set_file(elf_path)
+	# Create ELFScript and load from file path using ResourceLoader
+	# ELFScript needs to be loaded as a resource, not instantiated directly
+	var elf_script = load(elf_path) as ELFScript
+	if elf_script == null:
+		print("Error: Failed to load ELF script from: ", elf_path)
+		print("Note: ELF files should be loaded using ResourceLoader")
+		return
 	
 	# Create a Sandbox node to execute the ELF
 	var sandbox = ClassDB.instantiate("Sandbox")
 	root.add_child(sandbox)
+	
+	# Set program - this may trigger execution, but entry point is 0 so it should be safe
 	sandbox.set_program(elf_script)
 	
 	# Wait for sandbox to initialize - use call_deferred to process next frame
@@ -96,9 +102,11 @@ func _execute_test(sandbox, elf_script, function_name, function_args):
 		print("Result: ", result)
 		quit(0)
 	else:
-		print("ELF loaded successfully. Available functions:")
-		# List available functions
-		var functions = elf_script.function_names
-		for fn_name in functions:
-			print("  - ", fn_name)
+		print("ELF loaded successfully.")
+		# Try to get function names via get_source_code or other method
+		var source = elf_script.get_source_code()
+		if not source.is_empty():
+			print("ELF source info: ", source)
+		else:
+			print("Note: Use has_function() to check for specific functions")
 		quit(0)
