@@ -53,13 +53,14 @@ func _init():
 	var root = Node.new()
 	get_root().add_child(root)
 	
-	# Create ELFScript and load from file path using ResourceLoader
-	# ELFScript needs to be loaded as a resource, not instantiated directly
-	var elf_script = load(elf_path) as ELFScript
+	# Create ELFScript and load from file path
+	var elf_script = ClassDB.instantiate("ELFScript")
 	if elf_script == null:
-		print("Error: Failed to load ELF script from: ", elf_path)
-		print("Note: ELF files should be loaded using ResourceLoader")
+		print("Error: Failed to instantiate ELFScript")
 		return
+	
+	# Use set_file to load the ELF file
+	elf_script.set_file(elf_path)
 	
 	# Create a Sandbox node to execute the ELF
 	var sandbox = ClassDB.instantiate("Sandbox")
@@ -79,10 +80,8 @@ func _execute_test(sandbox, elf_script, function_name, function_args):
 	if not function_name.is_empty():
 		if not sandbox.has_function(function_name):
 			print("Error: Function '", function_name, "' not found in ELF")
-			print("Available functions:")
-			var functions = elf_script.function_names
-			for fn_name in functions:
-				print("  - ", fn_name)
+			print("Note: Function names are not directly accessible from ELFScript")
+			print("Try calling the function directly or check Sandbox.has_function()")
 			quit(1)
 			return
 		

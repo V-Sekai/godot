@@ -35,6 +35,7 @@
 #include "modules/gdscript/gdscript_function.h"
 
 #include <elfio/elfio.hpp>
+#include <elfio/elfio_symbols.hpp>
 #include <sstream>
 
 PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, ELF64CompilationMode p_mode) {
@@ -85,7 +86,37 @@ PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, E
 	// Functions will be called by address, not via entry point
 	writer.set_entry(0);
 
-	// 6. Save to string stream and convert to PackedByteArray
+	// 6. Add symbol table with function name
+	// Get function name
+	StringName func_name = p_function->get_name();
+	String func_name_str = func_name;
+	
+	// Create string table section
+	ELFIO::section *str_sec = writer.sections.add(".strtab");
+	str_sec->set_type(ELFIO::SHT_STRTAB);
+	
+	// Create string table accessor
+	ELFIO::string_section_accessor stra(str_sec);
+	// Add function name to string table
+	ELFIO::Elf_Word str_index = stra.add_string(func_name_str.utf8().get_data());
+	
+	// Create symbol table section
+	ELFIO::section *sym_sec = writer.sections.add(".symtab");
+	sym_sec->set_type(ELFIO::SHT_SYMTAB);
+	sym_sec->set_info(1); // Number of local symbols (before global symbols)
+	sym_sec->set_addr_align(0x8);
+	sym_sec->set_entry_size(writer.get_default_entry_size(ELFIO::SHT_SYMTAB));
+	sym_sec->set_link(str_sec->get_index()); // Link to string table
+	
+	// Create symbol table accessor
+	ELFIO::symbol_section_accessor syma(writer, sym_sec);
+	// Add function symbol (value is ENTRY_POINT, size is code size)
+	// STB_GLOBAL = 1, STT_FUNC = 2
+	// Use ELF_ST_INFO macro directly (it's a macro, not in namespace)
+	unsigned char sym_info = ELF_ST_INFO(ELFIO::STB_GLOBAL, ELFIO::STT_FUNC);
+	syma.add_symbol(str_index, ENTRY_POINT, code.size(), sym_info, 0, text_sec->get_index());
+
+	// 7. Save to string stream and convert to PackedByteArray
 	return elfio_to_packed_byte_array(writer);
 }
 

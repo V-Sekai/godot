@@ -53,6 +53,9 @@ void ELFScript::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_sandbox_for", "for_object"), &ELFScript::get_sandbox_for);
 	ClassDB::bind_method(D_METHOD("get_sandbox_objects"), &ELFScript::get_sandbox_objects);
 	ClassDB::bind_method(D_METHOD("get_content"), &ELFScript::get_content);
+	ClassDB::bind_method(D_METHOD("set_file", "path"), &ELFScript::set_file);
+	ClassDB::bind_method(D_METHOD("get_file"), &ELFScript::get_file);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "file"), "set_file", "get_file");
 }
 
 Sandbox *ELFScript::get_sandbox_for(Object *p_for_object) const {

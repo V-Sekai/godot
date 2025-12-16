@@ -141,6 +141,9 @@ public:
 #endif
 
 	void set_file(const String &path);
+	String get_file() const {
+		return path;
+	};
 
 	ELFScript() {}
 	~ELFScript() {}
