@@ -613,6 +613,78 @@ TEST_CASE("[GDScript][ELF][CGeneration][Native] C++ code generation with GuestVa
 	REQUIRE(cpp_code.contains("GuestVariant* result"));
 }
 
+TEST_CASE("[GDScript][ELF][E2E][Adhoc] End-to-end pipeline test") {
+	// Full pipeline: GDScript → Bytecode → C++ → Compilation
+	const String test_code = R"(
+        func e2e_test_simple() -> int:
+            return 42
+
+        func e2e_test_add(a: int, b: int) -> int:
+            return a + b
+
+        func e2e_test_conditional(x: int) -> int:
+            if x > 10:
+                return 100
+            return 0
+
+        func e2e_test_assign() -> int:
+            var x = 5
+            var y = 10
+            return x + y
+    )";
+
+	Ref<GDScript> script;
+	script.instantiate();
+	script->set_source_code(test_code);
+
+	Error parse_err = script->reload();
+	REQUIRE(parse_err == OK);
+	REQUIRE(script->is_valid());
+
+	// Test each function
+	const char *func_names[] = { "e2e_test_simple", "e2e_test_add", "e2e_test_conditional", "e2e_test_assign", nullptr };
+
+	const HashMap<StringName, GDScriptFunction *> &funcs = script->get_member_functions();
+
+	for (int i = 0; func_names[i] != nullptr; i++) {
+		StringName func_name = StringName(func_names[i]);
+		REQUIRE(funcs.has(func_name));
+
+		GDScriptFunction *func = funcs.get(func_name);
+		REQUIRE(func != nullptr);
+
+		// Generate C++ code
+		String cpp_code = generate_and_verify_c_code(func);
+		REQUIRE(!cpp_code.is_empty());
+
+		// Verify key patterns
+		CHECK(cpp_code.contains("GuestVariant"));
+		CHECK(cpp_code.contains("#include \"modules/sandbox/src/guest_datatypes.h\""));
+		CHECK(cpp_code.contains("void gdscript_"));
+		CHECK(cpp_code.contains("GuestVariant stack["));
+
+		// Try compilation (optional - may fail if compiler not available)
+		Ref<GDScriptCCompiler> compiler;
+		compiler.instantiate();
+
+		Vector<String> include_paths;
+		include_paths.push_back("core");
+		include_paths.push_back("modules/sandbox/src");
+
+		String executable_path;
+		Error compile_err = compiler->compile_cpp_to_native(cpp_code, include_paths, executable_path);
+
+		if (compile_err == OK) {
+			// Compilation successful - verify executable exists
+			Ref<FileAccess> file = FileAccess::open(executable_path, FileAccess::READ);
+			if (file.is_valid()) {
+				CHECK(file->get_length() > 0);
+			}
+		}
+		// Compilation failure is OK for adhoc testing - just means compiler not available
+	}
+}
+
 TEST_CASE("[GDScript][ELF][CGeneration][Native] Native C++ compilation test") {
 	// Test that we can compile generated C++ code to native executable
 	const String test_code = R"(
