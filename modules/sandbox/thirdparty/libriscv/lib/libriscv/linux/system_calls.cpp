@@ -48,6 +48,7 @@ struct guest_iovec {
 
 #if defined(__APPLE__)
 #include <mach/mach_time.h>
+#include <Security/Security.h>
 static int get_time(int clkid, struct timespec* ts) {
 	if (clkid == CLOCK_REALTIME) {
 		struct timeval tv;
@@ -1079,10 +1080,6 @@ static void syscall_brk(Machine<W>& machine)
 	}
 	machine.set_result(new_end);
 }
-
-#if defined(__APPLE__)
-	#include <Security/Security.h>
-#endif
 
 template <int W>
 static void syscall_getrandom(Machine<W>& machine)
