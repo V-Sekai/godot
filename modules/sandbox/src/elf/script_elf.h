@@ -43,6 +43,8 @@
 #include "core/variant/typed_array.h"
 #include "core/variant/variant.h"
 
+#include <string>
+
 class ELFScriptInstance;
 class Sandbox;
 class ScriptInstance;
