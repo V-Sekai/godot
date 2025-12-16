@@ -179,9 +179,6 @@
 #ifdef MODULE_GLTF_ENABLED
 #include "tests/scene/test_gltf_document.h"
 #endif
-#ifdef MODULE_GDSCRIPT_ELF_ENABLED
-#include "tests/scene/test_gdscript_elf_e2e.h"
-#endif
 #include "tests/scene/test_path_3d.h"
 #include "tests/scene/test_path_follow_3d.h"
 #include "tests/scene/test_primitives.h"

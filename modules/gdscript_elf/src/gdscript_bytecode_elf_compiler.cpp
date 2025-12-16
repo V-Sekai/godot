@@ -30,8 +30,12 @@
 
 #include "gdscript_bytecode_elf_compiler.h"
 #include "core/string/print_string.h"
+#include "core/os/os.h"
+#include "core/io/file_access.h"
+#include "core/io/dir_access.h"
 #include "gdscript_bytecode_c_code_generator.h"
 #include "gdscript_c_compiler.h"
+#include "gdscript_to_stablehlo.h"
 
 GDScriptBytecodeELFCompiler::GDScriptBytecodeELFCompiler() {
 	code_generator.instantiate();
@@ -260,22 +264,111 @@ Error GDScriptBytecodeELFCompiler::compile_function_to_elf64(GDScriptFunction *p
 		return ERR_UNAVAILABLE;
 	}
 
-	if (!code_generator.is_valid() || !compiler.is_valid()) {
+	if (!compiler.is_valid()) {
 		return ERR_UNAVAILABLE;
 	}
 
-	// Generate C code from bytecode
-	String c_code = code_generator->generate_c_code(p_function);
-	if (c_code.is_empty()) {
-		print_error("GDScriptBytecodeELFCompiler: Failed to generate C code");
+	// Check if function can be converted to StableHLO
+	if (!GDScriptToStableHLO::can_convert_function(p_function)) {
+		print_error("GDScriptBytecodeELFCompiler: Function contains unsupported opcodes");
+		return ERR_UNAVAILABLE;
+	}
+
+	// Create temporary directory for compilation
+	String temp_dir = OS::get_singleton()->get_cache_path();
+	if (temp_dir.is_empty()) {
+		temp_dir = OS::get_singleton()->get_user_data_dir();
+	}
+	temp_dir = temp_dir.path_join("godot_gdscript_tmp");
+
+	Ref<DirAccess> dir = DirAccess::create_for_path(temp_dir);
+	if (!dir.is_valid()) {
+		return ERR_CANT_CREATE;
+	}
+
+	if (!dir->dir_exists(temp_dir)) {
+		Error err = dir->make_dir_recursive(temp_dir);
+		if (err != OK) {
+			return err;
+		}
+	}
+
+	// Generate unique filenames
+	uint64_t timestamp = OS::get_singleton()->get_ticks_msec();
+	String base_name = vformat("gdscript_%llu", timestamp);
+	String stablehlo_path = temp_dir.path_join(base_name + ".mlir");
+	String cpp_path = temp_dir.path_join(base_name + ".cpp");
+
+	// Step 1: Convert GDScript to StableHLO
+	String stablehlo_file = GDScriptToStableHLO::convert_function_to_stablehlo_bytecode(p_function, stablehlo_path);
+	if (stablehlo_file.is_empty()) {
+		print_error("GDScriptBytecodeELFCompiler: Failed to convert function to StableHLO");
 		return ERR_INVALID_DATA;
 	}
 
-	print_verbose("GDScriptBytecodeELFCompiler: Generated C code:");
+	// Step 2: Execute external tool to generate C++
+	// Try to find opcode_to_cpp tool
+	String tool_path = "opcode_to_cpp";
+	
+	// Check environment variable for custom tool path
+	String env_tool_path = OS::get_singleton()->get_environment("GODOT_OPCODE_TO_CPP_PATH");
+	if (!env_tool_path.is_empty()) {
+		tool_path = env_tool_path;
+	} else {
+		// Try relative path from executable
+		String exe_path = OS::get_singleton()->get_executable_path();
+		String exe_dir = exe_path.get_base_dir();
+		String relative_tool = exe_dir.path_join("opcode_to_cpp");
+		if (FileAccess::file_exists(relative_tool)) {
+			tool_path = relative_tool;
+		}
+	}
+	
+	List<String> tool_args;
+	tool_args.push_back(stablehlo_file);
+	tool_args.push_back(cpp_path);
+
+	String tool_output;
+	int tool_exit_code;
+	Error tool_err = OS::get_singleton()->execute(tool_path, tool_args, &tool_output, &tool_exit_code, false);
+	
+	if (tool_err != OK || tool_exit_code != 0) {
+		print_error(vformat("GDScriptBytecodeELFCompiler: External tool failed: %s", tool_output));
+		// Cleanup
+		dir->remove(stablehlo_file);
+		return ERR_FILE_CANT_READ;
+	}
+
+	// Step 3: Read generated C++ code
+	Ref<FileAccess> cpp_file = FileAccess::open(cpp_path, FileAccess::READ);
+	if (!cpp_file.is_valid()) {
+		print_error("GDScriptBytecodeELFCompiler: Failed to read generated C++ file");
+		// Cleanup
+		dir->remove(stablehlo_file);
+		return ERR_FILE_CANT_READ;
+	}
+
+	String c_code = cpp_file->get_as_text();
+	cpp_file->close();
+
+	if (c_code.is_empty()) {
+		print_error("GDScriptBytecodeELFCompiler: Generated C++ code is empty");
+		// Cleanup
+		dir->remove(stablehlo_file);
+		dir->remove(cpp_path);
+		return ERR_INVALID_DATA;
+	}
+
+	print_verbose("GDScriptBytecodeELFCompiler: Generated C++ code:");
 	print_verbose(c_code);
 
-	// Compile C code to ELF
+	// Step 4: Compile C++ code to ELF
 	Error compile_err = compiler->compile_c_to_elf(c_code, include_paths, r_elf_data);
+	
+	// Cleanup temp files
+	dir->remove(stablehlo_file);
+	dir->remove(cpp_path);
+
 	if (compile_err != OK) {
 		print_error("GDScriptBytecodeELFCompiler: Compilation failed");
 		return compile_err;
@@ -312,6 +405,11 @@ bool GDScriptBytecodeELFCompiler::can_compile_function_to_elf64(const GDScriptFu
 
 	// Check if function contains only basic opcodes we can handle
 	if (!is_basic_opcodes_only(p_function)) {
+		return false;
+	}
+
+	// Check if function can be converted to StableHLO
+	if (!GDScriptToStableHLO::can_convert_function(p_function)) {
 		return false;
 	}
 

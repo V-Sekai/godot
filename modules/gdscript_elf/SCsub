@@ -18,9 +18,15 @@ sources = [
     "src/gdscript_bytecode_c_code_generator.cpp",
     "src/gdscript_c_compiler.cpp",
     "src/gdscript_bytecode_elf_compiler.cpp",
+    "src/gdscript_to_stablehlo.cpp",
+    "src/gdscript_bytecode_serializer.cpp",
 ]
 
 # Test files are header-only and included via doctest framework in tests/
 # No need to explicitly add them to the build - they get included by the test runner
 
 env_gdscript_elf.add_source_files(env.modules_sources, sources)
+
+# Note: External CMake tool (opcode_to_cpp) must be built separately
+# Build it from modules/gdscript_elf/tools/opcode_to_cpp/ using CMake
+# The tool should be available in PATH or specified via environment variable

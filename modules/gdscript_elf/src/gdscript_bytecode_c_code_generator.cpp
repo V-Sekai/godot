@@ -900,9 +900,7 @@ String GDScriptBytecodeCCodeGenerator::generate_c_code(GDScriptFunction *p_funct
 	// Generate complete C++ function using Sandbox API
 	String code;
 	code += "#include <stdint.h>\n";
-	code += "#include \"core/variant/variant.h\"  // Godot Variant type\n";
-	code += "#include \"modules/sandbox/src/guest_datatypes.h\"  // GuestVariant type\n";
-	code += "#include \"modules/sandbox/src/syscalls.h\"  // ECALL_* definitions\n";
+	code += "#include <api.hpp>  // Sandbox API (includes Variant, GuestVariant, syscalls, etc.)\n";
 	code += "\n";
 
 	// Function signature
@@ -911,6 +909,7 @@ String GDScriptBytecodeCCodeGenerator::generate_c_code(GDScriptFunction *p_funct
 
 	// Function body
 	int stack_size = p_function->get_max_stack_size();
+
 	code += generate_prelogue(stack_size, p_function);
 
 	// Generate jump labels
