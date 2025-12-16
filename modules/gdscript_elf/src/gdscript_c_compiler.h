@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gdscript_elf64_writer.cpp                                             */
+/*  gdscript_c_compiler.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,54 +28,30 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "gdscript_elf64_writer.h"
-#include "gdscript_elf64_mode.h"
+#ifndef GDSCRIPT_C_COMPILER_H
+#define GDSCRIPT_C_COMPILER_H
 
-#include "gdscript_bytecode_elf_compiler.h"
-#include "modules/gdscript/gdscript_function.h"
-#include "core/string/print_string.h"
+#include "core/object/ref_counted.h"
+#include "core/templates/vector.h"
 
-PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, ELF64CompilationMode p_mode) {
-	if (!p_function || p_function->_code_ptr == nullptr || p_function->_code_size == 0) {
-		print_error("GDScriptELF64Writer: Invalid function or missing bytecode");
-		return PackedByteArray();
-	}
+class GDScriptCCompiler : public RefCounted {
+	GDCLASS(GDScriptCCompiler, RefCounted);
 
-	// Use new C code generation + cross-compilation pipeline
-	Ref<GDScriptBytecodeELFCompiler> compiler;
-	compiler.instantiate();
+private:
+	String detected_compiler_path;
+	bool compiler_available;
 
-	// Set up include paths for Godot and sandbox headers
-	Vector<String> include_paths;
-	include_paths.push_back("core/variant");  // For Variant type
-	include_paths.push_back("modules/sandbox/src");  // For syscall numbers
-	compiler->set_include_paths(include_paths);
+	String find_cross_compiler() const;
+	Error compile_to_object_file(const String &p_c_source_path, const String &p_output_path, const Vector<String> &p_include_paths) const;
+	Error link_to_executable(const String &p_object_path, const String &p_output_path) const;
 
-	PackedByteArray elf_data;
-	Error err = compiler->compile_function_to_elf64(p_function, elf_data);
+public:
+	GDScriptCCompiler();
 
-	if (err != OK) {
-		print_error(vformat("GDScriptELF64Writer: Failed to compile function '%s' to ELF (%s)",
-		                    p_function->get_name(), error_names[err]));
-		return PackedByteArray();
-	}
+	String detect_cross_compiler();
+	bool is_cross_compiler_available() const;
 
-	return elf_data;
-}
+	Error compile_c_to_elf(const String &p_c_source, const Vector<String> &p_include_paths, PackedByteArray &r_elf_data) const;
+};
 
-bool GDScriptELF64Writer::can_write_elf64(GDScriptFunction *p_function, ELF64CompilationMode p_mode) {
-	if (!p_function) {
-		return false;
-	}
-
-	// Check if function has bytecode
-	if (p_function->_code_ptr == nullptr || p_function->_code_size == 0) {
-		return false;
-	}
-
-	// Check if C compilation pipeline can handle this function
-	Ref<GDScriptBytecodeELFCompiler> compiler;
-	compiler.instantiate();
-
-	return compiler->can_compile_function_to_elf64(p_function);
-}
+#endif // GDSCRIPT_C_COMPILER_H

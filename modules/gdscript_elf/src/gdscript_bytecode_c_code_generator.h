@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gdscript_elf64_writer.cpp                                             */
+/*  gdscript_bytecode_c_code_generator.h                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,54 +28,28 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "gdscript_elf64_writer.h"
-#include "gdscript_elf64_mode.h"
+#ifndef GDSCRIPT_BYTECODE_C_CODE_GENERATOR_H
+#define GDSCRIPT_BYTECODE_C_CODE_GENERATOR_H
 
-#include "gdscript_bytecode_elf_compiler.h"
+#include "core/object/ref_counted.h"
+#include "core/templates/hash_map.h"
+#include "core/templates/vector.h"
 #include "modules/gdscript/gdscript_function.h"
-#include "core/string/print_string.h"
 
-PackedByteArray GDScriptELF64Writer::write_elf64(GDScriptFunction *p_function, ELF64CompilationMode p_mode) {
-	if (!p_function || p_function->_code_ptr == nullptr || p_function->_code_size == 0) {
-		print_error("GDScriptELF64Writer: Invalid function or missing bytecode");
-		return PackedByteArray();
-	}
+class GDScriptBytecodeCCodeGenerator : public RefCounted {
+	GDCLASS(GDScriptBytecodeCCodeGenerator, RefCounted);
 
-	// Use new C code generation + cross-compilation pipeline
-	Ref<GDScriptBytecodeELFCompiler> compiler;
-	compiler.instantiate();
+private:
+	String generate_function_signature(const String &p_function_name, bool p_is_static) const;
+	String generate_prelogue(int p_stack_size, const GDScriptFunction *p_function) const;
+	String generate_epilogue() const;
+	String generate_opcode(GDScriptFunction::Opcode p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, const GDScriptFunction *p_function) const;
+	String resolve_address(int p_address, const GDScriptFunction *p_function, bool p_is_destination = false) const;
+	String generate_syscall(int p_ecall_number, const Vector<String> &p_args) const;
+	void generate_jump_labels(const int *p_code_ptr, int p_code_size, HashMap<int, int> &r_jump_labels) const;
 
-	// Set up include paths for Godot and sandbox headers
-	Vector<String> include_paths;
-	include_paths.push_back("core/variant");  // For Variant type
-	include_paths.push_back("modules/sandbox/src");  // For syscall numbers
-	compiler->set_include_paths(include_paths);
+public:
+	String generate_c_code(GDScriptFunction *p_function) const;
+};
 
-	PackedByteArray elf_data;
-	Error err = compiler->compile_function_to_elf64(p_function, elf_data);
-
-	if (err != OK) {
-		print_error(vformat("GDScriptELF64Writer: Failed to compile function '%s' to ELF (%s)",
-		                    p_function->get_name(), error_names[err]));
-		return PackedByteArray();
-	}
-
-	return elf_data;
-}
-
-bool GDScriptELF64Writer::can_write_elf64(GDScriptFunction *p_function, ELF64CompilationMode p_mode) {
-	if (!p_function) {
-		return false;
-	}
-
-	// Check if function has bytecode
-	if (p_function->_code_ptr == nullptr || p_function->_code_size == 0) {
-		return false;
-	}
-
-	// Check if C compilation pipeline can handle this function
-	Ref<GDScriptBytecodeELFCompiler> compiler;
-	compiler.instantiate();
-
-	return compiler->can_compile_function_to_elf64(p_function);
-}
+#endif // GDSCRIPT_BYTECODE_C_CODE_GENERATOR_H

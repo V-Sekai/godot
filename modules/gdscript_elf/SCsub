@@ -9,12 +9,15 @@ env_gdscript_elf = env_modules.Clone()
 # Add include paths
 env_gdscript_elf.Prepend(CPPPATH=["#modules/gdscript_elf/src", "#thirdparty/elfio"])
 
-# Source files - ELF64 generation using elfio
+# Source files - ELF64 generation using C code compilation
 sources = [
     "register_types.cpp",
     "src/gdscript_elf64_writer.cpp",
-    "src/gdscript_riscv_encoder.cpp",
+    "src/gdscript_riscv_encoder.cpp",  # Kept for legacy/fallback
     "src/gdscript_elf_fallback.cpp",
+    "src/gdscript_bytecode_c_code_generator.cpp",
+    "src/gdscript_c_compiler.cpp",
+    "src/gdscript_bytecode_elf_compiler.cpp",
 ]
 
 env_gdscript_elf.add_source_files(env.modules_sources, sources)

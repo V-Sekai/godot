@@ -281,11 +281,9 @@ PackedByteArray GDScriptRISCVEncoder::encode_godot_syscall(int p_ecall_number) {
 }
 
 PackedByteArray GDScriptRISCVEncoder::encode_vm_call(int p_opcode, int p_ip, ELF64CompilationMode p_mode) {
-	// Return a nop instruction to avoid load-time syscalls for all opcodes
-	// This allows the ELF to load without executing harmful ECALLs during sandbox initialization
+	// This method is deprecated - the new C code generation approach handles VM calls properly at runtime
+	// Return empty result as this encoder is no longer used
 	PackedByteArray result;
-	result.resize(4);
-	*reinterpret_cast<uint32_t *>(result.ptrw()) = encode_i_type(0x13, 0, 0, 0, 0); // addi x0, x0, 0 (nop)
 	return result;
 }
 
