@@ -170,18 +170,15 @@ namespace TestGDScriptELF {
 ### Phase 2 Status - ✅ COMPLETE
 
 **Completed:**
--   **Comprehensive C code generation for 90+ opcodes**: All GDScript bytecode opcodes now have implementations
-    -   **Returns**: All `OPCODE_RETURN*` variants with proper result handling and typed returns
-    -   **Assignments**: `OPCODE_ASSIGN*` family including typed assignments, null/true/false assignments
-    -   **Control Flow**: All jumps (`JUMP`, `JUMP_IF`, `JUMP_IF_NOT`, `JUMP_TO_DEF_ARGUMENT`, `JUMP_IF_SHARED`) with label generation
-    -   **Arithmetic**: `OPCODE_OPERATOR_VALIDATED` with validated operator evaluator calls and fallback for non-validated
-    -   **Property/Method Access**: `GET_MEMBER`, `SET_MEMBER` via RISC-V syscalls with inline assembly
-    -   **Function Calls**: `OPCODE_CALL*` variants with syscall mechanism for method dispatch
-    -   **Type Operations**: 45+ `TYPE_ADJUST_*` opcodes, type tests, type conversions
-    -   **Collections**: Array, dictionary construction and operations
-    -   **Iteration**: Full iterator support (`ITERATE_BEGIN*`, `ITERATE*` variants)
-    -   **Exception Handling**: `ASSERT`, `BREAKPOINT`, line debugging
-    -   **Global Operations**: Constants, static variables, global access
+-   **Comprehensive C code generation for ~62 opcodes**: All commonly used GDScript bytecode opcodes now have implementations
+    -   **Returns (6 opcodes)**: All `OPCODE_RETURN*` variants with proper result handling and typed returns
+    -   **Assignments (5 opcodes)**: `OPCODE_ASSIGN*` family including typed assignments, null/true/false assignments
+    -   **Control Flow (5 opcodes)**: All jumps (`JUMP`, `JUMP_IF`, `JUMP_IF_NOT`, `JUMP_TO_DEF_ARGUMENT`, `JUMP_IF_SHARED`) with label generation
+    -   **Operators (1 opcode)**: `OPCODE_OPERATOR_VALIDATED` - handles ALL operator types (arithmetic, comparison, bitwise, logical) generically via validated operator evaluator calls
+    -   **Property/Method Access (2 opcodes)**: `GET_MEMBER`, `SET_MEMBER` via RISC-V syscalls with inline assembly
+    -   **Function Calls (1 opcode)**: `OPCODE_CALL` (basic) with syscall mechanism for method dispatch
+    -   **Type Operations (38 opcodes)**: All `TYPE_ADJUST_*` opcodes generate no-op comments (handled at bytecode level, no runtime C code needed)
+    -   **Debug/Metadata (4 opcodes)**: `LINE`, `BREAKPOINT`, `ASSERT`, `END` - generate comments or metadata
 -   Advanced address resolution (stack, constants, members with proper pointer arithmetic)
 -   Label pre-generation for all jump targets
 -   Enhanced function signatures with constants and operator functions parameter passing
@@ -347,39 +344,38 @@ void gdscript_function_name(void* instance, Variant* args, int argcount, Variant
 gdscript_vm_fallback(OPCODE_OPERATOR, instance, stack, ip);
 ```
 
-**Comprehensive C Code Generation**: Full support for 90+ GDScript bytecode opcodes ✅ COMPLETE
+**Comprehensive C Code Generation**: Full support for ~62 GDScript bytecode opcodes ✅ COMPLETE
 
 **Fully Implemented Categories:**
--   **Returns (5 opcodes)**: All `RETURN`, `RETURN_*` variants with proper result assignment and typed returns
--   **Assignments (10+ opcodes)**: `ASSIGN*` family including typed, null, boolean, and array/dictionary assignments
+-   **Returns (6 opcodes)**: All `RETURN`, `RETURN_*` variants with proper result assignment and typed returns
+-   **Assignments (5 opcodes)**: `ASSIGN*` family including typed, null, boolean assignments
 -   **Control Flow (5 opcodes)**: All conditional/unconditional jumps with label generation
--   **Arithmetic (2 opcodes)**: `OPERATOR_VALIDATED` with operator functions, fallback for non-validated
+-   **Operators (1 opcode)**: `OPCODE_OPERATOR_VALIDATED` - handles ALL operator types generically:
+    - Arithmetic: ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULE, POWER, NEGATE, POSITIVE
+    - Comparison: EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL
+    - Bitwise: SHIFT_LEFT, SHIFT_RIGHT, BIT_AND, BIT_OR, BIT_XOR, BIT_NEGATE
+    - Logical: AND, OR, NOT
+    - All operators use identical C code generation via `operator_funcs[index]` lookup
 -   **Property Access (2 opcodes)**: `GET_MEMBER`, `SET_MEMBER` via RISC-V syscalls with inline assembly
--   **Method Calls (10+ opcodes)**: `CALL*` variants, utility calls, builtin type calls
--   **Type Operations (45+ opcodes)**: All `TYPE_ADJUST_*`, `TYPE_TEST_*` opcodes (no-op in C generation)
--   **Collections (6 opcodes)**: Array, dictionary construction and operations
--   **Iteration (20+ opcodes)**: Full iterator support for all builtin types (array, dict, string, etc.)
--   **Built-in Functions (10+ opcodes)**: Constructor calls, utility functions, builtin method calls
--   **Globals & Constants (5 opcodes)**: Static variables, global access, constant loading
--   **Debug/Metadata (3 opcodes)**: Line info, assertions, breakpoints (comments in generated code)
--   **Advanced Features (10+ opcodes)**: Lambda creation, await, type casting, error handling
+-   **Method Calls (1 opcode)**: `CALL` (basic) with syscall mechanism
+-   **Type Operations (38 opcodes)**: All `TYPE_ADJUST_*` opcodes (no-op comments in C generation, handled at bytecode level)
+-   **Debug/Metadata (4 opcodes)**: `LINE`, `BREAKPOINT`, `ASSERT`, `END` (comments or metadata in generated code)
 
 **VM Communication Pattern:**
 -   Property/Method Access: Direct RISC-V syscalls with register setup
 -   Complex Operations: Fallback to VM via syscall mechanism
 -   Constants & Globals: Direct array access via function parameters
 
-**Supported opcodes include but are not limited to:**
-- All basic assignments, arithmetic, and control flow ✅
-- Property access and method calls ✅
-- Array/dictionary operations ✅
-- Iterator loops over all builtin types ✅
-- Function calls and returns ✅
-- Type testing and conversion ✅
-- Lambda and await handling ✅
-- Exception handling and assertions ✅
+**Supported opcodes include:**
+- All basic assignments, control flow, and returns ✅
+- All operators (arithmetic, comparison, bitwise, logical) via `OPCODE_OPERATOR_VALIDATED` ✅
+- Property access and basic method calls ✅
+- Type adjustments (38 opcodes, handled at bytecode level) ✅
+- Debug and metadata opcodes ✅
 
-**Remaining Work**: Only opcodes not relevant to typical GDScript usage (like certain low-level operations) remain unimplemented, all user-visible functionality is supported.
+**Operator Implementation Note**: All operators use a single `OPCODE_OPERATOR_VALIDATED` opcode with generic C code generation. The operator type (ADD, SUBTRACT, EQUAL, etc.) is determined at runtime via the `operator_funcs[]` array index. This design simplifies code generation while maintaining full operator support.
+
+**Remaining Work**: Additional method call variants, iteration opcodes, and advanced features (lambda, await) remain for future implementation. Core functionality for typical GDScript usage is supported.
 
 ### Syscall Pattern
 
@@ -496,16 +492,18 @@ When `GDScriptFunctionWrapper::call()` is invoked:
 ### Current Test Coverage
 
 **Complete C Code Generation Testing**: ✅ Comprehensive Tests Implemented
-- **C Code Generation (20+ test cases)**: Full coverage of bytecode-to-C translation for all supported opcodes
-- **ELF Compilation Pipeline (8+ test cases)**: C compilation, cross-compiler integration, ELF generation
-- **Fallback Mechanism (6+ test cases)**: Opcode support detection, VM fallback statistics tracking
+- **Operator Tests (36 test cases)**: Comprehensive coverage of all operator types
+  - `test_operators_arithmetic.h` (11 tests): ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULE, POWER, NEGATE, POSITIVE
+  - `test_operators_comparison.h` (11 tests): EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL
+  - `test_operators_bitwise_logical.h` (14 tests): SHIFT_LEFT, SHIFT_RIGHT, BIT_AND, BIT_OR, BIT_XOR, BIT_NEGATE, AND, OR, NOT
+- **ELF Compilation Pipeline**: C compilation, cross-compiler integration, ELF generation
+- **Fallback Mechanism**: Opcode support detection, VM fallback statistics tracking
 
 **Test Suite Structure** (`test_gdscript_c_generation.h`):
-- **Opcode Translation Tests**: Each category of opcodes tested individually
-  - Return operations, assignments, control flow ✅
-  - Arithmetic operations, property access ✅
-  - Method calls, type operations ✅
-  - Collections, iteration, function calls ✅
+- **Operator Translation Tests**: All operator types tested via `OPCODE_OPERATOR_VALIDATED` validation
+  - Tests verify that `operator_funcs[]` calls are generated correctly
+  - Complex expressions combining multiple operators ✅
+  - Type-specific operator validation ✅
 - **Address Resolution Tests**: Stack, constants, member access ✅
 - **Label Generation Tests**: Jump targets and goto statements ✅
 - **Syscall Generation Tests**: Inline assembly syscall patterns ✅
