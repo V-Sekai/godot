@@ -210,6 +210,29 @@ namespace TestGDScriptELF {
 -   Editor integration (optional)
 -   Migration progress tracking UI (optional)
 
+## Known Issues and Critical Fixes
+
+### Protection Fault During ELF Loading - 🪦 Tombstone
+
+**Issue**: ELF binaries fail to load with "Protection fault" errors during sandbox initialization. The sandbox simulates ELF execution immediately upon loading, but syscall instructions (ECALLs) in the generated code attempt to access null or invalid memory addresses.
+
+**Root Cause**: The RISC-V encoder generates syscalls for VM opcodes (arithmetic, property access, method calls) that expect valid pointers in registers. During load-time simulation with uninitialized registers, these syscalls crash when dereferencing null addresses (e.g., `GuestVariant *vp = a0; vp->type`).
+
+**Temporary Hack (Current Implementation)**: To allow basic ELF loading for testing:
+- Replace all VM syscall instructions with NOP operations in `GDScriptRISCVEncoder::encode_vm_call()`
+- Set RA register to `exit_address` during sandbox loading in `Sandbox::load()` to prevent invalid jumps after function return
+
+**Why This Won't Work For Production Use**:
+- NOP workaround avoids the fault but disables all VM communication (property access, method calls, arithmetic operations)
+- Functions using these opcodes will silently do nothing instead of executing
+- Proper fix requires initializing registers with valid dummy memory locations or restructuring the load simulation
+
+**Required Full Fix**:
+- Initialize guest memory with dummy `GuestVariant` structures during load
+- Set registers (a0-a5) to point to valid allocated memory before simulation
+- Or modify sandbox to disable simulation during simple load operations
+- Or defer syscalls to runtime only when actual function calls occur
+
 ## Architecture Details
 
 ### Strangler Vine Pattern
