@@ -33,8 +33,8 @@
 #include "modules/sandbox/src/syscalls.h"
 
 #ifdef MODULE_SANDBOX_ENABLED
-#include "modules/sandbox/src/syscalls.h"
 #include "modules/sandbox/src/guest_datatypes.h"
+#include "modules/sandbox/src/syscalls.h"
 #endif
 
 String GDScriptBytecodeCCodeGenerator::generate_function_signature(const String &p_function_name, bool p_is_static) const {
@@ -236,7 +236,7 @@ String GDScriptBytecodeCCodeGenerator::generate_opcode(GDScriptFunction::Opcode 
 			if (p_ip + 1 < p_code_size) {
 				int dst_addr = p_code_ptr[p_ip + 1];
 				String dst = resolve_address(dst_addr, p_function, true);
-				
+
 				if (p_opcode == GDScriptFunction::OPCODE_ASSIGN_NULL) {
 					// Direct field assignment for NIL
 					opcode_code += vformat("    %s.type = Variant::NIL;\n", dst.utf8().get_data());

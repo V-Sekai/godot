@@ -528,14 +528,14 @@ TEST_CASE("[GDScript][ELF][CGeneration] Fallback mechanism for unsupported opcod
 static Error compile_cpp_to_native_test(const String &p_cpp_code, const String &p_output_path) {
 	Ref<GDScriptCCompiler> compiler;
 	compiler.instantiate();
-	
+
 	Vector<String> include_paths;
 	include_paths.push_back("core");
 	include_paths.push_back("modules/sandbox/src");
-	
+
 	String executable_path;
 	Error err = compiler->compile_cpp_to_native(p_cpp_code, include_paths, executable_path);
-	
+
 	if (err == OK) {
 		// Copy executable to requested path if different
 		if (executable_path != p_output_path) {
@@ -551,7 +551,7 @@ static Error compile_cpp_to_native_test(const String &p_cpp_code, const String &
 			}
 		}
 	}
-	
+
 	return err;
 }
 
@@ -564,7 +564,8 @@ static String create_sandbox_dummy_test_wrapper(const String &p_function_name, c
 #include "modules/sandbox/src/guest_datatypes.h"
 
 // Forward declaration of generated function
-extern "C" void gdscript_)" + p_function_name + R"((void* instance, GuestVariant* args, int argcount, GuestVariant* result, GuestVariant* constants, Variant::ValidatedOperatorEvaluator* operator_funcs);
+extern "C" void gdscript_)" +
+			p_function_name + R"((void* instance, GuestVariant* args, int argcount, GuestVariant* result, GuestVariant* constants, Variant::ValidatedOperatorEvaluator* operator_funcs);
 
 int main() {
 	// Create SandboxDummy instance
@@ -580,7 +581,8 @@ int main() {
 	Variant::ValidatedOperatorEvaluator* operator_funcs = nullptr;
 	
 	// Call generated function
-	gdscript_)" + p_function_name + R"((sandbox, args, 0, &result, constants, operator_funcs);
+	gdscript_)" +
+			p_function_name + R"((sandbox, args, 0, &result, constants, operator_funcs);
 	
 	// Check result (basic validation)
 	if (result.type == Variant::NIL) {
@@ -601,9 +603,9 @@ TEST_CASE("[GDScript][ELF][CGeneration][Native] C++ code generation with GuestVa
 
 	GDScriptFunction *func = create_and_find_function(test_code, "test_simple");
 	REQUIRE(func != nullptr);
-	
+
 	String cpp_code = generate_and_verify_c_code(func);
-	
+
 	// Verify C++ specific features
 	REQUIRE(cpp_code.contains("GuestVariant"));
 	REQUIRE(cpp_code.contains("#include \"modules/sandbox/src/guest_datatypes.h\""));
@@ -620,15 +622,15 @@ TEST_CASE("[GDScript][ELF][CGeneration][Native] Native C++ compilation test") {
 
 	GDScriptFunction *func = create_and_find_function(test_code, "test_return_int");
 	REQUIRE(func != nullptr);
-	
+
 	Ref<GDScriptBytecodeCCodeGenerator> generator;
 	generator.instantiate();
 	String cpp_code = generator->generate_c_code(func);
 	REQUIRE(!cpp_code.is_empty());
-	
+
 	// Create test wrapper with SandboxDummy
 	String wrapper = create_sandbox_dummy_test_wrapper("test_return_int", cpp_code);
-	
+
 	// Try to compile (may fail if headers not available, but structure should be correct)
 	// Note: This test verifies code structure, not actual execution
 	REQUIRE(wrapper.contains("SandboxDummy"));

@@ -94,7 +94,7 @@ Error GDScriptCCompiler::compile_to_object_file(const String &p_c_source_path, c
 
 	// Detect if source is C++ (.cpp extension)
 	bool is_cpp = p_c_source_path.ends_with(".cpp") || p_c_source_path.ends_with(".cxx") || p_c_source_path.ends_with(".cc");
-	
+
 	// Use g++ if available and source is C++, otherwise use detected compiler
 	String compiler_to_use = detected_compiler_path;
 	if (is_cpp && !detected_compiler_path.ends_with("g++")) {
@@ -117,7 +117,7 @@ Error GDScriptCCompiler::compile_to_object_file(const String &p_c_source_path, c
 	args.push_back("-march=rv64gc"); // RISC-V 64-bit with GC extensions
 	args.push_back("-mabi=lp64d"); // ABI for 64-bit
 	args.push_back("-fPIC"); // Position independent code
-	
+
 	// Add C++ standard if compiling C++
 	if (is_cpp) {
 		args.push_back("-std=c++17");
@@ -267,14 +267,14 @@ Error GDScriptCCompiler::compile_c_to_elf(const String &p_c_source, const Vector
 Error GDScriptCCompiler::compile_cpp_to_native(const String &p_cpp_source, const Vector<String> &p_include_paths, String &r_executable_path) const {
 	// Native C++ compilation for testing (uses host compiler, not cross-compiler)
 	// This allows testing without RISC-V toolchain or libriscv
-	
+
 	// Find native C++ compiler (g++ or clang++)
 	const String native_compiler_candidates[] = {
 		"g++",
 		"clang++",
 		"c++"
 	};
-	
+
 	String native_compiler;
 	List<String> test_args;
 	for (int i = 0; i < 3; i++) {
@@ -285,7 +285,7 @@ Error GDScriptCCompiler::compile_cpp_to_native(const String &p_cpp_source, const
 			break;
 		}
 	}
-	
+
 	if (native_compiler.is_empty()) {
 		print_error("GDScriptCCompiler: No native C++ compiler found (g++, clang++, or c++)");
 		return ERR_UNAVAILABLE;
@@ -331,12 +331,12 @@ Error GDScriptCCompiler::compile_cpp_to_native(const String &p_cpp_source, const
 	args.push_back("-O0"); // No optimization for debugging
 	args.push_back("-g"); // Include debug info
 	args.push_back("-Wall"); // Enable warnings
-	
+
 	// Add include paths (need to point to Godot source for headers)
 	for (const String &include_path : p_include_paths) {
 		args.push_back("-I" + include_path);
 	}
-	
+
 	// Add Godot core include paths (approximate - may need adjustment)
 	args.push_back("-I" + OS::get_singleton()->get_executable_path().get_base_dir() + "/../core");
 	args.push_back("-I" + OS::get_singleton()->get_executable_path().get_base_dir() + "/../modules/sandbox/src");
