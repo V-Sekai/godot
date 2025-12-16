@@ -1191,7 +1191,6 @@ Ref<GDScript> GDScript::get_base() const {
 	return base;
 }
 
-#ifdef MODULE_GDSCRIPT_ELF_ENABLED
 Dictionary GDScript::compile_all_functions_to_elf64() const {
 	Dictionary result;
 	for (const KeyValue<StringName, GDScriptFunction *> &E : member_functions) {
@@ -1213,7 +1212,6 @@ bool GDScript::can_compile_to_elf64() const {
 	}
 	return false;
 }
-#endif
 
 bool GDScript::inherits_script(const Ref<Script> &p_script) const {
 	Ref<GDScript> gd = p_script;
