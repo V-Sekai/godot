@@ -10,13 +10,30 @@ This directory contains MLIR (Multi-Level Intermediate Representation) files gen
 
 ## MLIR Files (Validated with stablehlo-translate)
 
-- `add_numbers.mlir` - Simple integer addition ✅
+### Core Operations
+- `add_numbers.mlir` - Integer addition ✅
 - `multiply.mlir` - Float multiplication ✅
 - `subtract.mlir` - Integer subtraction ✅
 - `max_value.mlir` - Maximum value selection ✅
-- `calculate_area.mlir` - Area calculation (multiplication) ✅
-- `conditional_max.mlir` - Conditional selection ✅
-- `quadratic_formula.mlir` - Complex polynomial evaluation ✅
+- `calculate_area.mlir` - Area calculation ✅
+- `conditional_max.mlir` - Conditional logic ✅
+- `quadratic_formula.mlir` - Polynomial evaluation ✅
+
+### Comprehensive AST Coverage
+- `return_int.mlir` - Simple constant return ✅
+- `return_add.mlir` - Return with arithmetic expression ✅
+- `return_variable.mlir` - Return with variable/constant ✅
+- `assign_variable.mlir` - Variable assignment and arithmetic ✅
+- `arithmetic_subtract.mlir` - Subtraction operation ✅
+- `compare_greater.mlir` - Greater than comparison ✅
+- `conditional_simple.mlir` - If-else conditional logic ✅
+- `mixed_operations.mlir` - Complex mixed arithmetic ✅
+
+### Scripts and Documentation
+- `comprehensive_ast_examples.gd` - Complete GDScript examples for all AST elements
+- `stablehlo_demo.gd` - GDScript demonstration script
+- `stablehlo_examples.md` - Comprehensive conversion examples and documentation
+- `test_stablehlo_samples.gd` - Additional GDScript test samples
 
 ## Scripts and Documentation
 
@@ -51,10 +68,21 @@ stablehlo-translate --deserialize add_numbers.stablehlo
 
 ## Mathematical Validation
 
+### Core Operations
 - `add_numbers(1, 2)` = 3 ✓
 - `multiply(3.5, 2.0)` = 7.0 ✓
 - `max_value(5, 10)` = 10 ✓
 - `quadratic_formula(1,2,1,3)` = 16 (x²+2x+1 at x=3) ✓
+
+### Comprehensive AST Coverage
+- `return_int()` = 42 ✓
+- `return_add(3, 4)` = 7 ✓
+- `return_variable()` = 10 ✓
+- `assign_variable()` = 15 ✓
+- `arithmetic_subtract(10, 3)` = 7 ✓
+- `compare_greater(5, 3)` = true ✓
+- `conditional_simple(15)` = 100 ✓
+- `mixed_operations(3.0, 2.0)` = 6.5 ✓
 
 ## Implications
 
