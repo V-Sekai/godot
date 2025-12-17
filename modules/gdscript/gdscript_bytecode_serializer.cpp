@@ -21,7 +21,7 @@
 /*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFLICTING. */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
 /* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
 /* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
@@ -79,7 +79,7 @@ bool GDScriptBytecodeSerializer::uses_basic_opcodes_only(const GDScriptFunction 
 		if (!is_basic_opcode(opcode)) {
 			return false;
 		}
-		
+
 		// Advance IP (simplified - would need proper opcode parsing for exact advancement)
 		ip += 1;
 		if (ip > code_size) {
@@ -133,18 +133,18 @@ PackedByteArray GDScriptBytecodeSerializer::serialize_function(const GDScriptFun
 	}
 
 	memfile->close();
-	
+
 	// Read back as PackedByteArray
 	Ref<FileAccess> readfile = FileAccess::open("user://temp_serialize", FileAccess::READ);
 	if (!readfile.is_valid()) {
 		return PackedByteArray();
 	}
-	
+
 	int64_t file_size = readfile->get_length();
 	data.resize(file_size);
 	readfile->get_buffer(data.ptrw(), file_size);
 	readfile->close();
-	
+
 	return data;
 }
 
@@ -159,7 +159,7 @@ GDScriptBytecodeSerializer::DeserializedFunction GDScriptBytecodeSerializer::des
 	if (!memfile.is_valid()) {
 		return result;
 	}
-	
+
 	memfile->store_buffer(p_data.ptr(), p_data.size());
 	memfile->close();
 
@@ -199,4 +199,3 @@ GDScriptBytecodeSerializer::DeserializedFunction GDScriptBytecodeSerializer::des
 
 	return result;
 }
-
