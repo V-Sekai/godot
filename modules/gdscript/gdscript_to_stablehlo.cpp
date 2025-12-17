@@ -37,6 +37,7 @@
 
 bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 	switch (p_opcode) {
+		// DO NOT ADD NEW OPCODES.
 		case GDScriptFunction::OPCODE_RETURN:
 		case GDScriptFunction::OPCODE_ASSIGN:
 		case GDScriptFunction::OPCODE_ASSIGN_NULL:
@@ -45,6 +46,8 @@ bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 		case GDScriptFunction::OPCODE_JUMP:
 		case GDScriptFunction::OPCODE_JUMP_IF:
 		case GDScriptFunction::OPCODE_JUMP_IF_NOT:
+		case GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT: // Emulate as regular JUMP
+		case GDScriptFunction::OPCODE_JUMP_IF_SHARED: // Emulate as JUMP_IF
 		case GDScriptFunction::OPCODE_OPERATOR:
 		case GDScriptFunction::OPCODE_OPERATOR_VALIDATED:
 		case GDScriptFunction::OPCODE_GET_MEMBER:
@@ -55,8 +58,17 @@ bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 		case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED: // For constructing validated basic types
 		case GDScriptFunction::OPCODE_GET_NAMED: // For accessing named constants/variables
 		case GDScriptFunction::OPCODE_SET_NAMED: // For setting named constants/variables
+		case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED: // For validated named assignment (emulate as SET_NAMED)
+		case GDScriptFunction::OPCODE_GET_KEYED: // For getting keyed values (dictionary/array access)
+		case GDScriptFunction::OPCODE_GET_KEYED_VALIDATED: // For validated keyed access
+		case GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED: // For indexed array access
 		case GDScriptFunction::OPCODE_SET_KEYED: // For setting keyed values (may be used in some cases)
 		case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED: // For setting indexed values
+		case GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN: // Type test - emulate as boolean comparison
+		case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY: // Type test - emulate as boolean comparison
+		case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY: // Type test - emulate as boolean comparison
+		case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE: // Type test - emulate as boolean comparison
+		case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT: // Type test - emulate as boolean comparison
 		case GDScriptFunction::OPCODE_LINE:
 		case GDScriptFunction::OPCODE_BREAKPOINT:
 		case GDScriptFunction::OPCODE_ASSERT:
@@ -88,9 +100,11 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 			case GDScriptFunction::OPCODE_END:
 				return 1;
 			case GDScriptFunction::OPCODE_JUMP:
+			case GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT:
 				return 2;
 			case GDScriptFunction::OPCODE_JUMP_IF:
 			case GDScriptFunction::OPCODE_JUMP_IF_NOT:
+			case GDScriptFunction::OPCODE_JUMP_IF_SHARED:
 			case GDScriptFunction::OPCODE_ASSIGN:
 			case GDScriptFunction::OPCODE_GET_MEMBER:
 			case GDScriptFunction::OPCODE_SET_MEMBER:
@@ -117,11 +131,17 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 			}
 			case GDScriptFunction::OPCODE_GET_NAMED:
 			case GDScriptFunction::OPCODE_SET_NAMED:
+			case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED:
 				return 3;
 			case GDScriptFunction::OPCODE_GET_KEYED:
 			case GDScriptFunction::OPCODE_SET_KEYED:
 			case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED:
 				return 4;
+			case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
+				return 10; // opcode + dst + value + 7 type_info fields
+			case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
+			case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT:
+				return 4; // opcode + dst + value + type_info
 			case GDScriptFunction::OPCODE_CONSTRUCT:
 			case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED:
 				return 3;
@@ -265,6 +285,11 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 			case GDScriptFunction::OPCODE_SET_KEYED:
 			case GDScriptFunction::OPCODE_SET_KEYED_VALIDATED:
 				return 4; // opcode + dst + obj + key
+			case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
+				return 10; // opcode + dst + value + 7 type_info fields
+			case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
+			case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT:
+				return 4; // opcode + dst + value + type_info
 			case GDScriptFunction::OPCODE_CONSTRUCT: {
 				if (ip + 1 < code_size) {
 					int arg_count = code_ptr[ip + 1];
@@ -292,12 +317,6 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				return 4; // opcode + dst + value + type
 			case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY:
 				return 6; // opcode + dst + value + script_type + builtin_type + native_type
-			case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
-				return 9; // opcode + dst + value + key_script_type + value_script_type + key_builtin + key_native + value_builtin + value_native
-			case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
-				return 4; // opcode + dst + value + native_type
-			case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT:
-				return 4; // opcode + dst + value + script_type
 			case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED:
 				return 4; // opcode + dst + obj + key
 			case GDScriptFunction::OPCODE_SET_STATIC_VARIABLE:
@@ -1095,8 +1114,9 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			}
 			break;
 		}
-		case GDScriptFunction::OPCODE_JUMP: {
-			// Unconditional jump
+		case GDScriptFunction::OPCODE_JUMP:
+		case GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT: {
+			// Unconditional jump (JUMP_TO_DEF_ARGUMENT emulates as regular JUMP)
 			if (p_ip + 1 < p_code_size) {
 				int target = p_code_ptr[p_ip + 1];
 				result = "  stablehlo.return // jump to " + String::num(target) + "\n";
@@ -1107,7 +1127,9 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			break;
 		}
 		case GDScriptFunction::OPCODE_JUMP_IF:
-		case GDScriptFunction::OPCODE_JUMP_IF_NOT: {
+		case GDScriptFunction::OPCODE_JUMP_IF_NOT:
+		case GDScriptFunction::OPCODE_JUMP_IF_SHARED: {
+			// Conditional jump (JUMP_IF_SHARED emulates as JUMP_IF)
 			// Conditional jump - convert to compare + select pattern
 			// This requires tracking the condition value and true/false branches
 			// For now, generate a placeholder that will be handled by the operator that precedes it
@@ -1334,15 +1356,128 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			}
 			break;
 		}
-		case GDScriptFunction::OPCODE_GET_MEMBER:
-		case GDScriptFunction::OPCODE_SET_MEMBER: {
-			// Custom call for member access
-			if (p_ip + 1 < p_code_size) {
-				String op_type = (p_opcode == GDScriptFunction::OPCODE_GET_MEMBER) ? "get" : "set";
-				int obj_idx = (p_value_id > 0) ? p_value_id - 1 : 0;
-				result = "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @gdscript_" + op_type + "_member(%v" + String::num(obj_idx) + ") : (tensor<f32>) -> tensor<f32>\n";
+		case GDScriptFunction::OPCODE_GET_MEMBER: {
+			// Get member property
+			// Bytecode: [opcode, obj_addr, name_idx]
+			// Use syscall: godot_obj_prop_get(obj, name)
+			if (p_ip + 2 < p_code_size) {
+				int obj_addr = p_code_ptr[p_ip + 1];
+				int name_idx = p_code_ptr[p_ip + 2];
+				
+				// Get name from global_names
+				StringName name;
+				if (name_idx >= 0 && name_idx < p_function->global_names.size()) {
+					name = p_function->global_names[name_idx];
+				}
+				
+				// Decode object address
+				String obj_ref;
+				int obj_type = (obj_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int obj_idx = obj_addr & GDScriptFunction::ADDR_MASK;
+				if (obj_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (obj_idx < p_function->get_argument_count()) {
+						obj_ref = "%arg" + String::num(obj_idx);
+					} else {
+						obj_ref = "%v" + String::num(obj_idx - p_function->get_argument_count());
+					}
+				} else {
+					obj_ref = "%v0";
+				}
+				
+				// Generate name constant
+				PackedByteArray name_bytes = String(name).to_utf8_buffer();
+				String name_bytes_str = "[";
+				for (int i = 0; i < name_bytes.size(); i++) {
+					if (i > 0) name_bytes_str += ", ";
+					name_bytes_str += itos(name_bytes[i]);
+				}
+				name_bytes_str += "]";
+				
+				result += "  %name" + String::num(p_value_id) + " = stablehlo.constant dense<" + name_bytes_str + "> : tensor<" + itos(name_bytes.size()) + "xi8>\n";
+				int name_const_id = p_value_id;
 				p_value_id++;
-				p_ip += 2;
+				
+				result += "  %name_len" + String::num(p_value_id) + " = stablehlo.constant dense<" + itos(name_bytes.size()) + "> : tensor<i32>\n";
+				int name_len_id = p_value_id;
+				p_value_id++;
+				
+				// Generate obj_prop_get syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_obj_prop_get(" + obj_ref + ", %c" + itos(name_const_id) + ", %c" + itos(name_len_id) + ") : (tensor<*xi8>, tensor<*xi8>, tensor<i32>) -> tensor<*xi8>\n";
+				p_value_id++;
+				
+				p_ip += 3;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_SET_MEMBER: {
+			// Set member property
+			// Bytecode: [opcode, obj_addr, name_idx, value_addr]
+			// Use syscall: godot_obj_prop_set(obj, name, value)
+			if (p_ip + 3 < p_code_size) {
+				int obj_addr = p_code_ptr[p_ip + 1];
+				int name_idx = p_code_ptr[p_ip + 2];
+				int value_addr = p_code_ptr[p_ip + 3];
+				
+				// Get name from global_names
+				StringName name;
+				if (name_idx >= 0 && name_idx < p_function->global_names.size()) {
+					name = p_function->global_names[name_idx];
+				}
+				
+				// Decode addresses
+				String obj_ref, value_ref;
+				
+				int obj_type = (obj_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int obj_idx = obj_addr & GDScriptFunction::ADDR_MASK;
+				if (obj_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (obj_idx < p_function->get_argument_count()) {
+						obj_ref = "%arg" + String::num(obj_idx);
+					} else {
+						obj_ref = "%v" + String::num(obj_idx - p_function->get_argument_count());
+					}
+				} else {
+					obj_ref = "%v0";
+				}
+				
+				int value_type = (value_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int value_idx = value_addr & GDScriptFunction::ADDR_MASK;
+				if (value_type == GDScriptFunction::ADDR_TYPE_CONSTANT && value_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + value_idx;
+					value_ref = "%c" + itos(const_value_id);
+				} else if (value_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (value_idx < p_function->get_argument_count()) {
+						value_ref = "%arg" + String::num(value_idx);
+					} else {
+						value_ref = "%v" + String::num(value_idx - p_function->get_argument_count());
+					}
+				} else {
+					value_ref = "%v0";
+				}
+				
+				// Generate name constant
+				PackedByteArray name_bytes = String(name).to_utf8_buffer();
+				String name_bytes_str = "[";
+				for (int i = 0; i < name_bytes.size(); i++) {
+					if (i > 0) name_bytes_str += ", ";
+					name_bytes_str += itos(name_bytes[i]);
+				}
+				name_bytes_str += "]";
+				
+				result += "  %name" + String::num(p_value_id) + " = stablehlo.constant dense<" + name_bytes_str + "> : tensor<" + itos(name_bytes.size()) + "xi8>\n";
+				int name_const_id = p_value_id;
+				p_value_id++;
+				
+				result += "  %name_len" + String::num(p_value_id) + " = stablehlo.constant dense<" + itos(name_bytes.size()) + "> : tensor<i32>\n";
+				int name_len_id = p_value_id;
+				p_value_id++;
+				
+				// Generate obj_prop_set syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_obj_prop_set(" + obj_ref + ", %c" + itos(name_const_id) + ", %c" + itos(name_len_id) + ", " + value_ref + ") : (tensor<*xi8>, tensor<*xi8>, tensor<i32>, tensor<*xi8>) -> tensor<i32>\n";
+				p_value_id++;
+				
+				p_ip += 4;
 			} else {
 				p_ip += 1;
 			}
@@ -1351,12 +1486,96 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 		case GDScriptFunction::OPCODE_CALL:
 		case GDScriptFunction::OPCODE_CALL_RETURN: {
 			// Function call
+			// Bytecode: [opcode, instr_arg_count, ...instruction_args, arg_count, methodname_idx]
+			// Instruction args include: base object, arguments, and return value (if CALL_RETURN)
 			if (p_ip + 1 < p_code_size) {
-				int arg_count = p_code_ptr[p_ip + 1];
-				int arg_idx = (p_value_id > 0) ? p_value_id - 1 : 0;
-				result = "  %v" + String::num(p_value_id) + " = stablehlo.call @function(%v" + String::num(arg_idx) + ") : (tensor<f32>) -> tensor<f32>\n";
-				p_value_id++;
-				p_ip += 2 + arg_count;
+				int instr_arg_count = p_code_ptr[p_ip + 1];
+				if (p_ip + 1 + instr_arg_count + 2 < p_code_size) {
+					int arg_count = p_code_ptr[p_ip + 1 + instr_arg_count + 1];
+					int methodname_idx = p_code_ptr[p_ip + 1 + instr_arg_count + 2];
+					
+					// Get function name from global_names
+					StringName function_name;
+					if (methodname_idx >= 0 && methodname_idx < p_function->global_names.size()) {
+						function_name = p_function->global_names[methodname_idx];
+					}
+					
+					// Check if it's print() - convert to vcall syscall
+					if (function_name == "print" && arg_count > 0) {
+						// Convert print() to vcall syscall
+						// vcall signature: (variant_ptr, method_name, method_len, args_ptr, args_size, vret_addr)
+						// For print, we call vcall on the first argument (the string to print)
+						
+						// Get the first argument address from instruction args
+						// Instruction args: [base, arg0, arg1, ..., ret]
+						// First arg is at index 1 (after base)
+						if (instr_arg_count > 1) {
+							int first_arg_addr = p_code_ptr[p_ip + 1 + 1]; // Skip opcode and instr_arg_count
+							
+							// Decode address to get the value reference
+							int addr_type = (first_arg_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+							int addr_idx = first_arg_addr & GDScriptFunction::ADDR_MASK;
+							
+							String arg_ref;
+							if (addr_type == GDScriptFunction::ADDR_TYPE_CONSTANT && addr_idx < p_function->constants.size()) {
+								// It's a constant - use constant reference
+								int const_value_id = p_function->get_argument_count() + addr_idx;
+								arg_ref = "%c" + itos(const_value_id);
+							} else if (addr_type == GDScriptFunction::ADDR_TYPE_STACK) {
+								if (addr_idx < p_function->get_argument_count()) {
+									arg_ref = "%arg" + String::num(addr_idx);
+								} else {
+									arg_ref = "%v" + String::num(addr_idx - p_function->get_argument_count());
+								}
+							} else {
+								arg_ref = "%v0"; // Fallback
+							}
+							
+							// Generate vcall syscall: stablehlo.custom_call @godot_vcall(variant, method_name, method_len, args, args_size)
+							// For print, method_name is "print" (5 bytes), method_len is 5, args is the message, args_size is 1
+							// Create method name constant
+							String method_name_str = "print";
+							PackedByteArray method_bytes = method_name_str.to_utf8_buffer();
+							String method_bytes_str = "[";
+							for (int i = 0; i < method_bytes.size(); i++) {
+								if (i > 0) method_bytes_str += ", ";
+								method_bytes_str += itos(method_bytes[i]);
+							}
+							method_bytes_str += "]";
+							
+							// Generate method name constant
+							result += "  %method" + String::num(p_value_id) + " = stablehlo.constant dense<" + method_bytes_str + "> : tensor<" + itos(method_bytes.size()) + "xi8>\n";
+							int method_const_id = p_value_id;
+							p_value_id++;
+							
+							// Generate method length constant
+							result += "  %method_len" + String::num(p_value_id) + " = stablehlo.constant dense<" + itos(method_bytes.size()) + "> : tensor<i32>\n";
+							int method_len_id = p_value_id;
+							p_value_id++;
+							
+							// Generate args size constant
+							result += "  %args_size" + String::num(p_value_id) + " = stablehlo.constant dense<1> : tensor<i32>\n";
+							int args_size_id = p_value_id;
+							p_value_id++;
+							
+							// Generate vcall: godot_vcall(variant, method_name, method_len, args_array, args_size)
+							// Note: vcall syscall signature: (Variant*, method_name, method_len, args_ptr, args_size, vret_addr)
+							result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vcall(" + arg_ref + ", %c" + itos(method_const_id) + ", %c" + itos(method_len_id) + ", " + arg_ref + ", %c" + itos(args_size_id) + ") : (tensor<*xi8>, tensor<*xi8>, tensor<i32>, tensor<*xi8>, tensor<i32>) -> tensor<i32>\n";
+							p_value_id++;
+						} else {
+							result = "  // print() call - insufficient instruction args\n";
+						}
+					} else {
+						// Other function call - generate generic call
+						int arg_idx = (p_value_id > 0) ? p_value_id - 1 : 0;
+						result = "  %v" + String::num(p_value_id) + " = stablehlo.call @function(%v" + String::num(arg_idx) + ") : (tensor<f32>) -> tensor<f32>\n";
+						p_value_id++;
+					}
+					
+					p_ip += 1 + instr_arg_count + 2; // opcode + instr_arg_count + instruction_args + arg_count + methodname_idx
+				} else {
+					p_ip += 1;
+				}
 			} else {
 				p_ip += 1;
 			}
@@ -1369,6 +1588,387 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			// The actual constant reference will be resolved in RETURN
 			if (p_ip + 3 < p_code_size) {
 				p_ip += 4;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_GET_KEYED:
+		case GDScriptFunction::OPCODE_GET_KEYED_VALIDATED: {
+			// Get keyed value (dictionary/array access)
+			// Bytecode: [opcode, obj_addr, key_addr, dst_addr]
+			// Use syscall: godot_vfetch(obj, key)
+			if (p_ip + 3 < p_code_size) {
+				int obj_addr = p_code_ptr[p_ip + 1];
+				int key_addr = p_code_ptr[p_ip + 2];
+				int dst_addr = p_code_ptr[p_ip + 3];
+				
+				// Decode addresses
+				String obj_ref, key_ref;
+				
+				int obj_type = (obj_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int obj_idx = obj_addr & GDScriptFunction::ADDR_MASK;
+				if (obj_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (obj_idx < p_function->get_argument_count()) {
+						obj_ref = "%arg" + String::num(obj_idx);
+					} else {
+						obj_ref = "%v" + String::num(obj_idx - p_function->get_argument_count());
+					}
+				} else {
+					obj_ref = "%v0";
+				}
+				
+				int key_type = (key_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int key_idx = key_addr & GDScriptFunction::ADDR_MASK;
+				if (key_type == GDScriptFunction::ADDR_TYPE_CONSTANT && key_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + key_idx;
+					key_ref = "%c" + itos(const_value_id);
+				} else if (key_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (key_idx < p_function->get_argument_count()) {
+						key_ref = "%arg" + String::num(key_idx);
+					} else {
+						key_ref = "%v" + String::num(key_idx - p_function->get_argument_count());
+					}
+				} else {
+					key_ref = "%v0";
+				}
+				
+				// Generate vfetch syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vfetch(" + obj_ref + ", " + key_ref + ") : (tensor<*xi8>, tensor<*xi8>) -> tensor<*xi8>\n";
+				p_value_id++;
+				
+				p_ip += 4;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED: {
+			// Get indexed value (array access with validation)
+			// Bytecode: [opcode, obj_addr, index_addr, dst_addr, getter]
+			// Use syscall: godot_vfetch(obj, index)
+			if (p_ip + 4 < p_code_size) {
+				int obj_addr = p_code_ptr[p_ip + 1];
+				int index_addr = p_code_ptr[p_ip + 2];
+				int dst_addr = p_code_ptr[p_ip + 3];
+				(void)p_code_ptr[p_ip + 4]; // getter - bounds check
+				
+				// Decode addresses
+				String obj_ref, index_ref;
+				
+				int obj_type = (obj_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int obj_idx = obj_addr & GDScriptFunction::ADDR_MASK;
+				if (obj_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (obj_idx < p_function->get_argument_count()) {
+						obj_ref = "%arg" + String::num(obj_idx);
+					} else {
+						obj_ref = "%v" + String::num(obj_idx - p_function->get_argument_count());
+					}
+				} else {
+					obj_ref = "%v0";
+				}
+				
+				int index_type = (index_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int index_idx = index_addr & GDScriptFunction::ADDR_MASK;
+				if (index_type == GDScriptFunction::ADDR_TYPE_CONSTANT && index_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + index_idx;
+					index_ref = "%c" + itos(const_value_id);
+				} else if (index_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (index_idx < p_function->get_argument_count()) {
+						index_ref = "%arg" + String::num(index_idx);
+					} else {
+						index_ref = "%v" + String::num(index_idx - p_function->get_argument_count());
+					}
+				} else {
+					index_ref = "%v0";
+				}
+				
+				// Generate vfetch syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vfetch(" + obj_ref + ", " + index_ref + ") : (tensor<*xi8>, tensor<i32>) -> tensor<*xi8>\n";
+				p_value_id++;
+				
+				p_ip += 5;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_CONSTRUCT:
+		case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED: {
+			// Construct basic types
+			// Bytecode: [opcode, instr_arg_count, ...instruction_args, arg_count, type/constructor_idx]
+			// Use syscall for variant creation
+			if (p_ip + 1 < p_code_size) {
+				int instr_arg_count = p_code_ptr[p_ip + 1];
+				if (p_ip + 1 + instr_arg_count + 2 < p_code_size) {
+					int arg_count = p_code_ptr[p_ip + 1 + instr_arg_count + 1];
+					
+					// Generate construct using syscall: godot_vcreate(type, args...)
+					result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vcreate(";
+					
+					// Add type constant
+					int type_idx = p_code_ptr[p_ip + 1 + instr_arg_count + 2];
+					result += "%c" + itos(p_value_id) + ", "; // Type will be generated as constant
+					
+					// Add arguments
+					for (int i = 0; i < arg_count && i < 8; i++) { // Limit to 8 args for now
+						if (i > 0) result += ", ";
+						if (instr_arg_count > i) {
+							int arg_addr = p_code_ptr[p_ip + 1 + 1 + i]; // Skip opcode, instr_arg_count, base
+							int addr_type = (arg_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+							int addr_idx = arg_addr & GDScriptFunction::ADDR_MASK;
+							
+							if (addr_type == GDScriptFunction::ADDR_TYPE_CONSTANT && addr_idx < p_function->constants.size()) {
+								int const_value_id = p_function->get_argument_count() + addr_idx;
+								result += "%c" + itos(const_value_id);
+							} else {
+								result += "%v" + String::num(i);
+							}
+						} else {
+							result += "%v" + String::num(i);
+						}
+					}
+					
+					result += ") : (tensor<i32>";
+					for (int i = 0; i < arg_count; i++) {
+						result += ", tensor<f32>";
+					}
+					result += ") -> tensor<f32>\n";
+					
+					// Generate type constant
+					String type_const = "  %c" + itos(p_value_id) + " = stablehlo.constant dense<" + itos(type_idx) + "> : tensor<i32>\n";
+					result = type_const + result;
+					
+					p_value_id++;
+					p_ip += 1 + instr_arg_count + 2; // opcode + instr_arg_count + instruction_args + arg_count + type_idx
+				} else {
+					p_ip += 1;
+				}
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_SET_NAMED:
+		case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED: {
+			// Set named variable/property (validated version emulates regular SET_NAMED)
+			// Bytecode: [opcode, dst_addr, src_addr, name_idx/setter_idx]
+			// Use syscall for variant assignment: godot_vassign(dst, name, src)
+			if (p_ip + 3 < p_code_size) {
+				int dst_addr = p_code_ptr[p_ip + 1];
+				int src_addr = p_code_ptr[p_ip + 2];
+				int name_idx = p_code_ptr[p_ip + 3];
+				
+				// Get name from global_names (for SET_NAMED_VALIDATED, name_idx is actually setter_idx, but we'll treat it similarly)
+				StringName name;
+				if (name_idx >= 0 && name_idx < p_function->global_names.size()) {
+					name = p_function->global_names[name_idx];
+				} else {
+					// For validated version, we might not have a name, use placeholder
+					name = "set_named";
+				}
+				
+				// Decode addresses
+				int src_type = (src_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int src_idx = src_addr & GDScriptFunction::ADDR_MASK;
+				
+				String src_ref;
+				if (src_type == GDScriptFunction::ADDR_TYPE_CONSTANT && src_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + src_idx;
+					src_ref = "%c" + itos(const_value_id);
+				} else if (src_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (src_idx < p_function->get_argument_count()) {
+						src_ref = "%arg" + String::num(src_idx);
+					} else {
+						src_ref = "%v" + String::num(src_idx - p_function->get_argument_count());
+					}
+				} else {
+					src_ref = "%v0";
+				}
+				
+				// Generate name constant
+				PackedByteArray name_bytes = String(name).to_utf8_buffer();
+				String name_bytes_str = "[";
+				for (int i = 0; i < name_bytes.size(); i++) {
+					if (i > 0) name_bytes_str += ", ";
+					name_bytes_str += itos(name_bytes[i]);
+				}
+				name_bytes_str += "]";
+				
+				result += "  %name" + String::num(p_value_id) + " = stablehlo.constant dense<" + name_bytes_str + "> : tensor<" + itos(name_bytes.size()) + "xi8>\n";
+				int name_const_id = p_value_id;
+				p_value_id++;
+				
+				result += "  %name_len" + String::num(p_value_id) + " = stablehlo.constant dense<" + itos(name_bytes.size()) + "> : tensor<i32>\n";
+				int name_len_id = p_value_id;
+				p_value_id++;
+				
+				// Generate vassign syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vassign(%v0, %c" + itos(name_const_id) + ", %c" + itos(name_len_id) + ", " + src_ref + ") : (tensor<*xi8>, tensor<*xi8>, tensor<i32>, tensor<*xi8>) -> tensor<i32>\n";
+				p_value_id++;
+				
+				p_ip += 4;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_SET_KEYED: {
+			// Set keyed value (dictionary/array access)
+			// Bytecode: [opcode, dst_addr, key_addr, src_addr]
+			// Use syscall: godot_vassign_keyed(dst, key, src)
+			if (p_ip + 3 < p_code_size) {
+				int dst_addr = p_code_ptr[p_ip + 1];
+				int key_addr = p_code_ptr[p_ip + 2];
+				int src_addr = p_code_ptr[p_ip + 3];
+				
+				// Decode addresses
+				String key_ref, src_ref;
+				
+				int key_type = (key_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int key_idx = key_addr & GDScriptFunction::ADDR_MASK;
+				if (key_type == GDScriptFunction::ADDR_TYPE_CONSTANT && key_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + key_idx;
+					key_ref = "%c" + itos(const_value_id);
+				} else if (key_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (key_idx < p_function->get_argument_count()) {
+						key_ref = "%arg" + String::num(key_idx);
+					} else {
+						key_ref = "%v" + String::num(key_idx - p_function->get_argument_count());
+					}
+				} else {
+					key_ref = "%v0";
+				}
+				
+				int src_type = (src_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int src_idx = src_addr & GDScriptFunction::ADDR_MASK;
+				if (src_type == GDScriptFunction::ADDR_TYPE_CONSTANT && src_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + src_idx;
+					src_ref = "%c" + itos(const_value_id);
+				} else if (src_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (src_idx < p_function->get_argument_count()) {
+						src_ref = "%arg" + String::num(src_idx);
+					} else {
+						src_ref = "%v" + String::num(src_idx - p_function->get_argument_count());
+					}
+				} else {
+					src_ref = "%v0";
+				}
+				
+				// Generate vassign_keyed syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vassign_keyed(%v0, " + key_ref + ", " + src_ref + ") : (tensor<*xi8>, tensor<*xi8>, tensor<*xi8>) -> tensor<i32>\n";
+				p_value_id++;
+				
+				p_ip += 4;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED: {
+			// Set indexed value (array access with validation)
+			// Bytecode: [opcode, dst_addr, index_addr, src_addr, getter]
+			// Use syscall: godot_vassign_indexed(dst, index, src)
+			if (p_ip + 4 < p_code_size) {
+				int dst_addr = p_code_ptr[p_ip + 1];
+				int index_addr = p_code_ptr[p_ip + 2];
+				int src_addr = p_code_ptr[p_ip + 3];
+				(void)p_code_ptr[p_ip + 4]; // getter - bounds check
+				
+				// Decode addresses
+				String index_ref, src_ref;
+				
+				int index_type = (index_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int index_idx = index_addr & GDScriptFunction::ADDR_MASK;
+				if (index_type == GDScriptFunction::ADDR_TYPE_CONSTANT && index_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + index_idx;
+					index_ref = "%c" + itos(const_value_id);
+				} else if (index_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (index_idx < p_function->get_argument_count()) {
+						index_ref = "%arg" + String::num(index_idx);
+					} else {
+						index_ref = "%v" + String::num(index_idx - p_function->get_argument_count());
+					}
+				} else {
+					index_ref = "%v0";
+				}
+				
+				int src_type = (src_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int src_idx = src_addr & GDScriptFunction::ADDR_MASK;
+				if (src_type == GDScriptFunction::ADDR_TYPE_CONSTANT && src_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + src_idx;
+					src_ref = "%c" + itos(const_value_id);
+				} else if (src_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (src_idx < p_function->get_argument_count()) {
+						src_ref = "%arg" + String::num(src_idx);
+					} else {
+						src_ref = "%v" + String::num(src_idx - p_function->get_argument_count());
+					}
+				} else {
+					src_ref = "%v0";
+				}
+				
+				// Generate vassign_indexed syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_vassign_indexed(%v0, " + index_ref + ", " + src_ref + ") : (tensor<*xi8>, tensor<i32>, tensor<*xi8>) -> tensor<i32>\n";
+				p_value_id++;
+				
+				p_ip += 5;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
+		case GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN:
+		case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
+		case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
+		case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT: {
+			// Type test opcodes - emulate as boolean result using syscall
+			// Bytecode: [opcode, dst_addr, value_addr, ...type_info]
+			// Use syscall: godot_type_test(value, type_info) -> bool
+			if (p_ip + 2 < p_code_size) {
+				int dst_addr = p_code_ptr[p_ip + 1];
+				int value_addr = p_code_ptr[p_ip + 2];
+				
+				// Decode value address
+				String value_ref;
+				int value_type = (value_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+				int value_idx = value_addr & GDScriptFunction::ADDR_MASK;
+				if (value_type == GDScriptFunction::ADDR_TYPE_CONSTANT && value_idx < p_function->constants.size()) {
+					int const_value_id = p_function->get_argument_count() + value_idx;
+					value_ref = "%c" + itos(const_value_id);
+				} else if (value_type == GDScriptFunction::ADDR_TYPE_STACK) {
+					if (value_idx < p_function->get_argument_count()) {
+						value_ref = "%arg" + String::num(value_idx);
+					} else {
+						value_ref = "%v" + String::num(value_idx - p_function->get_argument_count());
+					}
+				} else {
+					value_ref = "%v0";
+				}
+				
+				// Generate type test syscall (returns boolean)
+				// For simplicity, we'll generate a placeholder that returns false (0.0)
+				// In a full implementation, this would call a type checking syscall
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @godot_type_test(" + value_ref + ") : (tensor<*xi8>) -> tensor<i1>\n";
+				p_value_id++;
+				
+				// Convert boolean to float for consistency
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.convert %v" + String::num(p_value_id - 1) + " : (tensor<i1>) -> tensor<f32>\n";
+				p_value_id++;
+				
+				// Advance IP based on opcode type
+				if (p_opcode == GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN) {
+					p_ip += 4; // opcode + dst + value + type
+				} else if (p_opcode == GDScriptFunction::OPCODE_TYPE_TEST_ARRAY) {
+					p_ip += 6; // opcode + dst + value + script_type + builtin_type + native_type
+				} else if (p_opcode == GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY) {
+					p_ip += 10; // opcode + dst + value + 7 type_info fields
+				} else if (p_opcode == GDScriptFunction::OPCODE_TYPE_TEST_NATIVE) {
+					p_ip += 4; // opcode + dst + value + native_type_idx
+				} else { // OPCODE_TYPE_TEST_SCRIPT
+					p_ip += 4; // opcode + dst + value + script_type
+				}
 			} else {
 				p_ip += 1;
 			}
