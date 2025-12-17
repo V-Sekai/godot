@@ -226,7 +226,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
 					if (ip + 2 + instr_arg_count < code_size) {
-						int argc = code_ptr[ip + 2 + instr_arg_count];
+						(void)code_ptr[ip + 2 + instr_arg_count]; // argc - bounds check
 						return 5 + instr_arg_count; // opcode + instr_arg_count + args + argc + function_name + dst
 					}
 				}
@@ -238,7 +238,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
 					if (ip + 2 + instr_arg_count < code_size) {
-						int captures_count = code_ptr[ip + 2 + instr_arg_count];
+						(void)code_ptr[ip + 2 + instr_arg_count]; // captures_count - bounds check
 						return 4 + instr_arg_count; // opcode + instr_arg_count + captures + dst + captures_count + lambda_index
 					}
 				}
@@ -259,7 +259,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
 					if (ip + 2 + instr_arg_count < code_size) {
-						int argc = code_ptr[ip + 2 + instr_arg_count];
+						(void)code_ptr[ip + 2 + instr_arg_count]; // argc - bounds check
 						return 3 + instr_arg_count; // opcode + instr_arg_count + args + argc + dst
 					}
 				}
@@ -270,7 +270,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
 					if (ip + 2 + instr_arg_count < code_size) {
-						int argc = code_ptr[ip + 2 + instr_arg_count];
+						(void)code_ptr[ip + 2 + instr_arg_count]; // argc - bounds check
 						return 6 + instr_arg_count; // opcode + instr_arg_count + args + argc + script_type + builtin_type + native_type + dst
 					}
 				}
@@ -281,7 +281,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
 					if (ip + 2 + instr_arg_count < code_size) {
-						int argc = code_ptr[ip + 2 + instr_arg_count];
+						(void)code_ptr[ip + 2 + instr_arg_count]; // argc - bounds check
 						return 3 + instr_arg_count; // opcode + instr_arg_count + args + argc + dst
 					}
 				}
@@ -292,7 +292,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
 					if (ip + 2 + instr_arg_count < code_size) {
-						int argc = code_ptr[ip + 2 + instr_arg_count];
+						(void)code_ptr[ip + 2 + instr_arg_count]; // argc - bounds check
 						return 8 + instr_arg_count; // opcode + instr_arg_count + args + argc + 6 type fields + dst
 					}
 				}
@@ -304,7 +304,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_var_args = code_ptr[ip + 1];
 					if (ip + 2 + instr_var_args < code_size) {
-						int argc = code_ptr[ip + 2 + instr_var_args];
+						(void)code_ptr[ip + 2 + instr_var_args]; // argc - bounds check
 						return 5 + instr_var_args; // opcode + instr_var_args + args + dst + argc + utility_idx
 					}
 				}
@@ -316,7 +316,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				if (ip + 1 < code_size) {
 					int instr_var_args = code_ptr[ip + 1];
 					if (ip + 2 + instr_var_args < code_size) {
-						int argc = code_ptr[ip + 2 + instr_var_args];
+						(void)code_ptr[ip + 2 + instr_var_args]; // argc - bounds check
 						return 6 + instr_var_args; // opcode + instr_var_args + args + base + argc + method_idx + dst
 					}
 				}
@@ -551,7 +551,6 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 					
 					// Try to resolve operands
 					Variant a_val, b_val;
-					bool a_const = false, b_const = false;
 					
 					// Resolve operand a
 					if ((a & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
@@ -560,15 +559,12 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 							Variant const_val = p_function->constants[const_idx];
 							if (const_val.get_type() == Variant::FLOAT || const_val.get_type() == Variant::INT) {
 								a_val = const_val;
-								a_const = true;
 							}
 						}
 					} else if (value_map.has(a)) {
 						a_val = value_map[a];
-						a_const = is_constant_map.has(a) ? is_constant_map[a] : false;
 					} else {
 						a_val = Variant(a);
-						a_const = false;
 					}
 					
 					// Resolve operand b
@@ -578,15 +574,12 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 							Variant const_val = p_function->constants[const_idx];
 							if (const_val.get_type() == Variant::FLOAT || const_val.get_type() == Variant::INT) {
 								b_val = const_val;
-								b_const = true;
 							}
 						}
 					} else if (value_map.has(b)) {
 						b_val = value_map[b];
-						b_const = is_constant_map.has(b) ? is_constant_map[b] : false;
 					} else {
 						b_val = Variant(b);
-						b_const = false;
 					}
 					
 					// If both are constants, we could compute the result, but for now just track the destination
@@ -624,7 +617,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT) {
 				if (ip + 2 < code_size) {
 					int dst = code_ptr[ip + 1];
-					int source = code_ptr[ip + 2];
+					(void)code_ptr[ip + 2]; // source - bounds check
 					// TYPE_TEST produces boolean, but we track it as a variable value
 					// Could potentially resolve source and determine if constant true/false
 					value_map[dst] = Variant(dst);
@@ -652,7 +645,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 					if (ip + 1 < code_size) {
 						int instr_arg_count = code_ptr[ip + 1];
 						if (ip + 2 + instr_arg_count < code_size) {
-							int argc = code_ptr[ip + 2 + instr_arg_count];
+							(void)code_ptr[ip + 2 + instr_arg_count]; // argc - bounds check
 							if (ip + 4 + instr_arg_count < code_size) {
 								int dst = code_ptr[ip + 4 + instr_arg_count]; // dst is after argc and function_name
 								value_map[dst] = Variant(dst);
@@ -943,7 +936,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			// For now, generate a placeholder that will be handled by the operator that precedes it
 			// The actual conversion happens when we see the comparison operator
 			if (p_ip + 1 < p_code_size) {
-				int target = p_code_ptr[p_ip + 1];
+				(void)p_code_ptr[p_ip + 1]; // target - bounds check
 				// Note: This will be handled by the comparison operator that precedes it
 				// We'll generate compare + select in the operator case
 				p_ip += 2;
@@ -959,7 +952,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			if (p_ip + 4 < p_code_size) {
 				int a_addr = p_code_ptr[p_ip + 1];
 				int b_addr = p_code_ptr[p_ip + 2];
-				int dst_addr = p_code_ptr[p_ip + 3];
+				(void)p_code_ptr[p_ip + 3]; // dst_addr - bounds check
 				Variant::Operator op = (Variant::Operator)p_code_ptr[p_ip + 4];
 				
 				// Decode addresses
@@ -1045,7 +1038,6 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 				
 				if (is_comparison) {
 					// Check if next opcode is JUMP_IF to generate compare + select pattern
-					int next_ip = p_ip + 5;
 					// OPCODE_OPERATOR has variable size due to function pointer storage
 					// For OPCODE_OPERATOR_VALIDATED, it's fixed at 5
 					// Let's check a bit further ahead

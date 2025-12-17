@@ -158,7 +158,6 @@ static void test_branch_extraction(const String &p_source_code, const StringName
 	// Check that placeholders (100.0, 0.0) are NOT used for branch values
 	// (they should be replaced with actual extracted values)
 	bool has_placeholder_100 = stablehlo_text.contains("100.0");
-	bool has_placeholder_0 = stablehlo_text.contains("0.0");
 	
 	// Note: 0.0 might be legitimate (e.g., for zero constants), but 100.0 should not appear
 	// unless it's actually in the source code
