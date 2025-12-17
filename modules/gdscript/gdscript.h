@@ -279,6 +279,12 @@ public:
 
 	bool is_tool() const override { return tool; }
 	bool is_abstract() const override { return _is_abstract; }
+
+	// Compile all functions to ELF64
+	Dictionary compile_all_functions_to_elf64(int p_mode = 0) const; // 0 = GODOT_SYSCALL
+
+	// Check if script can be compiled to ELF64
+	bool can_compile_to_elf64(int p_mode = 0) const; // 0 = GODOT_SYSCALL
 	Ref<GDScript> get_base() const;
 
 	const HashMap<StringName, MemberInfo> &debug_get_member_indices() const { return member_indices; }

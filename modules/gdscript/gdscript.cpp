@@ -1072,6 +1072,9 @@ void GDScript::_get_property_list(List<PropertyInfo> *p_properties) const {
 
 void GDScript::_bind_methods() {
 	ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "new", &GDScript::_new, MethodInfo("new"));
+
+	ClassDB::bind_method(D_METHOD("compile_all_functions_to_elf64", "mode"), &GDScript::compile_all_functions_to_elf64, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("can_compile_to_elf64", "mode"), &GDScript::can_compile_to_elf64, DEFVAL(0));
 }
 
 void GDScript::set_path_cache(const String &p_path) {
@@ -1189,6 +1192,28 @@ StringName GDScript::debug_get_static_var_by_index(int p_idx) const {
 
 Ref<GDScript> GDScript::get_base() const {
 	return base;
+}
+
+Dictionary GDScript::compile_all_functions_to_elf64(int p_mode) const {
+	Dictionary result;
+	for (const KeyValue<StringName, GDScriptFunction *> &E : member_functions) {
+		GDScriptFunction *func = E.value;
+		if (func && func->can_compile_to_elf64(p_mode)) {
+			PackedByteArray elf = func->compile_to_elf64(p_mode);
+			result[E.key] = elf;
+		}
+	}
+	return result;
+}
+
+bool GDScript::can_compile_to_elf64(int p_mode) const {
+	for (const KeyValue<StringName, GDScriptFunction *> &E : member_functions) {
+		GDScriptFunction *func = E.value;
+		if (func && func->can_compile_to_elf64(p_mode)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 bool GDScript::inherits_script(const Ref<Script> &p_script) const {
