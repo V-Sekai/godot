@@ -54,6 +54,7 @@ bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 		case GDScriptFunction::OPCODE_CONSTRUCT: // For constructing basic types like integers
 		case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED: // For constructing validated basic types
 		case GDScriptFunction::OPCODE_GET_NAMED: // For accessing named constants/variables
+		case GDScriptFunction::OPCODE_SET_NAMED: // For setting named constants/variables
 		case GDScriptFunction::OPCODE_SET_KEYED: // For setting keyed values (may be used in some cases)
 		case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED: // For setting indexed values
 		case GDScriptFunction::OPCODE_LINE:
@@ -148,7 +149,9 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 
 String GDScriptToStableHLO::generate_constant(const Variant &p_value, int &p_value_id) {
 	String value_str;
-	// Format float values with .0 suffix for proper MLIR syntax
+	String tensor_type = "tensor<f32>";
+	
+	// Format values based on type
 	if (p_value.get_type() == Variant::FLOAT || p_value.get_type() == Variant::INT) {
 		if (p_value.get_type() == Variant::INT) {
 			// For integers, use itos to get clean integer string, then add .0
@@ -166,10 +169,25 @@ String GDScriptToStableHLO::generate_constant(const Variant &p_value, int &p_val
 				value_str = String::num(float_val);
 			}
 		}
+	} else if (p_value.get_type() == Variant::STRING) {
+		// For strings, convert to byte array tensor
+		String str_val = p_value;
+		PackedByteArray bytes = str_val.to_utf8_buffer();
+		
+		// Build byte array representation: [72, 101, 108, ...]
+		value_str = "[";
+		for (int i = 0; i < bytes.size(); i++) {
+			if (i > 0) {
+				value_str += ", ";
+			}
+			value_str += itos(bytes[i]);
+		}
+		value_str += "]";
+		tensor_type = "tensor<" + itos(bytes.size()) + "xi8>";
 	} else {
 		value_str = String(p_value);
 	}
-	String result = "  %c" + String::num(p_value_id) + " = stablehlo.constant dense<" + value_str + "> : tensor<f32>\n";
+	String result = "  %c" + itos(p_value_id) + " = stablehlo.constant dense<" + value_str + "> : " + tensor_type + "\n";
 	p_value_id++;
 	return result;
 }
@@ -942,7 +960,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 }
 
 String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size,
-		int &p_value_id, const GDScriptFunction *p_function) {
+		int &p_value_id, const GDScriptFunction *p_function, HashMap<int, int> *p_stack_to_constant_map) {
 	String result;
 
 	switch (p_opcode) {
@@ -977,8 +995,96 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			if (p_ip + 1 < p_code_size) {
 				int return_count = p_code_ptr[p_ip + 1];
 				if (return_count > 0 && p_ip + 2 < p_code_size) {
-					int return_value = p_code_ptr[p_ip + 2];
-					result = "  stablehlo.return %v" + String::num(return_value) + " : tensor<f32>\n";
+					int return_addr = p_code_ptr[p_ip + 2];
+					
+					// Decode address to determine if it's a constant or stack value
+					int addr_type = (return_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+					int addr_idx = return_addr & GDScriptFunction::ADDR_MASK;
+					
+					String return_ref;
+					String return_type = "tensor<f32>"; // Default type
+					
+					if (addr_type == GDScriptFunction::ADDR_TYPE_CONSTANT && addr_idx < p_function->constants.size()) {
+						// It's a constant - map constant index to value_id
+						// Constants are generated first, starting at arg_count
+						// Constant index i maps to value_id = arg_count + i
+						int const_value_id = p_function->get_argument_count() + addr_idx;
+						return_ref = "%c" + String::num(const_value_id);
+						
+						// Determine return type based on constant type
+						Variant const_val = p_function->constants[addr_idx];
+						if (const_val.get_type() == Variant::STRING) {
+							String str_val = const_val;
+							PackedByteArray bytes = str_val.to_utf8_buffer();
+							return_type = "tensor<" + itos(bytes.size()) + "xi8>";
+						} else if (const_val.get_type() == Variant::INT) {
+							return_type = "tensor<i32>";
+						} else if (const_val.get_type() == Variant::FLOAT) {
+							return_type = "tensor<f32>";
+						}
+					} else if (addr_type == GDScriptFunction::ADDR_TYPE_STACK) {
+						// Stack reference - check if this stack slot maps to a constant
+						if (p_stack_to_constant_map && p_stack_to_constant_map->has(return_addr)) {
+							// This stack slot contains a constant
+							int const_value_id = (*p_stack_to_constant_map)[return_addr];
+							return_ref = "%c" + String::num(const_value_id);
+							
+							// Determine return type from the constant
+							// Find which constant this is
+							int const_idx = const_value_id - p_function->get_argument_count();
+							if (const_idx >= 0 && const_idx < p_function->constants.size()) {
+								Variant const_val = p_function->constants[const_idx];
+								if (const_val.get_type() == Variant::STRING) {
+									String str_val = const_val;
+									PackedByteArray bytes = str_val.to_utf8_buffer();
+									return_type = "tensor<" + itos(bytes.size()) + "xi8>";
+								} else if (const_val.get_type() == Variant::INT) {
+									return_type = "tensor<i32>";
+								} else if (const_val.get_type() == Variant::FLOAT) {
+									return_type = "tensor<f32>";
+								}
+							}
+						} else {
+							// Regular stack reference - try to find if it's the only constant
+							// For simple cases where we return the only constant, use it directly
+							if (p_function->constants.size() == 1 && p_function->get_argument_count() == 0) {
+								// Only one constant, no args - likely returning that constant
+								return_ref = "%c0";
+								Variant const_val = p_function->constants[0];
+								if (const_val.get_type() == Variant::STRING) {
+									String str_val = const_val;
+									PackedByteArray bytes = str_val.to_utf8_buffer();
+									return_type = "tensor<" + itos(bytes.size()) + "xi8>";
+								} else if (const_val.get_type() == Variant::INT) {
+									return_type = "tensor<i32>";
+								} else if (const_val.get_type() == Variant::FLOAT) {
+									return_type = "tensor<f32>";
+								}
+							} else {
+								// Regular stack reference
+								if (addr_idx < p_function->get_argument_count()) {
+									return_ref = "%arg" + String::num(addr_idx);
+								} else {
+									return_ref = "%v" + String::num(addr_idx - p_function->get_argument_count());
+								}
+							}
+						}
+					} else {
+						// Fallback - if we have constants and no args, use first constant
+						if (p_function->constants.size() > 0 && p_function->get_argument_count() == 0) {
+							return_ref = "%c0";
+							Variant const_val = p_function->constants[0];
+							if (const_val.get_type() == Variant::STRING) {
+								String str_val = const_val;
+								PackedByteArray bytes = str_val.to_utf8_buffer();
+								return_type = "tensor<" + itos(bytes.size()) + "xi8>";
+							}
+						} else {
+							return_ref = "%v0";
+						}
+					}
+					
+					result = "  stablehlo.return " + return_ref + " : " + return_type + "\n";
 				} else {
 					result = "  stablehlo.return\n";
 				}
@@ -1256,6 +1362,18 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			}
 			break;
 		}
+		case GDScriptFunction::OPCODE_GET_NAMED: {
+			// Get named value (e.g., loading a constant)
+			// Bytecode: [opcode, src_addr, dst_addr, name_idx]
+			// Note: This is handled as metadata since constants are generated upfront
+			// The actual constant reference will be resolved in RETURN
+			if (p_ip + 3 < p_code_size) {
+				p_ip += 4;
+			} else {
+				p_ip += 1;
+			}
+			break;
+		}
 		default: {
 			// Metadata opcodes (LINE, BREAKPOINT, ASSERT, END)
 			result = "  // opcode " + String::num(p_opcode) + " (metadata)\n";
@@ -1281,26 +1399,68 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 
 	// Function arguments
 	int arg_count = p_function->get_argument_count();
+	
+	// Determine return type - will be updated when we process the return statement
+	String return_type = "tensor<f32>"; // Default
+	
 	for (int i = 0; i < arg_count; i++) {
 		if (i > 0) {
 			result += ", ";
 		}
 		result += "%arg" + String::num(i) + ": tensor<f32>";
 	}
-	result += ") -> tensor<f32> {\n";
+	result += ") -> tensor<f32> {\n"; // Will be updated after processing return statement
 
 	// Process opcodes
 	const int *code_ptr = p_function->code.ptr();
 	int code_size = p_function->code.size();
 	int ip = 0;
 	int value_id = arg_count;
+	
+	// Map to track which stack slots contain constants (stack_addr -> constant_value_id)
+	HashMap<int, int> stack_to_constant_map;
 
 	// Generate constants first
 	for (int i = 0; i < p_function->constants.size(); i++) {
 		result += generate_constant(p_function->constants[i], value_id);
+		// Constant index i maps to value_id = arg_count + i
+		// But value_id gets incremented, so the actual constant ID is value_id - 1 after generation
 	}
 
-	// Process opcodes
+	// First pass: build map of stack slots to constants (for GET_NAMED tracking)
+	int scan_ip = 0;
+	while (scan_ip < code_size) {
+		int scan_opcode = code_ptr[scan_ip];
+		if (scan_opcode == GDScriptFunction::OPCODE_GET_NAMED && scan_ip + 3 < code_size) {
+			int src_addr = code_ptr[scan_ip + 1];
+			int dst_addr = code_ptr[scan_ip + 2];
+			int src_type = (src_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
+			int src_idx = src_addr & GDScriptFunction::ADDR_MASK;
+			
+			// If loading from constants, map the destination stack slot to the constant index
+			if (src_type == GDScriptFunction::ADDR_TYPE_CONSTANT && src_idx < p_function->constants.size()) {
+				// Map dst_addr -> constant value_id (arg_count + src_idx)
+				stack_to_constant_map[dst_addr] = arg_count + src_idx;
+			}
+		}
+		// Advance IP using opcode size
+		int opcode_size = 1; // Default
+		if (scan_opcode == GDScriptFunction::OPCODE_GET_NAMED) {
+			opcode_size = 4;
+		} else if (scan_opcode == GDScriptFunction::OPCODE_RETURN) {
+			if (scan_ip + 1 < code_size) {
+				int return_count = code_ptr[scan_ip + 1];
+				opcode_size = 2 + (return_count > 0 ? 1 : 0);
+			}
+		}
+		scan_ip += opcode_size;
+		if (scan_ip >= code_size) {
+			break;
+		}
+	}
+
+	// Process opcodes and track return type
+	String return_type_from_return = return_type;
 	while (ip < code_size) {
 		int opcode = code_ptr[ip];
 		if (!is_basic_opcode(opcode)) {
@@ -1308,7 +1468,21 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 			break;
 		}
 
-		result += generate_operation(opcode, code_ptr, ip, code_size, value_id, p_function);
+		String op_result = generate_operation(opcode, code_ptr, ip, code_size, value_id, p_function, &stack_to_constant_map);
+		
+		// Check if this is a return statement and extract the return type
+		if (opcode == GDScriptFunction::OPCODE_RETURN && op_result.contains("stablehlo.return")) {
+			// Extract return type from the return statement
+			int type_start = op_result.find(": ");
+			if (type_start != -1) {
+				int type_end = op_result.find("\n", type_start);
+				if (type_end != -1) {
+					return_type_from_return = op_result.substr(type_start + 2, type_end - type_start - 2);
+				}
+			}
+		}
+		
+		result += op_result;
 
 		if (ip > code_size) {
 			break;
@@ -1317,6 +1491,20 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 
 	result += "  }\n";
 	result += "}\n";
+	
+	// Update return type in function signature if it was determined from return statement
+	if (return_type_from_return != return_type && return_type_from_return != "tensor<f32>") {
+		int sig_start = result.find(") -> ");
+		if (sig_start != -1) {
+			int sig_end = result.find(" {", sig_start);
+			if (sig_end != -1) {
+				// Replace the return type: everything between ") -> " and " {"
+				String before = result.substr(0, sig_start + 5); // Up to and including ") -> "
+				String after = result.substr(sig_end);
+				result = before + return_type_from_return + after;
+			}
+		}
+	}
 
 	return result;
 }

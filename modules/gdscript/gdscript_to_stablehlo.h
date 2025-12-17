@@ -74,7 +74,7 @@ private:
 	static String generate_constant(const Variant &p_value, int &p_value_id);
 
 	// Generate StableHLO operation for a GDScript opcode
-	static String generate_operation(int p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, int &p_value_id, const GDScriptFunction *p_function);
+	static String generate_operation(int p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, int &p_value_id, const GDScriptFunction *p_function, HashMap<int, int> *p_stack_to_constant_map = nullptr);
 
 	// Check if opcode is basic and supported
 	static bool is_basic_opcode(int p_opcode);
