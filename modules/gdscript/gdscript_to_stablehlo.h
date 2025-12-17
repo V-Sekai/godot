@@ -34,13 +34,22 @@
 #include "core/string/ustring.h"
 #include "gdscript_function.h"
 
+class GDScript;
+
 class GDScriptToStableHLO : public RefCounted {
 	GDCLASS(GDScriptToStableHLO, RefCounted);
+
+protected:
+	static void _bind_methods();
 
 public:
 	// Convert GDScript function to StableHLO text format (MLIR text)
 	// Returns the StableHLO text representation
 	static String convert_function_to_stablehlo_text(const GDScriptFunction *p_function);
+	
+	// GDScript-accessible wrapper methods
+	// Convert a function from a GDScript resource to StableHLO text
+	String convert_script_function_to_stablehlo_text(Ref<GDScript> p_script, const StringName &p_function_name) const;
 
 	// Write StableHLO text to file (MLIR text format)
 	// Returns path to the .stablehlo file, or empty string on error
@@ -52,6 +61,13 @@ public:
 
 	// Check if function can be converted (only basic opcodes)
 	static bool can_convert_function(const GDScriptFunction *p_function);
+	
+	// GDScript-accessible wrapper methods
+	// Check if a function from a GDScript resource can be converted
+	bool can_convert_script_function(Ref<GDScript> p_script, const StringName &p_function_name) const;
+	
+	// Generate StableHLO file from a GDScript resource function
+	String generate_mlir_file_from_script(Ref<GDScript> p_script, const StringName &p_function_name, const String &p_output_path) const;
 
 private:
 	// Generate StableHLO constant operation

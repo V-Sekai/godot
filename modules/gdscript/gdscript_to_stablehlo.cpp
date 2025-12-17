@@ -33,6 +33,7 @@
 #include "core/io/file_access.h"
 #include "core/string/print_string.h"
 #include "core/variant/variant.h"
+#include "gdscript.h"
 
 bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 	switch (p_opcode) {
@@ -50,6 +51,11 @@ bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 		case GDScriptFunction::OPCODE_SET_MEMBER:
 		case GDScriptFunction::OPCODE_CALL:
 		case GDScriptFunction::OPCODE_CALL_RETURN:
+		case GDScriptFunction::OPCODE_CONSTRUCT: // For constructing basic types like integers
+		case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED: // For constructing validated basic types
+		case GDScriptFunction::OPCODE_GET_NAMED: // For accessing named constants/variables
+		case GDScriptFunction::OPCODE_SET_KEYED: // For setting keyed values (may be used in some cases)
+		case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED: // For setting indexed values
 		case GDScriptFunction::OPCODE_LINE:
 		case GDScriptFunction::OPCODE_BREAKPOINT:
 		case GDScriptFunction::OPCODE_ASSERT:
@@ -69,13 +75,69 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 	int code_size = p_function->code.size();
 	int ip = 0;
 
+	// Helper function to get opcode size (same as in generate_operation)
+	auto get_opcode_size = [](int opcode, const int *code_ptr, int ip, int code_size) -> int {
+		switch (opcode) {
+			case GDScriptFunction::OPCODE_ASSIGN_NULL:
+			case GDScriptFunction::OPCODE_ASSIGN_TRUE:
+			case GDScriptFunction::OPCODE_ASSIGN_FALSE:
+			case GDScriptFunction::OPCODE_LINE:
+			case GDScriptFunction::OPCODE_BREAKPOINT:
+			case GDScriptFunction::OPCODE_ASSERT:
+			case GDScriptFunction::OPCODE_END:
+				return 1;
+			case GDScriptFunction::OPCODE_JUMP:
+				return 2;
+			case GDScriptFunction::OPCODE_JUMP_IF:
+			case GDScriptFunction::OPCODE_JUMP_IF_NOT:
+			case GDScriptFunction::OPCODE_ASSIGN:
+			case GDScriptFunction::OPCODE_GET_MEMBER:
+			case GDScriptFunction::OPCODE_SET_MEMBER:
+				return 3;
+			case GDScriptFunction::OPCODE_RETURN:
+				if (ip + 1 < code_size) {
+					int return_count = code_ptr[ip + 1];
+					return 2 + (return_count > 0 ? 1 : 0);
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_OPERATOR_VALIDATED:
+				return 5;
+			case GDScriptFunction::OPCODE_OPERATOR: {
+				constexpr int ptr_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(int);
+				return 5 + ptr_size;
+			}
+			case GDScriptFunction::OPCODE_CALL_RETURN:
+			case GDScriptFunction::OPCODE_CALL: {
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 2 + arg_count;
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_GET_NAMED:
+			case GDScriptFunction::OPCODE_SET_NAMED:
+				return 3;
+			case GDScriptFunction::OPCODE_GET_KEYED:
+			case GDScriptFunction::OPCODE_SET_KEYED:
+			case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED:
+				return 4;
+			case GDScriptFunction::OPCODE_CONSTRUCT:
+			case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED:
+				return 3;
+			default:
+				return 1; // Default to 1 for unknown opcodes
+		}
+	};
+
 	while (ip < code_size) {
 		int opcode = code_ptr[ip];
 		if (!is_basic_opcode(opcode)) {
+			print_error(vformat("GDScriptToStableHLO: Unsupported opcode %d at IP %d in function '%s'", opcode, ip, p_function->get_name()));
 			return false;
 		}
-		// Advance IP by at least 1 (opcode)
-		ip += 1;
+		// Advance IP by the opcode size
+		int opcode_size = get_opcode_size(opcode, code_ptr, ip, code_size);
+		ip += opcode_size;
 		if (ip >= code_size) {
 			break;
 		}
@@ -88,12 +150,21 @@ String GDScriptToStableHLO::generate_constant(const Variant &p_value, int &p_val
 	String value_str;
 	// Format float values with .0 suffix for proper MLIR syntax
 	if (p_value.get_type() == Variant::FLOAT || p_value.get_type() == Variant::INT) {
-		double float_val = p_value;
-		// Check if it's a whole number
-		if (float_val == (double)(int64_t)float_val) {
-			value_str = String::num(float_val) + ".0";
+		if (p_value.get_type() == Variant::INT) {
+			// For integers, use itos to get clean integer string, then add .0
+			int64_t int_val = p_value;
+			value_str = itos(int_val) + ".0";
 		} else {
-			value_str = String::num(float_val);
+			// For floats, check if it's a whole number
+			double float_val = p_value;
+			if (float_val == (double)(int64_t)float_val) {
+				// Whole number - format as integer.0 using itos to avoid float formatting
+				int64_t int_val = (int64_t)float_val;
+				value_str = itos(int_val) + ".0";
+			} else {
+				// Fractional number - use float representation
+				value_str = String::num(float_val);
+			}
 		}
 	} else {
 		value_str = String(p_value);
@@ -1303,4 +1374,70 @@ String GDScriptToStableHLO::generate_mlir_file(const GDScriptFunction *p_functio
 	stablehlo_file->close();
 
 	return stablehlo_path;
+}
+
+void GDScriptToStableHLO::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("convert_script_function_to_stablehlo_text", "script", "function_name"), &GDScriptToStableHLO::convert_script_function_to_stablehlo_text);
+	ClassDB::bind_method(D_METHOD("can_convert_script_function", "script", "function_name"), &GDScriptToStableHLO::can_convert_script_function);
+	ClassDB::bind_method(D_METHOD("generate_mlir_file_from_script", "script", "function_name", "output_path"), &GDScriptToStableHLO::generate_mlir_file_from_script);
+}
+
+String GDScriptToStableHLO::convert_script_function_to_stablehlo_text(Ref<GDScript> p_script, const StringName &p_function_name) const {
+	if (!p_script.is_valid()) {
+		print_error("GDScriptToStableHLO: Invalid script");
+		return String();
+	}
+
+	const HashMap<StringName, GDScriptFunction *> &funcs = p_script->get_member_functions();
+	if (!funcs.has(p_function_name)) {
+		print_error(vformat("GDScriptToStableHLO: Function '%s' not found in script", p_function_name));
+		return String();
+	}
+
+	GDScriptFunction *func = funcs.get(p_function_name);
+	if (func == nullptr) {
+		print_error(vformat("GDScriptToStableHLO: Function '%s' is null", p_function_name));
+		return String();
+	}
+
+	return convert_function_to_stablehlo_text(func);
+}
+
+bool GDScriptToStableHLO::can_convert_script_function(Ref<GDScript> p_script, const StringName &p_function_name) const {
+	if (!p_script.is_valid()) {
+		return false;
+	}
+
+	const HashMap<StringName, GDScriptFunction *> &funcs = p_script->get_member_functions();
+	if (!funcs.has(p_function_name)) {
+		return false;
+	}
+
+	GDScriptFunction *func = funcs.get(p_function_name);
+	if (func == nullptr) {
+		return false;
+	}
+
+	return can_convert_function(func);
+}
+
+String GDScriptToStableHLO::generate_mlir_file_from_script(Ref<GDScript> p_script, const StringName &p_function_name, const String &p_output_path) const {
+	if (!p_script.is_valid()) {
+		print_error("GDScriptToStableHLO: Invalid script");
+		return String();
+	}
+
+	const HashMap<StringName, GDScriptFunction *> &funcs = p_script->get_member_functions();
+	if (!funcs.has(p_function_name)) {
+		print_error(vformat("GDScriptToStableHLO: Function '%s' not found in script", p_function_name));
+		return String();
+	}
+
+	GDScriptFunction *func = funcs.get(p_function_name);
+	if (func == nullptr) {
+		print_error(vformat("GDScriptToStableHLO: Function '%s' is null", p_function_name));
+		return String();
+	}
+
+	return generate_mlir_file(func, p_output_path);
 }
