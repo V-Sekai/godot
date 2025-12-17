@@ -124,37 +124,355 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 		false_branch_start = p_jump_ip + 3; // Skip opcode + condition_addr + target
 	}
 	
+	// Helper function to get opcode size (number of words)
+	auto get_opcode_size = [](int opcode, const int *code_ptr, int ip, int code_size) -> int {
+		switch (opcode) {
+			case GDScriptFunction::OPCODE_ASSIGN_NULL:
+			case GDScriptFunction::OPCODE_ASSIGN_TRUE:
+			case GDScriptFunction::OPCODE_ASSIGN_FALSE:
+			case GDScriptFunction::OPCODE_LINE:
+			case GDScriptFunction::OPCODE_BREAKPOINT:
+			case GDScriptFunction::OPCODE_ASSERT:
+			case GDScriptFunction::OPCODE_END:
+				return 1;
+			case GDScriptFunction::OPCODE_JUMP:
+			case GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT:
+				return 2;
+			case GDScriptFunction::OPCODE_JUMP_IF:
+			case GDScriptFunction::OPCODE_JUMP_IF_NOT:
+			case GDScriptFunction::OPCODE_JUMP_IF_SHARED:
+			case GDScriptFunction::OPCODE_ASSIGN:
+			case GDScriptFunction::OPCODE_GET_MEMBER:
+			case GDScriptFunction::OPCODE_SET_MEMBER:
+				return 3;
+			case GDScriptFunction::OPCODE_RETURN:
+				if (ip + 1 < code_size) {
+					int return_count = code_ptr[ip + 1];
+					return 2 + (return_count > 0 ? 1 : 0);
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_OPERATOR_VALIDATED:
+				return 5; // opcode + dst + a + b + operator_idx
+			case GDScriptFunction::OPCODE_OPERATOR: {
+				// Variable size due to function pointer
+				constexpr int ptr_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(int);
+				return 5 + ptr_size; // opcode + dst + a + b + op + function_ptr
+			}
+			case GDScriptFunction::OPCODE_CALL_RETURN:
+			case GDScriptFunction::OPCODE_CALL: {
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 2 + arg_count; // opcode + arg_count + args
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_GET_NAMED:
+			case GDScriptFunction::OPCODE_GET_NAMED_VALIDATED:
+			case GDScriptFunction::OPCODE_SET_NAMED:
+			case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED:
+				return 3; // opcode + dst + name_idx
+			case GDScriptFunction::OPCODE_GET_KEYED:
+			case GDScriptFunction::OPCODE_GET_KEYED_VALIDATED:
+			case GDScriptFunction::OPCODE_SET_KEYED:
+			case GDScriptFunction::OPCODE_SET_KEYED_VALIDATED:
+				return 4; // opcode + dst + obj + key
+			case GDScriptFunction::OPCODE_CONSTRUCT: {
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					constexpr int ptr_size = sizeof(Variant::ValidatedConstructor) / sizeof(int);
+					return 2 + arg_count + ptr_size; // opcode + arg_count + args + constructor_ptr
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED: {
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 2 + arg_count; // opcode + arg_count + args
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CALL_UTILITY:
+			case GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED: {
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 3 + arg_count; // opcode + dst + arg_count + args
+				}
+				return 3;
+			}
+			case GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN:
+				return 4; // opcode + dst + value + type
+			case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY:
+				return 6; // opcode + dst + value + script_type + builtin_type + native_type
+			case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
+				return 9; // opcode + dst + value + key_script_type + value_script_type + key_builtin + key_native + value_builtin + value_native
+			case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
+				return 4; // opcode + dst + value + native_type
+			case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT:
+				return 4; // opcode + dst + value + script_type
+			case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED:
+				return 4; // opcode + dst + obj + key
+			case GDScriptFunction::OPCODE_SET_STATIC_VARIABLE:
+				return 3; // opcode + dst + name_idx
+			case GDScriptFunction::OPCODE_STORE_GLOBAL:
+			case GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL:
+				return 3; // opcode + dst + global_idx/name_idx
+			case GDScriptFunction::OPCODE_AWAIT:
+				return 2; // opcode + operand
+			case GDScriptFunction::OPCODE_AWAIT_RESUME:
+				return 2; // opcode + target
+			case GDScriptFunction::OPCODE_CALL_SELF_BASE: {
+				// Structure: [opcode, instr_arg_count, ...args, argc, function_name, dst]
+				// After LOAD_INSTRUCTION_ARGS (advances ip by 1), structure is: [argc, function_name, dst]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int argc = code_ptr[ip + 2 + instr_arg_count];
+						return 5 + instr_arg_count; // opcode + instr_arg_count + args + argc + function_name + dst
+					}
+				}
+				return 2; // Minimum size
+			}
+			case GDScriptFunction::OPCODE_CREATE_LAMBDA:
+			case GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA: {
+				// Uses LOAD_INSTRUCTION_ARGS pattern: [opcode, instr_arg_count, ...captures, dst, captures_count, lambda_index]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int captures_count = code_ptr[ip + 2 + instr_arg_count];
+						return 4 + instr_arg_count; // opcode + instr_arg_count + captures + dst + captures_count + lambda_index
+					}
+				}
+				return 2; // Minimum size
+			}
+			case GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_DICTIONARY:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_NATIVE:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_SCRIPT:
+				if (ip + 1 < code_size) {
+					int return_count = code_ptr[ip + 1];
+					return 2 + (return_count > 0 ? 1 : 0);
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_CONSTRUCT_ARRAY: {
+				// Uses LOAD_INSTRUCTION_ARGS: [opcode, instr_arg_count, ...args, argc, dst]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int argc = code_ptr[ip + 2 + instr_arg_count];
+						return 3 + instr_arg_count; // opcode + instr_arg_count + args + argc + dst
+					}
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_ARRAY: {
+				// Uses LOAD_INSTRUCTION_ARGS: [opcode, instr_arg_count, ...args, argc, script_type, builtin_type, native_type, dst]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int argc = code_ptr[ip + 2 + instr_arg_count];
+						return 6 + instr_arg_count; // opcode + instr_arg_count + args + argc + script_type + builtin_type + native_type + dst
+					}
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CONSTRUCT_DICTIONARY: {
+				// Uses LOAD_INSTRUCTION_ARGS: [opcode, instr_arg_count, ...args, argc, dst]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int argc = code_ptr[ip + 2 + instr_arg_count];
+						return 3 + instr_arg_count; // opcode + instr_arg_count + args + argc + dst
+					}
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_DICTIONARY: {
+				// Uses LOAD_INSTRUCTION_ARGS: [opcode, instr_arg_count, ...args, argc, key_script_type, key_builtin, key_native, value_script_type, value_builtin, value_native, dst]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int argc = code_ptr[ip + 2 + instr_arg_count];
+						return 8 + instr_arg_count; // opcode + instr_arg_count + args + argc + 6 type fields + dst
+					}
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY: {
+				// Structure: [opcode, instr_var_args, ...args, dst, argc, utility_idx]
+				// From disassembler: incr = 4 + argc, dst at DADDR(1 + argc)
+				if (ip + 1 < code_size) {
+					int instr_var_args = code_ptr[ip + 1];
+					if (ip + 2 + instr_var_args < code_size) {
+						int argc = code_ptr[ip + 2 + instr_var_args];
+						return 5 + instr_var_args; // opcode + instr_var_args + args + dst + argc + utility_idx
+					}
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED: {
+				// Structure: [opcode, instr_var_args, ...args, base, argc, method_idx, dst]
+				// From disassembler: dst at DADDR(2 + argc)
+				if (ip + 1 < code_size) {
+					int instr_var_args = code_ptr[ip + 1];
+					if (ip + 2 + instr_var_args < code_size) {
+						int argc = code_ptr[ip + 2 + instr_var_args];
+						return 6 + instr_var_args; // opcode + instr_var_args + args + base + argc + method_idx + dst
+					}
+				}
+				return 2;
+			}
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_BOOL:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_INT:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_FLOAT:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_STRING:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR2:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR2I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_RECT2:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_RECT2I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR3:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR3I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_TRANSFORM2D:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR4:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR4I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PLANE:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_QUATERNION:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_AABB:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_BASIS:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_TRANSFORM3D:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PROJECTION:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_COLOR:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_STRING_NAME:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_NODE_PATH:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_RID:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_OBJECT:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_CALLABLE:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_SIGNAL:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_DICTIONARY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_BYTE_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_INT32_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_INT64_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_FLOAT32_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_FLOAT64_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_STRING_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR2_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR3_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_COLOR_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY:
+				return 2; // opcode + value
+			default:
+				// For unknown opcodes, try to skip safely
+				// Most opcodes have at least 1 word (the opcode itself)
+				return 1;
+		}
+	};
+	
+	// Helper function to recursively resolve a value from value_map
+	// Using a function pointer to allow recursion in lambda
+	struct ResolveValueHelper {
+		static Pair<Variant, bool> resolve(int addr, const HashMap<int, Variant> &value_map, const HashMap<int, bool> &is_constant_map, const GDScriptFunction *func, int max_depth = 10) {
+			if (max_depth <= 0) {
+				return Pair<Variant, bool>(Variant(addr), false);
+			}
+			
+			// Check if it's a constant
+			if ((addr & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
+				int const_idx = addr & GDScriptFunction::ADDR_MASK;
+				if (const_idx >= 0 && const_idx < func->constants.size()) {
+					Variant const_val = func->constants[const_idx];
+					if (const_val.get_type() == Variant::FLOAT || const_val.get_type() == Variant::INT) {
+						return Pair<Variant, bool>(const_val, true);
+					}
+				}
+			}
+			
+			// Check if we have a tracked value
+			if (value_map.has(addr)) {
+				Variant val = value_map[addr];
+				bool is_const = is_constant_map.has(addr) ? is_constant_map[addr] : false;
+				
+				// If it's a constant, return it
+				if (is_const) {
+					return Pair<Variant, bool>(val, true);
+				}
+				
+				// If it's an address, try to resolve it recursively
+				if (val.get_type() == Variant::INT) {
+					int next_addr = val;
+					return resolve(next_addr, value_map, is_constant_map, func, max_depth - 1);
+				}
+				
+				return Pair<Variant, bool>(val, is_const);
+			}
+			
+			// Not found, return address as-is
+			return Pair<Variant, bool>(Variant(addr), false);
+		}
+	};
+	
 	// Helper function to extract value from a branch starting at a given IP
+	// Uses data flow analysis to trace values backwards from assignments/returns
 	auto extract_value_from_branch = [&](int branch_ip, Variant &out_value, bool &out_is_constant) -> bool {
 		if (branch_ip < 0 || branch_ip >= code_size) {
 			return false;
 		}
 		
+		// Track value destinations: map destination address -> source address/value
+		HashMap<int, Variant> value_map; // destination -> source (as Variant containing address or constant)
+		HashMap<int, bool> is_constant_map; // destination -> is_constant
+		
 		int ip = branch_ip;
-		int max_search = 20; // Limit search depth to avoid infinite loops
+		int max_search = 50; // Increased limit for complex expressions
 		int search_count = 0;
+		HashSet<int> visited_ips; // Track visited IPs to avoid infinite loops
 		
 		while (ip < code_size && search_count < max_search) {
 			search_count++;
+			
+			// Avoid infinite loops
+			if (visited_ips.has(ip)) {
+				break;
+			}
+			visited_ips.insert(ip);
+			
 			int opcode = code_ptr[ip];
+			int opcode_size = get_opcode_size(opcode, code_ptr, ip, code_size);
 			
 			// Check for constant assignments
 			if (opcode == GDScriptFunction::OPCODE_ASSIGN_TRUE) {
-				out_value = Variant(1.0); // Represent true as 1.0
-				out_is_constant = true;
-				return true;
+				if (ip + 1 < code_size) {
+					int dst = code_ptr[ip + 1];
+					value_map[dst] = Variant(1.0);
+					is_constant_map[dst] = true;
+				}
+				ip += opcode_size;
+				continue;
 			} else if (opcode == GDScriptFunction::OPCODE_ASSIGN_FALSE) {
-				out_value = Variant(0.0); // Represent false as 0.0
-				out_is_constant = true;
-				return true;
+				if (ip + 1 < code_size) {
+					int dst = code_ptr[ip + 1];
+					value_map[dst] = Variant(0.0);
+					is_constant_map[dst] = true;
+				}
+				ip += opcode_size;
+				continue;
 			} else if (opcode == GDScriptFunction::OPCODE_ASSIGN_NULL) {
-				out_value = Variant(0.0); // Represent null as 0.0
-				out_is_constant = true;
-				return true;
+				if (ip + 1 < code_size) {
+					int dst = code_ptr[ip + 1];
+					value_map[dst] = Variant(0.0);
+					is_constant_map[dst] = true;
+				}
+				ip += opcode_size;
+				continue;
 			}
 			
 			// Check for RETURN with a value
-			if (opcode == GDScriptFunction::OPCODE_RETURN) {
+			if (opcode == GDScriptFunction::OPCODE_RETURN ||
+			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN ||
+			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY ||
+			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_DICTIONARY ||
+			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_NATIVE ||
+			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_SCRIPT) {
 				if (ip + 1 < code_size) {
 					int return_count = code_ptr[ip + 1];
 					if (return_count > 0 && ip + 2 < code_size) {
@@ -171,9 +489,10 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 								}
 							}
 						} else {
-							// It's a stack value - store the address as an int in the variant
-							out_value = Variant(return_value);
-							out_is_constant = false;
+							// Resolve the value recursively
+							Pair<Variant, bool> resolved = ResolveValueHelper::resolve(return_value, value_map, is_constant_map, p_function);
+							out_value = resolved.first;
+							out_is_constant = resolved.second;
 							return true;
 						}
 					}
@@ -181,53 +500,373 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				return false; // Return without value
 			}
 			
-			// Check for ASSIGN (ternary pattern)
-			if (opcode == GDScriptFunction::OPCODE_ASSIGN) {
+			// Check for ASSIGN (ternary pattern or value propagation)
+			if (opcode == GDScriptFunction::OPCODE_ASSIGN ||
+			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_BUILTIN ||
+			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_ARRAY ||
+			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_DICTIONARY ||
+			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_NATIVE ||
+			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_SCRIPT) {
 				if (ip + 2 < code_size) {
 					int target = code_ptr[ip + 1];
 					int source = code_ptr[ip + 2];
-					// Check if source is a constant
-					if ((source & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
-						int const_idx = source & GDScriptFunction::ADDR_MASK;
+					
+					Variant resolved_value;
+					bool resolved_is_constant = false;
+					
+					// Resolve the source value recursively
+					Pair<Variant, bool> resolved = ResolveValueHelper::resolve(source, value_map, is_constant_map, p_function);
+					resolved_value = resolved.first;
+					resolved_is_constant = resolved.second;
+					
+					value_map[target] = resolved_value;
+					is_constant_map[target] = resolved_is_constant;
+					
+					// Check if next instruction is a jump (this might be the final assignment in branch)
+					int next_ip = ip + opcode_size;
+					if (next_ip < code_size) {
+						int next_opcode = code_ptr[next_ip];
+						if (next_opcode == GDScriptFunction::OPCODE_JUMP ||
+						    next_opcode == GDScriptFunction::OPCODE_JUMP_IF ||
+						    next_opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT ||
+						    next_opcode == GDScriptFunction::OPCODE_JUMP_IF_SHARED) {
+							// This assignment is the final value before a jump - extract it
+							out_value = resolved_value;
+							out_is_constant = resolved_is_constant;
+							return true;
+						}
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// Handle value-producing operations
+			// OPERATOR and OPERATOR_VALIDATED produce values
+			if (opcode == GDScriptFunction::OPCODE_OPERATOR || opcode == GDScriptFunction::OPCODE_OPERATOR_VALIDATED) {
+				if (ip + 4 < code_size) {
+					int dst = code_ptr[ip + 1];
+					int a = code_ptr[ip + 2];
+					int b = code_ptr[ip + 3];
+					
+					// Try to resolve operands
+					Variant a_val, b_val;
+					bool a_const = false, b_const = false;
+					
+					// Resolve operand a
+					if ((a & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
+						int const_idx = a & GDScriptFunction::ADDR_MASK;
 						if (const_idx >= 0 && const_idx < p_function->constants.size()) {
 							Variant const_val = p_function->constants[const_idx];
 							if (const_val.get_type() == Variant::FLOAT || const_val.get_type() == Variant::INT) {
-								out_value = const_val;
-								out_is_constant = true;
-								return true;
+								a_val = const_val;
+								a_const = true;
 							}
 						}
+					} else if (value_map.has(a)) {
+						a_val = value_map[a];
+						a_const = is_constant_map.has(a) ? is_constant_map[a] : false;
 					} else {
-						// It's a stack value - store the address as an int in the variant
-						out_value = Variant(source);
-						out_is_constant = false;
-						return true;
+						a_val = Variant(a);
+						a_const = false;
+					}
+					
+					// Resolve operand b
+					if ((b & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
+						int const_idx = b & GDScriptFunction::ADDR_MASK;
+						if (const_idx >= 0 && const_idx < p_function->constants.size()) {
+							Variant const_val = p_function->constants[const_idx];
+							if (const_val.get_type() == Variant::FLOAT || const_val.get_type() == Variant::INT) {
+								b_val = const_val;
+								b_const = true;
+							}
+						}
+					} else if (value_map.has(b)) {
+						b_val = value_map[b];
+						b_const = is_constant_map.has(b) ? is_constant_map[b] : false;
+					} else {
+						b_val = Variant(b);
+						b_const = false;
+					}
+					
+					// If both are constants, we could compute the result, but for now just track the destination
+					// Store the destination address as the value (will be resolved later)
+					value_map[dst] = Variant(dst);
+					is_constant_map[dst] = false;
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// GET operations produce values
+			if (opcode == GDScriptFunction::OPCODE_GET_MEMBER ||
+			    opcode == GDScriptFunction::OPCODE_GET_NAMED ||
+			    opcode == GDScriptFunction::OPCODE_GET_NAMED_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_GET_KEYED ||
+			    opcode == GDScriptFunction::OPCODE_GET_KEYED_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_GET_STATIC_VARIABLE) {
+				if (ip + 2 < code_size) {
+					int dst = code_ptr[ip + 1];
+					// Track destination (value comes from member/global, not a constant)
+					value_map[dst] = Variant(dst);
+					is_constant_map[dst] = false;
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// TYPE_TEST operations produce boolean values
+			if (opcode == GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN ||
+			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_ARRAY ||
+			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY ||
+			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_NATIVE ||
+			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT) {
+				if (ip + 2 < code_size) {
+					int dst = code_ptr[ip + 1];
+					int source = code_ptr[ip + 2];
+					// TYPE_TEST produces boolean, but we track it as a variable value
+					// Could potentially resolve source and determine if constant true/false
+					value_map[dst] = Variant(dst);
+					is_constant_map[dst] = false;
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// CALL operations that return values
+			if (opcode == GDScriptFunction::OPCODE_CALL_RETURN ||
+			    opcode == GDScriptFunction::OPCODE_CALL_UTILITY ||
+			    opcode == GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY ||
+			    opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_CALL_METHOD_BIND_RET ||
+			    opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_STATIC ||
+			    opcode == GDScriptFunction::OPCODE_CALL_NATIVE_STATIC ||
+			    opcode == GDScriptFunction::OPCODE_CALL_NATIVE_STATIC_VALIDATED_RETURN ||
+			    opcode == GDScriptFunction::OPCODE_CALL_METHOD_BIND_VALIDATED_RETURN ||
+			    opcode == GDScriptFunction::OPCODE_CALL_SELF_BASE) {
+				// Handle variable-size CALL operations
+				if (opcode == GDScriptFunction::OPCODE_CALL_SELF_BASE) {
+					// CALL_SELF_BASE: [opcode, instr_arg_count, ...args, argc, function_name, dst]
+					if (ip + 1 < code_size) {
+						int instr_arg_count = code_ptr[ip + 1];
+						if (ip + 2 + instr_arg_count < code_size) {
+							int argc = code_ptr[ip + 2 + instr_arg_count];
+							if (ip + 4 + instr_arg_count < code_size) {
+								int dst = code_ptr[ip + 4 + instr_arg_count]; // dst is after argc and function_name
+								value_map[dst] = Variant(dst);
+								is_constant_map[dst] = false;
+							}
+						}
+					}
+				} else if (opcode == GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY) {
+					// Structure: [opcode, instr_arg_count (1+argc), ...args, dst, argc, utility_idx]
+					// dst is included in instr_arg_count, at position argc
+					if (ip + 1 < code_size) {
+						int instr_arg_count = code_ptr[ip + 1];
+						if (ip + 1 + instr_arg_count < code_size) {
+							// After args, we have dst, then argc, then utility_idx
+							// But dst is actually at position argc within the args (instr_arg_count includes dst)
+							// From bytecode generator: dst is appended after args, before argc
+							// instr_arg_count = 1 + argc, so dst is at position instr_arg_count
+							int dst = code_ptr[ip + 1 + instr_arg_count];
+							value_map[dst] = Variant(dst);
+							is_constant_map[dst] = false;
+						}
+					}
+				} else if (opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED) {
+					// Structure: [opcode, instr_var_args (2+argc), ...args, base, dst, argc, method]
+					// From bytecode generator: arg_count = 2 + p_arguments.size()
+					// Then: args, base, dst, argc, method
+					if (ip + 1 < code_size) {
+						int instr_var_args = code_ptr[ip + 1];
+						// dst is after args and base
+						// instr_var_args includes base and dst, so dst is at position instr_var_args
+						if (ip + 1 + instr_var_args < code_size) {
+							int dst = code_ptr[ip + 1 + instr_var_args];
+							value_map[dst] = Variant(dst);
+							is_constant_map[dst] = false;
+						}
+					}
+				} else {
+					// Standard CALL operations
+					if (ip + 1 < code_size) {
+						int arg_count = code_ptr[ip + 1];
+						if (ip + 2 + arg_count < code_size) {
+							int dst = code_ptr[ip + 2 + arg_count];
+							// Track destination (value comes from function call, not a constant)
+							value_map[dst] = Variant(dst);
+							is_constant_map[dst] = false;
+						}
 					}
 				}
-				ip += 3;
+				ip += opcode_size;
+				continue;
+			}
+			
+			// CONSTRUCT operations produce values
+			if (opcode == GDScriptFunction::OPCODE_CONSTRUCT ||
+			    opcode == GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED) {
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					if (ip + 2 + arg_count < code_size) {
+						int dst = code_ptr[ip + 2 + arg_count];
+						// Track destination (value comes from construction, not a constant)
+						value_map[dst] = Variant(dst);
+						is_constant_map[dst] = false;
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			if (opcode == GDScriptFunction::OPCODE_CONSTRUCT_ARRAY) {
+				// [opcode, instr_arg_count, ...args, target, argc]
+				// instr_arg_count = 1 + argc, target is at ip + instr_arg_count
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + instr_arg_count < code_size) {
+						int dst = code_ptr[ip + instr_arg_count];
+						value_map[dst] = Variant(dst);
+						is_constant_map[dst] = false;
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			if (opcode == GDScriptFunction::OPCODE_CONSTRUCT_TYPED_ARRAY) {
+				// [opcode, instr_arg_count, ...args, target, argc, script_type, builtin_type, native_type]
+				// instr_arg_count = 2 + argc, target is at ip + instr_arg_count
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + instr_arg_count < code_size) {
+						int dst = code_ptr[ip + instr_arg_count];
+						value_map[dst] = Variant(dst);
+						is_constant_map[dst] = false;
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			if (opcode == GDScriptFunction::OPCODE_CONSTRUCT_DICTIONARY) {
+				// [opcode, instr_arg_count, ...args, target, argc]
+				// instr_arg_count = 1 + argc, target is at ip + instr_arg_count
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + instr_arg_count < code_size) {
+						int dst = code_ptr[ip + instr_arg_count];
+						value_map[dst] = Variant(dst);
+						is_constant_map[dst] = false;
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			if (opcode == GDScriptFunction::OPCODE_CONSTRUCT_TYPED_DICTIONARY) {
+				// [opcode, instr_arg_count, ...args, target, argc, key_script_type, key_builtin, key_native, value_script_type, value_builtin, value_native]
+				// instr_arg_count = 3 + argc, target is at ip + instr_arg_count
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + instr_arg_count < code_size) {
+						int dst = code_ptr[ip + instr_arg_count];
+						value_map[dst] = Variant(dst);
+						is_constant_map[dst] = false;
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// CAST operations produce values
+			if (opcode == GDScriptFunction::OPCODE_CAST_TO_BUILTIN ||
+			    opcode == GDScriptFunction::OPCODE_CAST_TO_NATIVE ||
+			    opcode == GDScriptFunction::OPCODE_CAST_TO_SCRIPT) {
+				if (ip + 2 < code_size) {
+					int dst = code_ptr[ip + 1];
+					int source = code_ptr[ip + 2];
+					// Use ResolveValueHelper for proper propagation
+					Pair<Variant, bool> resolved = ResolveValueHelper::resolve(source, value_map, is_constant_map, p_function);
+					value_map[dst] = resolved.first;
+					is_constant_map[dst] = resolved.second;
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// AWAIT_RESUME produces values
+			if (opcode == GDScriptFunction::OPCODE_AWAIT_RESUME) {
+				if (ip + 2 < code_size) {
+					int target = code_ptr[ip + 1];
+					// Value comes from await, not a constant
+					value_map[target] = Variant(target);
+					is_constant_map[target] = false;
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// CREATE_LAMBDA operations produce callable values
+			if (opcode == GDScriptFunction::OPCODE_CREATE_LAMBDA ||
+			    opcode == GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA) {
+				// [opcode, instr_arg_count, ...captures, dst, captures_count, lambda_index]
+				if (ip + 1 < code_size) {
+					int instr_arg_count = code_ptr[ip + 1];
+					if (ip + 2 + instr_arg_count < code_size) {
+						int dst = code_ptr[ip + 2 + instr_arg_count];
+						value_map[dst] = Variant(dst);
+						is_constant_map[dst] = false;
+					}
+				}
+				ip += opcode_size;
+				continue;
+			}
+			
+			// SET operations don't produce values, just skip them
+			if (opcode == GDScriptFunction::OPCODE_SET_KEYED ||
+			    opcode == GDScriptFunction::OPCODE_SET_KEYED_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_SET_NAMED ||
+			    opcode == GDScriptFunction::OPCODE_SET_NAMED_VALIDATED ||
+			    opcode == GDScriptFunction::OPCODE_SET_STATIC_VARIABLE ||
+			    opcode == GDScriptFunction::OPCODE_STORE_GLOBAL ||
+			    opcode == GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL) {
+				ip += opcode_size;
+				continue;
+			}
+			
+			// TYPE_ADJUST operations don't produce new values, just adjust types
+			// Skip all TYPE_ADJUST_* opcodes
+			if (opcode >= GDScriptFunction::OPCODE_TYPE_ADJUST_BOOL &&
+			    opcode <= GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY) {
+				ip += opcode_size;
 				continue;
 			}
 			
 			// Skip metadata opcodes
 			if (opcode == GDScriptFunction::OPCODE_LINE || 
 			    opcode == GDScriptFunction::OPCODE_BREAKPOINT ||
-			    opcode == GDScriptFunction::OPCODE_ASSERT) {
-				ip += 1;
+			    opcode == GDScriptFunction::OPCODE_ASSERT ||
+			    opcode == GDScriptFunction::OPCODE_END) {
+				ip += opcode_size;
 				continue;
 			}
 			
 			// If we hit a jump, we've reached the end of this branch
 			if (opcode == GDScriptFunction::OPCODE_JUMP ||
 			    opcode == GDScriptFunction::OPCODE_JUMP_IF ||
-			    opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT) {
+			    opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT ||
+			    opcode == GDScriptFunction::OPCODE_JUMP_IF_SHARED ||
+			    opcode == GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT) {
 				break;
 			}
 			
-			// For other opcodes, try to advance IP
-			// This is a simplified approach - we might miss some patterns
-			ip += 1;
+			// For other opcodes, advance IP by opcode size
+			ip += opcode_size;
 		}
 		
+		// If we didn't find a direct return/assign, check if we can extract from value_map
+		// This handles cases where the value is computed and then used
+		// For now, return false as we need a direct assignment/return to extract
 		return false;
 	};
 	
@@ -412,14 +1051,14 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 					// Let's check a bit further ahead
 					int check_ip = (p_opcode == GDScriptFunction::OPCODE_OPERATOR_VALIDATED) ? p_ip + 5 : p_ip + 7;
 					if (check_ip < p_code_size && 
-					    (code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF || 
-					     code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT)) {
+					    (p_code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF || 
+					     p_code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT)) {
 						// Extract jump information
 						int jump_ip = check_ip;
-						bool is_jump_if_not = (code_ptr[jump_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT);
+						bool is_jump_if_not = (p_code_ptr[jump_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT);
 						// JUMP_IF structure: [opcode, condition_address, target]
 						// ip+0: opcode, ip+1: condition address, ip+2: jump target
-						int jump_target = (jump_ip + 2 < p_code_size) ? code_ptr[jump_ip + 2] : -1;
+						int jump_target = (jump_ip + 2 < p_code_size) ? p_code_ptr[jump_ip + 2] : -1;
 						
 						// Generate zero constant for comparison
 						Variant zero_val = 0.0;
