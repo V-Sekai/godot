@@ -107,10 +107,10 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 	if (!p_function || p_function->code.is_empty()) {
 		return false;
 	}
-	
+
 	const int *code_ptr = p_function->code.ptr();
 	int code_size = p_function->code.size();
-	
+
 	// Determine branch positions
 	// JUMP_IF structure: [opcode, condition_addr, target] = 3 words
 	int true_branch_start, false_branch_start;
@@ -123,7 +123,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 		true_branch_start = p_jump_target;
 		false_branch_start = p_jump_ip + 3; // Skip opcode + condition_addr + target
 	}
-	
+
 	// Helper function to get opcode size (number of words)
 	auto get_opcode_size = [](int opcode, const int *code_ptr, int ip, int code_size) -> int {
 		switch (opcode) {
@@ -367,7 +367,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				return 1;
 		}
 	};
-	
+
 	// Helper function to recursively resolve a value from value_map
 	// Using a function pointer to allow recursion in lambda
 	struct ResolveValueHelper {
@@ -375,7 +375,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 			if (max_depth <= 0) {
 				return Pair<Variant, bool>(Variant(addr), false);
 			}
-			
+
 			// Check if it's a constant
 			if ((addr & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
 				int const_idx = addr & GDScriptFunction::ADDR_MASK;
@@ -386,59 +386,59 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 					}
 				}
 			}
-			
+
 			// Check if we have a tracked value
 			if (value_map.has(addr)) {
 				Variant val = value_map[addr];
 				bool is_const = is_constant_map.has(addr) ? is_constant_map[addr] : false;
-				
+
 				// If it's a constant, return it
 				if (is_const) {
 					return Pair<Variant, bool>(val, true);
 				}
-				
+
 				// If it's an address, try to resolve it recursively
 				if (val.get_type() == Variant::INT) {
 					int next_addr = val;
 					return resolve(next_addr, value_map, is_constant_map, func, max_depth - 1);
 				}
-				
+
 				return Pair<Variant, bool>(val, is_const);
 			}
-			
+
 			// Not found, return address as-is
 			return Pair<Variant, bool>(Variant(addr), false);
 		}
 	};
-	
+
 	// Helper function to extract value from a branch starting at a given IP
 	// Uses data flow analysis to trace values backwards from assignments/returns
 	auto extract_value_from_branch = [&](int branch_ip, Variant &out_value, bool &out_is_constant) -> bool {
 		if (branch_ip < 0 || branch_ip >= code_size) {
 			return false;
 		}
-		
+
 		// Track value destinations: map destination address -> source address/value
 		HashMap<int, Variant> value_map; // destination -> source (as Variant containing address or constant)
 		HashMap<int, bool> is_constant_map; // destination -> is_constant
-		
+
 		int ip = branch_ip;
 		int max_search = 50; // Increased limit for complex expressions
 		int search_count = 0;
 		HashSet<int> visited_ips; // Track visited IPs to avoid infinite loops
-		
+
 		while (ip < code_size && search_count < max_search) {
 			search_count++;
-			
+
 			// Avoid infinite loops
 			if (visited_ips.has(ip)) {
 				break;
 			}
 			visited_ips.insert(ip);
-			
+
 			int opcode = code_ptr[ip];
 			int opcode_size = get_opcode_size(opcode, code_ptr, ip, code_size);
-			
+
 			// Check for constant assignments
 			if (opcode == GDScriptFunction::OPCODE_ASSIGN_TRUE) {
 				if (ip + 1 < code_size) {
@@ -465,14 +465,14 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// Check for RETURN with a value
 			if (opcode == GDScriptFunction::OPCODE_RETURN ||
-			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN ||
-			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY ||
-			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_DICTIONARY ||
-			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_NATIVE ||
-			    opcode == GDScriptFunction::OPCODE_RETURN_TYPED_SCRIPT) {
+					opcode == GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN ||
+					opcode == GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY ||
+					opcode == GDScriptFunction::OPCODE_RETURN_TYPED_DICTIONARY ||
+					opcode == GDScriptFunction::OPCODE_RETURN_TYPED_NATIVE ||
+					opcode == GDScriptFunction::OPCODE_RETURN_TYPED_SCRIPT) {
 				if (ip + 1 < code_size) {
 					int return_count = code_ptr[ip + 1];
 					if (return_count > 0 && ip + 2 < code_size) {
@@ -499,37 +499,37 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				}
 				return false; // Return without value
 			}
-			
+
 			// Check for ASSIGN (ternary pattern or value propagation)
 			if (opcode == GDScriptFunction::OPCODE_ASSIGN ||
-			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_BUILTIN ||
-			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_ARRAY ||
-			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_DICTIONARY ||
-			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_NATIVE ||
-			    opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_SCRIPT) {
+					opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_BUILTIN ||
+					opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_ARRAY ||
+					opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_DICTIONARY ||
+					opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_NATIVE ||
+					opcode == GDScriptFunction::OPCODE_ASSIGN_TYPED_SCRIPT) {
 				if (ip + 2 < code_size) {
 					int target = code_ptr[ip + 1];
 					int source = code_ptr[ip + 2];
-					
+
 					Variant resolved_value;
 					bool resolved_is_constant = false;
-					
+
 					// Resolve the source value recursively
 					Pair<Variant, bool> resolved = ResolveValueHelper::resolve(source, value_map, is_constant_map, p_function);
 					resolved_value = resolved.first;
 					resolved_is_constant = resolved.second;
-					
+
 					value_map[target] = resolved_value;
 					is_constant_map[target] = resolved_is_constant;
-					
+
 					// Check if next instruction is a jump (this might be the final assignment in branch)
 					int next_ip = ip + opcode_size;
 					if (next_ip < code_size) {
 						int next_opcode = code_ptr[next_ip];
 						if (next_opcode == GDScriptFunction::OPCODE_JUMP ||
-						    next_opcode == GDScriptFunction::OPCODE_JUMP_IF ||
-						    next_opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT ||
-						    next_opcode == GDScriptFunction::OPCODE_JUMP_IF_SHARED) {
+								next_opcode == GDScriptFunction::OPCODE_JUMP_IF ||
+								next_opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT ||
+								next_opcode == GDScriptFunction::OPCODE_JUMP_IF_SHARED) {
 							// This assignment is the final value before a jump - extract it
 							out_value = resolved_value;
 							out_is_constant = resolved_is_constant;
@@ -540,7 +540,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// Handle value-producing operations
 			// OPERATOR and OPERATOR_VALIDATED produce values
 			if (opcode == GDScriptFunction::OPCODE_OPERATOR || opcode == GDScriptFunction::OPCODE_OPERATOR_VALIDATED) {
@@ -548,10 +548,10 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 					int dst = code_ptr[ip + 1];
 					int a = code_ptr[ip + 2];
 					int b = code_ptr[ip + 3];
-					
+
 					// Try to resolve operands
 					Variant a_val, b_val;
-					
+
 					// Resolve operand a
 					if ((a & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
 						int const_idx = a & GDScriptFunction::ADDR_MASK;
@@ -566,7 +566,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 					} else {
 						a_val = Variant(a);
 					}
-					
+
 					// Resolve operand b
 					if ((b & GDScriptFunction::ADDR_TYPE_MASK) == (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS)) {
 						int const_idx = b & GDScriptFunction::ADDR_MASK;
@@ -581,7 +581,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 					} else {
 						b_val = Variant(b);
 					}
-					
+
 					// If both are constants, we could compute the result, but for now just track the destination
 					// Store the destination address as the value (will be resolved later)
 					value_map[dst] = Variant(dst);
@@ -590,15 +590,15 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// GET operations produce values
 			if (opcode == GDScriptFunction::OPCODE_GET_MEMBER ||
-			    opcode == GDScriptFunction::OPCODE_GET_NAMED ||
-			    opcode == GDScriptFunction::OPCODE_GET_NAMED_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_GET_KEYED ||
-			    opcode == GDScriptFunction::OPCODE_GET_KEYED_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_GET_STATIC_VARIABLE) {
+					opcode == GDScriptFunction::OPCODE_GET_NAMED ||
+					opcode == GDScriptFunction::OPCODE_GET_NAMED_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_GET_KEYED ||
+					opcode == GDScriptFunction::OPCODE_GET_KEYED_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_GET_STATIC_VARIABLE) {
 				if (ip + 2 < code_size) {
 					int dst = code_ptr[ip + 1];
 					// Track destination (value comes from member/global, not a constant)
@@ -608,13 +608,13 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// TYPE_TEST operations produce boolean values
 			if (opcode == GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN ||
-			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_ARRAY ||
-			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY ||
-			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_NATIVE ||
-			    opcode == GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT) {
+					opcode == GDScriptFunction::OPCODE_TYPE_TEST_ARRAY ||
+					opcode == GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY ||
+					opcode == GDScriptFunction::OPCODE_TYPE_TEST_NATIVE ||
+					opcode == GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT) {
 				if (ip + 2 < code_size) {
 					int dst = code_ptr[ip + 1];
 					(void)code_ptr[ip + 2]; // source - bounds check
@@ -626,19 +626,19 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// CALL operations that return values
 			if (opcode == GDScriptFunction::OPCODE_CALL_RETURN ||
-			    opcode == GDScriptFunction::OPCODE_CALL_UTILITY ||
-			    opcode == GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY ||
-			    opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_CALL_METHOD_BIND_RET ||
-			    opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_STATIC ||
-			    opcode == GDScriptFunction::OPCODE_CALL_NATIVE_STATIC ||
-			    opcode == GDScriptFunction::OPCODE_CALL_NATIVE_STATIC_VALIDATED_RETURN ||
-			    opcode == GDScriptFunction::OPCODE_CALL_METHOD_BIND_VALIDATED_RETURN ||
-			    opcode == GDScriptFunction::OPCODE_CALL_SELF_BASE) {
+					opcode == GDScriptFunction::OPCODE_CALL_UTILITY ||
+					opcode == GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY ||
+					opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_CALL_METHOD_BIND_RET ||
+					opcode == GDScriptFunction::OPCODE_CALL_BUILTIN_STATIC ||
+					opcode == GDScriptFunction::OPCODE_CALL_NATIVE_STATIC ||
+					opcode == GDScriptFunction::OPCODE_CALL_NATIVE_STATIC_VALIDATED_RETURN ||
+					opcode == GDScriptFunction::OPCODE_CALL_METHOD_BIND_VALIDATED_RETURN ||
+					opcode == GDScriptFunction::OPCODE_CALL_SELF_BASE) {
 				// Handle variable-size CALL operations
 				if (opcode == GDScriptFunction::OPCODE_CALL_SELF_BASE) {
 					// CALL_SELF_BASE: [opcode, instr_arg_count, ...args, argc, function_name, dst]
@@ -697,10 +697,10 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// CONSTRUCT operations produce values
 			if (opcode == GDScriptFunction::OPCODE_CONSTRUCT ||
-			    opcode == GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED) {
+					opcode == GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED) {
 				if (ip + 1 < code_size) {
 					int arg_count = code_ptr[ip + 1];
 					if (ip + 2 + arg_count < code_size) {
@@ -769,11 +769,11 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// CAST operations produce values
 			if (opcode == GDScriptFunction::OPCODE_CAST_TO_BUILTIN ||
-			    opcode == GDScriptFunction::OPCODE_CAST_TO_NATIVE ||
-			    opcode == GDScriptFunction::OPCODE_CAST_TO_SCRIPT) {
+					opcode == GDScriptFunction::OPCODE_CAST_TO_NATIVE ||
+					opcode == GDScriptFunction::OPCODE_CAST_TO_SCRIPT) {
 				if (ip + 2 < code_size) {
 					int dst = code_ptr[ip + 1];
 					int source = code_ptr[ip + 2];
@@ -785,7 +785,7 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// AWAIT_RESUME produces values
 			if (opcode == GDScriptFunction::OPCODE_AWAIT_RESUME) {
 				if (ip + 2 < code_size) {
@@ -797,10 +797,10 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// CREATE_LAMBDA operations produce callable values
 			if (opcode == GDScriptFunction::OPCODE_CREATE_LAMBDA ||
-			    opcode == GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA) {
+					opcode == GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA) {
 				// [opcode, instr_arg_count, ...captures, dst, captures_count, lambda_index]
 				if (ip + 1 < code_size) {
 					int instr_arg_count = code_ptr[ip + 1];
@@ -813,67 +813,67 @@ bool GDScriptToStableHLO::extract_branch_values(const GDScriptFunction *p_functi
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// SET operations don't produce values, just skip them
 			if (opcode == GDScriptFunction::OPCODE_SET_KEYED ||
-			    opcode == GDScriptFunction::OPCODE_SET_KEYED_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_SET_NAMED ||
-			    opcode == GDScriptFunction::OPCODE_SET_NAMED_VALIDATED ||
-			    opcode == GDScriptFunction::OPCODE_SET_STATIC_VARIABLE ||
-			    opcode == GDScriptFunction::OPCODE_STORE_GLOBAL ||
-			    opcode == GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL) {
+					opcode == GDScriptFunction::OPCODE_SET_KEYED_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_SET_NAMED ||
+					opcode == GDScriptFunction::OPCODE_SET_NAMED_VALIDATED ||
+					opcode == GDScriptFunction::OPCODE_SET_STATIC_VARIABLE ||
+					opcode == GDScriptFunction::OPCODE_STORE_GLOBAL ||
+					opcode == GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL) {
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// TYPE_ADJUST operations don't produce new values, just adjust types
 			// Skip all TYPE_ADJUST_* opcodes
 			if (opcode >= GDScriptFunction::OPCODE_TYPE_ADJUST_BOOL &&
-			    opcode <= GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY) {
+					opcode <= GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY) {
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// Skip metadata opcodes
-			if (opcode == GDScriptFunction::OPCODE_LINE || 
-			    opcode == GDScriptFunction::OPCODE_BREAKPOINT ||
-			    opcode == GDScriptFunction::OPCODE_ASSERT ||
-			    opcode == GDScriptFunction::OPCODE_END) {
+			if (opcode == GDScriptFunction::OPCODE_LINE ||
+					opcode == GDScriptFunction::OPCODE_BREAKPOINT ||
+					opcode == GDScriptFunction::OPCODE_ASSERT ||
+					opcode == GDScriptFunction::OPCODE_END) {
 				ip += opcode_size;
 				continue;
 			}
-			
+
 			// If we hit a jump, we've reached the end of this branch
 			if (opcode == GDScriptFunction::OPCODE_JUMP ||
-			    opcode == GDScriptFunction::OPCODE_JUMP_IF ||
-			    opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT ||
-			    opcode == GDScriptFunction::OPCODE_JUMP_IF_SHARED ||
-			    opcode == GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT) {
+					opcode == GDScriptFunction::OPCODE_JUMP_IF ||
+					opcode == GDScriptFunction::OPCODE_JUMP_IF_NOT ||
+					opcode == GDScriptFunction::OPCODE_JUMP_IF_SHARED ||
+					opcode == GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT) {
 				break;
 			}
-			
+
 			// For other opcodes, advance IP by opcode size
 			ip += opcode_size;
 		}
-		
+
 		// If we didn't find a direct return/assign, check if we can extract from value_map
 		// This handles cases where the value is computed and then used
 		// For now, return false as we need a direct assignment/return to extract
 		return false;
 	};
-	
+
 	// Extract values from both branches
 	bool found_true = extract_value_from_branch(true_branch_start, p_true_value, p_true_is_constant);
 	bool found_false = extract_value_from_branch(false_branch_start, p_false_value, p_false_is_constant);
-	
+
 	return found_true && found_false;
 }
 
 String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size,
-                                                int &p_value_id, const GDScriptFunction *p_function) {
+		int &p_value_id, const GDScriptFunction *p_function) {
 	String result;
-	
+
 	switch (p_opcode) {
 		case GDScriptFunction::OPCODE_ASSIGN_NULL:
 		case GDScriptFunction::OPCODE_ASSIGN_TRUE:
@@ -954,13 +954,13 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 				int b_addr = p_code_ptr[p_ip + 2];
 				(void)p_code_ptr[p_ip + 3]; // dst_addr - bounds check
 				Variant::Operator op = (Variant::Operator)p_code_ptr[p_ip + 4];
-				
+
 				// Decode addresses
 				int a_type = (a_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
 				int a_idx = a_addr & GDScriptFunction::ADDR_MASK;
 				int b_type = (b_addr & GDScriptFunction::ADDR_TYPE_MASK) >> GDScriptFunction::ADDR_BITS;
 				int b_idx = b_addr & GDScriptFunction::ADDR_MASK;
-				
+
 				// Resolve operand references
 				String a_ref, b_ref;
 				if (a_type == GDScriptFunction::ADDR_TYPE_CONSTANT && a_idx < p_function->constants.size()) {
@@ -977,7 +977,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 				} else {
 					a_ref = "%v0"; // Fallback
 				}
-				
+
 				if (b_type == GDScriptFunction::ADDR_TYPE_CONSTANT && b_idx < p_function->constants.size()) {
 					b_ref = "%c" + String::num(b_idx);
 				} else if (b_type == GDScriptFunction::ADDR_TYPE_STACK) {
@@ -989,11 +989,11 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 				} else {
 					b_ref = "%v0"; // Fallback
 				}
-				
+
 				String op_name;
 				bool is_comparison = false;
 				String compare_type;
-				
+
 				switch (op) {
 					case Variant::OP_ADD:
 						op_name = "add";
@@ -1035,40 +1035,40 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 						op_name = "add"; // Default fallback
 						break;
 				}
-				
+
 				if (is_comparison) {
 					// Check if next opcode is JUMP_IF to generate compare + select pattern
 					// OPCODE_OPERATOR has variable size due to function pointer storage
 					// For OPCODE_OPERATOR_VALIDATED, it's fixed at 5
 					// Let's check a bit further ahead
 					int check_ip = (p_opcode == GDScriptFunction::OPCODE_OPERATOR_VALIDATED) ? p_ip + 5 : p_ip + 7;
-					if (check_ip < p_code_size && 
-					    (p_code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF || 
-					     p_code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT)) {
+					if (check_ip < p_code_size &&
+							(p_code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF ||
+									p_code_ptr[check_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT)) {
 						// Extract jump information
 						int jump_ip = check_ip;
 						bool is_jump_if_not = (p_code_ptr[jump_ip] == GDScriptFunction::OPCODE_JUMP_IF_NOT);
 						// JUMP_IF structure: [opcode, condition_address, target]
 						// ip+0: opcode, ip+1: condition address, ip+2: jump target
 						int jump_target = (jump_ip + 2 < p_code_size) ? p_code_ptr[jump_ip + 2] : -1;
-						
+
 						// Generate zero constant for comparison
 						Variant zero_val = 0.0;
 						result += generate_constant(zero_val, p_value_id);
 						int zero_id = p_value_id - 1;
-						
+
 						// Generate comparison (compare a against zero)
 						result += "  %cmp" + String::num(p_value_id) + " = stablehlo.compare " + compare_type + ", " + a_ref + ", %c" + String::num(zero_id) + " : (tensor<f32>, tensor<f32>) -> tensor<i1>\n";
 						int cmp_id = p_value_id;
 						p_value_id++;
-						
+
 						// Extract branch values from bytecode
 						Variant true_value;
 						Variant false_value;
 						bool true_is_constant = false;
 						bool false_is_constant = false;
 						bool extracted = extract_branch_values(p_function, jump_ip, jump_target, is_jump_if_not, true_value, false_value, true_is_constant, false_is_constant);
-						
+
 						String true_ref, false_ref;
 						if (extracted) {
 							if (true_is_constant) {
@@ -1096,7 +1096,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 									true_ref = "%c" + String::num(p_value_id - 1);
 								}
 							}
-							
+
 							if (false_is_constant) {
 								// Generate constant for false value
 								result += generate_constant(false_value, p_value_id);
@@ -1131,11 +1131,11 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 							result += generate_constant(false_val, p_value_id);
 							false_ref = "%c" + String::num(p_value_id - 1);
 						}
-						
+
 						// Generate select (true value if condition, false value otherwise)
 						result += "  %v" + String::num(p_value_id) + " = stablehlo.select %cmp" + String::num(cmp_id) + ", " + true_ref + ", " + false_ref + " : (tensor<i1>, tensor<f32>, tensor<f32>) -> tensor<f32>\n";
 						p_value_id++;
-						
+
 						// Skip operator + jump_if
 						p_ip = check_ip + 3; // Skip opcode + condition + target
 					} else {
@@ -1192,7 +1192,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 			break;
 		}
 	}
-	
+
 	return result;
 }
 
@@ -1203,11 +1203,11 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 
 	String result;
 	String function_name = p_function->get_name();
-	
+
 	// MLIR/StableHLO module header
 	result += "module {\n";
 	result += "  func.func @" + function_name + "(";
-	
+
 	// Function arguments
 	int arg_count = p_function->get_argument_count();
 	for (int i = 0; i < arg_count; i++) {
@@ -1217,18 +1217,18 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 		result += "%arg" + String::num(i) + ": tensor<f32>";
 	}
 	result += ") -> tensor<f32> {\n";
-	
+
 	// Process opcodes
 	const int *code_ptr = p_function->code.ptr();
 	int code_size = p_function->code.size();
 	int ip = 0;
 	int value_id = arg_count;
-	
+
 	// Generate constants first
 	for (int i = 0; i < p_function->constants.size(); i++) {
 		result += generate_constant(p_function->constants[i], value_id);
 	}
-	
+
 	// Process opcodes
 	while (ip < code_size) {
 		int opcode = code_ptr[ip];
@@ -1236,17 +1236,17 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 			print_error(vformat("GDScriptToStableHLO: Unsupported opcode %d at IP %d", opcode, ip));
 			break;
 		}
-		
+
 		result += generate_operation(opcode, code_ptr, ip, code_size, value_id, p_function);
-		
+
 		if (ip > code_size) {
 			break;
 		}
 	}
-	
+
 	result += "  }\n";
 	result += "}\n";
-	
+
 	return result;
 }
 
@@ -1293,7 +1293,7 @@ String GDScriptToStableHLO::generate_mlir_file(const GDScriptFunction *p_functio
 	if (!stablehlo_path.ends_with(".stablehlo")) {
 		stablehlo_path += ".stablehlo";
 	}
-	
+
 	Ref<FileAccess> stablehlo_file = FileAccess::open(stablehlo_path, FileAccess::WRITE);
 	if (!stablehlo_file.is_valid()) {
 		print_error("GDScriptToStableHLO: Failed to write StableHLO file");
@@ -1304,4 +1304,3 @@ String GDScriptToStableHLO::generate_mlir_file(const GDScriptFunction *p_functio
 
 	return stablehlo_path;
 }
-

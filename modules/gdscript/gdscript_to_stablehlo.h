@@ -41,31 +41,30 @@ public:
 	// Convert GDScript function to StableHLO text format (MLIR text)
 	// Returns the StableHLO text representation
 	static String convert_function_to_stablehlo_text(const GDScriptFunction *p_function);
-	
+
 	// Write StableHLO text to file (MLIR text format)
 	// Returns path to the .stablehlo file, or empty string on error
 	static String convert_function_to_stablehlo_bytecode(const GDScriptFunction *p_function, const String &p_output_path);
-	
+
 	// Generate StableHLO file directly from GDScript function (bypasses C++ generation)
 	// Returns path to the .stablehlo file, or empty string on error
 	static String generate_mlir_file(const GDScriptFunction *p_function, const String &p_output_path);
-	
+
 	// Check if function can be converted (only basic opcodes)
 	static bool can_convert_function(const GDScriptFunction *p_function);
 
 private:
 	// Generate StableHLO constant operation
 	static String generate_constant(const Variant &p_value, int &p_value_id);
-	
+
 	// Generate StableHLO operation for a GDScript opcode
 	static String generate_operation(int p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, int &p_value_id, const GDScriptFunction *p_function);
-	
+
 	// Check if opcode is basic and supported
 	static bool is_basic_opcode(int p_opcode);
-	
+
 	// Extract branch values from bytecode for conditional patterns
 	// Returns true if values were found, false otherwise
 	// p_true_value and p_false_value are set to the extracted values (Variant for constants, stack slot ID for variables)
 	static bool extract_branch_values(const GDScriptFunction *p_function, int p_jump_ip, int p_jump_target, bool p_is_jump_if_not, Variant &p_true_value, Variant &p_false_value, bool &p_true_is_constant, bool &p_false_is_constant);
 };
-

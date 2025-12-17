@@ -30,12 +30,12 @@
 
 #pragma once
 
-#include "../gdscript_to_stablehlo.h"
 #include "../gdscript.h"
-#include "../gdscript_function.h"
-#include "../gdscript_parser.h"
 #include "../gdscript_analyzer.h"
 #include "../gdscript_compiler.h"
+#include "../gdscript_function.h"
+#include "../gdscript_parser.h"
+#include "../gdscript_to_stablehlo.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
@@ -96,17 +96,17 @@ static Ref<GDScript> create_and_compile_script(const String &p_source_code) {
 		print_error(vformat("Failed to open file for writing: %s", script_path));
 		return Ref<GDScript>();
 	}
-	
+
 	file->store_string(p_source_code);
 	file->close();
-	
+
 	// Load the script using ResourceLoader
 	Ref<GDScript> script = ResourceLoader::load(script_path, "GDScript", ResourceFormatLoader::CACHE_MODE_IGNORE);
 	if (!script.is_valid()) {
 		print_error(vformat("Failed to load script from: %s", script_path));
 		return Ref<GDScript>();
 	}
-	
+
 	return script;
 }
 
@@ -117,25 +117,25 @@ static void test_stablehlo_generation(const String &p_source_code, const StringN
 		// Script compilation failed - skip test
 		return;
 	}
-	
+
 	const HashMap<StringName, GDScriptFunction *> &funcs = script->get_member_functions();
 	if (!funcs.has(p_function_name)) {
 		// Function not found - skip test
 		return;
 	}
-	
+
 	GDScriptFunction *func = funcs.get(p_function_name);
 	if (func == nullptr) {
 		// Function is null - skip test
 		return;
 	}
-	
+
 	// Test StableHLO conversion
 	REQUIRE(GDScriptToStableHLO::can_convert_function(func));
-	
+
 	String stablehlo_text = GDScriptToStableHLO::convert_function_to_stablehlo_text(func);
 	REQUIRE(!stablehlo_text.is_empty());
-	
+
 	// Verify StableHLO contains expected patterns
 	CHECK(stablehlo_text.contains("module"));
 	CHECK(stablehlo_text.contains("func.func"));
@@ -144,71 +144,71 @@ static void test_stablehlo_generation(const String &p_source_code, const StringN
 
 TEST_CASE("[SceneTree][GDScriptELF] Simple function StableHLO generation") {
 	init("gdscript_elf_e2e"); // Initialize engine components
-	
+
 	// Test basic StableHLO generation in SceneTree context
 	const String test_code = "func test_simple() -> int:\n\treturn 42\n";
-	
+
 	test_stablehlo_generation(test_code, "test_simple");
 }
 
 TEST_CASE("[SceneTree][GDScriptELF] Arithmetic operations StableHLO generation") {
 	init("gdscript_elf_e2e"); // Initialize engine components
-	
+
 	const String test_code = "func test_add(a: int, b: int) -> int:\n\treturn a + b\n\nfunc test_multiply(x: int, y: int) -> int:\n\treturn x * y\n";
-	
+
 	test_stablehlo_generation(test_code, "test_add");
 	test_stablehlo_generation(test_code, "test_multiply");
 }
 
 TEST_CASE("[SceneTree][GDScriptELF] Conditional logic StableHLO generation") {
 	init("gdscript_elf_e2e"); // Initialize engine components
-	
+
 	const String test_code = "func test_if(x: int) -> int:\n\tif x > 10:\n\t\treturn 100\n\treturn 0\n";
-	
+
 	test_stablehlo_generation(test_code, "test_if");
 }
 
 TEST_CASE("[SceneTree][GDScriptELF] Variable assignments StableHLO generation") {
 	init("gdscript_elf_e2e"); // Initialize engine components
-	
+
 	const String test_code = "func test_assign() -> int:\n\tvar x = 5\n\tvar y = 10\n\treturn x + y\n";
-	
+
 	test_stablehlo_generation(test_code, "test_assign");
 }
 
 TEST_CASE("[SceneTree][GDScriptELF] Script instance creation and function call") {
 	init("gdscript_elf_e2e"); // Initialize engine components
-	
+
 	// Test that we can create a script instance and call functions
 	// This verifies the full pipeline works in SceneTree context
 	const String test_code = "var test_value = 0\n\nfunc set_value(v: int):\n\ttest_value = v\n\nfunc get_value() -> int:\n\treturn test_value\n";
-	
+
 	Ref<GDScript> script = create_and_compile_script(test_code);
 	REQUIRE(script.is_valid());
-	
+
 	// Create an instance (requires SceneTree for proper initialization)
 	Node *test_node = memnew(Node);
 	SceneTree::get_singleton()->get_root()->add_child(test_node);
-	
+
 	ScriptInstance *instance = script->instance_create(test_node);
 	REQUIRE(instance != nullptr);
-	
+
 	// Test function calls
 	Callable::CallError err;
 	Variant result;
-	
+
 	// Call set_value
 	Variant arg_value = 42;
 	const Variant *args_set[] = { &arg_value };
 	result = instance->callp("set_value", args_set, 1, err);
 	CHECK(err.error == Callable::CallError::CALL_OK);
-	
+
 	// Call get_value
 	result = instance->callp("get_value", nullptr, 0, err);
 	CHECK(err.error == Callable::CallError::CALL_OK);
 	CHECK(result.get_type() == Variant::INT);
 	CHECK(result.operator int() == 42);
-	
+
 	// Cleanup
 	test_node->queue_free();
 	SceneTree::get_singleton()->process(0); // Process deletion
@@ -216,52 +216,52 @@ TEST_CASE("[SceneTree][GDScriptELF] Script instance creation and function call")
 
 TEST_CASE("[SceneTree][GDScriptELF] GDScript to StableHLO compilation") {
 	init("gdscript_elf_e2e"); // Initialize engine components
-	
+
 	// Test compiling GDScript function to StableHLO
 	const String test_code = "func compile_to_stablehlo(x: int, y: int) -> int:\n\tvar sum = x + y\n\treturn sum * 2\n";
-	
+
 	Ref<GDScript> script = create_and_compile_script(test_code);
 	REQUIRE(script.is_valid());
-	
+
 	const HashMap<StringName, GDScriptFunction *> &funcs = script->get_member_functions();
 	REQUIRE(funcs.has("compile_to_stablehlo"));
-	
+
 	GDScriptFunction *func = funcs.get("compile_to_stablehlo");
 	REQUIRE(func != nullptr);
-	
+
 	// Check if function can be converted to StableHLO
 	REQUIRE(GDScriptToStableHLO::can_convert_function(func));
-	
+
 	// Generate StableHLO text
 	String stablehlo_text = GDScriptToStableHLO::convert_function_to_stablehlo_text(func);
 	REQUIRE(!stablehlo_text.is_empty());
-	
+
 	// Verify StableHLO structure
 	CHECK(stablehlo_text.contains("module"));
 	CHECK(stablehlo_text.contains("func.func @compile_to_stablehlo"));
 	CHECK(stablehlo_text.contains("stablehlo"));
-	
+
 	// Generate StableHLO file
 	String output_path = OS::get_singleton()->get_cache_path();
 	if (output_path.is_empty()) {
 		output_path = OS::get_singleton()->get_user_data_dir();
 	}
 	output_path = output_path.path_join("test_compile_to_stablehlo");
-	
+
 	String stablehlo_file = GDScriptToStableHLO::generate_mlir_file(func, output_path);
 	REQUIRE(!stablehlo_file.is_empty());
 	CHECK(stablehlo_file.ends_with(".stablehlo"));
-	
+
 	// Verify file exists and contains content
 	Ref<FileAccess> file = FileAccess::open(stablehlo_file, FileAccess::READ);
 	REQUIRE(file.is_valid());
 	String file_content = file->get_as_text();
 	file->close();
-	
+
 	CHECK(!file_content.is_empty());
 	CHECK(file_content.contains("module"));
 	CHECK(file_content.contains("func.func"));
-	
+
 	// Cleanup
 	Ref<DirAccess> dir = DirAccess::create_for_path(stablehlo_file.get_base_dir());
 	if (dir.is_valid()) {

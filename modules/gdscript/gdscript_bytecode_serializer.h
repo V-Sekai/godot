@@ -42,7 +42,7 @@ public:
 	// Serialize function bytecode to a simple format
 	// Returns PackedByteArray with: opcodes, constants, global_names, metadata
 	static PackedByteArray serialize_function(const GDScriptFunction *p_function);
-	
+
 	// Deserialize function bytecode from PackedByteArray
 	// Returns a structure that can be used to reconstruct execution context
 	struct DeserializedFunction {
@@ -54,14 +54,13 @@ public:
 		int argument_count = 0;
 		bool is_static = false;
 	};
-	
+
 	static DeserializedFunction deserialize_function(const PackedByteArray &p_data);
-	
+
 	// Check if function only uses basic opcodes (~14 core opcodes)
 	static bool uses_basic_opcodes_only(const GDScriptFunction *p_function);
-	
+
 private:
 	// Basic opcodes (~14 core opcodes)
 	static bool is_basic_opcode(int p_opcode);
 };
-
