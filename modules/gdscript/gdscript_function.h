@@ -459,6 +459,8 @@ private:
 	friend class GDScriptRISCVEncoder;
 	friend class GDScriptBytecodeCCodeGenerator;
 	friend class GDScriptBytecodeELFCompiler;
+	friend class GDScriptToStableHLO;
+	friend class GDScriptBytecodeSerializer;
 
 	StringName name;
 	StringName source;

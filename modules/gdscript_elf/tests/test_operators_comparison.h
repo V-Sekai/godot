@@ -33,7 +33,7 @@
 #include "modules/gdscript/gdscript_compiler.h"
 #include "modules/gdscript/gdscript_function.h"
 #include "modules/gdscript/gdscript_parser.h"
-#include "modules/gdscript_elf/test_gdscript_c_generation.h"
+#include "test_gdscript_c_generation.h"
 #include "tests/test_macros.h"
 
 // Comparison operator tests - split for accessibility

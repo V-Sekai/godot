@@ -61,12 +61,12 @@ bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 }
 
 bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_function) {
-	if (!p_function || !p_function->_code_ptr || p_function->_code_size == 0) {
+	if (!p_function || p_function->code.is_empty()) {
 		return false;
 	}
 
-	const int *code_ptr = p_function->_code_ptr;
-	int code_size = p_function->_code_size;
+	const int *code_ptr = p_function->code.ptr();
+	int code_size = p_function->code.size();
 	int ip = 0;
 
 	while (ip < code_size) {
@@ -169,7 +169,6 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 		case GDScriptFunction::OPCODE_OPERATOR_VALIDATED: {
 			// Arithmetic operation
 			if (p_ip + 3 < p_code_size) {
-				int op = p_code_ptr[p_ip + 1];
 				int a = p_code_ptr[p_ip + 2];
 				int b = p_code_ptr[p_ip + 3];
 				String op_name = "add";
@@ -185,7 +184,6 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 		case GDScriptFunction::OPCODE_SET_MEMBER: {
 			// Custom call for member access
 			if (p_ip + 1 < p_code_size) {
-				int name_idx = p_code_ptr[p_ip + 1];
 				String op_type = (p_opcode == GDScriptFunction::OPCODE_GET_MEMBER) ? "get" : "set";
 				int obj_idx = (p_value_id > 0) ? p_value_id - 1 : 0;
 				result = "  %v" + String::num(p_value_id) + " = stablehlo.custom_call @gdscript_" + op_type + "_member(%v" + String::num(obj_idx) + ") : (tensor<f32>) -> tensor<f32>\n";
@@ -222,7 +220,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 }
 
 String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFunction *p_function) {
-	if (!p_function || !p_function->_code_ptr || p_function->_code_size == 0) {
+	if (!p_function || p_function->code.is_empty()) {
 		return String();
 	}
 
@@ -244,8 +242,8 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 	result += ") -> tensor<f32> {\n";
 	
 	// Process opcodes
-	const int *code_ptr = p_function->_code_ptr;
-	int code_size = p_function->_code_size;
+	const int *code_ptr = p_function->code.ptr();
+	int code_size = p_function->code.size();
 	int ip = 0;
 	int value_id = arg_count;
 	

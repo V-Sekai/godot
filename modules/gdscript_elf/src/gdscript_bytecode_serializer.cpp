@@ -66,12 +66,12 @@ bool GDScriptBytecodeSerializer::is_basic_opcode(int p_opcode) {
 }
 
 bool GDScriptBytecodeSerializer::uses_basic_opcodes_only(const GDScriptFunction *p_function) {
-	if (!p_function || !p_function->_code_ptr || p_function->_code_size == 0) {
+	if (!p_function || p_function->code.is_empty()) {
 		return false;
 	}
 
-	const int *code_ptr = p_function->_code_ptr;
-	int code_size = p_function->_code_size;
+	const int *code_ptr = p_function->code.ptr();
+	int code_size = p_function->code.size();
 	int ip = 0;
 
 	while (ip < code_size) {
@@ -91,7 +91,7 @@ bool GDScriptBytecodeSerializer::uses_basic_opcodes_only(const GDScriptFunction 
 }
 
 PackedByteArray GDScriptBytecodeSerializer::serialize_function(const GDScriptFunction *p_function) {
-	if (!p_function || !p_function->_code_ptr || p_function->_code_size == 0) {
+	if (!p_function || p_function->code.is_empty()) {
 		return PackedByteArray();
 	}
 
@@ -102,7 +102,7 @@ PackedByteArray GDScriptBytecodeSerializer::serialize_function(const GDScriptFun
 	// - Global names: count (int) + StringName array
 
 	PackedByteArray data;
-	Ref<FileAccess> memfile = FileAccess::open_internal("user://temp_serialize", FileAccess::WRITE);
+	Ref<FileAccess> memfile = FileAccess::open("user://temp_serialize", FileAccess::WRITE);
 	if (!memfile.is_valid()) {
 		return PackedByteArray();
 	}
@@ -113,11 +113,11 @@ PackedByteArray GDScriptBytecodeSerializer::serialize_function(const GDScriptFun
 	memfile->store_32(p_function->get_max_stack_size());
 	memfile->store_32(p_function->get_argument_count());
 	memfile->store_8(p_function->is_static() ? 1 : 0);
-	memfile->store_32(p_function->_code_size);
+	memfile->store_32(p_function->code.size());
 
 	// Write opcodes
-	for (int i = 0; i < p_function->_code_size; i++) {
-		memfile->store_32(p_function->_code_ptr[i]);
+	for (int i = 0; i < p_function->code.size(); i++) {
+		memfile->store_32(p_function->code[i]);
 	}
 
 	// Write constants
@@ -135,7 +135,7 @@ PackedByteArray GDScriptBytecodeSerializer::serialize_function(const GDScriptFun
 	memfile->close();
 	
 	// Read back as PackedByteArray
-	Ref<FileAccess> readfile = FileAccess::open_internal("user://temp_serialize", FileAccess::READ);
+	Ref<FileAccess> readfile = FileAccess::open("user://temp_serialize", FileAccess::READ);
 	if (!readfile.is_valid()) {
 		return PackedByteArray();
 	}
@@ -145,9 +145,6 @@ PackedByteArray GDScriptBytecodeSerializer::serialize_function(const GDScriptFun
 	readfile->get_buffer(data.ptrw(), file_size);
 	readfile->close();
 	
-	// Cleanup temp file
-	FileAccess::remove("user://temp_serialize");
-
 	return data;
 }
 
@@ -158,7 +155,7 @@ GDScriptBytecodeSerializer::DeserializedFunction GDScriptBytecodeSerializer::des
 		return result;
 	}
 
-	Ref<FileAccess> memfile = FileAccess::open_internal("user://temp_deserialize", FileAccess::WRITE);
+	Ref<FileAccess> memfile = FileAccess::open("user://temp_deserialize", FileAccess::WRITE);
 	if (!memfile.is_valid()) {
 		return result;
 	}
@@ -166,7 +163,7 @@ GDScriptBytecodeSerializer::DeserializedFunction GDScriptBytecodeSerializer::des
 	memfile->store_buffer(p_data.ptr(), p_data.size());
 	memfile->close();
 
-	Ref<FileAccess> readfile = FileAccess::open_internal("user://temp_deserialize", FileAccess::READ);
+	Ref<FileAccess> readfile = FileAccess::open("user://temp_deserialize", FileAccess::READ);
 	if (!readfile.is_valid()) {
 		return result;
 	}
@@ -199,9 +196,6 @@ GDScriptBytecodeSerializer::DeserializedFunction GDScriptBytecodeSerializer::des
 	}
 
 	readfile->close();
-	
-	// Cleanup temp file
-	FileAccess::remove("user://temp_deserialize");
 
 	return result;
 }

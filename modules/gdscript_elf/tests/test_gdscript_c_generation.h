@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include "gdscript_bytecode_c_code_generator.h"
-#include "gdscript_bytecode_elf_compiler.h"
-#include "gdscript_c_compiler.h"
+#include "../src/gdscript_bytecode_c_code_generator.h"
+#include "../src/gdscript_bytecode_elf_compiler.h"
+#include "../src/gdscript_c_compiler.h"
 #include "modules/gdscript/gdscript_compiler.h"
 #include "modules/gdscript/gdscript_function.h"
 #include "modules/gdscript/gdscript_parser.h"
@@ -72,13 +72,10 @@ namespace TestGDScriptCGeneration {
 
 // Helper to create a script and find a function by name
 static GDScriptFunction *create_and_find_function(const String &p_code, const StringName &p_function_name) {
-	GDScriptParser parser;
-	parser.set_source_code(p_code);
-	Error err = parser.parse();
-	REQUIRE(err == OK);
-
 	Ref<GDScript> script = memnew(GDScript);
 	script->set_source_code(p_code);
+	Error err = script->reload();
+	REQUIRE(err == OK);
 
 	for (const KeyValue<StringName, GDScriptFunction *> &E : script->get_member_functions()) {
 		if (E.key == p_function_name) {
@@ -91,8 +88,7 @@ static GDScriptFunction *create_and_find_function(const String &p_code, const St
 // Helper to generate C++ code and verify basic structure
 static String generate_and_verify_c_code(GDScriptFunction *p_func) {
 	REQUIRE(p_func != nullptr);
-	REQUIRE(p_func->_code_ptr != nullptr);
-	REQUIRE(p_func->_code_size > 0);
+	REQUIRE(p_func->can_compile_to_elf64(0));
 
 	Ref<GDScriptBytecodeCCodeGenerator> generator;
 	generator.instantiate();
@@ -151,10 +147,28 @@ TEST_CASE("[GDScript][ELF][CGeneration] Assignment operations") {
 	String c_code = generate_and_verify_c_code(func);
 
 	// Check for different assignment types (GuestVariant field assignments)
-	REQUIRE(c_code.contains(".type = Variant::BOOL") || c_code.contains(".v.i = 1") || c_code.contains(" = "));
-	REQUIRE(c_code.contains(".v.b = true") || c_code.contains(" = "));
-	REQUIRE(c_code.contains(".v.b = false") || c_code.contains(" = "));
-	REQUIRE(c_code.contains(".type = Variant::NIL") || c_code.contains(" = "));
+	bool has_bool_type = c_code.contains(".type = Variant::BOOL");
+	bool has_int_value = c_code.contains(".v.i = 1");
+	bool has_any_assign = c_code.contains(" = ");
+	// At least one assignment pattern should be present
+	if (!has_bool_type && !has_int_value) {
+		REQUIRE(has_any_assign);
+	}
+	
+	bool has_true = c_code.contains(".v.b = true");
+	if (!has_true) {
+		CHECK(has_any_assign);
+	}
+	
+	bool has_false = c_code.contains(".v.b = false");
+	if (!has_false) {
+		CHECK(has_any_assign);
+	}
+	
+	bool has_nil = c_code.contains(".type = Variant::NIL");
+	if (!has_nil) {
+		CHECK(has_any_assign);
+	}
 }
 
 /* ===== ARITHMETIC OPERATOR TESTS ===== */
@@ -434,8 +448,17 @@ TEST_CASE("[GDScript][ELF][CGeneration] Method call with 16+ arguments (array-ba
 	// Should have array size of 16
 	REQUIRE(c_code.contains("call_args[15]"));
 	// Should use array pointer approach (args_ptr, args_size)
-	REQUIRE(c_code.contains("args_ptr") || c_code.contains("call_args"));
-	REQUIRE(c_code.contains("args_size") || c_code.contains("16"));
+	bool has_args_ptr = c_code.contains("args_ptr");
+	bool has_call_args = c_code.contains("call_args");
+	if (!has_args_ptr) {
+		REQUIRE(has_call_args);
+	}
+	
+	bool has_args_size = c_code.contains("args_size");
+	bool has_size = c_code.contains("16");
+	if (!has_args_size) {
+		CHECK(has_size);
+	}
 }
 
 /* ===== COMPILER INFRASTRUCTURE TESTS ===== */
@@ -520,39 +543,6 @@ TEST_CASE("[GDScript][ELF][CGeneration] Fallback mechanism for unsupported opcod
 
 	// Should generate code without crashing, even if some operations are marked as TODO
 	REQUIRE(c_code.contains("TODO"));
-}
-
-/* ===== NATIVE C++ COMPILATION WITH SANDBOXDUMMY ===== */
-
-// Helper to compile C++ code to native executable
-static Error compile_cpp_to_native_test(const String &p_cpp_code, const String &p_output_path) {
-	Ref<GDScriptCCompiler> compiler;
-	compiler.instantiate();
-
-	Vector<String> include_paths;
-	include_paths.push_back("core");
-	include_paths.push_back("modules/sandbox/src");
-
-	String executable_path;
-	Error err = compiler->compile_cpp_to_native(p_cpp_code, include_paths, executable_path);
-
-	if (err == OK) {
-		// Copy executable to requested path if different
-		if (executable_path != p_output_path) {
-			Ref<FileAccess> src = FileAccess::open(executable_path, FileAccess::READ);
-			if (src.is_valid()) {
-				Ref<FileAccess> dst = FileAccess::open(p_output_path, FileAccess::WRITE);
-				if (dst.is_valid()) {
-					PackedByteArray data;
-					data.resize(src->get_length());
-					src->get_buffer(data.ptrw(), data.size());
-					dst->store_buffer(data.ptr(), data.size());
-				}
-			}
-		}
-	}
-
-	return err;
 }
 
 // Helper to create a test wrapper that uses SandboxDummy

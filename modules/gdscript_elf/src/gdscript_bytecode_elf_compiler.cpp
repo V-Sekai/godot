@@ -49,12 +49,12 @@ void GDScriptBytecodeELFCompiler::set_include_paths(const Vector<String> &p_path
 }
 
 bool GDScriptBytecodeELFCompiler::is_basic_opcodes_only(const GDScriptFunction *p_function) const {
-	if (!p_function || !p_function->_code_ptr || p_function->_code_size == 0) {
+	if (!p_function || p_function->code.is_empty()) {
 		return false;
 	}
 
-	const int *code_ptr = p_function->_code_ptr;
-	int code_size = p_function->_code_size;
+	const int *code_ptr = p_function->code.ptr();
+	int code_size = p_function->code.size();
 	int ip = 0;
 
 	// Check if all opcodes are basic/directly supported ones
@@ -317,7 +317,9 @@ Error GDScriptBytecodeELFCompiler::compile_function_to_elf64(GDScriptFunction *p
 		String exe_path = OS::get_singleton()->get_executable_path();
 		String exe_dir = exe_path.get_base_dir();
 		String relative_tool = exe_dir.path_join("stablehlo-to-cpp");
-		if (FileAccess::file_exists(relative_tool)) {
+		Ref<FileAccess> test_file = FileAccess::open(relative_tool, FileAccess::READ);
+		if (test_file.is_valid()) {
+			test_file->close();
 			tool_path = relative_tool;
 		}
 	}
@@ -389,7 +391,7 @@ bool GDScriptBytecodeELFCompiler::can_compile_function_to_elf64(const GDScriptFu
 	}
 
 	// Check if bytecode exists
-	if (!p_function->_code_ptr || p_function->_code_size == 0) {
+	if (p_function->code.is_empty()) {
 		return false;
 	}
 
