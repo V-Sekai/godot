@@ -31,6 +31,7 @@
 #include "gdscript_function.h"
 
 #include "gdscript.h"
+#include "gdscript_to_stablehlo.h"
 
 Variant GDScriptFunction::get_constant(int p_idx) const {
 	ERR_FAIL_INDEX_V(p_idx, constants.size(), "<errconst>");
@@ -43,13 +44,21 @@ StringName GDScriptFunction::get_global_name(int p_idx) const {
 }
 
 PackedByteArray GDScriptFunction::compile_to_elf64(int p_mode) const {
-	// ELF compilation removed - module now only generates StableHLO
-	return PackedByteArray();
+	// Generate StableHLO MLIR from GDScript function
+	String stablehlo_text = GDScriptToStableHLO::convert_function_to_stablehlo_text(this);
+	if (stablehlo_text.is_empty()) {
+		return PackedByteArray();
+	}
+	
+	// Compile StableHLO to RISC-V ELF64
+	// p_mode bit 0: debug symbols (1 = enabled, 0 = disabled)
+	bool debug = (p_mode & 0x1) != 0;
+	return GDScriptToStableHLO::compile_stablehlo_to_elf64(stablehlo_text, get_name(), debug);
 }
 
 bool GDScriptFunction::can_compile_to_elf64(int p_mode) const {
-	// ELF compilation removed - module now only generates StableHLO
-	return false;
+	// Can compile if we can convert to StableHLO
+	return GDScriptToStableHLO::can_convert_function(this);
 }
 
 struct _GDFKC {

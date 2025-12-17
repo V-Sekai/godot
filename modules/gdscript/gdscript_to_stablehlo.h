@@ -69,6 +69,11 @@ public:
 	// Generate StableHLO file from a GDScript resource function
 	String generate_mlir_file_from_script(Ref<GDScript> p_script, const StringName &p_function_name, const String &p_output_path) const;
 
+	// Compile StableHLO MLIR text to RISC-V ELF64 binary for sandbox execution
+	// Returns ELF binary as PackedByteArray, or empty on error
+	// p_debug: Include debug symbols for debugging support
+	static PackedByteArray compile_stablehlo_to_elf64(const String &p_mlir_text, const String &p_function_name, bool p_debug = true);
+
 private:
 	// Generate StableHLO constant operation
 	static String generate_constant(const Variant &p_value, int &p_value_id);

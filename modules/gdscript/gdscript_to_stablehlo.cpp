@@ -31,44 +31,142 @@
 #include "gdscript_to_stablehlo.h"
 
 #include "core/io/file_access.h"
+#include "core/os/os.h"
 #include "core/string/print_string.h"
 #include "core/variant/variant.h"
 #include "gdscript.h"
+#include "gdscript_stablehlo_to_riscv.h"
 
 bool GDScriptToStableHLO::is_basic_opcode(int p_opcode) {
 	switch (p_opcode) {
-		// DO NOT ADD NEW OPCODES.
+		// Basic control flow
 		case GDScriptFunction::OPCODE_RETURN:
-		case GDScriptFunction::OPCODE_ASSIGN:
-		case GDScriptFunction::OPCODE_ASSIGN_NULL:
-		case GDScriptFunction::OPCODE_ASSIGN_TRUE:
-		case GDScriptFunction::OPCODE_ASSIGN_FALSE:
+		case GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN:
+		case GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY:
+		case GDScriptFunction::OPCODE_RETURN_TYPED_DICTIONARY:
+		case GDScriptFunction::OPCODE_RETURN_TYPED_NATIVE:
+		case GDScriptFunction::OPCODE_RETURN_TYPED_SCRIPT:
 		case GDScriptFunction::OPCODE_JUMP:
 		case GDScriptFunction::OPCODE_JUMP_IF:
 		case GDScriptFunction::OPCODE_JUMP_IF_NOT:
 		case GDScriptFunction::OPCODE_JUMP_TO_DEF_ARGUMENT: // Emulate as regular JUMP
 		case GDScriptFunction::OPCODE_JUMP_IF_SHARED: // Emulate as JUMP_IF
+		
+		// Assignments
+		case GDScriptFunction::OPCODE_ASSIGN:
+		case GDScriptFunction::OPCODE_ASSIGN_NULL:
+		case GDScriptFunction::OPCODE_ASSIGN_TRUE:
+		case GDScriptFunction::OPCODE_ASSIGN_FALSE:
+		case GDScriptFunction::OPCODE_ASSIGN_TYPED_BUILTIN:
+		case GDScriptFunction::OPCODE_ASSIGN_TYPED_ARRAY:
+		case GDScriptFunction::OPCODE_ASSIGN_TYPED_DICTIONARY:
+		case GDScriptFunction::OPCODE_ASSIGN_TYPED_NATIVE:
+		case GDScriptFunction::OPCODE_ASSIGN_TYPED_SCRIPT:
+		
+		// Operators
 		case GDScriptFunction::OPCODE_OPERATOR:
 		case GDScriptFunction::OPCODE_OPERATOR_VALIDATED:
+		
+		// Member access
 		case GDScriptFunction::OPCODE_GET_MEMBER:
 		case GDScriptFunction::OPCODE_SET_MEMBER:
+		case GDScriptFunction::OPCODE_SET_STATIC_VARIABLE:
+		case GDScriptFunction::OPCODE_GET_STATIC_VARIABLE:
+		
+		// Function calls
 		case GDScriptFunction::OPCODE_CALL:
 		case GDScriptFunction::OPCODE_CALL_RETURN:
+		case GDScriptFunction::OPCODE_CALL_UTILITY:
+		case GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED:
+		case GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY:
+		case GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED:
+		case GDScriptFunction::OPCODE_CALL_SELF_BASE:
+		
+		// Construction
 		case GDScriptFunction::OPCODE_CONSTRUCT: // For constructing basic types like integers
 		case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED: // For constructing validated basic types
+		case GDScriptFunction::OPCODE_CONSTRUCT_ARRAY:
+		case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_ARRAY:
+		case GDScriptFunction::OPCODE_CONSTRUCT_DICTIONARY:
+		case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_DICTIONARY:
+		
+		// Named access
 		case GDScriptFunction::OPCODE_GET_NAMED: // For accessing named constants/variables
+		case GDScriptFunction::OPCODE_GET_NAMED_VALIDATED:
 		case GDScriptFunction::OPCODE_SET_NAMED: // For setting named constants/variables
 		case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED: // For validated named assignment (emulate as SET_NAMED)
+		
+		// Keyed/indexed access
 		case GDScriptFunction::OPCODE_GET_KEYED: // For getting keyed values (dictionary/array access)
 		case GDScriptFunction::OPCODE_GET_KEYED_VALIDATED: // For validated keyed access
 		case GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED: // For indexed array access
 		case GDScriptFunction::OPCODE_SET_KEYED: // For setting keyed values (may be used in some cases)
+		case GDScriptFunction::OPCODE_SET_KEYED_VALIDATED:
 		case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED: // For setting indexed values
+		
+		// Type operations
 		case GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN: // Type test - emulate as boolean comparison
 		case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY: // Type test - emulate as boolean comparison
 		case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY: // Type test - emulate as boolean comparison
 		case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE: // Type test - emulate as boolean comparison
 		case GDScriptFunction::OPCODE_TYPE_TEST_SCRIPT: // Type test - emulate as boolean comparison
+		case GDScriptFunction::OPCODE_CAST_TO_BUILTIN:
+		case GDScriptFunction::OPCODE_CAST_TO_NATIVE:
+		case GDScriptFunction::OPCODE_CAST_TO_SCRIPT:
+		
+		// Type adjustments (all variants)
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_BOOL:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_INT:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_FLOAT:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_STRING:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR2:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR2I:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_RECT2:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_RECT2I:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR3:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR3I:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_TRANSFORM2D:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR4:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR4I:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PLANE:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_QUATERNION:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_AABB:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_BASIS:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_TRANSFORM3D:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PROJECTION:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_COLOR:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_STRING_NAME:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_NODE_PATH:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_RID:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_OBJECT:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_CALLABLE:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_SIGNAL:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_DICTIONARY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_BYTE_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_INT32_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_INT64_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_FLOAT32_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_FLOAT64_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_STRING_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR2_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR3_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_COLOR_ARRAY:
+		case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY:
+		
+		// Async/await
+		case GDScriptFunction::OPCODE_AWAIT:
+		case GDScriptFunction::OPCODE_AWAIT_RESUME:
+		
+		// Lambdas
+		case GDScriptFunction::OPCODE_CREATE_LAMBDA:
+		case GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA:
+		
+		// Global storage
+		case GDScriptFunction::OPCODE_STORE_GLOBAL:
+		case GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL:
+		
+		// Debug/metadata
 		case GDScriptFunction::OPCODE_LINE:
 		case GDScriptFunction::OPCODE_BREAKPOINT:
 		case GDScriptFunction::OPCODE_ASSERT:
@@ -134,9 +232,16 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 			case GDScriptFunction::OPCODE_SET_NAMED_VALIDATED:
 				return 3;
 			case GDScriptFunction::OPCODE_GET_KEYED:
+			case GDScriptFunction::OPCODE_GET_KEYED_VALIDATED:
 			case GDScriptFunction::OPCODE_SET_KEYED:
+			case GDScriptFunction::OPCODE_SET_KEYED_VALIDATED:
 			case GDScriptFunction::OPCODE_SET_INDEXED_VALIDATED:
 				return 4;
+			case GDScriptFunction::OPCODE_GET_INDEXED_VALIDATED:
+				return 4;
+			case GDScriptFunction::OPCODE_TYPE_TEST_BUILTIN:
+			case GDScriptFunction::OPCODE_TYPE_TEST_ARRAY:
+				return 3; // opcode + dst + value
 			case GDScriptFunction::OPCODE_TYPE_TEST_DICTIONARY:
 				return 10; // opcode + dst + value + 7 type_info fields
 			case GDScriptFunction::OPCODE_TYPE_TEST_NATIVE:
@@ -144,6 +249,101 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 				return 4; // opcode + dst + value + type_info
 			case GDScriptFunction::OPCODE_CONSTRUCT:
 			case GDScriptFunction::OPCODE_CONSTRUCT_VALIDATED:
+				return 3;
+			case GDScriptFunction::OPCODE_ASSIGN_TYPED_BUILTIN:
+			case GDScriptFunction::OPCODE_ASSIGN_TYPED_NATIVE:
+			case GDScriptFunction::OPCODE_ASSIGN_TYPED_SCRIPT:
+			case GDScriptFunction::OPCODE_CAST_TO_BUILTIN:
+			case GDScriptFunction::OPCODE_CAST_TO_NATIVE:
+			case GDScriptFunction::OPCODE_CAST_TO_SCRIPT:
+			case GDScriptFunction::OPCODE_GET_STATIC_VARIABLE:
+			case GDScriptFunction::OPCODE_SET_STATIC_VARIABLE:
+				return 4;
+			case GDScriptFunction::OPCODE_ASSIGN_TYPED_ARRAY:
+				return 6; // opcode + dst + src + type_info
+			case GDScriptFunction::OPCODE_ASSIGN_TYPED_DICTIONARY:
+				return 9; // opcode + dst + src + 7 type_info fields
+			case GDScriptFunction::OPCODE_CONSTRUCT_ARRAY:
+			case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_ARRAY:
+			case GDScriptFunction::OPCODE_CONSTRUCT_DICTIONARY:
+			case GDScriptFunction::OPCODE_CONSTRUCT_TYPED_DICTIONARY:
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 2 + arg_count;
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_RETURN_TYPED_BUILTIN:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_ARRAY:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_DICTIONARY:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_NATIVE:
+			case GDScriptFunction::OPCODE_RETURN_TYPED_SCRIPT:
+				if (ip + 1 < code_size) {
+					int return_count = code_ptr[ip + 1];
+					return 2 + (return_count > 0 ? 1 : 0);
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_CALL_UTILITY:
+			case GDScriptFunction::OPCODE_CALL_UTILITY_VALIDATED:
+			case GDScriptFunction::OPCODE_CALL_GDSCRIPT_UTILITY:
+			case GDScriptFunction::OPCODE_CALL_BUILTIN_TYPE_VALIDATED:
+			case GDScriptFunction::OPCODE_CALL_SELF_BASE:
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 2 + arg_count;
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_AWAIT:
+			case GDScriptFunction::OPCODE_AWAIT_RESUME:
+				return 2;
+			case GDScriptFunction::OPCODE_CREATE_LAMBDA:
+			case GDScriptFunction::OPCODE_CREATE_SELF_LAMBDA:
+				if (ip + 1 < code_size) {
+					int arg_count = code_ptr[ip + 1];
+					return 2 + arg_count;
+				}
+				return 2;
+			case GDScriptFunction::OPCODE_STORE_GLOBAL:
+			case GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL:
+				return 3;
+			// Type adjustments are all 3 words: opcode + src + dst
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_BOOL:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_INT:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_FLOAT:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_STRING:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR2:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR2I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_RECT2:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_RECT2I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR3:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR3I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_TRANSFORM2D:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR4:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_VECTOR4I:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PLANE:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_QUATERNION:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_AABB:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_BASIS:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_TRANSFORM3D:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PROJECTION:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_COLOR:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_STRING_NAME:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_NODE_PATH:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_RID:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_OBJECT:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_CALLABLE:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_SIGNAL:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_DICTIONARY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_BYTE_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_INT32_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_INT64_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_FLOAT32_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_FLOAT64_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_STRING_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR2_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR3_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_COLOR_ARRAY:
+			case GDScriptFunction::OPCODE_TYPE_ADJUST_PACKED_VECTOR4_ARRAY:
 				return 3;
 			default:
 				return 1; // Default to 1 for unknown opcodes
@@ -169,14 +369,15 @@ bool GDScriptToStableHLO::can_convert_function(const GDScriptFunction *p_functio
 
 String GDScriptToStableHLO::generate_constant(const Variant &p_value, int &p_value_id) {
 	String value_str;
-	String tensor_type = "tensor<f32>";
+	String tensor_type = "tensor<f64>"; // GDScript float is 64-bit
 	
 	// Format values based on type
 	if (p_value.get_type() == Variant::FLOAT || p_value.get_type() == Variant::INT) {
 		if (p_value.get_type() == Variant::INT) {
-			// For integers, use itos to get clean integer string, then add .0
+			// For integers, use itos to get clean integer string
 			int64_t int_val = p_value;
-			value_str = itos(int_val) + ".0";
+			value_str = itos(int_val);
+			tensor_type = "tensor<i32>"; // Integer constants should be i32
 		} else {
 			// For floats, check if it's a whole number
 			double float_val = p_value;
@@ -188,6 +389,7 @@ String GDScriptToStableHLO::generate_constant(const Variant &p_value, int &p_val
 				// Fractional number - use float representation
 				value_str = String::num(float_val);
 			}
+			tensor_type = "tensor<f64>"; // Float constants are f64
 		}
 	} else if (p_value.get_type() == Variant::STRING) {
 		// For strings, convert to byte array tensor
@@ -1021,7 +1223,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 					int addr_idx = return_addr & GDScriptFunction::ADDR_MASK;
 					
 					String return_ref;
-					String return_type = "tensor<f32>"; // Default type
+					String return_type = "tensor<f64>"; // Default type (GDScript float is 64-bit)
 					
 					if (addr_type == GDScriptFunction::ADDR_TYPE_CONSTANT && addr_idx < p_function->constants.size()) {
 						// It's a constant - map constant index to value_id
@@ -1039,7 +1241,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 						} else if (const_val.get_type() == Variant::INT) {
 							return_type = "tensor<i32>";
 						} else if (const_val.get_type() == Variant::FLOAT) {
-							return_type = "tensor<f32>";
+ 							return_type = "tensor<f64>";
 						}
 					} else if (addr_type == GDScriptFunction::ADDR_TYPE_STACK) {
 						// Stack reference - check if this stack slot maps to a constant
@@ -1060,7 +1262,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 								} else if (const_val.get_type() == Variant::INT) {
 									return_type = "tensor<i32>";
 								} else if (const_val.get_type() == Variant::FLOAT) {
-									return_type = "tensor<f32>";
+									return_type = "tensor<f64>";
 								}
 							}
 						} else {
@@ -1077,7 +1279,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 								} else if (const_val.get_type() == Variant::INT) {
 									return_type = "tensor<i32>";
 								} else if (const_val.get_type() == Variant::FLOAT) {
-									return_type = "tensor<f32>";
+									return_type = "tensor<f64>";
 								}
 							} else {
 								// Regular stack reference
@@ -1257,7 +1459,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 						int zero_id = p_value_id - 1;
 
 						// Generate comparison (compare a against zero)
-						result += "  %cmp" + String::num(p_value_id) + " = stablehlo.compare " + compare_type + ", " + a_ref + ", %c" + String::num(zero_id) + " : (tensor<f32>, tensor<f32>) -> tensor<i1>\n";
+						result += "  %cmp" + String::num(p_value_id) + " = stablehlo.compare " + compare_type + ", " + a_ref + ", %c" + String::num(zero_id) + " : (tensor<f64>, tensor<f64>) -> tensor<i1>\n";
 						int cmp_id = p_value_id;
 						p_value_id++;
 
@@ -1332,21 +1534,21 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 						}
 
 						// Generate select (true value if condition, false value otherwise)
-						result += "  %v" + String::num(p_value_id) + " = stablehlo.select %cmp" + String::num(cmp_id) + ", " + true_ref + ", " + false_ref + " : (tensor<i1>, tensor<f32>, tensor<f32>) -> tensor<f32>\n";
+						result += "  %v" + String::num(p_value_id) + " = stablehlo.select %cmp" + String::num(cmp_id) + ", " + true_ref + ", " + false_ref + " : (tensor<i1>, tensor<f64>, tensor<f64>) -> tensor<f64>\n";
 						p_value_id++;
 
 						// Skip operator + jump_if
 						p_ip = check_ip + 3; // Skip opcode + condition + target
 					} else {
 						// Just generate compare operation
-						result = "  %cmp" + String::num(p_value_id) + " = stablehlo.compare " + compare_type + ", " + a_ref + ", " + b_ref + " : (tensor<f32>, tensor<f32>) -> tensor<i1>\n";
+						result = "  %cmp" + String::num(p_value_id) + " = stablehlo.compare " + compare_type + ", " + a_ref + ", " + b_ref + " : (tensor<f64>, tensor<f64>) -> tensor<i1>\n";
 						p_value_id++;
 						// Skip based on opcode type
 						p_ip += (p_opcode == GDScriptFunction::OPCODE_OPERATOR_VALIDATED) ? 5 : 7;
 					}
 				} else {
 					// Generate arithmetic operation
-					result = "  %v" + String::num(p_value_id) + " = stablehlo." + op_name + " " + a_ref + ", " + b_ref + " : (tensor<f32>, tensor<f32>) -> tensor<f32>\n";
+					result = "  %v" + String::num(p_value_id) + " = stablehlo." + op_name + " " + a_ref + ", " + b_ref + " : (tensor<f64>, tensor<f64>) -> tensor<f64>\n";
 					p_value_id++;
 					// Skip based on opcode type
 					p_ip += (p_opcode == GDScriptFunction::OPCODE_OPERATOR_VALIDATED) ? 5 : 7;
@@ -1568,7 +1770,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 					} else {
 						// Other function call - generate generic call
 						int arg_idx = (p_value_id > 0) ? p_value_id - 1 : 0;
-						result = "  %v" + String::num(p_value_id) + " = stablehlo.call @function(%v" + String::num(arg_idx) + ") : (tensor<f32>) -> tensor<f32>\n";
+						result = "  %v" + String::num(p_value_id) + " = stablehlo.call @function(%v" + String::num(arg_idx) + ") : (tensor<f64>) -> tensor<f64>\n";
 						p_value_id++;
 					}
 					
@@ -1731,9 +1933,9 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 					
 					result += ") : (tensor<i32>";
 					for (int i = 0; i < arg_count; i++) {
-						result += ", tensor<f32>";
+						result += ", tensor<f64>";
 					}
-					result += ") -> tensor<f32>\n";
+					result += ") -> tensor<f64>\n";
 					
 					// Generate type constant
 					String type_const = "  %c" + itos(p_value_id) + " = stablehlo.constant dense<" + itos(type_idx) + "> : tensor<i32>\n";
@@ -1954,7 +2156,7 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 				p_value_id++;
 				
 				// Convert boolean to float for consistency
-				result += "  %v" + String::num(p_value_id) + " = stablehlo.convert %v" + String::num(p_value_id - 1) + " : (tensor<i1>) -> tensor<f32>\n";
+				result += "  %v" + String::num(p_value_id) + " = stablehlo.convert %v" + String::num(p_value_id - 1) + " : (tensor<i1>) -> tensor<f64>\n";
 				p_value_id++;
 				
 				// Advance IP based on opcode type
@@ -1985,6 +2187,78 @@ String GDScriptToStableHLO::generate_operation(int p_opcode, const int *p_code_p
 	return result;
 }
 
+// Helper function to convert GDScriptDataType to StableHLO tensor type
+static String gdscript_type_to_stablehlo_tensor(const GDScriptDataType &p_type) {
+	if (!p_type.has_type()) {
+		// VARIANT type - use opaque pointer
+		return "tensor<*xi8>";
+	}
+	
+	switch (p_type.kind) {
+		case GDScriptDataType::BUILTIN: {
+			switch (p_type.builtin_type) {
+				case Variant::BOOL:
+					return "tensor<i1>";
+				case Variant::INT:
+					return "tensor<i32>";
+				case Variant::FLOAT:
+					// GDScript's float type is 64-bit (double precision)
+					return "tensor<f64>";
+				case Variant::STRING:
+					// String is represented as byte array, but we don't know size at function signature
+					// Use opaque pointer or variable-size tensor
+					return "tensor<*xi8>";
+				case Variant::ARRAY:
+				case Variant::DICTIONARY:
+				case Variant::PACKED_BYTE_ARRAY:
+				case Variant::PACKED_INT32_ARRAY:
+				case Variant::PACKED_INT64_ARRAY:
+				case Variant::PACKED_FLOAT32_ARRAY:
+				case Variant::PACKED_FLOAT64_ARRAY:
+				case Variant::PACKED_STRING_ARRAY:
+				case Variant::PACKED_VECTOR2_ARRAY:
+				case Variant::PACKED_VECTOR3_ARRAY:
+				case Variant::PACKED_COLOR_ARRAY:
+				case Variant::PACKED_VECTOR4_ARRAY:
+					// Arrays and dictionaries use opaque pointer
+					return "tensor<*xi8>";
+				case Variant::VECTOR2:
+				case Variant::VECTOR2I:
+				case Variant::VECTOR3:
+				case Variant::VECTOR3I:
+				case Variant::VECTOR4:
+				case Variant::VECTOR4I:
+				case Variant::RECT2:
+				case Variant::RECT2I:
+				case Variant::PLANE:
+				case Variant::QUATERNION:
+				case Variant::AABB:
+				case Variant::BASIS:
+				case Variant::TRANSFORM2D:
+				case Variant::TRANSFORM3D:
+				case Variant::PROJECTION:
+				case Variant::COLOR:
+				case Variant::STRING_NAME:
+				case Variant::NODE_PATH:
+				case Variant::RID:
+				case Variant::OBJECT:
+				case Variant::CALLABLE:
+				case Variant::SIGNAL:
+				default:
+					// Complex types use opaque pointer
+					return "tensor<*xi8>";
+			}
+		}
+		case GDScriptDataType::NATIVE:
+		case GDScriptDataType::SCRIPT:
+		case GDScriptDataType::GDSCRIPT:
+		case GDScriptDataType::VARIANT:
+		default:
+			// Object types and variants use opaque pointer
+			return "tensor<*xi8>";
+	}
+}
+
 String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFunction *p_function) {
 	if (!p_function || p_function->code.is_empty()) {
 		return String();
@@ -1997,19 +2271,29 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 	result += "module {\n";
 	result += "  func.func @" + function_name + "(";
 
-	// Function arguments
+	// Function arguments - use actual types from function
 	int arg_count = p_function->get_argument_count();
 	
-	// Determine return type - will be updated when we process the return statement
-	String return_type = "tensor<f32>"; // Default
+	// Determine return type from function signature - will be updated when we process the return statement
+	String return_type = gdscript_type_to_stablehlo_tensor(p_function->return_type);
+	if (return_type.is_empty()) {
+		return_type = "tensor<f64>"; // Fallback default (GDScript float is 64-bit)
+	}
 	
 	for (int i = 0; i < arg_count; i++) {
 		if (i > 0) {
 			result += ", ";
 		}
-		result += "%arg" + String::num(i) + ": tensor<f32>";
+		String arg_type = "tensor<f64>"; // Default fallback (GDScript float is 64-bit)
+		if (i < p_function->argument_types.size()) {
+			arg_type = gdscript_type_to_stablehlo_tensor(p_function->argument_types[i]);
+			if (arg_type.is_empty()) {
+				arg_type = "tensor<f64>"; // Fallback (GDScript float is 64-bit)
+			}
+		}
+		result += "%arg" + String::num(i) + ".0: " + arg_type;
 	}
-	result += ") -> tensor<f32> {\n"; // Will be updated after processing return statement
+	result += ") -> " + return_type + " {\n"; // Will be updated after processing return statement if needed
 
 	// Process opcodes
 	const int *code_ptr = p_function->code.ptr();
@@ -2093,7 +2377,10 @@ String GDScriptToStableHLO::convert_function_to_stablehlo_text(const GDScriptFun
 	result += "}\n";
 	
 	// Update return type in function signature if it was determined from return statement
-	if (return_type_from_return != return_type && return_type_from_return != "tensor<f32>") {
+	// Only update if the return type from the return statement is more specific than the function signature
+	if (return_type_from_return != return_type && !return_type_from_return.is_empty()) {
+		// Check if return_type_from_return is more specific (e.g., has size information for strings)
+		// For now, always prefer the return statement type if it's different
 		int sig_start = result.find(") -> ");
 		if (sig_start != -1) {
 			int sig_end = result.find(" {", sig_start);
@@ -2228,4 +2515,26 @@ String GDScriptToStableHLO::generate_mlir_file_from_script(Ref<GDScript> p_scrip
 	}
 
 	return generate_mlir_file(func, p_output_path);
+}
+
+PackedByteArray GDScriptToStableHLO::compile_stablehlo_to_elf64(const String &p_mlir_text, const String &p_function_name, bool p_debug) {
+	// Internal compilation pipeline: StableHLO MLIR -> RISC-V ELF64
+	// This implementation parses MLIR internally and generates RISC-V ELF64 directly
+	
+	// Phase 1: Parse MLIR
+	StableHLOParser::Module module = StableHLOParser::parse(p_mlir_text);
+	if (module.functions.is_empty()) {
+		print_error("GDScriptToStableHLO: Failed to parse MLIR or no functions found");
+		return PackedByteArray();
+	}
+	
+	// Phase 2 & 3: Generate RISC-V code and ELF64
+	PackedByteArray elf_binary = RISCVCodeGenerator::generate_elf64(module, p_debug);
+	
+	if (elf_binary.is_empty()) {
+		print_error("GDScriptToStableHLO: Failed to generate ELF64 binary");
+		return PackedByteArray();
+	}
+	
+	return elf_binary;
 }
