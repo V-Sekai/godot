@@ -2,6 +2,38 @@
 
 This document shows examples of GDScript functions and their corresponding StableHLO (Stable High Level Operations) representations, based on the actual conversion implementation in Godot's `GDScriptToStableHLO` class.
 
+## Hello World Example
+
+### Hello World with Byte Buffer and Syscalls
+**GDScript:**
+```gdscript
+func hello_world() -> int:
+    print("Hello, World!")
+    return 0
+```
+
+**StableHLO:**
+```mlir
+module {
+  func.func @hello_world() -> tensor<i32> {
+    // Create byte buffer tensor with "Hello, World!\n" string
+    %message = stablehlo.constant dense<[72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33, 10]> : tensor<14xi8>
+    
+    // Call godot_syscall_print from the sandbox module to print the byte buffer
+    %result = stablehlo.custom_call @godot_syscall_print(%message) : (tensor<14xi8>) -> tensor<i32>
+    
+    // Return success code (0)
+    %c0 = stablehlo.constant dense<0> : tensor<i32>
+    return %c0 : tensor<i32>
+  }
+}
+```
+
+**Notes:**
+- The string is converted to a byte buffer tensor (`tensor<14xi8>`) containing ASCII values
+- `stablehlo.custom_call` is used to invoke `godot_syscall_print` from the sandbox module
+- This allows I/O operations in StableHLO by using syscalls, which is necessary since StableHLO itself doesn't support string operations directly
+
 ## Basic Arithmetic Operations
 
 ### 1. Simple Addition

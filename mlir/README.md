@@ -10,6 +10,9 @@ This directory contains MLIR (Multi-Level Intermediate Representation) files gen
 
 ## MLIR Files (Validated with stablehlo-translate)
 
+### Hello World Example
+- `hello_world.mlir` - Hello World using byte buffer and godot_syscalls ✅
+
 ### Core Operations
 - `add_numbers.mlir` - Integer addition ✅
 - `multiply.mlir` - Float multiplication ✅
