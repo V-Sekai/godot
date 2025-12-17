@@ -455,10 +455,6 @@ private:
 	friend class GDScriptCompiler;
 	friend class GDScriptByteCodeGenerator;
 	friend class GDScriptLanguage;
-	friend class GDScriptELF64Writer;
-	friend class GDScriptRISCVEncoder;
-	friend class GDScriptBytecodeCCodeGenerator;
-	friend class GDScriptBytecodeELFCompiler;
 	friend class GDScriptToStableHLO;
 	friend class GDScriptBytecodeSerializer;
 

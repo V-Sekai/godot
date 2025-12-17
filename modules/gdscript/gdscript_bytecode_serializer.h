@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gdscript_bytecode_c_code_generator.h                                  */
+/*  gdscript_bytecode_serializer.h                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -21,7 +21,7 @@
 /*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFLICTING. */
 /* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
 /* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
@@ -30,25 +30,38 @@
 
 #pragma once
 
+#include "core/io/file_access.h"
 #include "core/object/ref_counted.h"
-#include "core/templates/hash_map.h"
-#include "core/templates/vector.h"
-#include "modules/gdscript/gdscript_function.h"
+#include "core/variant/variant.h"
+#include "gdscript_function.h"
 
-class GDScriptBytecodeCCodeGenerator : public RefCounted {
-	GDCLASS(GDScriptBytecodeCCodeGenerator, RefCounted);
-
-private:
-	String generate_function_signature(const String &p_function_name, bool p_is_static) const;
-	String generate_prelogue(int p_stack_size, const GDScriptFunction *p_function) const;
-	String generate_epilogue() const;
-	String generate_opcode(GDScriptFunction::Opcode p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, const GDScriptFunction *p_function) const;
-	String resolve_address(int p_address, const GDScriptFunction *p_function, bool p_is_destination = false) const;
-	String resolve_assign_source(GDScriptFunction::Opcode p_opcode, const int *p_code_ptr, int p_ip, int p_code_size, const GDScriptFunction *p_function) const;
-	String generate_syscall(int p_ecall_number, const Vector<String> &p_args) const;
-	String generate_vcall_syscall(const String &p_variant_ptr, const String &p_method_str, int p_method_len, const String &p_args_ptr, int p_args_size, const String &p_ret_ptr) const;
-	void generate_jump_labels(const int *p_code_ptr, int p_code_size, HashMap<int, int> &r_jump_labels) const;
+class GDScriptBytecodeSerializer : public RefCounted {
+	GDCLASS(GDScriptBytecodeSerializer, RefCounted);
 
 public:
-	String generate_c_code(GDScriptFunction *p_function) const;
+	// Serialize function bytecode to a simple format
+	// Returns PackedByteArray with: opcodes, constants, global_names, metadata
+	static PackedByteArray serialize_function(const GDScriptFunction *p_function);
+	
+	// Deserialize function bytecode from PackedByteArray
+	// Returns a structure that can be used to reconstruct execution context
+	struct DeserializedFunction {
+		Vector<int> opcodes;
+		Vector<Variant> constants;
+		Vector<StringName> global_names;
+		StringName function_name;
+		int stack_size = 0;
+		int argument_count = 0;
+		bool is_static = false;
+	};
+	
+	static DeserializedFunction deserialize_function(const PackedByteArray &p_data);
+	
+	// Check if function only uses basic opcodes (~14 core opcodes)
+	static bool uses_basic_opcodes_only(const GDScriptFunction *p_function);
+	
+private:
+	// Basic opcodes (~14 core opcodes)
+	static bool is_basic_opcode(int p_opcode);
 };
+

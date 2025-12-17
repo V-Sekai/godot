@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gdscript_elf64_mode.h                                                 */
+/*  gdscript_to_stablehlo.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -21,7 +21,7 @@
 /*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFLICTING. */
 /* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
 /* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
@@ -30,7 +30,37 @@
 
 #pragma once
 
-// ELF64 compilation modes
-enum class ELF64CompilationMode {
-	GODOT_SYSCALL // Use Godot sandbox syscalls (ECALL 500+)
+#include "core/object/ref_counted.h"
+#include "core/string/ustring.h"
+#include "gdscript_function.h"
+
+class GDScriptToStableHLO : public RefCounted {
+	GDCLASS(GDScriptToStableHLO, RefCounted);
+
+public:
+	// Convert GDScript function to StableHLO text format (MLIR text)
+	// Returns the StableHLO text representation
+	static String convert_function_to_stablehlo_text(const GDScriptFunction *p_function);
+	
+	// Write StableHLO text to file (MLIR text format)
+	// Returns path to the .stablehlo file, or empty string on error
+	static String convert_function_to_stablehlo_bytecode(const GDScriptFunction *p_function, const String &p_output_path);
+	
+	// Generate StableHLO file directly from GDScript function (bypasses C++ generation)
+	// Returns path to the .stablehlo file, or empty string on error
+	static String generate_mlir_file(const GDScriptFunction *p_function, const String &p_output_path);
+	
+	// Check if function can be converted (only basic opcodes)
+	static bool can_convert_function(const GDScriptFunction *p_function);
+
+private:
+	// Generate StableHLO constant operation
+	static String generate_constant(const Variant &p_value, int &p_value_id);
+	
+	// Generate StableHLO operation for a GDScript opcode
+	static String generate_operation(int p_opcode, const int *p_code_ptr, int &p_ip, int p_code_size, int &p_value_id);
+	
+	// Check if opcode is basic and supported
+	static bool is_basic_opcode(int p_opcode);
 };
+
