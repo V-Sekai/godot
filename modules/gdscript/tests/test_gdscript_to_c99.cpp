@@ -35,6 +35,7 @@
 
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
+#include "core/math/math_funcs.h"
 #include "core/os/os.h"
 #include "core/string/ustring.h"
 
@@ -45,14 +46,18 @@ String toString(const T &in) {
 }
 } // namespace doctest
 
-TEST_CASE("[Modules][GDScript] C99 conversion on runtime test scripts") {
+TEST_CASE("[Modules][GDScript][C99] Conversion on runtime test scripts") {
 	// Test C99 conversion on official runtime test scripts from mlir/runtime_tests/features
 	
-	// List of official test files to test
+	// List of official test files to test from modules/gdscript/tests/scripts/runtime/features
+	// These are the actual runtime test scripts used by the GDScript test runner
 	Vector<String> test_files = {
-		"res://mlir/runtime_tests/features/argument_count.gd",
-		"res://mlir/runtime_tests/features/array_string_stringname_equivalent.gd",
-		"res://mlir/runtime_tests/features/abstract_methods.gd",
+		"res://modules/gdscript/tests/scripts/runtime/features/argument_count.gd",
+		"res://modules/gdscript/tests/scripts/runtime/features/array_string_stringname_equivalent.gd",
+		"res://modules/gdscript/tests/scripts/runtime/features/abstract_methods.gd",
+		"res://modules/gdscript/tests/scripts/runtime/features/assign_operator.gd",
+		"res://modules/gdscript/tests/scripts/runtime/features/object_constructor.gd",
+		"res://modules/gdscript/tests/scripts/runtime/features/type_casting.gd",
 	};
 	
 	int total_tested = 0;
@@ -102,9 +107,20 @@ TEST_CASE("[Modules][GDScript] C99 conversion on runtime test scripts") {
 				} else {
 					total_converted++;
 					
+					// Validate C99 code contains expected elements
+					CHECK_MESSAGE(c99_code.contains("#include"), vformat("C99 code should include headers for %s::%s", file_path, func_name));
+					bool has_syscalls = c99_code.contains("godot_syscall") || c99_code.contains("static inline");
+					CHECK_MESSAGE(has_syscalls, vformat("C99 code should contain syscall wrappers for %s::%s", file_path, func_name));
+					
 					// Log success (first few only to avoid spam)
-					if (total_converted <= 3) {
+					if (total_converted <= 5) {
 						MESSAGE(vformat("✓ Converted %s::%s (%d bytes)", file_path, func_name, c99_code.length()));
+						// Show first few lines of generated code
+						Vector<String> lines = c99_code.split("\n");
+						int preview_lines = MIN(5, (int)lines.size());
+						for (int i = 0; i < preview_lines; i++) {
+							MESSAGE(vformat("  %s", lines[i]));
+						}
 					}
 				}
 			}

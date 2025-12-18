@@ -29,7 +29,6 @@
 /**************************************************************************/
 
 #include "test_gdscript.h"
-#include "test_gdscript_to_c99.cpp"
 
 #include "../gdscript_analyzer.h"
 #include "../gdscript_compiler.h"

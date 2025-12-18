@@ -36,6 +36,9 @@
 #include "tests/test_macros.h"
 #include "tests/test_utils.h"
 
+// Include C99 conversion test
+#include "test_gdscript_to_c99.cpp"
+
 namespace GDScriptTests {
 
 class TestGDScriptCacheAccessor {
