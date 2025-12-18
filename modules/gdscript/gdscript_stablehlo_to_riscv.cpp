@@ -35,6 +35,7 @@
 #include "core/string/print_string.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/variant.h"
+#include "core/variant/array.h"
 
 // MLIR Parser Implementation
 

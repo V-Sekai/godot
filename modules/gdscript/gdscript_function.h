@@ -456,6 +456,7 @@ private:
 	friend class GDScriptByteCodeGenerator;
 	friend class GDScriptLanguage;
 	friend class GDScriptToStableHLO;
+	friend class GDScriptToC99;
 	friend class GDScriptBytecodeSerializer;
 
 	StringName name;

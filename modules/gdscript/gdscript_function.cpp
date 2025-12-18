@@ -32,6 +32,7 @@
 
 #include "gdscript.h"
 #include "gdscript_to_stablehlo.h"
+#include "gdscript_to_c99.h"
 
 Variant GDScriptFunction::get_constant(int p_idx) const {
 	ERR_FAIL_INDEX_V(p_idx, constants.size(), "<errconst>");
@@ -44,7 +45,19 @@ StringName GDScriptFunction::get_global_name(int p_idx) const {
 }
 
 PackedByteArray GDScriptFunction::compile_to_elf64(int p_mode) const {
-	// Generate StableHLO MLIR from GDScript function
+	// Try C99 compilation first (simpler, faster)
+	if (GDScriptToC99::can_convert_to_c99(this)) {
+		String c99_code = GDScriptToC99::generate_c99(this);
+		if (!c99_code.is_empty()) {
+			bool debug = (p_mode & 0x1) != 0;
+			PackedByteArray elf = GDScriptToC99::compile_c99_to_elf64(c99_code, get_name(), debug);
+			if (!elf.is_empty()) {
+				return elf;
+			}
+		}
+	}
+	
+	// Fallback to StableHLO compilation
 	String stablehlo_text = GDScriptToStableHLO::convert_function_to_stablehlo_text(this);
 	if (stablehlo_text.is_empty()) {
 		return PackedByteArray();
@@ -57,7 +70,11 @@ PackedByteArray GDScriptFunction::compile_to_elf64(int p_mode) const {
 }
 
 bool GDScriptFunction::can_compile_to_elf64(int p_mode) const {
-	// Can compile if we can convert to StableHLO
+	// Check if C99 conversion is possible
+	if (GDScriptToC99::can_convert_to_c99(this)) {
+		return true;
+	}
+	// Fallback to StableHLO
 	return GDScriptToStableHLO::can_convert_function(this);
 }
 

@@ -34,6 +34,7 @@
 #include "core/templates/hash_map.h"
 #include "core/templates/vector.h"
 #include "core/variant/dictionary.h"
+#include "core/variant/variant.h"
 
 // Internal StableHLO to RISC-V ELF64 compiler
 // Parses StableHLO MLIR and generates RISC-V ELF64 binaries directly

@@ -29,12 +29,14 @@
 /**************************************************************************/
 
 #include "test_gdscript.h"
+#include "test_gdscript_to_c99.cpp"
 
 #include "../gdscript_analyzer.h"
 #include "../gdscript_compiler.h"
 #include "../gdscript_parser.h"
 #include "../gdscript_tokenizer.h"
 #include "../gdscript_tokenizer_buffer.h"
+#include "../gdscript_to_c99.h"
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access.h"
