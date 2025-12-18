@@ -6,13 +6,44 @@ if __name__ != "__main__":
 import argparse
 import os
 import shutil
+import socket
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../"))
 
 from misc.utility.color import Ansi, color_print
+
+
+def download_with_retry(url, filename, max_retries=3, timeout=120):
+	"""Download a file with retry logic and timeout handling."""
+	# Set socket timeout globally for this download
+	old_timeout = socket.getdefaulttimeout()
+	socket.setdefaulttimeout(timeout)
+	
+	try:
+		for attempt in range(1, max_retries + 1):
+			try:
+				if attempt > 1:
+					print(f"Download attempt {attempt}/{max_retries}...")
+				urllib.request.urlretrieve(url, filename)
+				return True
+			except (urllib.error.URLError, OSError, socket.timeout) as e:
+				if attempt < max_retries:
+					wait_time = attempt * 5  # Exponential backoff: 5s, 10s, 15s
+					print(f"Download failed: {e}")
+					print(f"Retrying in {wait_time} seconds...")
+					time.sleep(wait_time)
+				else:
+					print(f"Download failed after {max_retries} attempts: {e}")
+					raise
+	finally:
+		# Restore original timeout
+		socket.setdefaulttimeout(old_timeout)
+	return False
 
 parser = argparse.ArgumentParser(description="Install D3D12 dependencies for Windows platforms.")
 parser.add_argument(
@@ -69,7 +100,7 @@ for arch in [
     if os.path.isfile(mesa_archive):
         os.remove(mesa_archive)
     print(f"Downloading Mesa NIR {mesa_filename} ...")
-    urllib.request.urlretrieve(
+    download_with_retry(
         f"https://github.com/godotengine/godot-nir-static/releases/download/{mesa_version}/{mesa_filename}",
         mesa_archive,
     )
@@ -97,7 +128,10 @@ color_print(f"{Ansi.BOLD}[2/3] WinPixEventRuntime")
 if os.path.isfile(pix_archive):
     os.remove(pix_archive)
 print(f"Downloading WinPixEventRuntime {pix_version} ...")
-urllib.request.urlretrieve(f"https://www.nuget.org/api/v2/package/WinPixEventRuntime/{pix_version}", pix_archive)
+download_with_retry(
+    f"https://www.nuget.org/api/v2/package/WinPixEventRuntime/{pix_version}",
+    pix_archive,
+)
 if os.path.exists(pix_folder):
     print(f"Removing existing local WinPixEventRuntime installation in {pix_folder} ...")
     shutil.rmtree(pix_folder)
@@ -130,8 +164,9 @@ color_print(f"{Ansi.BOLD}[3/3] DirectX 12 Agility SDK")
 if os.path.isfile(agility_sdk_archive):
     os.remove(agility_sdk_archive)
 print(f"Downloading DirectX 12 Agility SDK {agility_sdk_version} ...")
-urllib.request.urlretrieve(
-    f"https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/{agility_sdk_version}", agility_sdk_archive
+download_with_retry(
+    f"https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/{agility_sdk_version}",
+    agility_sdk_archive,
 )
 if os.path.exists(agility_sdk_folder):
     print(f"Removing existing local DirectX 12 Agility SDK installation in {agility_sdk_folder} ...")
