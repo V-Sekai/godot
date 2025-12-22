@@ -30,6 +30,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "core/error/error_macros.h"
 #include "core/object/object.h"
 #include "core/object/ref_counted.h"
