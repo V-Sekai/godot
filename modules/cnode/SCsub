@@ -1,0 +1,183 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+# CNode is a special module that builds an executable, not a library
+# Only build when library_type is executable (which builds the CNode)
+if env["library_type"] != "executable":
+    Return()
+
+env_cnode = env_modules.Clone()
+extra_suffix = env.get("extra_suffix", "")
+
+# Set extra_suffix for CNode build
+env_cnode["extra_suffix"] = extra_suffix
+
+# Erlang interface paths
+erl_interface_dir = "#thirdparty/erl_interface"
+erl_include_dir = erl_interface_dir + "/include"
+erl_src_dir = erl_interface_dir + "/src"
+erl_lib_dir = erl_interface_dir + "/lib"
+
+# Add include paths for erl_interface
+erl_include_paths = [
+    erl_include_dir,
+    erl_src_dir,
+    erl_src_dir + "/misc",
+    erl_src_dir + "/connect",
+    erl_src_dir + "/epmd",
+    erl_src_dir + "/encode",
+    erl_src_dir + "/decode",
+    erl_src_dir + "/global",
+    erl_src_dir + "/openssl/include",
+]
+
+env_cnode.Prepend(CPPPATH=erl_include_paths)
+
+# Build erl_interface static library
+env_erl_interface = env_cnode.Clone()
+env_erl_interface.disable_warnings()
+
+# Build objects from erl_interface source files
+# List source files explicitly (similar to enet module approach)
+erl_interface_sources = [
+    # Connect
+    erl_src_dir + "/connect/ei_connect.c",
+    erl_src_dir + "/connect/ei_resolve.c",
+    erl_src_dir + "/connect/eirecv.c",
+    erl_src_dir + "/connect/send.c",
+    erl_src_dir + "/connect/send_exit.c",
+    erl_src_dir + "/connect/send_reg.c",
+    # Decode
+    erl_src_dir + "/decode/decode_atom.c",
+    erl_src_dir + "/decode/decode_big.c",
+    erl_src_dir + "/decode/decode_bignum.c",
+    erl_src_dir + "/decode/decode_binary.c",
+    erl_src_dir + "/decode/decode_boolean.c",
+    erl_src_dir + "/decode/decode_char.c",
+    erl_src_dir + "/decode/decode_double.c",
+    erl_src_dir + "/decode/decode_fun.c",
+    erl_src_dir + "/decode/decode_intlist.c",
+    erl_src_dir + "/decode/decode_iodata.c",
+    erl_src_dir + "/decode/decode_list_header.c",
+    erl_src_dir + "/decode/decode_long.c",
+    erl_src_dir + "/decode/decode_longlong.c",
+    erl_src_dir + "/decode/decode_pid.c",
+    erl_src_dir + "/decode/decode_port.c",
+    erl_src_dir + "/decode/decode_ref.c",
+    erl_src_dir + "/decode/decode_skip.c",
+    erl_src_dir + "/decode/decode_string.c",
+    erl_src_dir + "/decode/decode_trace.c",
+    erl_src_dir + "/decode/decode_tuple_header.c",
+    erl_src_dir + "/decode/decode_ulong.c",
+    erl_src_dir + "/decode/decode_ulonglong.c",
+    erl_src_dir + "/decode/decode_version.c",
+    # Encode
+    erl_src_dir + "/encode/encode_atom.c",
+    erl_src_dir + "/encode/encode_big.c",
+    erl_src_dir + "/encode/encode_bignum.c",
+    erl_src_dir + "/encode/encode_binary.c",
+    erl_src_dir + "/encode/encode_boolean.c",
+    erl_src_dir + "/encode/encode_char.c",
+    erl_src_dir + "/encode/encode_double.c",
+    erl_src_dir + "/encode/encode_fun.c",
+    erl_src_dir + "/encode/encode_list_header.c",
+    erl_src_dir + "/encode/encode_long.c",
+    erl_src_dir + "/encode/encode_longlong.c",
+    erl_src_dir + "/encode/encode_pid.c",
+    erl_src_dir + "/encode/encode_port.c",
+    erl_src_dir + "/encode/encode_ref.c",
+    erl_src_dir + "/encode/encode_string.c",
+    erl_src_dir + "/encode/encode_trace.c",
+    erl_src_dir + "/encode/encode_tuple_header.c",
+    erl_src_dir + "/encode/encode_ulong.c",
+    erl_src_dir + "/encode/encode_ulonglong.c",
+    erl_src_dir + "/encode/encode_version.c",
+    # EPMD
+    erl_src_dir + "/epmd/epmd_port.c",
+    erl_src_dir + "/epmd/epmd_publish.c",
+    erl_src_dir + "/epmd/epmd_unpublish.c",
+    # Global
+    erl_src_dir + "/global/global_names.c",
+    erl_src_dir + "/global/global_register.c",
+    erl_src_dir + "/global/global_unregister.c",
+    erl_src_dir + "/global/global_whereis.c",
+    # Misc
+    erl_src_dir + "/misc/ei_cmp_nc.c",
+    erl_src_dir + "/misc/ei_compat.c",
+    erl_src_dir + "/misc/ei_decode_term.c",
+    erl_src_dir + "/misc/ei_format.c",
+    erl_src_dir + "/misc/ei_init.c",
+    erl_src_dir + "/misc/ei_locking.c",
+    erl_src_dir + "/misc/ei_malloc.c",
+    erl_src_dir + "/misc/ei_portio.c",
+    erl_src_dir + "/misc/ei_printterm.c",
+    erl_src_dir + "/misc/ei_pthreads.c",
+    erl_src_dir + "/misc/ei_trace.c",
+    erl_src_dir + "/misc/ei_x_encode.c",
+    erl_src_dir + "/misc/get_type.c",
+    erl_src_dir + "/misc/show_msg.c",
+]
+
+erl_interface_obj = []
+env_erl_interface.add_source_files(erl_interface_obj, erl_interface_sources)
+
+erl_interface_lib = env_erl_interface.add_library("ei", erl_interface_obj)
+
+# CNode source files
+cnode_sources = [
+    "#modules/cnode/src/godot_cnode.cpp",
+    "#modules/cnode/src/godot_main_cnode.cpp",  # Main function
+]
+cnode_obj = []
+env_cnode.add_source_files(cnode_obj, cnode_sources)
+
+# Add Godot core include paths
+env_cnode.Prepend(CPPPATH=["#core/extension", "#core/object", "#core/os", "#core"])
+
+# Find and link against Godot static libraries
+# Construct library names with extra_suffix
+target_suffix = "dev" if env["target"] == "debug" else "release"
+lib_suffix = "." + env["platform"] + ("." + "editor" + "." if env.editor_build else ".") + target_suffix + "." + env["arch"]
+if extra_suffix:
+    lib_suffix += "." + extra_suffix
+
+# Link order: main -> modules -> platform -> drivers -> scene -> servers -> core
+godot_libs = ["main", "modules", "platform", "drivers", "scene", "servers", "core"]
+godot_lib_targets = []
+for lib_name in godot_libs:
+    full_lib_name = lib_name + lib_suffix
+    env_cnode.Append(LIBS=[full_lib_name])
+    env_cnode.Prepend(LIBPATH=["#bin"])
+    # Get the actual library target to set dependencies
+    lib_target = env_cnode.File("#bin/obj/" + lib_name + "/lib" + lib_name + lib_suffix + ".a")
+    godot_lib_targets.append(lib_target)
+
+# Add platform-specific library (e.g., platform_macos)
+platform_lib_name = "platform_" + env["platform"] + lib_suffix
+env_cnode.Append(LIBS=[platform_lib_name])
+env_cnode.Prepend(LIBPATH=["#bin/obj/platform/" + env["platform"]])
+platform_lib_target = env_cnode.File("#bin/obj/platform/" + env["platform"] + "/lib" + platform_lib_name + lib_suffix + ".a")
+godot_lib_targets.append(platform_lib_target)
+
+# Filter out editor-specific libraries
+env_cnode["LIBS"] = [lib for lib in env_cnode["LIBS"] if "editor" not in str(lib) or "libgodot" in str(lib)]
+
+# Link against erl_interface
+env_cnode.Prepend(LIBS=[erl_interface_lib])
+
+# Build the CNode executable
+cnode_program = env_cnode.add_program("bin/godot", cnode_obj)
+
+# Make executable on non-Windows platforms
+if env["platform"] != "windows":
+    env_cnode.AddPostAction(cnode_program, "chmod +x $TARGET")
+
+# Ensure build dependencies - executable must be built AFTER all libraries
+env_cnode.Depends(cnode_program, cnode_obj)
+env_cnode.Depends(cnode_obj, erl_interface_lib)
+# Depend on all Godot libraries being built first
+env_cnode.Depends(cnode_program, godot_lib_targets)
+

@@ -594,6 +594,9 @@ if env["library_type"] != "executable":
         print_error(f"Library builds unsupported for {env['platform']}")
         Exit(255)
     env.Append(CPPDEFINES=["LIBGODOT_ENABLED"])
+else:
+    # Executable builds the CNode, which needs to link with erlang cnode library and libgodot
+    env.Append(CPPDEFINES=["LIBGODOT_ENABLED", "GODOT_AVAILABLE"])
 
 # Default num_jobs to local cpu count if not user specified.
 # SCons has a peculiarity where user-specified options won't be overridden

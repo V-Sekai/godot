@@ -1,0 +1,1 @@
+{application,godot_cnode,[{modules,[]},{optional_applications,[]},{applications,[kernel,stdlib,elixir,logger]},{description,"godot_cnode"},{registered,[]},{vsn,"0.1.0"}]}.

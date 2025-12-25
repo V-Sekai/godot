@@ -40,14 +40,22 @@ if env.editor_build:
     ]
 
 if env["library_type"] == "executable":
-    files += ["godot_main_macos.mm"]
+    # Executable builds the CNode, include libgodot_macos.mm (provides libgodot_create_godot_instance)
+    # The CNode main is in modules/cnode/src/godot_main_cnode.cpp
+    files += ["libgodot_macos.mm"]
 else:
+    # Include libgodot_macos.mm for static_library and shared_library builds
+    # This provides libgodot_create_godot_instance and libgodot_destroy_godot_instance functions
     files += ["libgodot_macos.mm"]
 
 if env["library_type"] == "static_library":
     prog = env.add_library("#bin/godot", files)
 elif env["library_type"] == "shared_library":
     prog = env.add_shared_library("#bin/godot", files)
+elif env["library_type"] == "executable":
+    # For executable (CNode), build platform files as a library including libgodot_macos.mm
+    prog = env.add_library("platform_macos", files)
+    env.Prepend(LIBS=[prog])
 else:
     prog = env.add_program("#bin/godot", files)
 

@@ -240,6 +240,24 @@ The `modules/raycast/godot_update_embree.py` script can be used to pull the
 relevant files from the latest Embree release and apply patches automatically.
 
 
+## erl_interface
+
+- Upstream: https://github.com/erlang/otp
+- Version: OTP 28.2 (erl_interface 5.6.1)
+- License: Apache 2.0
+
+Files extracted from upstream source:
+
+- `src/` directory with all source files for the ei library
+- `include/` directory with header files
+- Source files from `connect/`, `decode/`, `encode/`, `epmd/`, `global/`, and `misc/` subdirectories
+- Minimal OpenSSL implementation (MD5 only) in `src/openssl/`
+
+The erl_interface library is built from source as part of the CNode build process.
+
+**Note:** For future thirdparty dependencies that require external libraries (like full OpenSSL), consider using `git subrepo` to manage them, similar to how [gd-curl](https://github.com/Faless/gd-curl/tree/main/thirdparty) manages its dependencies.
+
+
 ## enet
 
 - Upstream: https://github.com/lsalzman/enet
