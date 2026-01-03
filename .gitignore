@@ -395,3 +395,7 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 *.generated.props
+modules/mcp/test_project/.godot/
+*.tmp
+*.log
+test_project/.godot/

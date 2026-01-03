@@ -61,6 +61,7 @@
 #include "main/performance.h"
 #include "main/splash.gen.h"
 #include "modules/register_module_types.h"
+#include "modules/mcp/mcp_server.h"
 #include "platform/register_platform_apis.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
@@ -212,6 +213,8 @@ static bool cmdline_tool = false;
 static String locale;
 static String log_file;
 static bool show_help = false;
+static bool start_mcp_server = false;
+static int mcp_server_port = 8083;
 static uint64_t quit_after = 0;
 static OS::ProcessID editor_pid = 0;
 #ifdef TOOLS_ENABLED
@@ -548,6 +551,8 @@ void Main::print_help(const char *p_binary) {
 	print_help_option("-v, --verbose", "Use verbose stdout mode.\n");
 	print_help_option("--quiet", "Quiet mode, silences stdout messages. Errors are still displayed.\n");
 	print_help_option("--no-header", "Do not print engine version and rendering driver/method header on startup.\n");
+	print_help_option("--mcp-server", "Start the MCP server on startup.\n");
+	print_help_option("--mcp-port <port>", "The port to run the MCP server on (default: 8083).\n");
 
 	print_help_title("Run options");
 	print_help_option("--, ++", "Separator for user-provided arguments. Following arguments are not used by the engine, but can be read from `OS.get_cmdline_user_args()`.\n");
@@ -563,6 +568,8 @@ void Main::print_help(const char *p_binary) {
 #endif
 	print_help_option("--quit", "Quit after the first iteration.\n");
 	print_help_option("--quit-after <int>", "Quit after the given number of iterations. Set to 0 to disable.\n");
+	print_help_option("--mcp-server", "Start the MCP (Model Context Protocol) server for AI assistant integration.\n");
+	print_help_option("--mcp-port <port>", "Set the port for the MCP server (default: 8087).\n");
 	print_help_option("-l, --language <locale>", "Use a specific locale (<locale> being a two-letter code).\n");
 #if defined(OVERRIDE_PATH_ENABLED)
 	print_help_option("--path <directory>", "Path to a project (<directory> must contain a \"project.godot\" file).\n", CLI_OPTION_AVAILABILITY_TEMPLATE_UNSAFE);
@@ -1179,6 +1186,17 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 		} else if (arg == "--no-header") {
 			Engine::get_singleton()->_print_header = false;
+
+		} else if (arg == "--mcp-server") { // start MCP server
+			start_mcp_server = true;
+			OS::get_singleton()->set_environment("GODOT_MCP_SERVER_START", "true");
+
+		} else if (arg == "--mcp-port") { // MCP server port
+			if (N) {
+				mcp_server_port = N->get().to_int();
+				OS::get_singleton()->set_environment("GODOT_MCP_SERVER_PORT", N->get());
+				N = N->next(); // Skip the next argument since we consumed it
+			}
 
 		} else if (arg == "--audio-driver") { // audio driver
 
@@ -4944,6 +4962,14 @@ bool Main::iteration() {
 
 	GodotProfileZoneGrouped(_profile_zone, "AudioServer::update");
 	AudioServer::get_singleton()->update();
+
+	// Poll MCP server if available
+	if (Engine::get_singleton()->has_singleton("MCPServer")) {
+		MCPServer *mcp_server = Object::cast_to<MCPServer>(Engine::get_singleton()->get_singleton_object("MCPServer"));
+		if (mcp_server) {
+			mcp_server->poll();
+		}
+	}
 
 	if (EngineDebugger::is_active()) {
 		EngineDebugger::get_singleton()->iteration(frame_time, process_ticks, physics_process_ticks, physics_step);
