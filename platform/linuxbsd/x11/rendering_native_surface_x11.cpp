@@ -31,6 +31,8 @@
 #include "rendering_native_surface_x11.h"
 #include "core/object/class_db.h"
 
+#include <cstdint>
+
 #if defined(VULKAN_ENABLED)
 #include "x11/rendering_context_driver_vulkan_x11.h"
 #endif
@@ -57,6 +59,10 @@ RenderingContextDriver *RenderingNativeSurfaceX11::create_rendering_context(cons
 	}
 #endif
 	return nullptr;
+}
+
+void *RenderingNativeSurfaceX11::get_native_id() const {
+	return reinterpret_cast<void *>(static_cast<uintptr_t>(window));
 }
 
 RenderingNativeSurfaceX11::RenderingNativeSurfaceX11() {
