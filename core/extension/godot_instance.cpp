@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "godot_instance.h"
+#include "core/extension/gdextension.h"
 #include "core/extension/gdextension_manager.h"
 #include "main/main.h"
 #include "servers/display_server.h"
@@ -108,10 +109,14 @@ bool GodotInstance::is_started() {
 }
 
 bool GodotInstance::iteration() {
-	callbacks->before_iteration(this);
-	DisplayServer::get_singleton()->process_events();
+	CALL_CB(before_iteration);
+	if (DisplayServer::get_singleton()) {
+		DisplayServer::get_singleton()->process_events();
+	}
 	bool exit = Main::iteration();
-	callbacks->after_iteration(this, exit);
+	if (callbacks) {
+		callbacks->after_iteration(this, exit);
+	}
 	return exit;
 }
 
@@ -130,7 +135,7 @@ void GodotInstance::focus_out() {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_OUT);
 		}
 
-		callbacks->focus_out(this);
+		CALL_CB(focus_out);
 	}
 }
 
@@ -140,7 +145,7 @@ void GodotInstance::focus_in() {
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_IN);
 		}
-		callbacks->focus_in(this);
+		CALL_CB(focus_in);
 	}
 }
 
@@ -150,14 +155,14 @@ void GodotInstance::pause() {
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_PAUSED);
 		}
-		callbacks->pause(this);
+		CALL_CB(pause);
 	}
 }
 
 void GodotInstance::resume() {
 	GODOT_INSTANCE_LOG("GodotInstance::resume()");
 	if (started) {
-		callbacks->resume(this);
+		CALL_CB(resume);
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_RESUMED);
 		}
