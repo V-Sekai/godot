@@ -318,7 +318,7 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 	if (p_quad_index == quad_count - 1 && cone2_vec.length_squared() >= CMP_EPSILON) {
 		// Ensure we have space for the extra cone2 at the end
 		int expected_size = quad_count * 3 + 1;
-		if (cones.size() < expected_size) {
+		if ((int64_t)cones.size() < expected_size) {
 			cones.resize(expected_size);
 		}
 		cones[quad_count * 3] = cone2_vec;
@@ -545,7 +545,7 @@ void JointLimitationKusudama3D::set_cone_count(int p_count) {
 	// Initialize cone2 for last group if count is 2+
 	if (new_quad_count > 0 && p_count >= 2) {
 		int cone2_idx = new_quad_count * 3;
-		if (cone2_idx < cones.size()) {
+		if (cone2_idx < (int64_t)cones.size()) {
 			// Only initialize if this is a new element (wasn't in old size)
 			if (cone2_idx >= old_size) {
 				cones[cone2_idx] = default_cone;
@@ -634,7 +634,7 @@ void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_ce
 	} else {
 		// Update cone2 of last group (stored at the end)
 		int cone2_idx = quad_count * 3;
-		if (cones.size() <= cone2_idx) {
+		if ((int64_t)cones.size() <= cone2_idx) {
 			cones.resize(cone2_idx + 1);
 		}
 		Vector3 old_cone2 = Vector3(cones[cone2_idx].x, cones[cone2_idx].y, cones[cone2_idx].z);
@@ -724,7 +724,7 @@ void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
 	} else {
 		// Access cone2 of last quad (stored at the end)
 		int cone2_idx = quad_count * 3;
-		if (cones.size() <= cone2_idx) {
+		if ((int64_t)cones.size() <= cone2_idx) {
 			cones.resize(cone2_idx + 1);
 		}
 		Vector3 old_cone2 = Vector3(cones[cone2_idx].x, cones[cone2_idx].y, cones[cone2_idx].z);
