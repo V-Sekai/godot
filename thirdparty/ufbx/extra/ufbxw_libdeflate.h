@@ -103,7 +103,6 @@ ufbxw_libdeflate_abi void ufbxw_libdeflate_setup(struct ufbxw_deflate *deflate, 
 	deflate->create_cb.fn = &ufbxw_libdeflate_init;
 	deflate->create_cb.user = (void*)opts;
 	deflate->streaming_input = false;
-	deflate->streaming_output = false;
 }
 
 #if defined(__cplusplus)

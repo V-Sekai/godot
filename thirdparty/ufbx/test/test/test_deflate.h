@@ -98,11 +98,7 @@ static void ufbxwt_deflate_test(const char *name, ufbxw_scene *scene, const ufbx
 					if (g_file_version && save_opts.version != g_file_version) continue;
 					if (g_file_format && strcmp(format, g_file_format) != 0) continue;
 
-					if (save_opts.format == UFBXW_SAVE_FORMAT_ASCII && deflate_impl != UFBXWT_DEFLATE_IMPL_NONE) {
-						continue;
-					}
-
-					if (thread_impl != UFBXWT_THREAD_IMPL_NONE && deflate_impl == UFBXWT_DEFLATE_IMPL_NONE) {
+					if (save_opts.format == UFBXW_SAVE_FORMAT_ASCII && deflate_impl != UFBXWT_DEFLATE_IMPL_BUILTIN) {
 						continue;
 					}
 

@@ -27,7 +27,7 @@
 bool ufbxwt_deflate_setup(ufbxw_deflate *deflate, ufbxwt_deflate_impl impl)
 {
 	switch (impl) {
-	case UFBXWT_DEFLATE_IMPL_NONE:
+	case UFBXWT_DEFLATE_IMPL_BUILTIN:
 		return true;
 
 	case UFBXWT_DEFLATE_IMPL_LIBDEFLATE:
@@ -54,7 +54,7 @@ bool ufbxwt_deflate_setup(ufbxw_deflate *deflate, ufbxwt_deflate_impl impl)
 const char *ufbxwt_deflate_impl_name(ufbxwt_deflate_impl impl)
 {
 	switch (impl) {
-	case UFBXWT_DEFLATE_IMPL_NONE: return "none";
+	case UFBXWT_DEFLATE_IMPL_BUILTIN: return "builtin";
 	case UFBXWT_DEFLATE_IMPL_LIBDEFLATE: return "libdeflate";
 	case UFBXWT_DEFLATE_IMPL_ZLIB: return "zlib";
 	default: return "";

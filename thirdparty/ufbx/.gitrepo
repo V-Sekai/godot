@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/bqqbarbhg/ufbx_write.git
 	branch = main
-	commit = 450e057e1f9a62288a88053788935f5cb030b8b1
-	parent = a5217ce83e42b8d5d98dfedc934038405fe499fe
+	commit = 80dfd61a8807f1a0aa6f688a6e11637d9d1f40e2
+	parent = 65bb0f8fabf06d0554d319d550492e8edbda5c95
 	method = merge
 	cmdver = 0.4.9

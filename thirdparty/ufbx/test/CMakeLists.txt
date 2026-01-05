@@ -34,6 +34,7 @@ add_subdirectory(test)
 add_subdirectory(unit)
 add_subdirectory(roundtrip)
 add_subdirectory(compare_fbx)
+add_subdirectory(deflate_benchmark)
 
 if (MSVC)
     add_compile_options(/W4 /WX)

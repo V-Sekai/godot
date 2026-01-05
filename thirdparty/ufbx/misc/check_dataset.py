@@ -269,7 +269,6 @@ if __name__ == "__main__":
                     "-o", result_path,
                     "-f", format,
                     "--ascii", "fmtlib",
-                    "--deflate", "libdeflate",
                     "--compare",
                 ]
 

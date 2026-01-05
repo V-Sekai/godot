@@ -129,7 +129,6 @@ ufbxw_zlib_abi void ufbxw_zlib_setup(struct ufbxw_deflate *deflate, const ufbxw_
 	deflate->create_cb.fn = &ufbxw_zlib_init;
 	deflate->create_cb.user = (void*)opts;
 	deflate->streaming_input = true;
-	deflate->streaming_output = true;
 }
 
 #if defined(__cplusplus)
