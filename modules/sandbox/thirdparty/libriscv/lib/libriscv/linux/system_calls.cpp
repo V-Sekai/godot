@@ -36,6 +36,10 @@ extern "C" int dup3(int oldfd, int newfd, int flags);
 #endif
 #define LINUX_SA_ONSTACK	0x08000000
 
+#if defined(__APPLE__)
+#include <Security/Security.h>
+#endif
+
 namespace riscv {
 template <int W>
 extern void add_socket_syscalls(Machine<W>&);
@@ -1079,10 +1083,6 @@ static void syscall_brk(Machine<W>& machine)
 	}
 	machine.set_result(new_end);
 }
-
-#if defined(__APPLE__)
-	#include <Security/Security.h>
-#endif
 
 template <int W>
 static void syscall_getrandom(Machine<W>& machine)

@@ -41,10 +41,16 @@
 #include "src/elf/resource_loader_elf.h"
 #include "src/elf/script_elf.h"
 #include "src/elf/script_language_elf.h"
+#include "src/safegdscript/resource_loader_safegdscript.h"
+#include "src/safegdscript/resource_saver_safegdscript.h"
+#include "src/safegdscript/script_language_safegdscript.h"
+#include "src/safegdscript/script_safegdscript.h"
 #include "src/sandbox.h"
 
 static Ref<ResourceFormatLoaderELF> resource_loader_elf;
 static Ref<ResourceFormatSaverCPP> resource_saver_cpp;
+static Ref<ResourceFormatLoaderSafeGDScript> resource_loader_safegdscript;
+static Ref<ResourceFormatSaverSafeGDScript> resource_saver_safegdscript;
 
 void initialize_sandbox_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
@@ -59,10 +65,18 @@ void initialize_sandbox_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(CPPScript);
 		GDREGISTER_CLASS(CPPScriptLanguage);
 
+		// Register SafeGDScript classes
+		GDREGISTER_CLASS(SafeGDScript);
+		GDREGISTER_CLASS(SafeGDScriptLanguage);
+		GDREGISTER_CLASS(ResourceFormatLoaderSafeGDScript);
+		GDREGISTER_CLASS(ResourceFormatSaverSafeGDScript);
+
 		// Register script languages
 		ScriptServer::register_language(memnew(ELFScriptLanguage));
 		CPPScriptLanguage::init_language();
 		ScriptServer::register_language(CPPScriptLanguage::get_singleton());
+		SafeGDScriptLanguage::init_language();
+		ScriptServer::register_language(SafeGDScriptLanguage::get_singleton());
 
 		// Register resource loaders/savers
 		resource_loader_elf.instantiate();
@@ -70,6 +84,12 @@ void initialize_sandbox_module(ModuleInitializationLevel p_level) {
 
 		resource_saver_cpp.instantiate();
 		ResourceSaver::add_resource_format_saver(resource_saver_cpp);
+
+		resource_loader_safegdscript.instantiate();
+		ResourceLoader::add_resource_format_loader(resource_loader_safegdscript);
+
+		resource_saver_safegdscript.instantiate();
+		ResourceSaver::add_resource_format_saver(resource_saver_safegdscript);
 	}
 }
 
@@ -88,6 +108,18 @@ void uninitialize_sandbox_module(ModuleInitializationLevel p_level) {
 
 		// Cleanup script languages
 		CPPScriptLanguage::deinit();
+		SafeGDScriptLanguage::deinit();
+
+		// Unregister resource loaders/savers for SafeGDScript
+		if (resource_loader_safegdscript.is_valid()) {
+			ResourceLoader::remove_resource_format_loader(resource_loader_safegdscript);
+			resource_loader_safegdscript.unref();
+		}
+
+		if (resource_saver_safegdscript.is_valid()) {
+			ResourceSaver::remove_resource_format_saver(resource_saver_safegdscript);
+			resource_saver_safegdscript.unref();
+		}
 
 		// Note: ELFScriptLanguage cleanup will be handled by ScriptServer
 		// when it shuts down, as it was created with memnew()
