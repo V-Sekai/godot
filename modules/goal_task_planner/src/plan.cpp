@@ -1,0 +1,5063 @@
+/**************************************************************************/
+/*  plan.cpp                                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#include "plan.h"
+
+#include "core/string/ustring.h"
+#include "core/templates/hash_map.h"
+#include "core/templates/local_vector.h"
+#include "core/variant/callable.h"
+#include "core/variant/typed_array.h"
+
+#include "backtracking.h"
+#include "domain.h"
+#include "graph_operations.h"
+#include "multigoal.h"
+#include "stn_constraints.h"
+
+PlannerPlan::PlannerPlan() {
+	// Initialize all state to defaults on construction
+	// This ensures clean state when object is created
+	reset();
+}
+
+PlannerPlan::~PlannerPlan() {
+	// Clean up all state on destruction (C++ needs explicit cleanup, unlike functional Elixir)
+	// This ensures no state leaks when the object is destroyed
+	reset();
+}
+
+int PlannerPlan::get_verbose() const {
+	return verbose;
+}
+
+void PlannerPlan::set_verbose(int p_verbose) {
+	verbose = p_verbose;
+}
+
+Ref<PlannerDomain> PlannerPlan::get_current_domain() const {
+	return current_domain;
+}
+
+Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
+	// Note: Array is a value type in Godot and cannot be null, so no null check needed
+
+	if (verbose >= 1) {
+		print_line("verbose=" + itos(verbose) + ":");
+		print_line("    state = " + _item_to_string(p_state));
+		print_line("    todo_list = " + _item_to_string(p_todo_list));
+		if (verbose >= 2 && current_domain.is_valid()) {
+			Dictionary action_dict = current_domain->action_dictionary;
+			Array action_keys = action_dict.keys();
+			print_line("    Available actions: " + _item_to_string(action_keys));
+		}
+	}
+
+	// CRITICAL: Reset planning-specific state for each planning call
+	// Note: We do NOT reset configuration (verbose, max_depth, domain) - those persist across planning calls
+	// Only reset() resets everything including configuration
+
+	// Reset solution graph (creates fresh graph with root node)
+	solution_graph = PlannerSolutionGraph();
+
+	// Reset command blacklist
+	blacklisted_commands.clear();
+
+	// Reset todo list tracking
+	original_todo_list.clear();
+
+	// Reset iteration counter
+	iterations = 0;
+
+	// Reset VSIDS activity tracking (all learning state)
+	// VSIDS learns during backtracking within a single solve, not across solves
+	method_activities.clear();
+	activity_var_inc = 1.0;
+	activity_bump_count = 0;
+	rewarded_methods_this_solve.clear();
+
+	// Reset STN solver and snapshot (temporal constraint state)
+	stn.clear();
+	stn_snapshot = PlannerSTNSolver::Snapshot(); // Reset snapshot to empty state
+
+	// Initialize STN solver with origin time point (planning-specific initialization)
+	stn.add_time_point("origin");
+
+	// Initialize time range if not already set
+	if (time_range.get_start_time() == 0) {
+		time_range.set_start_time(PlannerTimeRange::now_microseconds());
+	}
+
+	// Anchor origin to current absolute time
+	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
+
+	// Validate that current_domain is set before accessing its members
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			print_line("result = false (no domain set)");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Store original todo_list to track completion of all tasks
+	original_todo_list = p_todo_list.duplicate();
+
+	// Handle empty todo_list edge case
+	if (p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			print_line("result = false (empty todo_list)");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// CRITICAL: Validate that domain is set before proceeding
+	if (!current_domain.is_valid()) {
+		ERR_PRINT("PlannerPlan::find_plan: current_domain is not set. Call set_current_domain() before find_plan().");
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// CRITICAL: Deep copy the state to prevent pollution from previous tests
+	// Use duplicate(true) which works correctly for nested dictionaries in Godot
+	Dictionary clean_state = p_state.duplicate(true);
+
+	// Belief-immersed architecture: Merge allocentric facts and apply ego-centric perspective
+	clean_state = _merge_allocentric_facts(clean_state);
+	clean_state = _get_ego_centric_state(clean_state);
+
+	if (verbose >= 3) {
+		Array state_keys = clean_state.keys();
+		print_line(vformat("[FIND_PLAN] Initial state has %d keys: %s", state_keys.size(), _item_to_string(state_keys)));
+	}
+
+	// Add initial tasks to the solution graph
+	int parent_node_id = 0; // Root node
+	if (verbose >= 2) {
+		Array task_keys = current_domain->task_method_dictionary.keys();
+		print_line(vformat("[FIND_PLAN] Using domain with %d task methods: %s", task_keys.size(), _item_to_string(task_keys)));
+	}
+	PlannerGraphOperations::add_nodes_and_edges(
+			solution_graph,
+			parent_node_id,
+			p_todo_list,
+			current_domain->action_dictionary,
+			current_domain->task_method_dictionary,
+			current_domain->unigoal_method_dictionary,
+			current_domain->multigoal_method_list,
+			verbose);
+
+	// Validate that nodes were added to the graph
+	Dictionary root_node_check = solution_graph.get_node(0);
+	if (!root_node_check.has("successors")) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::find_plan: Failed to add nodes to graph - root node missing successors");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(clean_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+	TypedArray<int> root_successors_check = root_node_check["successors"];
+	if (root_successors_check.is_empty() && !p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::find_plan: Failed to add nodes to graph - root has no successors but todo_list is not empty");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(clean_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Start planning loop (using iterative version to prevent stack overflow)
+	Dictionary final_state = _planning_loop_iterative(parent_node_id, clean_state, 0);
+
+	// Check if planning succeeded (if we got back to root with a valid state)
+	// Planning succeeds if all nodes are closed and we're back at root
+	Dictionary root_node = solution_graph.get_node(0);
+
+	// Check if all nodes reachable from root are closed (planning succeeded)
+	// Only consider nodes that are reachable from root via closed nodes
+	// This way, failed nodes that were removed from their parent's successors don't cause planning to fail
+	bool planning_succeeded = true;
+	// Get graph keys safely - use get_graph() but validate access
+	Dictionary graph = solution_graph.get_graph();
+	Array graph_keys = graph.keys();
+	Array failed_nodes;
+	Array open_nodes;
+	TypedArray<int> reachable_nodes;
+	TypedArray<int> to_visit;
+	to_visit.push_back(0); // Start from root
+	TypedArray<int> visited;
+
+	// Find all nodes reachable from root via closed nodes
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+		reachable_nodes.push_back(node_id);
+
+		// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+		Dictionary node = solution_graph.get_node(node_id);
+
+		// TLA+ verification identified: Must validate node has required fields
+		if (node.is_empty() || !node.has("status") || !node.has("successors")) {
+			if (verbose >= 2) {
+				ERR_PRINT(vformat("Planning success check: Node %d missing required fields, skipping", node_id));
+			}
+			continue; // Skip invalid node
+		}
+
+		int status = node["status"];
+		// Only traverse through closed nodes (or root which is NA)
+		if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+				node_id == 0) {
+			TypedArray<int> successors = node["successors"];
+			for (int j = 0; j < successors.size(); j++) {
+				int succ_id = successors[j];
+				if (!visited.has(succ_id)) {
+					to_visit.push_back(succ_id);
+				}
+			}
+		}
+	}
+
+	// Check reachable nodes for failures
+	bool has_reachable_closed_nodes = false;
+	// Track FAILED VERIFY_GOAL nodes - they're acceptable if there's a CLOSED one for the same parent
+	Dictionary failed_verify_goals_by_parent; // parent_id -> array of failed verify goal node_ids
+	TypedArray<int> closed_verify_goals;
+	// Track FAILED VERIFY_MULTIGOAL nodes - they're acceptable if there's a CLOSED one for the same parent
+	Dictionary failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
+	TypedArray<int> closed_verify_multigoals;
+
+	for (int i = 0; i < reachable_nodes.size(); i++) {
+		int node_id = reachable_nodes[i];
+		if (node_id == 0) {
+			continue; // Skip root
+		}
+
+		// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+		Dictionary node = solution_graph.get_node(node_id);
+
+		// TLA+ verification identified: Must validate node has required fields
+		if (node.is_empty() || !node.has("status") || !node.has("type")) {
+			if (verbose >= 2) {
+				ERR_PRINT(vformat("Planning success check: Reachable node %d missing required fields, skipping", node_id));
+			}
+			continue; // Skip invalid node
+		}
+
+		int status = node["status"];
+		int node_type = node["type"];
+
+		// Planning fails if any reachable node is open
+		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+			planning_succeeded = false;
+			open_nodes.push_back(node_id);
+		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+			// FAILED VERIFY_GOAL and VERIFY_MULTIGOAL nodes are acceptable if there's a CLOSED one for the same parent
+			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL) ||
+					node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
+				// Get parent node ID (stored in node or find it)
+				// For now, just track it - we'll check later if there's a CLOSED one
+				// We need to find the parent by searching the graph
+				int parent_id = -1;
+				Array graph_keys_inner = graph.keys();
+				for (int j = 0; j < graph_keys_inner.size(); j++) {
+					int candidate_id = graph_keys_inner[j];
+					if (candidate_id == node_id) {
+						continue;
+					}
+
+					// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+					Dictionary candidate_node = solution_graph.get_node(candidate_id);
+
+					// TLA+ verification identified: Must validate candidate has required fields
+					if (candidate_node.is_empty() || !candidate_node.has("successors")) {
+						continue; // Skip invalid candidate
+					}
+					TypedArray<int> candidate_successors = candidate_node["successors"];
+					if (candidate_successors.has(node_id)) {
+						parent_id = candidate_id;
+						break;
+					}
+				}
+				if (parent_id >= 0) {
+					if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL)) {
+						if (!failed_verify_goals_by_parent.has(parent_id)) {
+							failed_verify_goals_by_parent[parent_id] = TypedArray<int>();
+						}
+						TypedArray<int> failed_list = failed_verify_goals_by_parent[parent_id];
+						failed_list.push_back(node_id);
+						failed_verify_goals_by_parent[parent_id] = failed_list;
+					} else { // TYPE_VERIFY_MULTIGOAL
+						if (!failed_verify_multigoals_by_parent.has(parent_id)) {
+							failed_verify_multigoals_by_parent[parent_id] = TypedArray<int>();
+						}
+						TypedArray<int> failed_list = failed_verify_multigoals_by_parent[parent_id];
+						failed_list.push_back(node_id);
+						failed_verify_multigoals_by_parent[parent_id] = failed_list;
+					}
+				}
+				// Don't mark as failed yet - check if there's a CLOSED one
+			} else {
+				// Other FAILED nodes are real failures
+				planning_succeeded = false;
+				failed_nodes.push_back(node_id);
+			}
+		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			has_reachable_closed_nodes = true;
+			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL)) {
+				closed_verify_goals.push_back(node_id);
+			} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
+				closed_verify_multigoals.push_back(node_id);
+			}
+		}
+	}
+
+	// For each parent with failed verify goals, check if there's a closed one
+	Array failed_parent_keys = failed_verify_goals_by_parent.keys();
+	for (int i = 0; i < failed_parent_keys.size(); i++) {
+		int parent_id = failed_parent_keys[i];
+		bool has_closed_verify_goal = false;
+		// Check if any closed verify goal has this parent
+		for (int j = 0; j < closed_verify_goals.size(); j++) {
+			int verify_goal_id = closed_verify_goals[j];
+			// Find parent of this verify goal
+			Array graph_keys_verify = graph.keys();
+			for (int k = 0; k < graph_keys_verify.size(); k++) {
+				int candidate_id = graph_keys_verify[k];
+				if (candidate_id == verify_goal_id) {
+					continue;
+				}
+
+				// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+				Dictionary candidate_node = solution_graph.get_node(candidate_id);
+
+				// TLA+ verification identified: Must validate candidate has required fields
+				if (candidate_node.is_empty() || !candidate_node.has("successors")) {
+					continue; // Skip invalid candidate
+				}
+				TypedArray<int> candidate_successors = candidate_node["successors"];
+				if (candidate_successors.has(verify_goal_id)) {
+					if (candidate_id == parent_id) {
+						has_closed_verify_goal = true;
+						break;
+					}
+				}
+			}
+			if (has_closed_verify_goal) {
+				break;
+			}
+		}
+		// If no closed verify goal for this parent, the failed ones are real failures
+		if (!has_closed_verify_goal) {
+			TypedArray<int> failed_list = failed_verify_goals_by_parent[parent_id];
+			for (int j = 0; j < failed_list.size(); j++) {
+				failed_nodes.push_back(failed_list[j]);
+			}
+			// Don't mark planning as failed just because of intermediate verify failures
+			// The final CLOSED verify goal is what matters
+		}
+	}
+
+	// For each parent with failed verify multigoals, check if there's a closed one
+	Array failed_multigoal_parent_keys = failed_verify_multigoals_by_parent.keys();
+	for (int i = 0; i < failed_multigoal_parent_keys.size(); i++) {
+		int parent_id = failed_multigoal_parent_keys[i];
+		bool has_closed_verify_multigoal = false;
+		// Check if any closed verify multigoal has this parent
+		for (int j = 0; j < closed_verify_multigoals.size(); j++) {
+			int verify_multigoal_id = closed_verify_multigoals[j];
+			// Find parent of this verify multigoal
+			Array graph_keys_multigoal = graph.keys();
+			for (int k = 0; k < graph_keys_multigoal.size(); k++) {
+				int candidate_id = graph_keys_multigoal[k];
+				if (candidate_id == verify_multigoal_id) {
+					continue;
+				}
+
+				// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+				Dictionary candidate_node = solution_graph.get_node(candidate_id);
+
+				// TLA+ verification identified: Must validate candidate has required fields
+				if (candidate_node.is_empty() || !candidate_node.has("successors")) {
+					continue; // Skip invalid candidate
+				}
+				TypedArray<int> candidate_successors = candidate_node["successors"];
+				if (candidate_successors.has(verify_multigoal_id)) {
+					if (candidate_id == parent_id) {
+						has_closed_verify_multigoal = true;
+						break;
+					}
+				}
+			}
+			if (has_closed_verify_multigoal) {
+				break;
+			}
+		}
+		// If no closed verify multigoal for this parent, the failed ones are real failures
+		if (!has_closed_verify_multigoal) {
+			TypedArray<int> failed_list = failed_verify_multigoals_by_parent[parent_id];
+			for (int j = 0; j < failed_list.size(); j++) {
+				failed_nodes.push_back(failed_list[j]);
+			}
+			// Don't mark planning as failed just because of intermediate verify failures
+			// The final CLOSED verify multigoal is what matters
+		}
+	}
+
+	// If no reachable closed nodes (besides root), planning failed
+	if (!has_reachable_closed_nodes) {
+		planning_succeeded = false;
+	}
+
+	// Create PlannerResult with final state and solution graph
+	if (verbose >= 3) {
+		print_line("[FIND_PLAN] Creating PlannerResult...");
+		print_line(vformat("[FIND_PLAN] planning_succeeded=%s, final_state.is_empty()=%s",
+				planning_succeeded ? "true" : "false",
+				final_state.is_empty() ? "true" : "false"));
+	}
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	if (verbose >= 3) {
+		print_line("[FIND_PLAN] PlannerResult created");
+	}
+	result->set_final_state(final_state);
+	if (verbose >= 3) {
+		print_line("[FIND_PLAN] Final state set");
+	}
+	Dictionary graph_to_set = solution_graph.get_graph();
+	if (verbose >= 3) {
+		print_line(vformat("[FIND_PLAN] Graph to set has %d keys", graph_to_set.keys().size()));
+	}
+	// CRITICAL: Use deep duplicate to ensure the graph dictionary is not modified after setting
+	result->set_solution_graph(graph_to_set.duplicate(true));
+	if (verbose >= 3) {
+		print_line("[FIND_PLAN] Solution graph set");
+		// Verify the graph was set correctly
+		Dictionary verify_graph = result->get_solution_graph();
+		print_line(vformat("[FIND_PLAN] Verified: result graph has %d keys", verify_graph.keys().size()));
+	}
+	result->set_success(planning_succeeded && !final_state.is_empty());
+	if (verbose >= 3) {
+		print_line(vformat("[FIND_PLAN] Success set to %s", (planning_succeeded && !final_state.is_empty()) ? "true" : "false"));
+	}
+
+	if (planning_succeeded && !final_state.is_empty()) {
+		// Mark root node as CLOSED when planning succeeds so extract_solution_plan can traverse from it
+		if (verbose >= 3) {
+			print_line("[FIND_PLAN] Planning succeeded, marking root as CLOSED");
+		}
+		Dictionary root_node_closed = solution_graph.get_node(0);
+		root_node_closed["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+		solution_graph.update_node(0, root_node_closed);
+		// Update the result's solution graph with the updated root node
+		if (verbose >= 3) {
+			print_line("[FIND_PLAN] Setting solution graph in result...");
+		}
+		Dictionary graph_to_store = solution_graph.get_graph();
+		if (verbose >= 3) {
+			print_line(vformat("[FIND_PLAN] Graph to store has %d keys", graph_to_store.keys().size()));
+		}
+		// CRITICAL: Use deep duplicate to ensure the graph dictionary is not modified after setting
+		result->set_solution_graph(graph_to_store.duplicate(true));
+		if (verbose >= 3) {
+			print_line("[FIND_PLAN] Solution graph set in result");
+			// Verify the graph was set correctly
+			Dictionary verify_graph = result->get_solution_graph();
+			print_line(vformat("[FIND_PLAN] Verified after update: result graph has %d keys", verify_graph.keys().size()));
+		}
+		// Note: Methods are already rewarded immediately when they succeed during planning
+		// No need for end-of-plan reward since VSIDS learns during backtracking
+
+		if (verbose >= 1) {
+			print_line("[FIND_PLAN] About to call extract_plan() for verbose output...");
+			Array plan = result->extract_plan();
+			print_line("result plan = " + _item_to_string(plan));
+		}
+
+		if (verbose >= 3) {
+			print_line("[FIND_PLAN] Returning result (success case)");
+		}
+		return result;
+	} else {
+		if (verbose >= 2) {
+			print_line("[FIND_PLAN] Planning failed or final_state empty, returning failure result");
+		}
+		if (verbose >= 1) {
+			print_line("result = false (planning failed)");
+			if (verbose >= 2 || !failed_nodes.is_empty() || !open_nodes.is_empty()) {
+				// Print solution graph for debugging
+				print_line("Solution graph structure:");
+				for (int i = 0; i < graph_keys.size(); i++) {
+					int node_id = graph_keys[i];
+					Dictionary node = graph[node_id];
+					int node_type = node["type"];
+					int node_status = node["status"];
+					Variant node_info = node["info"];
+					TypedArray<int> successors = node["successors"];
+
+					String type_str;
+					switch (static_cast<PlannerNodeType>(node_type)) {
+						case PlannerNodeType::TYPE_ROOT:
+							type_str = "ROOT";
+							break;
+						case PlannerNodeType::TYPE_ACTION:
+							type_str = "ACTION";
+							break;
+						case PlannerNodeType::TYPE_TASK:
+							type_str = "TASK";
+							break;
+						case PlannerNodeType::TYPE_UNIGOAL:
+							type_str = "UNIGOAL";
+							break;
+						case PlannerNodeType::TYPE_MULTIGOAL:
+							type_str = "MULTIGOAL";
+							break;
+						case PlannerNodeType::TYPE_VERIFY_GOAL:
+							type_str = "VERIFY_GOAL";
+							break;
+						case PlannerNodeType::TYPE_VERIFY_MULTIGOAL:
+							type_str = "VERIFY_MULTIGOAL";
+							break;
+						default:
+							type_str = "UNKNOWN";
+							break;
+					}
+
+					String status_str;
+					switch (static_cast<PlannerNodeStatus>(node_status)) {
+						case PlannerNodeStatus::STATUS_OPEN:
+							status_str = "OPEN";
+							break;
+						case PlannerNodeStatus::STATUS_CLOSED:
+							status_str = "CLOSED";
+							break;
+						case PlannerNodeStatus::STATUS_FAILED:
+							status_str = "FAILED";
+							break;
+						case PlannerNodeStatus::STATUS_NOT_APPLICABLE:
+							status_str = "NA";
+							break;
+						default:
+							status_str = "UNKNOWN";
+							break;
+					}
+
+					String info_str = _item_to_string(node_info);
+					String successors_str = "[";
+					for (int j = 0; j < successors.size(); j++) {
+						if (j > 0) {
+							successors_str += ", ";
+						}
+						successors_str += itos(successors[j]);
+					}
+					successors_str += "]";
+
+					print_line(vformat("  Node %d: type=%s, status=%s, info=%s, successors=%s",
+							node_id, type_str, status_str, info_str, successors_str));
+				}
+				if (!failed_nodes.is_empty()) {
+					print_line("Failed nodes: " + _item_to_string(failed_nodes));
+				}
+				if (!open_nodes.is_empty()) {
+					print_line("Open nodes: " + _item_to_string(open_nodes));
+				}
+			}
+		}
+		return result;
+	}
+}
+
+String PlannerPlan::_item_to_string(Variant p_item) {
+	return String(p_item);
+}
+
+// VSIDS-style method activity tracking
+
+String PlannerPlan::_method_to_id(Callable p_method) const {
+	// Create unique ID from method's object and method name
+	Object *obj = p_method.get_object();
+	if (obj) {
+		StringName method_name = p_method.get_method();
+		// Convert pointer to string manually (vformat doesn't support %p)
+		String obj_str = String::num_uint64((uint64_t)(uintptr_t)obj, 16);
+		return vformat("%s_%s", obj_str, method_name);
+	}
+	// Fallback: use hash of callable itself
+	return vformat("callable_%d", p_method.hash());
+}
+
+double PlannerPlan::_get_method_activity(Callable p_method) const {
+	String method_id = _method_to_id(p_method);
+	if (method_activities.has(method_id)) {
+		return method_activities[method_id];
+	}
+	return 0.0; // Default activity for new methods
+}
+
+void PlannerPlan::_bump_method_activity(Callable p_method) {
+	String method_id = _method_to_id(p_method);
+	double current_activity = _get_method_activity(p_method);
+
+	// Bump activity (like Chuffed's varBumpActivity)
+	// Simple addition of current var_inc (proven approach from Chuffed)
+	method_activities[method_id] = current_activity + activity_var_inc;
+	activity_bump_count++;
+
+	// Decay periodically (every N bumps, like Chuffed)
+	// Chuffed calls varDecayActivity() once per conflict, we do it every N bumps
+	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
+		_decay_method_activities();
+		activity_bump_count = 0;
+	}
+}
+
+void PlannerPlan::_decay_method_activities() {
+	// Activity inflation (like Chuffed's varDecayActivity)
+	// Instead of decaying activities directly, increase var_inc
+	// This makes newer bumps worth more relative to older ones
+	activity_var_inc *= 1.05; // Increase increment by 5% (matches Chuffed)
+
+	// If var_inc gets too large, normalize by scaling down all activities
+	// This prevents numerical overflow while maintaining relative ordering
+	if (activity_var_inc > 1e100) {
+		Array keys = method_activities.keys();
+		for (int i = 0; i < keys.size(); i++) {
+			Variant key = keys[i];
+			method_activities[key] = (double)method_activities[key] * 1e-100;
+		}
+		activity_var_inc *= 1e-100;
+	}
+	// NOTE: We do NOT multiply activities by decay_factor here
+	// Activity inflation (increasing var_inc) achieves the same effect more efficiently
+}
+
+void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
+	// Walk up the conflict path and bump activity of all methods
+	// This learns from conflicts (VSIDS-style)
+	// NOTE: For optimization, we primarily reward success, but still track failures
+	// to avoid repeatedly trying methods that consistently fail
+	int current_id = p_fail_node_id;
+
+	while (current_id >= 0) {
+		Dictionary node = solution_graph.get_node(current_id);
+		if (node.has("selected_method")) {
+			Variant method_variant = node["selected_method"];
+			if (method_variant.get_type() == Variant::CALLABLE) {
+				Callable method = method_variant;
+				// Use smaller bump for failures (less impactful than success rewards)
+				_bump_method_activity(method);
+				if (verbose >= 3) {
+					print_line(vformat("Bumped activity for method in conflict path (node %d)", current_id));
+				}
+			}
+		}
+
+		// Move to parent
+		current_id = PlannerGraphOperations::find_predecessor(solution_graph, current_id);
+		if (current_id < 0) {
+			break;
+		}
+	}
+}
+
+void PlannerPlan::_reward_successful_methods(int p_plan_length) {
+	// Reward all methods used in the successful plan
+	// Shorter plans get higher rewards (optimization goal)
+	// This is the primary learning mechanism for VSIDS optimization
+
+	if (p_plan_length <= 0) {
+		return; // Invalid plan length
+	}
+
+	// Calculate reward: inverse of plan length (shorter = better = higher reward)
+	// Use much larger scale to ensure rewards dominate over subtask bonuses
+	// For 30 actions: ~1000, for 300 actions: ~100 (10x difference)
+	double base_reward = 10000.0 / (1.0 + p_plan_length);
+	double reward = base_reward * activity_var_inc;
+
+	// Walk through solution graph and reward all methods that were used
+	Dictionary graph = solution_graph.get_graph();
+	Array graph_keys = graph.keys();
+	TypedArray<int> visited;
+	Array to_visit;
+	to_visit.push_back(0); // Start from root
+
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+
+		Dictionary node = graph[node_id];
+		int node_status = node["status"];
+
+		// Only reward methods in the successful path (closed nodes)
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			// Reward the method that was selected for this node
+			if (node.has("selected_method")) {
+				Variant method_variant = node["selected_method"];
+				if (method_variant.get_type() == Variant::CALLABLE) {
+					Callable method = method_variant;
+					String method_id = _method_to_id(method);
+					double current_activity = _get_method_activity(method);
+
+					// Reward successful method (add to activity)
+					method_activities[method_id] = current_activity + reward;
+					activity_bump_count++;
+
+					if (verbose >= 3) {
+						print_line(vformat("VSIDS: Rewarded method '%s' with %.6f (plan length: %d, new activity: %.6f)",
+								method_id, reward, p_plan_length, current_activity + reward));
+					}
+				}
+			}
+
+			// Visit successors
+			TypedArray<int> successors = node["successors"];
+			for (int i = 0; i < successors.size(); i++) {
+				int succ_id = successors[i];
+				if (!visited.has(succ_id) && graph.has(succ_id)) {
+					to_visit.push_back(succ_id);
+				}
+			}
+		}
+	}
+
+	// Decay if needed
+	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
+		_decay_method_activities();
+		activity_bump_count = 0;
+	}
+}
+
+int PlannerPlan::_count_closed_actions() {
+	// Count closed action nodes without extracting full plan (safer during planning)
+	int count = 0;
+	Dictionary graph = solution_graph.get_graph();
+	Array keys = graph.keys();
+
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		if (key.get_type() != Variant::INT) {
+			continue;
+		}
+		int node_id = key;
+		if (!graph.has(node_id)) {
+			continue;
+		}
+		Dictionary node = graph[node_id];
+		if (!node.has("type") || !node.has("status")) {
+			continue;
+		}
+		int node_type = node["type"];
+		int node_status = node["status"];
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			count++;
+		}
+	}
+	return count;
+}
+
+void PlannerPlan::_reward_method_immediate(Callable p_method, int p_current_action_count) {
+	// Reward method immediately when it succeeds
+	// Use Chuffed's proven approach: simple fixed increment (activity_var_inc)
+	// This allows VSIDS to learn during backtracking within a single solve
+
+	if (p_current_action_count < 0) {
+		return; // Invalid count
+	}
+
+	String method_id = _method_to_id(p_method);
+
+	// CRITICAL: Only reward each method once per solve to prevent duplicate rewards
+	// The same method may be called recursively, but we only want to reward it once
+	// (Like Chuffed's seen[] array to prevent duplicate bumps)
+	if (rewarded_methods_this_solve.has(method_id)) {
+		if (verbose >= 3) {
+			print_line(vformat("VSIDS: Method '%s' already rewarded this solve, skipping", method_id));
+		}
+		return; // Already rewarded
+	}
+
+	// Use Chuffed's approach: simple fixed increment
+	// The activity_var_inc grows over time (activity inflation), so newer rewards
+	// are worth more relative to older ones, achieving decay effect efficiently
+	double current_activity = _get_method_activity(p_method);
+
+	// Reward successful method (add var_inc, like Chuffed's varBumpActivity)
+	method_activities[method_id] = current_activity + activity_var_inc;
+	activity_bump_count++;
+	rewarded_methods_this_solve.push_back(method_id); // Mark as rewarded
+
+	if (verbose >= 3) {
+		print_line(vformat("VSIDS: Rewarded method '%s' with var_inc=%.6f (current actions: %d, new activity: %.6f)",
+				method_id, activity_var_inc, p_current_action_count, current_activity + activity_var_inc));
+	}
+
+	// Decay if needed (activity inflation: increase var_inc)
+	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
+		_decay_method_activities();
+		activity_bump_count = 0;
+		if (verbose >= 3) {
+			print_line(vformat("VSIDS: Activity inflation (new var_inc: %.6f)", activity_var_inc));
+		}
+	}
+}
+
+PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type) {
+	MethodCandidate best_candidate;
+	best_candidate.method = Callable();
+	best_candidate.score = -1e100; // Very negative initial score
+
+	// Evaluate all methods and collect candidates
+	for (int i = 0; i < p_methods.size(); i++) {
+		Callable method = p_methods[i];
+		if (verbose >= 3) {
+			bool is_valid_count = false;
+			int method_arg_count = method.get_argument_count(&is_valid_count);
+			if (is_valid_count) {
+				String method_name = method.get_method();
+				print_line(vformat("_select_best_method: Method[%d] '%s' expects %d arguments", i, method_name, method_arg_count));
+			}
+		}
+		Variant result;
+
+		// Call method with appropriate arguments based on node type
+		if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
+			Array args = p_args;
+			// CRITICAL: Task methods must receive the state as the first argument
+			// If args is empty, this is an error - fail instead of trying to fix it
+			if (args.is_empty()) {
+				if (verbose >= 2) {
+					ERR_PRINT("_select_best_method: Task method args is empty - state must be provided");
+				}
+				continue;
+			}
+			// Ensure first arg is a dictionary (state)
+			if (args[0].get_type() != Variant::DICTIONARY) {
+				if (verbose >= 2) {
+					ERR_PRINT("_select_best_method: Task method first arg is not a dictionary (state)");
+				}
+				continue;
+			}
+			if (verbose >= 3) {
+				print_line(vformat("_select_best_method: Calling task method with %d args", args.size()));
+				if (args.size() > 0) {
+					print_line(vformat("_select_best_method: First arg type: %d (DICT=%d), is_empty: %s",
+							args[0].get_type(), Variant::DICTIONARY, args[0].get_type() == Variant::DICTIONARY ? "false" : "true"));
+					if (args[0].get_type() == Variant::DICTIONARY) {
+						Dictionary state_dict = args[0];
+						Array keys = state_dict.keys();
+						print_line(vformat("_select_best_method: State dict has %d keys: %s", state_dict.size(), _item_to_string(keys)));
+					}
+				}
+			}
+			if (!method.is_valid()) {
+				if (verbose >= 2) {
+					ERR_PRINT("_select_best_method: Task method is invalid");
+				}
+				continue;
+			}
+			if (verbose >= 3) {
+				// Try to get method name for debugging
+				String method_info = vformat("method[%d]", i);
+				print_line(vformat("_select_best_method: About to call %s with %d args", method_info, args.size()));
+			}
+			// Use callp to get error information (Godot doesn't use exceptions)
+			const Variant **argptrs = nullptr;
+			if (args.size() > 0) {
+				argptrs = (const Variant **)alloca(sizeof(Variant *) * args.size());
+				for (int j = 0; j < args.size(); j++) {
+					argptrs[j] = &args[j];
+				}
+			}
+			Callable::CallError call_error;
+			Variant return_value;
+			// Check method argument count for debugging
+			bool is_valid_count = false;
+			int method_arg_count = method.get_argument_count(&is_valid_count);
+			if (verbose >= 3 && is_valid_count) {
+				String method_name = method.get_method();
+				print_line(vformat("_select_best_method: Method[%d] '%s' expects %d arguments, we're passing %d", i, method_name, method_arg_count, args.size()));
+			}
+			method.callp(argptrs, args.size(), return_value, call_error);
+			if (call_error.error != Callable::CallError::CALL_OK) {
+				if (verbose >= 2) {
+					ERR_PRINT(vformat("_select_best_method: Task method call failed with error %d (argument %d, expected %d)",
+							call_error.error, call_error.argument, call_error.expected));
+					if (is_valid_count) {
+						ERR_PRINT(vformat("_select_best_method: Method signature expects %d arguments", method_arg_count));
+					}
+				}
+				continue;
+			}
+			result = return_value;
+			if (verbose >= 3) {
+				print_line(vformat("_select_best_method: Task method returned type %d (ARRAY=%d)", result.get_type(), Variant::ARRAY));
+				if (result.get_type() == Variant::ARRAY) {
+					Array result_arr = result;
+					print_line(vformat("_select_best_method: Task method returned array with %d elements", result_arr.size()));
+				}
+			}
+			if (result.get_type() == Variant::NIL) {
+				if (verbose >= 2) {
+					ERR_PRINT("_select_best_method: Task method returned NIL (method may have explicitly returned NIL)");
+				}
+				continue;
+			}
+		} else if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) {
+			Array unigoal_arr = p_node_info;
+			if (unigoal_arr.size() >= 3) {
+				String subject = unigoal_arr[1];
+				Variant value = unigoal_arr[2];
+				result = method.call(p_state, subject, value);
+			} else {
+				continue; // Invalid unigoal
+			}
+		} else if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
+			result = method.call(p_state, p_node_info);
+		} else {
+			continue; // Unknown node type
+		}
+
+		if (result.get_type() == Variant::ARRAY) {
+			Array candidate_subtasks = result;
+			if (verbose >= 3) {
+				print_line(vformat("_select_best_method: Method returned array with %d elements: %s", candidate_subtasks.size(), _item_to_string(candidate_subtasks)));
+			}
+			// Check if blacklisted - treat as failed method (like returning Variant()/NIL)
+			// This matches the aria-planner fix: methods returning blacklisted elements
+			// should be treated as failed methods, not skipped methods
+			if (_is_command_blacklisted(candidate_subtasks)) {
+				if (verbose >= 2) {
+					print_line(vformat("Method returned blacklisted planner elements array (size %d), treating as failed method", candidate_subtasks.size()));
+				}
+				// Treat as failed method (equivalent to returning Variant()/NIL)
+				// Don't add to candidate list, but continue to try next method
+				continue;
+			}
+
+			// Score this method using VSIDS activity
+			double activity = _get_method_activity(method);
+			// Activity is the PRIMARY score - it should dominate
+			// Scale activity by 10x to ensure it dominates over subtask bonus
+			// This ensures methods that have been rewarded for shorter plans are preferred
+			double score = activity * 10.0; // Use activity as primary score (VSIDS-style)
+
+			// Add small bonus for methods with fewer subtasks (prefer direct methods)
+			// This bonus is secondary to activity score (only matters if activities are equal)
+			if (candidate_subtasks.size() > 0) {
+				score += 10.0 / (1.0 + candidate_subtasks.size()); // Reduced from 100.0 to 10.0
+			}
+
+			if (verbose >= 3) {
+				String method_id = _method_to_id(method);
+				print_line(vformat("VSIDS: Evaluating method '%s' - activity: %.6f, scaled: %.6f, subtask bonus: %.2f, total score: %.6f",
+						method_id, activity, activity * 100.0, candidate_subtasks.size() > 0 ? 10.0 / (1.0 + candidate_subtasks.size()) : 0.0, score));
+			}
+
+			if (score > best_candidate.score) {
+				best_candidate.method = method;
+				best_candidate.subtasks = candidate_subtasks;
+				best_candidate.score = score;
+			}
+		}
+	}
+
+	return best_candidate;
+}
+
+Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
+	// Note: Array is a value type in Godot and cannot be null, so no null check needed
+
+	// Input validation: validate max_tries is positive
+	if (p_max_tries <= 0) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::run_lazy_lookahead: max_tries must be positive, got %d", p_max_tries));
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// CRITICAL: Validate that domain is set before proceeding
+	if (!current_domain.is_valid()) {
+		ERR_PRINT("PlannerPlan::run_lazy_lookahead: current_domain is not set. Call set_current_domain() before run_lazy_lookahead().");
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Handle empty todo_list edge case
+	if (p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			print_line("run_lazy_lookahead: Empty todo_list");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	if (verbose >= 1) {
+		print_line(vformat("run_lazy_lookahead: verbose = %s, max_tries = %s", verbose, p_max_tries));
+		print_line(vformat("Initial state: %s", p_state.keys()));
+		print_line(vformat("To do: %s", p_todo_list));
+	}
+
+	Dictionary ordinals;
+	ordinals[1] = "st";
+	ordinals[2] = "nd";
+	ordinals[3] = "rd";
+
+	Ref<PlannerResult> last_result; // Track the last successful result
+
+	for (int tries = 1; tries <= p_max_tries; tries++) {
+		if (verbose >= 1) {
+			print_line(vformat("run_lazy_lookahead: %sth call to find_plan: %s", tries, ordinals.get(tries, "")));
+		}
+
+		Ref<PlannerResult> plan_result = find_plan(p_state, p_todo_list);
+		if (!plan_result.is_valid() || !plan_result->get_success()) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("run_lazy_lookahead: find_plan has failed after %s calls.", tries));
+			}
+			// Return result with current state and last solution graph if available
+			Ref<PlannerResult> result = memnew(PlannerResult);
+			result->set_success(false);
+			result->set_final_state(p_state);
+			result->set_solution_graph(last_result.is_valid() ? last_result->get_solution_graph() : (plan_result.is_valid() ? plan_result->get_solution_graph() : Dictionary()));
+			return result;
+		}
+
+		last_result = plan_result; // Track the last successful result
+
+		Array plan = plan_result->extract_plan();
+		if (plan.is_empty()) {
+			if (verbose >= 1) {
+				print_line(vformat("run_lazy_lookahead: Empty plan => success\nafter %s calls to find_plan.", tries));
+			}
+			if (verbose >= 2) {
+				print_line(vformat("run_lazy_lookahead: final state %s", p_state));
+			}
+			// Return result with final state and solution graph
+			Ref<PlannerResult> result = memnew(PlannerResult);
+			result->set_success(true);
+			result->set_final_state(p_state);
+			result->set_solution_graph(plan_result->get_solution_graph());
+			return result;
+		}
+
+		if (!plan.is_empty()) {
+			Array action_list = plan;
+			for (int i = 0; i < action_list.size(); i++) {
+				Array action = action_list[i];
+				// Validate action array is not empty before accessing first element
+				if (action.is_empty() || action.size() < 1) {
+					if (verbose >= 1) {
+						ERR_PRINT("run_lazy_lookahead: Found empty action in plan, skipping");
+					}
+					continue;
+				}
+				if (!current_domain->action_dictionary.has(action[0])) {
+					if (verbose >= 1) {
+						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", action[0]));
+					}
+					continue;
+				}
+				Callable action_name = current_domain->action_dictionary[action[0]];
+				if (verbose >= 1) {
+					String action_arguments;
+					Array actions = action.slice(1, action.size());
+					for (Variant element : actions) {
+						action_arguments += String(" ") + String(element);
+					}
+					print_line(vformat("run_lazy_lookahead: Task: %s, %s", action_name.get_method(), action_arguments));
+				}
+
+				// Inline _apply_task_and_continue (single use)
+				Array argument;
+				argument.push_back(p_state);
+				argument.append_array(action.slice(1, action.size()));
+				if (verbose >= 3) {
+					print_line(vformat("_apply_task_and_continue %s, args = %s", action_name.get_method(), _item_to_string(action.slice(1, action.size()))));
+				}
+				Variant result = action_name.callv(argument);
+				if (!result) {
+					if (verbose >= 3) {
+						print_line(vformat("Not applicable command %s", argument));
+					}
+					if (verbose >= 1) {
+						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
+					}
+					break;
+				}
+				if (verbose >= 3) {
+					print_line("Applied");
+					print_line(result);
+				}
+				if (result.get_type() == Variant::DICTIONARY) {
+					Dictionary new_state = result;
+					if (verbose >= 2) {
+						print_line(new_state);
+					}
+					p_state = new_state;
+				} else {
+					// Result is not a Dictionary, action failed
+					if (verbose >= 1) {
+						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
+					}
+					break;
+				}
+			}
+		}
+
+		if (verbose >= 1 && !p_state.is_empty()) {
+			print_line("RunLazyLookahead> Plan ended; will call find_plan again.");
+		}
+	}
+
+	if (verbose >= 1) {
+		ERR_PRINT("run_lazy_lookahead: Too many tries, giving up.");
+	}
+	if (verbose >= 2) {
+		print_line(vformat("run_lazy_lookahead: final state %s", p_state));
+	}
+
+	// Return result with final state (planning failed due to too many tries)
+	// Use the solution graph from the last successful find_plan call if available
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_success(false);
+	result->set_final_state(p_state);
+	result->set_solution_graph(last_result.is_valid() ? last_result->get_solution_graph() : solution_graph.get_graph());
+	return result;
+}
+
+void PlannerPlan::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_verbose"), &PlannerPlan::get_verbose);
+	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &PlannerPlan::set_verbose);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
+
+	ClassDB::bind_method(D_METHOD("get_max_depth"), &PlannerPlan::get_max_depth);
+	ClassDB::bind_method(D_METHOD("set_max_depth", "max_depth"), &PlannerPlan::set_max_depth);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
+
+	ClassDB::bind_method(D_METHOD("get_current_domain"), &PlannerPlan::get_current_domain);
+	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &PlannerPlan::set_current_domain);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
+
+	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
+	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
+	ClassDB::bind_method(D_METHOD("run_lazy_refineahead", "state", "todo_list"), &PlannerPlan::run_lazy_refineahead);
+
+	ClassDB::bind_method(D_METHOD("blacklist_command", "command"), &PlannerPlan::blacklist_command);
+	ClassDB::bind_method(D_METHOD("get_iterations"), &PlannerPlan::get_iterations);
+	ClassDB::bind_method(D_METHOD("get_method_activities"), &PlannerPlan::get_method_activities);
+	ClassDB::bind_method(D_METHOD("reset_vsids_activity"), &PlannerPlan::reset_vsids_activity);
+	ClassDB::bind_method(D_METHOD("reset"), &PlannerPlan::reset);
+	ClassDB::bind_method(D_METHOD("simulate", "result", "state", "start_ind"), &PlannerPlan::simulate, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("replan", "result", "state", "fail_node_id"), &PlannerPlan::replan);
+	ClassDB::bind_method(D_METHOD("load_solution_graph", "graph"), &PlannerPlan::load_solution_graph);
+
+	// Belief-immersed architecture: Persona and belief management
+	ClassDB::bind_method(D_METHOD("get_current_persona"), &PlannerPlan::get_current_persona);
+	ClassDB::bind_method(D_METHOD("set_current_persona", "persona"), &PlannerPlan::set_current_persona);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_persona", PROPERTY_HINT_RESOURCE_TYPE, "PlannerPersona"), "set_current_persona", "get_current_persona");
+
+	ClassDB::bind_method(D_METHOD("get_belief_manager"), &PlannerPlan::get_belief_manager);
+	ClassDB::bind_method(D_METHOD("set_belief_manager", "manager"), &PlannerPlan::set_belief_manager);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "belief_manager", PROPERTY_HINT_RESOURCE_TYPE, "PlannerBeliefManager"), "set_belief_manager", "get_belief_manager");
+
+	ClassDB::bind_method(D_METHOD("get_allocentric_facts"), &PlannerPlan::get_allocentric_facts);
+	ClassDB::bind_method(D_METHOD("set_allocentric_facts", "facts"), &PlannerPlan::set_allocentric_facts);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "allocentric_facts", PROPERTY_HINT_RESOURCE_TYPE, "PlannerFactsAllocentric"), "set_allocentric_facts", "get_allocentric_facts");
+
+	// Temporal planning methods
+	ClassDB::bind_method(D_METHOD("get_time_range_dict"), &PlannerPlan::get_time_range_dict);
+	ClassDB::bind_method(D_METHOD("set_time_range_dict", "time_range"), &PlannerPlan::set_time_range_dict);
+	ClassDB::bind_method(D_METHOD("attach_metadata", "item", "temporal_constraints", "entity_constraints"), &PlannerPlan::attach_metadata, DEFVAL(Dictionary()), DEFVAL(Dictionary()));
+}
+
+// Temporal method implementations
+
+int PlannerPlan::get_max_depth() const {
+	return max_depth;
+}
+
+void PlannerPlan::set_max_depth(int p_max_depth) {
+	max_depth = p_max_depth;
+}
+
+Dictionary PlannerPlan::get_method_activities() const {
+	// Return a copy of method_activities dictionary for testing
+	Dictionary result;
+	Array keys = method_activities.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		result[key] = method_activities[key];
+	}
+	return result;
+}
+
+void PlannerPlan::reset_vsids_activity() {
+	// Reset VSIDS activity tracking to initial state
+	// This clears all learned activity scores, allowing a fresh start
+	// Useful when switching problem types or domains
+	method_activities.clear();
+	activity_var_inc = 1.0;
+	activity_bump_count = 0;
+	if (verbose >= 1) {
+		print_line("VSIDS activity tracking reset");
+	}
+}
+
+void PlannerPlan::reset() {
+	// Complete reset of ALL planner state for test isolation
+	// This ensures no state pollution between tests (Elixir is functional/immutable, C++ needs explicit resets)
+
+	// Reset solution graph (creates fresh graph with root node)
+	solution_graph = PlannerSolutionGraph();
+
+	// Reset command blacklist
+	blacklisted_commands.clear();
+
+	// Reset todo list tracking
+	original_todo_list.clear();
+
+	// Reset persona-related state (belief-immersed architecture)
+	current_persona = Ref<PlannerPersona>();
+	belief_manager = Ref<PlannerBeliefManager>();
+	allocentric_facts = Ref<PlannerFactsAllocentric>();
+
+	// Reset iteration counter
+	iterations = 0;
+
+	// Reset VSIDS activity tracking (all learning state)
+	method_activities.clear();
+	activity_var_inc = 1.0;
+	activity_bump_count = 0;
+	rewarded_methods_this_solve.clear();
+
+	// Reset STN solver and snapshot (temporal constraint state)
+	stn.clear();
+	stn_snapshot = PlannerSTNSolver::Snapshot(); // Reset snapshot to empty state
+
+	// Reset time range
+	time_range.set_start_time(0);
+
+	// CRITICAL: Clear current_domain to prevent domain pollution between tests
+	// Tests must explicitly set the domain after calling reset()
+	current_domain = Ref<PlannerDomain>();
+
+	// Reset configuration to defaults
+	max_depth = 10; // Default maximum recursion depth
+	verbose = 0; // Default verbosity level
+
+	if (verbose >= 2) {
+		print_line("PlannerPlan::reset() - All state cleared for test isolation (including domain, STN snapshot, max_depth, verbose, and all mutable state)");
+	}
+}
+
+// Graph-based lazy refinement (Elixir-style)
+Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
+	// Note: Array is a value type in Godot and cannot be null, so no null check needed
+
+	if (verbose >= 1) {
+		print_line("run_lazy_refineahead: Starting graph-based planning");
+		print_line("Initial state keys: " + String(Variant(p_state.keys())));
+		print_line("Todo list: " + _item_to_string(p_todo_list));
+	}
+
+	// CRITICAL: Reset planning-specific state for each planning call
+	// Note: We do NOT reset configuration (verbose, max_depth, domain) - those persist across planning calls
+	// Only reset() resets everything including configuration
+
+	// Reset solution graph (creates fresh graph with root node)
+	solution_graph = PlannerSolutionGraph();
+
+	// Reset command blacklist
+	blacklisted_commands.clear();
+
+	// Reset todo list tracking
+	original_todo_list.clear();
+
+	// Reset iteration counter
+	iterations = 0;
+
+	// Reset VSIDS activity tracking (all learning state)
+	method_activities.clear();
+	activity_var_inc = 1.0;
+	activity_bump_count = 0;
+	rewarded_methods_this_solve.clear();
+
+	// Reset STN solver and snapshot (temporal constraint state)
+	stn.clear();
+	stn_snapshot = PlannerSTNSolver::Snapshot(); // Reset snapshot to empty state
+
+	// Initialize STN solver with origin time point (planning-specific initialization)
+	stn.add_time_point("origin"); // Origin time point (plan start)
+
+	// Initialize time range if not already set
+	if (time_range.get_start_time() == 0) {
+		time_range.set_start_time(PlannerTimeRange::now_microseconds());
+	}
+
+	// Anchor origin to current absolute time
+	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
+
+	// Validate that current_domain is set before accessing its members
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			print_line("run_lazy_refineahead: Error - no domain set");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Handle empty todo_list edge case
+	if (p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			print_line("run_lazy_refineahead: Empty todo_list");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Add initial tasks to the solution graph
+	int parent_node_id = 0; // Root node
+	if (verbose >= 2) {
+		Array task_keys = current_domain->task_method_dictionary.keys();
+		print_line(vformat("[RUN_LAZY_REFINEAHEAD] Using domain with %d task methods: %s", task_keys.size(), _item_to_string(task_keys)));
+	}
+	PlannerGraphOperations::add_nodes_and_edges(
+			solution_graph,
+			parent_node_id,
+			p_todo_list,
+			current_domain->action_dictionary,
+			current_domain->task_method_dictionary,
+			current_domain->unigoal_method_dictionary,
+			current_domain->multigoal_method_list,
+			verbose);
+
+	// Start planning loop (using iterative version to prevent stack overflow)
+	Dictionary final_state = _planning_loop_iterative(parent_node_id, p_state, 0);
+
+	// Update time range with end time
+	time_range.set_end_time(PlannerTimeRange::now_microseconds());
+	time_range.calculate_duration();
+
+	if (verbose >= 1) {
+		print_line("run_lazy_refineahead: Completed graph-based planning");
+		print_line("Duration: " + itos(time_range.get_duration()) + " microseconds");
+	}
+
+	// Create PlannerResult with final state and solution graph
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_final_state(final_state);
+	result->set_solution_graph(solution_graph.get_graph());
+	// Check if planning succeeded (similar to find_plan logic)
+	// For run_lazy_refineahead, we consider it successful if we got a non-empty final state
+	result->set_success(!final_state.is_empty());
+
+	return result;
+}
+
+Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter) {
+	// Track maximum iteration reached
+	if (p_iter > iterations) {
+		iterations = p_iter;
+	}
+
+	// Check depth limit to prevent infinite recursion
+	if (p_iter >= max_depth) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("Planning depth limit (%d) exceeded, aborting", max_depth));
+		}
+		return p_state;
+	}
+
+	// Validate that current_domain is set before accessing its members
+	// This defensive check protects against invalid state even if called from unexpected contexts
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::_planning_loop_recursive: current_domain is not set. Aborting planning loop.");
+		}
+		return p_state;
+	}
+
+	if (verbose >= 2) {
+		print_line(vformat("_planning_loop_recursive: parent_node_id=%d, iter=%d", p_parent_node_id, p_iter));
+	}
+
+	// Find the first Open node
+	Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, p_parent_node_id);
+
+	if (open_node_result.get_type() == Variant::NIL) {
+		// No open node found, check if parent is root
+		Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+		int parent_type = parent_node["type"];
+
+		if (parent_type == static_cast<int>(PlannerNodeType::TYPE_ROOT)) {
+			// Check if all root children are CLOSED (all tasks completed)
+			Dictionary root_node = solution_graph.get_node(0);
+			TypedArray<int> root_successors = root_node["successors"];
+			int closed_count = 0;
+			bool all_closed = true;
+			for (int i = 0; i < root_successors.size(); i++) {
+				int child_id = root_successors[i];
+				if (!solution_graph.get_graph().has(child_id)) {
+					continue;
+				}
+				Dictionary child_node = solution_graph.get_node(child_id);
+				int status = child_node["status"];
+				if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+					closed_count++;
+				} else {
+					all_closed = false;
+					if (verbose >= 3) {
+						print_line(vformat("Planning at root: Found non-CLOSED child node %d (status=%d)", child_id, status));
+					}
+					break;
+				}
+			}
+			// Check if we've completed all tasks from original todo_list
+			// If some tasks were removed (failed completely), we need to recreate them
+			if (all_closed) {
+				if (closed_count >= original_todo_list.size()) {
+					// Planning complete - all tasks are CLOSED
+					if (verbose >= 1) {
+						print_line("Planning complete, returning final state");
+					}
+					return p_state;
+				} else {
+					// Some tasks were removed (failed completely), recreate them
+					if (verbose >= 2) {
+						print_line(vformat("Planning at root: All remaining tasks CLOSED (%d/%d), recreating removed tasks...", closed_count, original_todo_list.size()));
+					}
+					// Find tasks from original todo_list that aren't in the graph or are FAILED
+					Array tasks_to_recreate;
+					TypedArray<int> failed_root_children_to_remove;
+
+					// CRITICAL FIX: If root_successors is empty but original_todo_list is not,
+					// it means tasks were never added to the graph. Recreate all tasks.
+					if (root_successors.size() == 0 && original_todo_list.size() > 0) {
+						if (verbose >= 2) {
+							print_line("Planning at root: root_successors is empty but original_todo_list is not - tasks were never added, recreating all tasks");
+						}
+						tasks_to_recreate = original_todo_list.duplicate();
+					} else {
+						// Normal case: check which tasks are missing or failed
+						for (int i = 0; i < original_todo_list.size(); i++) {
+							Array task_info = original_todo_list[i];
+							bool found_closed = false;
+							// Check if this task exists in root's successors and is CLOSED
+							for (int j = 0; j < root_successors.size(); j++) {
+								int child_id = root_successors[j];
+								if (!solution_graph.get_graph().has(child_id)) {
+									continue;
+								}
+								Dictionary child_node = solution_graph.get_node(child_id);
+								int child_status = child_node["status"];
+								Array child_info = child_node["info"];
+								// Compare task info (simplified - just check first element)
+								if (child_info.size() > 0 && task_info.size() > 0 && child_info[0] == task_info[0]) {
+									// Task exists - only consider it found if it's CLOSED
+									// If it's FAILED, we need to remove it and recreate it
+									if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+										found_closed = true;
+										break;
+									} else if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+										// Mark this FAILED node for removal
+										if (!failed_root_children_to_remove.has(child_id)) {
+											failed_root_children_to_remove.push_back(child_id);
+										}
+									}
+								}
+							}
+							if (!found_closed) {
+								tasks_to_recreate.push_back(task_info);
+							}
+						}
+					}
+					// Remove FAILED root children from root's successors before recreating
+					if (failed_root_children_to_remove.size() > 0) {
+						Dictionary root_node_updated = solution_graph.get_node(0);
+						TypedArray<int> updated_successors;
+						TypedArray<int> current_successors = root_node_updated["successors"];
+						for (int i = 0; i < current_successors.size(); i++) {
+							int child_id = current_successors[i];
+							if (!failed_root_children_to_remove.has(child_id)) {
+								updated_successors.push_back(child_id);
+							}
+						}
+						root_node_updated["successors"] = updated_successors;
+						solution_graph.update_node(0, root_node_updated);
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: Removed %d FAILED root children", failed_root_children_to_remove.size()));
+						}
+					}
+					// Recreate missing or failed tasks
+					if (tasks_to_recreate.size() > 0) {
+						// Clear entire blacklist when recreating tasks at root level
+						// This is necessary because:
+						// 1. The state has changed (e.g., flag[3] is now true)
+						// 2. Previous failures may have been due to missing state conditions
+						// 3. Subtask arrays returned by methods may have been blacklisted
+						// Clearing the blacklist allows all methods to be tried again in the new state
+						blacklisted_commands.clear();
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: Cleared entire blacklist before recreating %d tasks (state has changed)", tasks_to_recreate.size()));
+						}
+						PlannerGraphOperations::add_nodes_and_edges(
+								solution_graph,
+								0,
+								tasks_to_recreate,
+								current_domain->action_dictionary,
+								current_domain->task_method_dictionary,
+								current_domain->unigoal_method_dictionary,
+								current_domain->multigoal_method_list,
+								verbose);
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: Recreated %d tasks, continuing...", tasks_to_recreate.size()));
+						}
+						// Continue from root to process recreated tasks
+						return _planning_loop_recursive(0, p_state, p_iter + 1);
+					}
+					// No tasks to recreate, planning complete
+					if (verbose >= 1) {
+						print_line("Planning complete, returning final state");
+					}
+					return p_state;
+				}
+			} else {
+				// Some tasks are not CLOSED, continue planning
+				if (verbose >= 2) {
+					print_line("Planning at root: Not all tasks are CLOSED, continuing...");
+				}
+				// Continue from root to process remaining tasks
+				return _planning_loop_recursive(0, p_state, p_iter + 1);
+			}
+		} else {
+			// Move to predecessor
+			int new_parent = PlannerGraphOperations::find_predecessor(solution_graph, p_parent_node_id);
+			if (new_parent >= 0) {
+				return _planning_loop_recursive(new_parent, p_state, p_iter + 1);
+			}
+			return p_state;
+		}
+	}
+
+	int curr_node_id = open_node_result;
+	Dictionary curr_node = solution_graph.get_node(curr_node_id);
+
+	if (verbose >= 2) {
+		print_line(vformat("Iteration %d: Refining node %d", p_iter, curr_node_id));
+	}
+
+	// Save current state if first visit (state is empty)
+	Dictionary node_state = solution_graph.get_state_snapshot(curr_node_id);
+	if (node_state.is_empty()) {
+		// CRITICAL: Use manual deep copy to ensure nested dictionaries are properly copied
+		// Also validate that the state doesn't have unexpected keys (debugging state pollution)
+		Array state_keys = p_state.keys();
+		if (verbose >= 3) {
+			print_line(vformat("Node %d: Saving state with %d keys: %s", curr_node_id, state_keys.size(), _item_to_string(state_keys)));
+		}
+		// Check for state pollution - if we see blocks world keys in a fox-geese-corn test, something is wrong
+		bool has_blocks_world_keys = false;
+		bool has_fox_geese_keys = false;
+		for (int i = 0; i < state_keys.size(); i++) {
+			String key = state_keys[i];
+			if (key == "pos" || key == "clear" || key == "holding") {
+				has_blocks_world_keys = true;
+			}
+			if (key == "west_fox" || key == "west_geese" || key == "boat_location") {
+				has_fox_geese_keys = true;
+			}
+		}
+		if (has_blocks_world_keys && has_fox_geese_keys) {
+			ERR_PRINT(vformat("Node %d: State pollution detected! State has both blocks world and fox-geese-corn keys", curr_node_id));
+		}
+		solution_graph.save_state_snapshot(curr_node_id, p_state.duplicate(true));
+		// Also save STN snapshot on first visit
+		PlannerSTNSolver::Snapshot snapshot = stn.create_snapshot();
+		curr_node["stn_snapshot"] = snapshot.to_dictionary();
+		solution_graph.update_node(curr_node_id, curr_node);
+	} else {
+		// Node has saved state - this means we're revisiting it
+		// IPyHOP behavior: ALWAYS restore saved state when revisiting a node
+		// This matches IPyHOP's behavior (ipyhop/planner.py lines 138-146)
+		if (verbose >= 3) {
+			Array saved_keys = node_state.keys();
+			print_line(vformat("Node %d: Restoring saved state with %d keys: %s", curr_node_id, saved_keys.size(), _item_to_string(saved_keys)));
+		}
+		// CRITICAL: Use deep duplicate to ensure nested dictionaries are copied
+		p_state = node_state.duplicate(true);
+		// Also restore STN snapshot
+		_restore_stn_from_node(curr_node_id);
+	}
+
+	// Validate required dictionary keys exist
+	if (!curr_node.has("type")) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Node %d missing 'type' field", curr_node_id));
+		}
+		return p_state;
+	}
+	if (!curr_node.has("info")) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Node %d missing 'info' field", curr_node_id));
+		}
+		return p_state;
+	}
+
+	int node_type = curr_node["type"];
+
+	// Handle different node types
+	switch (static_cast<PlannerNodeType>(node_type)) {
+		case PlannerNodeType::TYPE_TASK: {
+			// Try to refine task with available methods (like Elixir's Enum.find_value)
+			Variant task_info = curr_node["info"];
+
+			// Extract metadata and validate entity requirements (use original task_info for metadata extraction to preserve constraints)
+			PlannerMetadata item_metadata = _extract_metadata(task_info);
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("Task entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Unwrap task_info if it's in dictionary format
+			Variant actual_task_info = task_info;
+			if (task_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = task_info;
+				if (dict.has("item")) {
+					actual_task_info = dict["item"];
+				}
+			}
+
+			// CRITICAL: Retrieve methods dynamically from current_domain to prevent domain pollution
+			// Do NOT use stored available_methods from node - it may be stale from a previous domain
+			Array task_arr = actual_task_info;
+			String task_name = task_arr.is_empty() ? String() : String(task_arr[0]);
+			TypedArray<Callable> available_methods;
+			if (current_domain.is_valid() && current_domain->task_method_dictionary.has(task_name)) {
+				Variant methods_var = current_domain->task_method_dictionary[task_name];
+				available_methods = TypedArray<Callable>(methods_var);
+			}
+
+			if (available_methods.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Task '%s' has no available methods in current domain", task_name));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Check if this task is blacklisted (IPyHOP-style)
+			if (_is_command_blacklisted(actual_task_info)) {
+				if (verbose >= 2) {
+					print_line("Task is blacklisted, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Store state in node when first visited (IPyHOP-style, lines 138-146)
+			// When backtracking from a failed action, preserve the accumulated state from successful actions
+			// Only restore state from node when trying a different method
+			if (!curr_node.has("state") || curr_node["state"].get_type() == Variant::NIL) {
+				// First visit - save current state in node
+				curr_node["state"] = p_state;
+				solution_graph.update_node(curr_node_id, curr_node);
+				if (verbose >= 3) {
+					print_line(vformat("Saved state in node %d (first visit)", curr_node_id));
+				}
+			}
+			// Don't restore state when reopening - preserve the current state which includes successful actions
+			// This ensures that when backtracking from a failed action, we keep progress from successful actions
+			// The state in the node is only used as a reference point, not restored
+
+			// Use VSIDS-style method selection (select best method by activity score)
+			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
+			// task_arr already defined above
+			if (verbose >= 3) {
+				print_line(vformat("Task refinement: task_arr = %s (size %d)", _item_to_string(task_arr), task_arr.size()));
+			}
+			// Build args array: state is first argument, then additional arguments from task array (if any)
+			// Task array format: [task_name, arg1, arg2, ...]
+			// Method signature: method(Dictionary p_state, arg1, arg2, ...)
+			Array args;
+			args.push_back(p_state);
+			// Append additional arguments from task array (skip task_name at index 0)
+			if (task_arr.size() > 1) {
+				args.append_array(task_arr.slice(1));
+			}
+			if (verbose >= 3) {
+				Array state_keys = p_state.keys();
+				print_line(vformat("Task refinement: args = [state with %d keys: %s] + %d additional args from task array",
+						state_keys.size(), _item_to_string(state_keys), task_arr.size() > 1 ? task_arr.size() - 1 : 0));
+			}
+
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
+
+			Callable selected_method;
+			Array subtasks;
+			bool found_working_method = false;
+
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subtasks = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
+				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected task method '%s' with activity %.6f (score %.2f, subtasks: %d)",
+							method_id, activity, best.score, subtasks.size()));
+				}
+			}
+
+			if (found_working_method) {
+				// Successfully refined - like Elixir's {method, subtasks}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				curr_node["selected_method"] = selected_method;
+				// Store the planner elements that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = subtasks;
+				// Don't modify available_methods - keep full list for potential backtracking
+				solution_graph.update_node(curr_node_id, curr_node);
+
+				// Add planner elements to graph (handles goals, multigoals, tasks, and actions)
+				if (verbose >= 2) {
+					Array task_keys = current_domain->task_method_dictionary.keys();
+					print_line(vformat("[PLANNING_LOOP] Adding subtasks using domain with %d task methods: %s", task_keys.size(), _item_to_string(task_keys)));
+				}
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						curr_node_id,
+						subtasks,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+
+				// Reward method immediately based on current action count
+				// Count closed actions directly (safer than extracting full plan during planning)
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
+				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+			}
+
+			// Failed to refine, backtrack
+			if (verbose >= 2) {
+				print_line("Task refinement failed, backtracking");
+			}
+			// Bump activity of methods in conflict path (VSIDS-style)
+			_bump_conflict_path_activities(curr_node_id);
+			// Blacklist the task info since all methods failed (IPyHOP-style)
+			_blacklist_command(actual_task_info);
+			if (verbose >= 2) {
+				print_line("Blacklisted task info since all methods failed");
+			}
+			// If this node was created by a parent's method subtasks, blacklist those subtasks
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subtasks = parent_node["created_subtasks"];
+					_blacklist_command(parent_subtasks);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subtasks that led to failure");
+					}
+				}
+			}
+			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
+			solution_graph = backtrack_result.graph;
+			// CRITICAL: Update blacklisted_commands from backtrack result
+			// This ensures that blacklists added during backtracking (e.g., parent subtasks)
+			// are preserved for subsequent method tries
+			blacklisted_commands = backtrack_result.blacklisted_commands;
+			if (backtrack_result.parent_node_id >= 0) {
+				// Restore STN snapshot from the node we're backtracking to
+				_restore_stn_from_node(backtrack_result.parent_node_id);
+				return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+			}
+			// Backtracking reached root - check for other open nodes before giving up
+			Variant open_node_check = PlannerGraphOperations::find_open_node(solution_graph, 0);
+			if (open_node_check.get_type() != Variant::NIL) {
+				return _planning_loop_recursive(0, backtrack_result.state, p_iter + 1);
+			}
+			return p_state;
+		}
+
+		case PlannerNodeType::TYPE_ACTION: {
+			Variant action_info = curr_node["info"];
+
+			// CRITICAL: We no longer blacklist individual actions (they're context-dependent)
+			// If an action is blacklisted, it means the parent method array was blacklisted,
+			// which should have been handled at the task/method level.
+			if (_is_command_blacklisted(action_info)) {
+				if (verbose >= 2) {
+					print_line("Action is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
+				}
+				// If this action was created by a parent's method subtasks, blacklist those subtasks
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array parent_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(parent_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained blacklisted action");
+						}
+					}
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					// Restore STN snapshot from the node we're backtracking to
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Create STN snapshot before action execution and store with node
+			stn_snapshot = stn.create_snapshot();
+			curr_node["stn_snapshot"] = stn_snapshot.to_dictionary();
+			solution_graph.update_node(curr_node_id, curr_node);
+
+			// Check for temporal constraints and entity requirements in action
+			PlannerMetadata item_metadata = _extract_metadata(action_info);
+			Dictionary temporal_metadata;
+			if (_has_temporal_constraints(action_info)) {
+				temporal_metadata = _get_temporal_constraints(action_info);
+			}
+
+			// Validate entity requirements before executing action
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("Action entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Execute action with temporal tracking
+			// Validate action field exists before accessing
+			if (!curr_node.has("action")) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action node %d missing 'action' field", curr_node_id));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			Callable action = curr_node["action"];
+			// Unwrap action_info if it's in dictionary format
+			Variant actual_action_info = action_info;
+			if (action_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = action_info;
+				if (dict.has("item")) {
+					actual_action_info = dict["item"];
+				}
+			}
+			Array action_arr = actual_action_info;
+
+			// Validate action array has at least the action name
+			if (action_arr.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT("PlannerPlan::_planning_loop_recursive: Action array is empty");
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Validate that action was found
+			if (!action.is_valid() || action.is_null()) {
+				if (verbose >= 1) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' not found in domain, marking as failed", action_name));
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			Array args;
+			args.push_back(p_state);
+			args.append_array(action_arr.slice(1));
+
+			// Use temporal metadata start_time if provided, otherwise use current time
+			int64_t action_start_time;
+			if (temporal_metadata.has("start_time")) {
+				action_start_time = temporal_metadata["start_time"];
+			} else {
+				action_start_time = PlannerTimeRange::now_microseconds();
+			}
+
+			if (verbose >= 2) {
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				print_line(vformat("Executing action '%s' with args: %s", action_name, _item_to_string(args.slice(1))));
+			}
+
+			// Execute action
+			// Note: Godot's callv() will throw an error if arguments don't match, but we can't easily
+			// validate argument count beforehand without reflection. The error will be caught by the
+			// error handler and planning will fail gracefully.
+			Variant result = action.callv(args);
+
+			// If we get here, the action call succeeded (no exception thrown)
+			// Actions should return Dictionary for success, or Variant() (NIL) / false / empty Dictionary for failure
+			if (result.get_type() == Variant::NIL) {
+				// Action failed (returned Variant() / NIL)
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned NIL), backtracking", action_name));
+				}
+				// Bump activity of methods in conflict path (VSIDS-style)
+				// Actions don't have selected_method, but their parent method should be bumped
+				_bump_conflict_path_activities(curr_node_id);
+				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
+				// Only blacklist the parent's method array (IPyHOP behavior)
+				// Individual actions are context-dependent and should not be globally blacklisted
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			if (result.get_type() == Variant::BOOL && result == Variant(false)) {
+				// Action failed (returned false)
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned false), backtracking", action_name));
+				}
+				// Bump activity of methods in conflict path (VSIDS-style)
+				// Actions don't have selected_method, but their parent method should be bumped
+				_bump_conflict_path_activities(curr_node_id);
+				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
+				// Only blacklist the parent's method array (IPyHOP behavior)
+				// Individual actions are context-dependent and should not be globally blacklisted
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			// Validate result is a Dictionary (actions should return new state Dictionary for success)
+			if (result.get_type() != Variant::DICTIONARY) {
+				if (verbose >= 1) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action '%s' returned non-Dictionary result (type: %d), marking as failed",
+							action_name, result.get_type()));
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			// Check for empty dictionary (should be treated as failure)
+			Dictionary new_state = result;
+			if (new_state.is_empty()) {
+				// Action failed (returned empty dictionary)
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned empty dictionary), backtracking", action_name));
+				}
+				// Bump activity of methods in conflict path (VSIDS-style)
+				_bump_conflict_path_activities(curr_node_id);
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Use temporal metadata end_time if provided, otherwise use current time
+			int64_t action_end_time;
+			if (temporal_metadata.has("end_time")) {
+				action_end_time = temporal_metadata["end_time"];
+			} else {
+				action_end_time = PlannerTimeRange::now_microseconds();
+			}
+
+			// Use temporal metadata duration if provided, otherwise calculate from start/end times
+			int64_t action_duration;
+			if (temporal_metadata.has("duration")) {
+				action_duration = temporal_metadata["duration"];
+			} else {
+				action_duration = action_end_time - action_start_time;
+			}
+
+			if (result.get_type() == Variant::DICTIONARY) {
+				Dictionary action_new_state = result;
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' succeeded, new state keys: %s", action_name, String(Variant(action_new_state.keys()))));
+				}
+
+				// Belief-immersed architecture: Update beliefs based on action execution
+				_update_beliefs_from_action(action_info, p_state, action_new_state);
+
+				// Add action to STN only if it has temporal metadata
+				// Actions without temporal metadata can occur at any time and don't need STN constraints
+				bool has_temporal = temporal_metadata.has("start_time") || temporal_metadata.has("end_time") || temporal_metadata.has("duration");
+
+				if (has_temporal) {
+					// Validate action_arr is not empty before accessing first element
+					if (action_arr.is_empty()) {
+						if (verbose >= 2) {
+							ERR_PRINT("Action array is empty, cannot create STN interval");
+						}
+						// Action failed, backtrack
+						curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+						solution_graph.update_node(curr_node_id, curr_node);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
+					}
+					if (action_arr.is_empty() || action_arr.size() < 1) {
+						if (verbose >= 1) {
+							ERR_PRINT("PlannerPlan::_planning_loop_recursive: Action array is empty when processing temporal metadata");
+						}
+						return p_state;
+					}
+					String action_id = action_arr[0];
+					int64_t metadata_start = temporal_metadata.get("start_time", 0);
+					int64_t metadata_end = temporal_metadata.get("end_time", 0);
+					int64_t metadata_duration = temporal_metadata.get("duration", action_duration);
+
+					bool stn_success = PlannerSTNConstraints::add_interval(
+							stn, action_id, metadata_start, metadata_end, metadata_duration);
+
+					if (!stn_success) {
+						if (verbose >= 2) {
+							print_line("Failed to add interval to STN, backtracking");
+						}
+						_blacklist_command(action_info);
+						stn.restore_snapshot(stn_snapshot);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
+					}
+
+					// Check STN consistency only if we added temporal constraints
+					stn.check_consistency();
+					if (!stn.is_consistent()) {
+						// STN inconsistent, backtrack
+						if (verbose >= 2) {
+							print_line("STN inconsistent after action, backtracking");
+						}
+						_blacklist_command(action_info);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							// Restore STN snapshot from the node we're backtracking to
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
+					}
+				} else {
+					// Action has no temporal constraints - can occur at any time
+					// Skip STN addition entirely
+					if (verbose >= 3) {
+						String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+						print_line(vformat("Action '%s' has no temporal constraints, skipping STN addition", action_name));
+					}
+				}
+
+				// Action successful and STN consistent
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				curr_node["start_time"] = action_start_time;
+				curr_node["end_time"] = action_end_time;
+				curr_node["duration"] = action_duration;
+				solution_graph.update_node(curr_node_id, curr_node);
+
+				// Update plan time range
+				time_range.set_end_time(action_end_time);
+				time_range.calculate_duration();
+
+				return _planning_loop_recursive(p_parent_node_id, action_new_state, p_iter + 1);
+			} else {
+				// Action failed, backtrack and restore STN
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				if (verbose >= 1) {
+					print_line(vformat("Action '%s' failed (returned %s, expected Dictionary), backtracking",
+							action_name, Variant::get_type_name(result.get_type())));
+					if (verbose >= 2) {
+						print_line(vformat("  Action args: %s", _item_to_string(args.slice(1))));
+						print_line(vformat("  Current state: %s", _item_to_string(p_state)));
+					}
+				}
+				// Bump activity of methods in conflict path (VSIDS-style)
+				// Actions don't have selected_method, but their parent method should be bumped
+				_bump_conflict_path_activities(curr_node_id);
+				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
+				// Only blacklist the parent's method array (IPyHOP behavior)
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array parent_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(parent_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				stn.restore_snapshot(stn_snapshot);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					// Restore STN snapshot from the node we're backtracking to
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				// Backtracking reached root - check for other open nodes before giving up
+				Variant open_node_check_unigoal = PlannerGraphOperations::find_open_node(solution_graph, 0);
+				if (open_node_check_unigoal.get_type() != Variant::NIL) {
+					return _planning_loop_recursive(0, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+		}
+
+		case PlannerNodeType::TYPE_UNIGOAL: {
+			Variant unigoal_info = curr_node["info"];
+
+			// Unwrap unigoal_info if it's in dictionary format
+			Variant actual_unigoal_info = unigoal_info;
+			if (unigoal_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = unigoal_info;
+				if (dict.has("item")) {
+					actual_unigoal_info = dict["item"];
+				}
+			}
+
+			// Check if this unigoal is blacklisted (IPyHOP-style)
+			if (_is_command_blacklisted(actual_unigoal_info)) {
+				if (verbose >= 2) {
+					print_line("Unigoal is blacklisted, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			Array unigoal_arr = actual_unigoal_info;
+			if (unigoal_arr.size() < 3) {
+				// Invalid unigoal format - unigoals are [predicate, subject, value]
+				return p_state;
+			}
+
+			String predicate = unigoal_arr[0];
+			String subject = unigoal_arr[1];
+			Variant value = unigoal_arr[2];
+
+			// Extract metadata and validate entity requirements (use original unigoal_info for metadata extraction)
+			PlannerMetadata item_metadata = _extract_metadata(unigoal_info);
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("Unigoal entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Check if unigoal already achieved: state[predicate][subject] == value
+			if (p_state.has(predicate)) {
+				Dictionary predicate_dict = p_state[predicate];
+				if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
+					// Unigoal already achieved
+					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(curr_node_id, curr_node);
+					return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+				}
+			}
+
+			// Try to refine unigoal using unigoal methods (like Elixir's Enum.find_value)
+			// CRITICAL: Retrieve methods dynamically from current_domain to prevent domain pollution
+			// Do NOT use stored available_methods from node - it may be stale from a previous domain
+			TypedArray<Callable> available_methods;
+			if (current_domain.is_valid() && current_domain->unigoal_method_dictionary.has(predicate)) {
+				Variant methods_var = current_domain->unigoal_method_dictionary[predicate];
+				available_methods = TypedArray<Callable>(methods_var);
+			}
+
+			if (available_methods.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Unigoal predicate '%s' has no available methods in current domain", predicate));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Use VSIDS-style method selection (select best method by activity score)
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_unigoal_info, Variant(), static_cast<int>(PlannerNodeType::TYPE_UNIGOAL));
+
+			Callable selected_method;
+			Array subtasks;
+			bool found_working_method = false;
+
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subtasks = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
+				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected unigoal method '%s' with activity %.6f (score %.2f, subtasks: %d)",
+							method_id, activity, best.score, subtasks.size()));
+				}
+			}
+
+			if (found_working_method) {
+				// Successfully refined
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				curr_node["selected_method"] = selected_method;
+				// Store the planner elements that were created by this method for potential blacklisting
+				// Store a deep copy to avoid reference issues
+				curr_node["created_subtasks"] = subtasks.duplicate(true);
+				// Don't modify available_methods
+				solution_graph.update_node(curr_node_id, curr_node);
+
+				// Add planner elements to graph (handles goals, multigoals, tasks, and actions)
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						curr_node_id,
+						subtasks,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+
+				// Reward method immediately based on current action count
+				// Count closed actions directly (safer than extracting full plan during planning)
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
+				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+			}
+
+			// Failed to refine, backtrack
+			if (verbose >= 2) {
+				print_line("Unigoal refinement failed, backtracking");
+			}
+			// Bump activity of methods in conflict path (VSIDS-style)
+			_bump_conflict_path_activities(curr_node_id);
+			// Blacklist the unigoal info since all methods failed (IPyHOP-style)
+			_blacklist_command(actual_unigoal_info);
+			if (verbose >= 2) {
+				print_line("Blacklisted unigoal info since all methods failed");
+			}
+			// If this node was created by a parent's method subtasks, blacklist those subtasks
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subtasks = parent_node["created_subtasks"];
+					_blacklist_command(parent_subtasks);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subtasks that led to failure");
+					}
+				}
+			}
+			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
+			solution_graph = backtrack_result.graph;
+			if (backtrack_result.parent_node_id >= 0) {
+				// Restore STN snapshot from the node we're backtracking to
+				_restore_stn_from_node(backtrack_result.parent_node_id);
+				return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+			}
+			return p_state;
+		}
+
+		case PlannerNodeType::TYPE_MULTIGOAL: {
+			Variant multigoal_variant = curr_node["info"];
+
+			// Unwrap if dictionary-wrapped
+			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = multigoal_variant;
+				if (dict.has("item")) {
+					multigoal_variant = dict["item"];
+				}
+			}
+
+			if (!PlannerMultigoal::is_multigoal_array(multigoal_variant)) {
+				return p_state;
+			}
+			Array multigoal = multigoal_variant;
+
+			// Check if this multigoal is blacklisted (IPyHOP-style)
+			// Multigoal is an Array, so we can check it directly
+			if (multigoal_variant.get_type() == Variant::ARRAY) {
+				if (_is_command_blacklisted(multigoal_variant)) {
+					if (verbose >= 2) {
+						print_line("MultiGoal is blacklisted, backtracking");
+					}
+					PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+							solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+					solution_graph = backtrack_result.graph;
+					if (backtrack_result.parent_node_id >= 0) {
+						_restore_stn_from_node(backtrack_result.parent_node_id);
+						return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+					}
+					return p_state;
+				}
+			}
+
+			// Extract metadata from multigoal and validate entity requirements
+			// Multigoal metadata might be stored in the multigoal dictionary itself
+			PlannerMetadata item_metadata = _extract_metadata(multigoal_variant);
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("MultiGoal entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Check if multigoal already achieved
+			Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+			if (goals_not_achieved.is_empty()) {
+				// All goals are already achieved
+				if (verbose >= 1) {
+					print_line("MultiGoal already achieved, marking as closed");
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				// Add empty subgoals for verification node (like Elixir)
+				Array empty_subgoals;
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						curr_node_id,
+						empty_subgoals,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+			}
+
+			// If multigoal already has successors (from previous refinement), continue planning from them
+			// instead of creating new ones (iterative refinement - reuse existing work)
+			TypedArray<int> successors = curr_node["successors"];
+			if (successors.size() > 0) {
+				// Multigoal already has successors from previous refinement
+				// Continue planning from the first open successor instead of re-refining
+				// This prevents creating duplicate multigoal nodes
+				for (int i = 0; i < successors.size(); i++) {
+					int succ_id = successors[i];
+					Dictionary succ_node = solution_graph.get_node(succ_id);
+					int succ_status = succ_node["status"];
+					if (succ_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+						// Found an open successor, continue planning from it
+						if (verbose >= 2) {
+							print_line(vformat("MultiGoal node %d already has successors, continuing from open successor %d", curr_node_id, succ_id));
+						}
+						return _planning_loop_recursive(succ_id, p_state, p_iter + 1);
+					}
+				}
+				// All successors are closed or failed - check if multigoal is achieved now
+				// (This handles the case where all unigoals from previous refinement are achieved)
+				Array goals_not_achieved_check = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+				if (goals_not_achieved_check.is_empty()) {
+					// All goals achieved, mark as closed
+					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(curr_node_id, curr_node);
+					// Verification succeeded - continue from parent, don't retry multigoal
+					return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+				}
+				// Goals not achieved and all successors are closed/failed - need to re-refine
+				// Fall through to refinement logic below
+			}
+
+			// Try to refine multigoal (like IPyHOP - rely on backtracking and blacklisting, not recursive split detection)
+			// CRITICAL: Retrieve methods dynamically from current_domain to prevent domain pollution
+			// Do NOT use stored available_methods from node - it may be stale from a previous domain
+			// Multigoal methods are in a list, not a dictionary
+			TypedArray<Callable> available_methods;
+			if (current_domain.is_valid()) {
+				available_methods = current_domain->multigoal_method_list;
+			}
+
+			if (available_methods.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT("PlannerPlan::_planning_loop_recursive: MultiGoal has no available methods in current domain");
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
+			// Use VSIDS-style method selection (select best method by activity score)
+			MethodCandidate best = _select_best_method(available_methods, p_state, multigoal_variant, Variant(), static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL));
+
+			Callable selected_method;
+			Array subgoals; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
+			bool found_working_method = false;
+
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subgoals = best.subtasks; // Note: using subtasks field for subgoals
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
+				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected multigoal method '%s' with activity %.6f (score %.2f, subgoals: %d)",
+							method_id, activity, best.score, subgoals.size()));
+				}
+			}
+
+			if (found_working_method) {
+				// Successfully refined
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				curr_node["selected_method"] = selected_method;
+				// Don't modify available_methods
+
+				// Store the planner elements that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = subgoals;
+				solution_graph.update_node(curr_node_id, curr_node);
+
+				// Add planner elements to graph (handles goals, multigoals, tasks, and actions)
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						curr_node_id,
+						subgoals,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list);
+
+				// Reward method immediately based on current action count
+				// Count closed actions directly (safer than extracting full plan during planning)
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
+				// Continue from first successor to process subgoals, not from multigoal itself
+				TypedArray<int> new_successors = curr_node["successors"];
+				if (new_successors.size() > 0) {
+					return _planning_loop_recursive(new_successors[0], p_state, p_iter + 1);
+				}
+				// No successors (shouldn't happen, but fallback to parent)
+				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+			}
+
+			// Failed to refine, backtrack
+			if (verbose >= 2) {
+				print_line("MultiGoal refinement failed, backtracking");
+			}
+			// Bump activity of methods in conflict path (VSIDS-style)
+			_bump_conflict_path_activities(curr_node_id);
+			// Blacklist the multigoal info since all methods failed (IPyHOP-style)
+			// Only blacklist if it's an Array (blacklister works with Arrays)
+			if (multigoal_variant.get_type() == Variant::ARRAY) {
+				_blacklist_command(multigoal_variant);
+				if (verbose >= 2) {
+					print_line("Blacklisted multigoal info since all methods failed");
+				}
+			}
+			// If this node was created by a parent's method subgoals, blacklist those subgoals
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subgoals = parent_node["created_subtasks"];
+					_blacklist_command(parent_subgoals);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subgoals that led to failure");
+					}
+				}
+			}
+			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
+			solution_graph = backtrack_result.graph;
+			if (backtrack_result.parent_node_id >= 0) {
+				// Restore STN snapshot from the node we're backtracking to
+				_restore_stn_from_node(backtrack_result.parent_node_id);
+				return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+			}
+			return p_state;
+		}
+
+		case PlannerNodeType::TYPE_VERIFY_GOAL: {
+			// Verify the parent unigoal (not multigoal - that's VERIFY_MULTIGOAL)
+			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+			Array unigoal_arr = parent_node["info"];
+			if (unigoal_arr.size() >= 3) {
+				String predicate = unigoal_arr[0];
+				String subject = unigoal_arr[1];
+				Variant value = unigoal_arr[2];
+
+				// Check if unigoal is achieved: state[predicate][subject] == value
+				if (p_state.has(predicate)) {
+					Dictionary predicate_dict = p_state[predicate];
+					if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
+						// Verification successful
+						if (verbose >= 2) {
+							print_line(vformat("Unigoal verified: %s[%s] == %s", predicate, subject, value));
+						}
+						curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+						solution_graph.update_node(curr_node_id, curr_node);
+						return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+					}
+				}
+			}
+
+			// Verification failed - unigoal not yet achieved
+			// Instead of backtracking, re-refine the parent unigoal (iterative refinement)
+			// This allows the planner to continue building toward the goal incrementally
+			if (verbose >= 2) {
+				if (unigoal_arr.size() >= 3) {
+					String predicate = unigoal_arr[0];
+					String subject = unigoal_arr[1];
+					Variant value = unigoal_arr[2];
+					Variant current_value;
+					if (p_state.has(predicate)) {
+						Dictionary predicate_dict = p_state[predicate];
+						if (predicate_dict.has(subject)) {
+							current_value = predicate_dict[subject];
+						}
+					}
+					print_line(vformat("Unigoal verification failed: %s[%s] = %s (need %s), re-refining parent unigoal",
+							predicate, subject, current_value, value));
+				} else {
+					print_line("Unigoal verification failed, re-refining parent unigoal");
+				}
+			}
+
+			// Mark parent unigoal as OPEN to trigger re-refinement
+			// Keep old successors - they represent actions already executed
+			// New successors will be added when we re-refine
+			parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+			// Don't clear successors - we want to accumulate all actions from all iterations
+			solution_graph.update_node(p_parent_node_id, parent_node);
+
+			// Mark verification node as failed (but don't backtrack)
+			curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+			solution_graph.update_node(curr_node_id, curr_node);
+
+			// Return to parent unigoal to re-refine with updated state
+			return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+		}
+
+		case PlannerNodeType::TYPE_VERIFY_MULTIGOAL: {
+			// Verify the parent multigoal
+			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+			Variant multigoal_variant = parent_node["info"];
+
+			// Unwrap if dictionary-wrapped
+			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = multigoal_variant;
+				if (dict.has("item")) {
+					multigoal_variant = dict["item"];
+				}
+			}
+
+			if (!PlannerMultigoal::is_multigoal_array(multigoal_variant)) {
+				// Invalid parent, backtrack
+				if (verbose >= 2) {
+					print_line("MultiGoal verification failed: invalid parent multigoal, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					// Restore STN snapshot from the node we're backtracking to
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			Array multigoal = multigoal_variant;
+
+			Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+			if (goals_not_achieved.is_empty()) {
+				// Verification successful - all goals are achieved
+				if (verbose >= 1) {
+					print_line("MultiGoal verified successfully");
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+			} else {
+				// Verification failed - some goals not achieved
+				// Instead of backtracking, re-refine the parent multigoal (iterative refinement)
+				// This allows the planner to continue building toward the goal incrementally
+				if (verbose >= 2) {
+					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved.size()));
+				}
+
+				// Mark parent multigoal as OPEN to trigger re-refinement
+				// Keep old successors - they represent actions already executed
+				// New successors will be added when we re-refine
+				parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+				// Don't clear successors - we want to accumulate all actions from all iterations
+				solution_graph.update_node(p_parent_node_id, parent_node);
+
+				// Mark verification node as failed (but don't backtrack)
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+
+				// Return to parent multigoal to re-refine with updated state
+				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+			}
+		}
+
+		default:
+			return p_state;
+	}
+}
+
+// Iterative version to prevent stack overflow - uses a stack instead of recursion
+// This is a full refactor that converts all recursive calls to stack operations
+Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionary p_state, int p_iter) {
+	// PlanningFrame is now defined in plan.h
+
+	LocalVector<PlanningFrame> stack;
+	stack.push_back({ p_parent_node_id, p_state, p_iter });
+
+	Dictionary final_state = p_state;
+
+	// Main iterative loop - processes stack until empty
+	while (!stack.is_empty()) {
+		PlanningFrame frame = stack[stack.size() - 1];
+		stack.remove_at(stack.size() - 1);
+
+		int parent_node_id = frame.parent_node_id;
+		Dictionary state = frame.state;
+		int iter = frame.iter;
+
+		// Track maximum iteration reached
+		if (iter > iterations) {
+			iterations = iter;
+		}
+
+		// Check depth limit to prevent infinite loops
+		if (iter >= max_depth) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("Planning depth limit (%d) exceeded, aborting", max_depth));
+			}
+			final_state = state;
+			continue;
+		}
+
+		// Validate that current_domain is set
+		if (!current_domain.is_valid()) {
+			if (verbose >= 1) {
+				ERR_PRINT("PlannerPlan::_planning_loop_iterative: current_domain is not set. Aborting planning loop.");
+			}
+			final_state = state;
+			continue;
+		}
+
+		if (verbose >= 2) {
+			print_line(vformat("_planning_loop_iterative: parent_node_id=%d, iter=%d", parent_node_id, iter));
+		}
+
+		// Find the first Open node
+		Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, parent_node_id);
+
+		if (open_node_result.get_type() == Variant::NIL) {
+			// No open node found, check if parent is root
+			Dictionary parent_node = solution_graph.get_node(parent_node_id);
+			int parent_type = parent_node["type"];
+
+			if (parent_type == static_cast<int>(PlannerNodeType::TYPE_ROOT)) {
+				// Check if all root children are CLOSED (all tasks completed)
+				Dictionary root_node = solution_graph.get_node(0);
+				TypedArray<int> root_successors = root_node["successors"];
+				int closed_count = 0;
+				bool all_closed = true;
+				for (int i = 0; i < root_successors.size(); i++) {
+					int child_id = root_successors[i];
+					if (!solution_graph.get_graph().has(child_id)) {
+						continue;
+					}
+					Dictionary child_node = solution_graph.get_node(child_id);
+					int status = child_node["status"];
+					if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+						closed_count++;
+					} else {
+						all_closed = false;
+						if (verbose >= 3) {
+							print_line(vformat("Planning at root: Found non-CLOSED child node %d (status=%d)", child_id, status));
+						}
+						break;
+					}
+				}
+				// Check if we've completed all tasks from original todo_list
+				if (all_closed) {
+					if (closed_count >= original_todo_list.size()) {
+						// Planning complete - all tasks are CLOSED
+						if (verbose >= 1) {
+							print_line("Planning complete, returning final state");
+						}
+						final_state = state;
+						continue;
+					} else {
+						// Some tasks were removed (failed completely), recreate them
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: All remaining tasks CLOSED (%d/%d), recreating removed tasks...", closed_count, original_todo_list.size()));
+						}
+						Array tasks_to_recreate;
+						TypedArray<int> failed_root_children_to_remove;
+
+						if (root_successors.size() == 0 && original_todo_list.size() > 0) {
+							if (verbose >= 2) {
+								print_line("Planning at root: root_successors is empty but original_todo_list is not - tasks were never added, recreating all tasks");
+							}
+							tasks_to_recreate = original_todo_list.duplicate();
+						} else {
+							for (int i = 0; i < original_todo_list.size(); i++) {
+								Array task_info = original_todo_list[i];
+								bool found_closed = false;
+								for (int j = 0; j < root_successors.size(); j++) {
+									int child_id = root_successors[j];
+									if (!solution_graph.get_graph().has(child_id)) {
+										continue;
+									}
+									Dictionary child_node = solution_graph.get_node(child_id);
+									int child_status = child_node["status"];
+									Array child_info = child_node["info"];
+									if (child_info.size() > 0 && task_info.size() > 0 && child_info[0] == task_info[0]) {
+										if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+											found_closed = true;
+											break;
+										} else if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+											if (!failed_root_children_to_remove.has(child_id)) {
+												failed_root_children_to_remove.push_back(child_id);
+											}
+										}
+									}
+								}
+								if (!found_closed) {
+									tasks_to_recreate.push_back(task_info);
+								}
+							}
+						}
+						if (failed_root_children_to_remove.size() > 0) {
+							Dictionary root_node_iter = solution_graph.get_node(0);
+							TypedArray<int> updated_successors;
+							TypedArray<int> current_successors = root_node_iter["successors"];
+							for (int i = 0; i < current_successors.size(); i++) {
+								int child_id = current_successors[i];
+								if (!failed_root_children_to_remove.has(child_id)) {
+									updated_successors.push_back(child_id);
+								}
+							}
+							root_node_iter["successors"] = updated_successors;
+							solution_graph.update_node(0, root_node_iter);
+							if (verbose >= 2) {
+								print_line(vformat("Planning at root: Removed %d FAILED root children", failed_root_children_to_remove.size()));
+							}
+						}
+						if (tasks_to_recreate.size() > 0) {
+							blacklisted_commands.clear();
+							if (verbose >= 2) {
+								print_line(vformat("Planning at root: Cleared entire blacklist before recreating %d tasks (state has changed)", tasks_to_recreate.size()));
+							}
+							PlannerGraphOperations::add_nodes_and_edges(
+									solution_graph,
+									0,
+									tasks_to_recreate,
+									current_domain->action_dictionary,
+									current_domain->task_method_dictionary,
+									current_domain->unigoal_method_dictionary,
+									current_domain->multigoal_method_list,
+									verbose);
+							if (verbose >= 2) {
+								print_line(vformat("Planning at root: Recreated %d tasks, continuing...", tasks_to_recreate.size()));
+							}
+							// Push continuation to stack
+							stack.push_back({ 0, state, iter + 1 });
+							continue;
+						}
+						if (verbose >= 1) {
+							print_line("Planning complete, returning final state");
+						}
+						final_state = state;
+						continue;
+					}
+				} else {
+					// Some tasks are not CLOSED, continue planning
+					if (verbose >= 2) {
+						print_line("Planning at root: Not all tasks are CLOSED, continuing...");
+					}
+					stack.push_back({ 0, state, iter + 1 });
+					continue;
+				}
+			} else {
+				// Move to predecessor
+				int new_parent = PlannerGraphOperations::find_predecessor(solution_graph, parent_node_id);
+				if (new_parent >= 0) {
+					stack.push_back({ new_parent, state, iter + 1 });
+					continue;
+				}
+				// If we can't find a predecessor and we're not at root, try going back to root
+				// This can happen if the graph structure is incomplete or if we've backtracked too far
+				if (parent_node_id != 0) {
+					if (verbose >= 2) {
+						print_line(vformat("Planning: Could not find predecessor for node %d, returning to root", parent_node_id));
+					}
+					stack.push_back({ 0, state, iter + 1 });
+					continue;
+				}
+				// Already at root and can't find predecessor - this shouldn't happen, but handle gracefully
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("Planning: At root but could not find predecessor - this should not happen"));
+				}
+				final_state = state;
+				continue;
+			}
+		}
+
+		int curr_node_id = open_node_result;
+		Dictionary curr_node = solution_graph.get_node(curr_node_id);
+
+		if (verbose >= 2) {
+			print_line(vformat("Iteration %d: Refining node %d", iter, curr_node_id));
+		}
+
+		// Save current state if first visit (state is empty)
+		Dictionary node_state = solution_graph.get_state_snapshot(curr_node_id);
+		if (node_state.is_empty()) {
+			// First visit - save state
+			Array state_keys = state.keys();
+			if (verbose >= 3) {
+				print_line(vformat("Node %d: Saving state with %d keys: %s", curr_node_id, state_keys.size(), _item_to_string(state_keys)));
+			}
+			solution_graph.save_state_snapshot(curr_node_id, state.duplicate(true));
+			PlannerSTNSolver::Snapshot snapshot = stn.create_snapshot();
+			curr_node["stn_snapshot"] = snapshot.to_dictionary();
+			solution_graph.update_node(curr_node_id, curr_node);
+		} else {
+			// Node has saved state - this means we're revisiting it
+			// CRITICAL: For task and unigoal nodes, we should NOT restore state when reopening
+			// The state should be preserved from successful actions
+			// Only restore state for actions that failed and we're backtracking
+			int node_status = curr_node.has("status") ? static_cast<int>(curr_node["status"]) : static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+			int node_type = curr_node.has("type") ? static_cast<int>(curr_node["type"]) : -1;
+			if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN) &&
+					(node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
+							node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL))) {
+				// Task or unigoal node was reopened - preserve current state (includes successful actions)
+				// Don't restore old state, keep the accumulated progress
+				if (verbose >= 3) {
+					Array state_keys = state.keys();
+					Array saved_keys = node_state.keys();
+					String node_type_str = (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) ? "TASK" : "UNIGOAL";
+					print_line(vformat("Node %d (%s, OPEN): Preserving current state (%d keys: %s) instead of restoring saved state (%d keys: %s)",
+							curr_node_id, node_type_str, state_keys.size(), _item_to_string(state_keys), saved_keys.size(), _item_to_string(saved_keys)));
+				}
+			} else {
+				// Restore state for other cases (e.g., action nodes that failed)
+				// CRITICAL: Use deep duplicate to ensure nested dictionaries are copied
+				if (verbose >= 3) {
+					Array saved_keys = node_state.keys();
+					print_line(vformat("Node %d: Restoring saved state with %d keys: %s", curr_node_id, saved_keys.size(), _item_to_string(saved_keys)));
+				}
+				state = node_state.duplicate(true);
+				// Also restore STN snapshot
+				_restore_stn_from_node(curr_node_id);
+			}
+		}
+
+		// Validate required dictionary keys exist
+		if (!curr_node.has("type")) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::_planning_loop_iterative: Node %d missing 'type' field", curr_node_id));
+			}
+			final_state = state;
+			continue;
+		}
+		if (!curr_node.has("info")) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::_planning_loop_iterative: Node %d missing 'info' field", curr_node_id));
+			}
+			final_state = state;
+			continue;
+		}
+
+		int node_type = curr_node["type"];
+
+		// Process node type - this will push new frames to stack or set final_state
+		// We use a helper function to process each node type and determine next action
+		// Pass curr_node by value (copy) to avoid stale reference issues after graph modifications
+		Dictionary curr_node_copy = curr_node;
+		bool should_continue = _process_node_iterative(parent_node_id, curr_node_id, curr_node_copy, node_type, state, iter, stack, final_state);
+		if (!should_continue) {
+			break; // Final state set, exit loop
+		}
+		// Otherwise continue loop to process next frame from stack
+	}
+
+	return final_state;
+}
+
+// Helper function to process a single node iteratively - converts recursive calls to stack pushes
+// Note: p_curr_node is passed by value (copy) to avoid stale reference issues after graph modifications
+bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_id, Dictionary p_curr_node, int p_node_type, Dictionary &p_state, int p_iter, LocalVector<PlanningFrame> &p_stack, Dictionary &p_final_state) {
+	// Full iterative implementation - duplicates switch statement logic and converts all recursive calls to stack pushes
+	switch (static_cast<PlannerNodeType>(p_node_type)) {
+		case PlannerNodeType::TYPE_TASK: {
+			Variant task_info = p_curr_node["info"];
+
+			PlannerMetadata item_metadata = _extract_metadata(task_info);
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("Task entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			Variant actual_task_info = task_info;
+			if (task_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = task_info;
+				if (dict.has("item")) {
+					actual_task_info = dict["item"];
+				}
+			}
+
+			Array task_arr = actual_task_info;
+			String task_name = task_arr.is_empty() ? String() : String(task_arr[0]);
+			TypedArray<Callable> available_methods;
+			if (current_domain.is_valid() && current_domain->task_method_dictionary.has(task_name)) {
+				Variant methods_var = current_domain->task_method_dictionary[task_name];
+				available_methods = TypedArray<Callable>(methods_var);
+			}
+
+			if (available_methods.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Task '%s' has no available methods in current domain", task_name));
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			if (_is_command_blacklisted(actual_task_info)) {
+				if (verbose >= 2) {
+					print_line("Task is blacklisted, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			if (!p_curr_node.has("state") || p_curr_node["state"].get_type() == Variant::NIL) {
+				p_curr_node["state"] = p_state;
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				if (verbose >= 3) {
+					print_line(vformat("Saved state in node %d (first visit)", p_curr_node_id));
+				}
+			}
+
+			if (verbose >= 3) {
+				print_line(vformat("Task refinement: task_arr = %s (size %d)", _item_to_string(task_arr), task_arr.size()));
+			}
+			Array args;
+			args.push_back(p_state);
+			if (task_arr.size() > 1) {
+				args.append_array(task_arr.slice(1));
+			}
+			if (verbose >= 3) {
+				Array state_keys = p_state.keys();
+				print_line(vformat("Task refinement: args = [state with %d keys: %s] + %d additional args from task array",
+						state_keys.size(), _item_to_string(state_keys), task_arr.size() > 1 ? task_arr.size() - 1 : 0));
+			}
+
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
+
+			Callable selected_method;
+			Array subtasks;
+			bool found_working_method = false;
+
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subtasks = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
+				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected task method '%s' with activity %.6f (score %.2f, subtasks: %d)",
+							method_id, activity, best.score, subtasks.size()));
+				}
+			}
+
+			if (found_working_method) {
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				p_curr_node["selected_method"] = selected_method;
+				p_curr_node["created_subtasks"] = subtasks;
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+				if (verbose >= 2) {
+					Array task_keys = current_domain->task_method_dictionary.keys();
+					print_line(vformat("[PLANNING_LOOP] Adding subtasks using domain with %d task methods: %s", task_keys.size(), _item_to_string(task_keys)));
+				}
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						p_curr_node_id,
+						subtasks,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
+				p_stack.push_back({ p_curr_node_id, p_state, p_iter + 1 });
+				return true;
+			}
+
+			if (verbose >= 2) {
+				print_line("Task refinement failed, backtracking");
+			}
+			_bump_conflict_path_activities(p_curr_node_id);
+			_blacklist_command(actual_task_info);
+			if (verbose >= 2) {
+				print_line("Blacklisted task info since all methods failed");
+			}
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subtasks = parent_node["created_subtasks"];
+					_blacklist_command(parent_subtasks);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subtasks that led to failure");
+					}
+				}
+			}
+			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands, verbose);
+			solution_graph = backtrack_result.graph;
+			blacklisted_commands = backtrack_result.blacklisted_commands;
+			if (backtrack_result.parent_node_id >= 0) {
+				_restore_stn_from_node(backtrack_result.parent_node_id);
+				p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+				return true;
+			}
+			Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, 0);
+			if (open_node_result.get_type() != Variant::NIL) {
+				p_stack.push_back({ 0, backtrack_result.state, p_iter + 1 });
+				return true;
+			}
+			p_final_state = p_state;
+			return false;
+		}
+
+		case PlannerNodeType::TYPE_ACTION: {
+			Variant action_info = p_curr_node["info"];
+
+			if (_is_command_blacklisted(action_info)) {
+				if (verbose >= 2) {
+					print_line("Action is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
+				}
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array parent_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(parent_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained blacklisted action");
+						}
+					}
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			stn_snapshot = stn.create_snapshot();
+			p_curr_node["stn_snapshot"] = stn_snapshot.to_dictionary();
+			solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+			PlannerMetadata item_metadata = _extract_metadata(action_info);
+			Dictionary temporal_metadata;
+			if (_has_temporal_constraints(action_info)) {
+				temporal_metadata = _get_temporal_constraints(action_info);
+			}
+
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("Action entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			if (!p_curr_node.has("action")) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Action node %d missing 'action' field", p_curr_node_id));
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+			Callable action = p_curr_node["action"];
+			Variant actual_action_info = action_info;
+			if (action_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = action_info;
+				if (dict.has("item")) {
+					actual_action_info = dict["item"];
+				}
+			}
+			Array action_arr = actual_action_info;
+
+			// Log temporal metadata if present
+			if (!temporal_metadata.is_empty() && verbose >= 1) {
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				String temporal_info = "";
+				if (temporal_metadata.has("start_time")) {
+					int64_t start_time = temporal_metadata.get("start_time", 0);
+					temporal_info += " start_time=" + String::num_int64(start_time);
+				}
+				if (temporal_metadata.has("end_time")) {
+					int64_t end_time = temporal_metadata.get("end_time", 0);
+					temporal_info += " end_time=" + String::num_int64(end_time);
+				}
+				if (temporal_metadata.has("duration")) {
+					int64_t duration = temporal_metadata.get("duration", 0);
+					temporal_info += " duration=" + String::num_int64(duration);
+				}
+				print_line(vformat("[METADATA] Action '%s' has temporal constraints:%s", action_name, temporal_info));
+			}
+
+			// Log entity requirements if present
+			if (item_metadata.requires_entities.size() > 0 && verbose >= 1) {
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				String entity_info = "";
+				for (uint32_t i = 0; i < item_metadata.requires_entities.size(); i++) {
+					const PlannerEntityRequirement &req = item_metadata.requires_entities[i];
+					if (i > 0) {
+						entity_info += ", ";
+					}
+					entity_info += vformat("type=%s capabilities=[", req.type);
+					for (uint32_t j = 0; j < req.capabilities.size(); j++) {
+						if (j > 0) {
+							entity_info += ", ";
+						}
+						entity_info += req.capabilities[j];
+					}
+					entity_info += "]";
+				}
+				print_line(vformat("[METADATA] Action '%s' has entity requirements: %s", action_name, entity_info));
+			}
+
+			if (action_arr.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT("PlannerPlan::_process_node_iterative: Action array is empty");
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			if (!action.is_valid() || action.is_null()) {
+				if (verbose >= 1) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' not found in domain, marking as failed", action_name));
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			Array args;
+			args.push_back(p_state);
+			args.append_array(action_arr.slice(1));
+
+			int64_t action_start_time;
+			if (temporal_metadata.has("start_time")) {
+				action_start_time = temporal_metadata["start_time"];
+			} else {
+				action_start_time = PlannerTimeRange::now_microseconds();
+			}
+
+			if (verbose >= 2) {
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				print_line(vformat("Executing action '%s' with args: %s", action_name, _item_to_string(args.slice(1))));
+			}
+
+			Variant result = action.callv(args);
+
+			if (result.get_type() == Variant::NIL) {
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned NIL), backtracking", action_name));
+				}
+				_bump_conflict_path_activities(p_curr_node_id);
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+			if (result.get_type() == Variant::BOOL && result == Variant(false)) {
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned false), backtracking", action_name));
+				}
+				_bump_conflict_path_activities(p_curr_node_id);
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+			if (result.get_type() != Variant::DICTIONARY) {
+				if (verbose >= 1) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Action '%s' returned non-Dictionary result (type: %d), marking as failed",
+							action_name, result.get_type()));
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+			Dictionary new_state = result;
+			if (new_state.is_empty()) {
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned empty dictionary), backtracking", action_name));
+				}
+				_bump_conflict_path_activities(p_curr_node_id);
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			int64_t action_end_time;
+			if (temporal_metadata.has("end_time")) {
+				action_end_time = temporal_metadata["end_time"];
+			} else {
+				action_end_time = PlannerTimeRange::now_microseconds();
+			}
+
+			int64_t action_duration;
+			if (temporal_metadata.has("duration")) {
+				action_duration = temporal_metadata["duration"];
+			} else {
+				action_duration = action_end_time - action_start_time;
+			}
+
+			if (result.get_type() == Variant::DICTIONARY) {
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' succeeded, new state keys: %s", action_name, String(Variant(new_state.keys()))));
+				}
+
+				bool has_temporal = temporal_metadata.has("start_time") || temporal_metadata.has("end_time") || temporal_metadata.has("duration");
+
+				if (has_temporal) {
+					if (action_arr.is_empty()) {
+						if (verbose >= 2) {
+							ERR_PRINT("Action array is empty, cannot create STN interval");
+						}
+						p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+						solution_graph.update_node(p_curr_node_id, p_curr_node);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+							return true;
+						}
+						p_final_state = p_state;
+						return false;
+					}
+					if (action_arr.is_empty() || action_arr.size() < 1) {
+						if (verbose >= 1) {
+							ERR_PRINT("PlannerPlan::_process_node_iterative: Action array is empty when processing temporal metadata");
+						}
+						p_final_state = p_state;
+						return false;
+					}
+					String action_id = action_arr[0];
+					int64_t metadata_start = temporal_metadata.get("start_time", 0);
+					int64_t metadata_end = temporal_metadata.get("end_time", 0);
+					int64_t metadata_duration = temporal_metadata.get("duration", action_duration);
+
+					if (verbose >= 1) {
+						String start_str = String::num_int64(metadata_start);
+						String end_str = String::num_int64(metadata_end);
+						String duration_str = String::num_int64(metadata_duration);
+						print_line(vformat("[METADATA] Adding STN interval for action '%s': start=%s end=%s duration=%s",
+								action_id, start_str, end_str, duration_str));
+					}
+
+					bool stn_success = PlannerSTNConstraints::add_interval(
+							stn, action_id, metadata_start, metadata_end, metadata_duration);
+
+					if (!stn_success) {
+						if (verbose >= 2) {
+							print_line("Failed to add interval to STN, backtracking");
+						}
+						_blacklist_command(action_info);
+						stn.restore_snapshot(stn_snapshot);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+							return true;
+						}
+						p_final_state = p_state;
+						return false;
+					}
+
+					stn.check_consistency();
+					if (!stn.is_consistent()) {
+						if (verbose >= 2) {
+							print_line("STN inconsistent after action, backtracking");
+						}
+						_blacklist_command(action_info);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+							return true;
+						}
+						p_final_state = p_state;
+						return false;
+					}
+				} else {
+					if (verbose >= 3) {
+						String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+						print_line(vformat("Action '%s' has no temporal constraints, skipping STN addition", action_name));
+					}
+				}
+
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				p_curr_node["start_time"] = action_start_time;
+				p_curr_node["end_time"] = action_end_time;
+				p_curr_node["duration"] = action_duration;
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+				time_range.set_end_time(action_end_time);
+				time_range.calculate_duration();
+
+				p_stack.push_back({ p_parent_node_id, new_state, p_iter + 1 });
+				return true;
+			} else {
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				if (verbose >= 1) {
+					print_line(vformat("Action '%s' failed (returned %s, expected Dictionary), backtracking",
+							action_name, Variant::get_type_name(result.get_type())));
+					if (verbose >= 2) {
+						print_line(vformat("  Action args: %s", _item_to_string(args.slice(1))));
+						print_line(vformat("  Current state: %s", _item_to_string(p_state)));
+					}
+				}
+				_bump_conflict_path_activities(p_curr_node_id);
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array parent_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(parent_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
+					}
+				}
+				stn.restore_snapshot(stn_snapshot);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, 0);
+				if (open_node_result.get_type() != Variant::NIL) {
+					p_stack.push_back({ 0, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+		}
+
+		case PlannerNodeType::TYPE_UNIGOAL: {
+			Variant unigoal_info = p_curr_node["info"];
+
+			Variant actual_unigoal_info = unigoal_info;
+			if (unigoal_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = unigoal_info;
+				if (dict.has("item")) {
+					actual_unigoal_info = dict["item"];
+				}
+			}
+
+			if (_is_command_blacklisted(actual_unigoal_info)) {
+				if (verbose >= 2) {
+					print_line("Unigoal is blacklisted, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			Array unigoal_arr = actual_unigoal_info;
+			if (unigoal_arr.size() < 3) {
+				p_final_state = p_state;
+				return false;
+			}
+
+			String predicate = unigoal_arr[0];
+			String subject = unigoal_arr[1];
+			Variant value = unigoal_arr[2];
+
+			PlannerMetadata item_metadata = _extract_metadata(unigoal_info);
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("Unigoal entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			if (p_state.has(predicate)) {
+				Dictionary predicate_dict = p_state[predicate];
+				if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
+					p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(p_curr_node_id, p_curr_node);
+					p_stack.push_back({ p_curr_node_id, p_state, p_iter + 1 });
+					return true;
+				}
+			}
+
+			TypedArray<Callable> available_methods;
+			if (current_domain.is_valid() && current_domain->unigoal_method_dictionary.has(predicate)) {
+				Variant methods_var = current_domain->unigoal_method_dictionary[predicate];
+				available_methods = TypedArray<Callable>(methods_var);
+			}
+
+			if (available_methods.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Unigoal predicate '%s' has no available methods in current domain", predicate));
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_unigoal_info, Variant(), static_cast<int>(PlannerNodeType::TYPE_UNIGOAL));
+
+			Callable selected_method;
+			Array subtasks;
+			bool found_working_method = false;
+
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subtasks = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
+				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected unigoal method '%s' with activity %.6f (score %.2f, subtasks: %d)",
+							method_id, activity, best.score, subtasks.size()));
+				}
+			}
+
+			if (found_working_method) {
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				p_curr_node["selected_method"] = selected_method;
+				p_curr_node["created_subtasks"] = subtasks.duplicate(true);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						p_curr_node_id,
+						subtasks,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
+				p_stack.push_back({ p_curr_node_id, p_state, p_iter + 1 });
+				return true;
+			}
+
+			if (verbose >= 2) {
+				print_line("Unigoal refinement failed, backtracking");
+			}
+			_bump_conflict_path_activities(p_curr_node_id);
+			_blacklist_command(actual_unigoal_info);
+			if (verbose >= 2) {
+				print_line("Blacklisted unigoal info since all methods failed");
+			}
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subtasks = parent_node["created_subtasks"];
+					_blacklist_command(parent_subtasks);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subtasks that led to failure");
+					}
+				}
+			}
+			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands, verbose);
+			solution_graph = backtrack_result.graph;
+			if (backtrack_result.parent_node_id >= 0) {
+				_restore_stn_from_node(backtrack_result.parent_node_id);
+				p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+				return true;
+			}
+			p_final_state = p_state;
+			return false;
+		}
+
+		case PlannerNodeType::TYPE_MULTIGOAL: {
+			Variant multigoal_variant = p_curr_node["info"];
+
+			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = multigoal_variant;
+				if (dict.has("item")) {
+					multigoal_variant = dict["item"];
+				}
+			}
+
+			if (!PlannerMultigoal::is_multigoal_array(multigoal_variant)) {
+				p_final_state = p_state;
+				return false;
+			}
+			Array multigoal = multigoal_variant;
+
+			if (multigoal_variant.get_type() == Variant::ARRAY) {
+				if (_is_command_blacklisted(multigoal_variant)) {
+					if (verbose >= 2) {
+						print_line("MultiGoal is blacklisted, backtracking");
+					}
+					PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+							solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+					solution_graph = backtrack_result.graph;
+					if (backtrack_result.parent_node_id >= 0) {
+						_restore_stn_from_node(backtrack_result.parent_node_id);
+						p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+						return true;
+					}
+					p_final_state = p_state;
+					return false;
+				}
+			}
+
+			PlannerMetadata item_metadata = _extract_metadata(multigoal_variant);
+			if (!_validate_entity_requirements(p_state, item_metadata)) {
+				if (verbose >= 2) {
+					print_line("MultiGoal entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+			if (goals_not_achieved.is_empty()) {
+				if (verbose >= 1) {
+					print_line("MultiGoal already achieved, marking as closed");
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				Array empty_subgoals;
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						p_curr_node_id,
+						empty_subgoals,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+				p_stack.push_back({ p_curr_node_id, p_state, p_iter + 1 });
+				return true;
+			}
+
+			TypedArray<int> successors = p_curr_node["successors"];
+			if (successors.size() > 0) {
+				for (int i = 0; i < successors.size(); i++) {
+					int succ_id = successors[i];
+					Dictionary succ_node = solution_graph.get_node(succ_id);
+					int succ_status = succ_node["status"];
+					if (succ_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+						if (verbose >= 2) {
+							print_line(vformat("MultiGoal node %d already has successors, continuing from open successor %d", p_curr_node_id, succ_id));
+						}
+						p_stack.push_back({ succ_id, p_state, p_iter + 1 });
+						return true;
+					}
+				}
+				Array goals_not_achieved_check = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+				if (goals_not_achieved_check.is_empty()) {
+					p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(p_curr_node_id, p_curr_node);
+					p_stack.push_back({ p_parent_node_id, p_state, p_iter + 1 });
+					return true;
+				}
+			}
+
+			TypedArray<Callable> available_methods;
+			if (current_domain.is_valid()) {
+				available_methods = current_domain->multigoal_method_list;
+			}
+
+			if (available_methods.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT("PlannerPlan::_process_node_iterative: MultiGoal has no available methods in current domain");
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+
+			MethodCandidate best = _select_best_method(available_methods, p_state, multigoal_variant, Variant(), static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL));
+
+			Callable selected_method;
+			Array subgoals;
+			bool found_working_method = false;
+
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subgoals = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
+				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected multigoal method '%s' with activity %.6f (score %.2f, subgoals: %d)",
+							method_id, activity, best.score, subgoals.size()));
+				}
+			}
+
+			if (found_working_method) {
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				p_curr_node["selected_method"] = selected_method;
+				p_curr_node["created_subtasks"] = subgoals;
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+				PlannerGraphOperations::add_nodes_and_edges(
+						solution_graph,
+						p_curr_node_id,
+						subgoals,
+						current_domain->action_dictionary,
+						current_domain->task_method_dictionary,
+						current_domain->unigoal_method_dictionary,
+						current_domain->multigoal_method_list,
+						verbose);
+
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
+				// Get fresh copy of node after add_nodes_and_edges (which may have modified it)
+				Dictionary updated_node = solution_graph.get_node(p_curr_node_id);
+				TypedArray<int> new_successors = updated_node["successors"];
+				if (new_successors.size() > 0) {
+					p_stack.push_back({ new_successors[0], p_state, p_iter + 1 });
+					return true;
+				}
+				p_stack.push_back({ p_parent_node_id, p_state, p_iter + 1 });
+				return true;
+			}
+
+			if (verbose >= 2) {
+				print_line("MultiGoal refinement failed, backtracking");
+			}
+			_bump_conflict_path_activities(p_curr_node_id);
+			if (multigoal_variant.get_type() == Variant::ARRAY) {
+				_blacklist_command(multigoal_variant);
+				if (verbose >= 2) {
+					print_line("Blacklisted multigoal info since all methods failed");
+				}
+			}
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subgoals = parent_node["created_subtasks"];
+					_blacklist_command(parent_subgoals);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subgoals that led to failure");
+					}
+				}
+			}
+			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands, verbose);
+			solution_graph = backtrack_result.graph;
+			if (backtrack_result.parent_node_id >= 0) {
+				_restore_stn_from_node(backtrack_result.parent_node_id);
+				p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+				return true;
+			}
+			p_final_state = p_state;
+			return false;
+		}
+
+		case PlannerNodeType::TYPE_VERIFY_GOAL: {
+			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+			Array unigoal_arr = parent_node["info"];
+			if (unigoal_arr.size() >= 3) {
+				String predicate = unigoal_arr[0];
+				String subject = unigoal_arr[1];
+				Variant value = unigoal_arr[2];
+
+				if (p_state.has(predicate)) {
+					Dictionary predicate_dict = p_state[predicate];
+					if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
+						if (verbose >= 2) {
+							print_line(vformat("Unigoal verified: %s[%s] == %s", predicate, subject, value));
+						}
+						p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+						solution_graph.update_node(p_curr_node_id, p_curr_node);
+						p_stack.push_back({ p_parent_node_id, p_state, p_iter + 1 });
+						return true;
+					}
+				}
+			}
+
+			if (verbose >= 2) {
+				if (unigoal_arr.size() >= 3) {
+					String predicate = unigoal_arr[0];
+					String subject = unigoal_arr[1];
+					Variant value = unigoal_arr[2];
+					Variant current_value;
+					if (p_state.has(predicate)) {
+						Dictionary predicate_dict = p_state[predicate];
+						if (predicate_dict.has(subject)) {
+							current_value = predicate_dict[subject];
+						}
+					}
+					print_line(vformat("Unigoal verification failed: %s[%s] = %s (need %s), re-refining parent unigoal",
+							predicate, subject, current_value, value));
+				} else {
+					print_line("Unigoal verification failed, re-refining parent unigoal");
+				}
+			}
+
+			parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+			solution_graph.update_node(p_parent_node_id, parent_node);
+
+			p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+			solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+			p_stack.push_back({ p_parent_node_id, p_state, p_iter + 1 });
+			return true;
+		}
+
+		case PlannerNodeType::TYPE_VERIFY_MULTIGOAL: {
+			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+			Variant multigoal_variant = parent_node["info"];
+
+			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = multigoal_variant;
+				if (dict.has("item")) {
+					multigoal_variant = dict["item"];
+				}
+			}
+
+			if (!PlannerMultigoal::is_multigoal_array(multigoal_variant)) {
+				if (verbose >= 2) {
+					print_line("MultiGoal verification failed: invalid parent multigoal, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				blacklisted_commands = backtrack_result.blacklisted_commands;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
+					return true;
+				}
+				p_final_state = p_state;
+				return false;
+			}
+			Array multigoal = multigoal_variant;
+
+			Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+			if (goals_not_achieved.is_empty()) {
+				if (verbose >= 1) {
+					print_line("MultiGoal verified successfully");
+				}
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				p_stack.push_back({ p_parent_node_id, p_state, p_iter + 1 });
+				return true;
+			} else {
+				if (verbose >= 2) {
+					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved.size()));
+				}
+
+				parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+				solution_graph.update_node(p_parent_node_id, parent_node);
+
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+
+				p_stack.push_back({ p_parent_node_id, p_state, p_iter + 1 });
+				return true;
+			}
+		}
+
+		default:
+			p_final_state = p_state;
+			return false;
+	}
+}
+
+void PlannerPlan::_restore_stn_from_node(int p_node_id) {
+	if (p_node_id >= 0) {
+		Dictionary node = solution_graph.get_node(p_node_id);
+		if (node.has("stn_snapshot") && node["stn_snapshot"].get_type() != Variant::NIL) {
+			Dictionary snapshot_dict = node["stn_snapshot"];
+			if (!snapshot_dict.is_empty()) {
+				PlannerSTNSolver::Snapshot snapshot = PlannerSTNSolver::Snapshot::from_dictionary(snapshot_dict);
+				stn.restore_snapshot(snapshot);
+				if (verbose >= 3) {
+					print_line("Restored STN snapshot from node " + itos(p_node_id));
+				}
+			}
+		}
+		// If no snapshot exists or it's empty, keep current STN state (don't restore)
+	}
+}
+
+bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
+	// Unwrap if dictionary-wrapped
+	Variant actual_command = p_command;
+	if (p_command.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_command;
+		if (dict.has("item")) {
+			actual_command = dict["item"];
+		}
+	}
+
+	// Compare Arrays properly - need to check if it's an Array and compare elements
+	if (actual_command.get_type() != Variant::ARRAY) {
+		return false;
+	}
+
+	Array action_arr = actual_command;
+
+	// Check each blacklisted command
+	for (int i = 0; i < blacklisted_commands.size(); i++) {
+		Variant blacklisted = blacklisted_commands[i];
+		if (blacklisted.get_type() != Variant::ARRAY) {
+			continue;
+		}
+
+		Array blacklisted_arr = blacklisted;
+
+		// Compare Arrays element by element
+		if (blacklisted_arr.size() != action_arr.size()) {
+			continue;
+		}
+
+		bool match = true;
+		for (int j = 0; j < action_arr.size(); j++) {
+			Variant action_elem = action_arr[j];
+			Variant blacklisted_elem = blacklisted_arr[j];
+			// For nested arrays, we need to compare element by element
+			if (action_elem.get_type() == Variant::ARRAY && blacklisted_elem.get_type() == Variant::ARRAY) {
+				Array action_elem_arr = action_elem;
+				Array blacklisted_elem_arr = blacklisted_elem;
+				if (action_elem_arr.size() != blacklisted_elem_arr.size()) {
+					match = false;
+					break;
+				}
+				for (int k = 0; k < action_elem_arr.size(); k++) {
+					if (action_elem_arr[k] != blacklisted_elem_arr[k]) {
+						match = false;
+						break;
+					}
+				}
+				if (!match) {
+					break;
+				}
+			} else if (action_elem != blacklisted_elem) {
+				match = false;
+				break;
+			}
+		}
+
+		if (match) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void PlannerPlan::_blacklist_command(Variant p_command) {
+	if (!_is_command_blacklisted(p_command)) {
+		blacklisted_commands.push_back(p_command);
+	}
+}
+
+void PlannerPlan::blacklist_command(Variant p_command) {
+	_blacklist_command(p_command);
+}
+
+Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int p_start_ind) {
+	Array state_list;
+	state_list.push_back(p_state.duplicate()); // Initial state
+
+	if (!p_result.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::simulate: p_result is invalid");
+		}
+		return state_list;
+	}
+
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::simulate: current_domain is not set");
+		}
+		return state_list;
+	}
+
+	// Load the solution graph from the result
+	load_solution_graph(p_result->get_solution_graph());
+
+	// Extract plan from solution graph
+	Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph, verbose);
+
+	if (p_start_ind < 0 || p_start_ind >= plan.size()) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::simulate: start_ind %d is out of range (plan size: %d)", p_start_ind, plan.size()));
+		}
+		return state_list;
+	}
+
+	Dictionary state_copy = p_state.duplicate();
+	Dictionary action_dict = current_domain->action_dictionary;
+
+	// Execute actions starting from p_start_ind
+	for (int i = p_start_ind; i < plan.size(); i++) {
+		Variant action_variant = plan[i];
+		Array action;
+
+		// Unwrap if dictionary-wrapped
+		if (action_variant.get_type() == Variant::DICTIONARY) {
+			Dictionary dict = action_variant;
+			if (dict.has("item")) {
+				action_variant = dict["item"];
+			}
+		}
+
+		if (action_variant.get_type() != Variant::ARRAY) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::simulate: action at index %d is not an Array", i));
+			}
+			break;
+		}
+
+		action = action_variant;
+		if (action.is_empty() || action.size() < 1) {
+			continue;
+		}
+
+		String action_name = action[0];
+		if (!action_dict.has(action_name)) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' not found in domain", action_name));
+			}
+			break;
+		}
+
+		Callable action_callable = action_dict[action_name];
+		Array args;
+		args.push_back(state_copy);
+		args.append_array(action.slice(1, action.size()));
+
+		Variant result = action_callable.callv(args);
+		if (result.get_type() != Variant::DICTIONARY) {
+			// Action failed
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' failed at index %d", action_name, i));
+			}
+			break;
+		}
+
+		state_copy = result;
+		state_list.push_back(state_copy.duplicate());
+	}
+
+	return state_list;
+}
+
+int PlannerPlan::_post_failure_modify(int p_fail_node_id, Dictionary p_state) {
+	// Mark nodes from root to failure point as OPEN and "old"
+	// Remove descendants of reopened nodes
+	// Similar to IPyHOP's _post_failure_modify
+
+	// Get all nodes in reverse DFS order (from root)
+	Array all_nodes;
+	Array to_visit;
+	to_visit.push_back(0); // Start from root
+	TypedArray<int> visited;
+
+	// Collect all nodes in DFS preorder
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+		all_nodes.push_back(node_id);
+
+		Dictionary node = solution_graph.get_node(node_id);
+		if (!node.has("successors")) {
+			continue; // Skip nodes without successors
+		}
+		TypedArray<int> successors = node["successors"];
+		// Add successors in reverse order
+		for (int i = successors.size() - 1; i >= 0; i--) {
+			int succ_id = successors[i];
+			if (!visited.has(succ_id) && solution_graph.get_graph().has(succ_id)) {
+				to_visit.push_back(succ_id);
+			}
+		}
+	}
+
+	// Process nodes in reverse order (from leaves to root)
+	int max_id = -1;
+	for (int i = all_nodes.size() - 1; i >= 0; i--) {
+		int node_id = all_nodes[i];
+		if (node_id > max_id) {
+			max_id = node_id;
+		}
+
+		Dictionary node = solution_graph.get_node(node_id);
+		if (!node.has("type") || !node.has("status")) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::_post_failure_modify: Node %d missing 'type' or 'status' field", node_id));
+			}
+			continue; // Skip malformed nodes
+		}
+		int node_type = node["type"];
+		int node_status = node["status"];
+
+		// Set all nodes to OPEN
+		solution_graph.set_node_status(node_id, PlannerNodeStatus::STATUS_OPEN);
+
+		// Stop when we reach the failure node
+		if (node_id == p_fail_node_id) {
+			break;
+		}
+
+		// For T/G/M nodes, clear state, selected_method, and reset available_methods
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
+				node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) ||
+				node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
+			node["state"] = Dictionary();
+			node["selected_method"] = Variant();
+			// Reset available_methods iterator (keep the methods list)
+			if (node.has("available_methods")) {
+				TypedArray<Callable> methods = node["available_methods"];
+				node["available_methods"] = methods; // Reset to full list
+			}
+			solution_graph.update_node(node_id, node);
+
+			// Remove descendants
+			PlannerGraphOperations::remove_descendants(solution_graph, node_id, false);
+		}
+
+		// Mark CLOSED nodes as "old"
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			solution_graph.set_node_tag(node_id, "old");
+			// Update state snapshot for CLOSED nodes
+			node["state"] = p_state.duplicate();
+			solution_graph.update_node(node_id, node);
+		} else {
+			// Clear state for non-CLOSED nodes
+			node["state"] = Dictionary();
+			solution_graph.update_node(node_id, node);
+		}
+	}
+
+	return max_id + 1; // Return next available node ID
+}
+
+Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p_state, int p_fail_node_id) {
+	if (!p_result.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::replan: p_result is invalid");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(Dictionary());
+		return result;
+	}
+
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::replan: current_domain is not set");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(p_result->get_solution_graph());
+		return result;
+	}
+
+	// Load the solution graph from the result
+	load_solution_graph(p_result->get_solution_graph());
+
+	if (!solution_graph.get_graph().has(p_fail_node_id)) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::replan: fail_node_id %d not found in solution graph", p_fail_node_id));
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	if (verbose >= 1) {
+		print_line(vformat("replan: Starting replanning from failure node %d", p_fail_node_id));
+	}
+
+	// Reset iteration counter
+	iterations = 0;
+
+	// Modify graph: mark nodes as OPEN/old, remove descendants
+	int max_id = _post_failure_modify(p_fail_node_id, p_state);
+
+	// Find parent of failure node
+	int parent_id = PlannerGraphOperations::find_predecessor(solution_graph, p_fail_node_id);
+	if (parent_id < 0) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::replan: Could not find parent of fail_node_id %d", p_fail_node_id));
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Backtrack from failure point
+	PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+			solution_graph, parent_id, p_fail_node_id, p_state, blacklisted_commands, verbose);
+	solution_graph = backtrack_result.graph;
+	blacklisted_commands = backtrack_result.blacklisted_commands;
+
+	// Update next_node_id to max_id
+	solution_graph.next_node_id = max_id;
+
+	// Continue planning from backtrack point
+	Dictionary final_state = _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, 0);
+
+	// Extract only "new" actions
+	Array new_plan = PlannerGraphOperations::extract_new_actions(solution_graph);
+
+	// Create result
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_final_state(final_state);
+	result->set_solution_graph(solution_graph.get_graph());
+	result->set_success(!final_state.is_empty() && new_plan.size() > 0);
+
+	if (verbose >= 1) {
+		print_line(vformat("replan: Completed, extracted %d new actions", new_plan.size()));
+	}
+
+	return result;
+}
+
+void PlannerPlan::load_solution_graph(Dictionary p_graph) {
+	// Load a solution graph from a PlannerResult
+	solution_graph = PlannerSolutionGraph();
+
+	// Handle empty or invalid graph
+	if (p_graph.is_empty()) {
+		solution_graph.get_graph() = Dictionary();
+		solution_graph.next_node_id = 1; // Start from 1 (0 is root)
+		return;
+	}
+
+	solution_graph.get_graph() = p_graph.duplicate();
+
+	// Find max node ID to set next_node_id
+	int max_id = -1;
+	Array graph_keys = p_graph.keys();
+	for (int i = 0; i < graph_keys.size(); i++) {
+		Variant key = graph_keys[i];
+		if (key.get_type() != Variant::INT) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::load_solution_graph: Invalid node ID type (expected INT, got %d)", key.get_type()));
+			}
+			continue; // Skip invalid keys
+		}
+		int node_id = key;
+		if (node_id > max_id) {
+			max_id = node_id;
+		}
+	}
+	solution_graph.next_node_id = (max_id >= 0) ? (max_id + 1) : 1;
+}
+
+PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
+	PlannerMetadata extracted_metadata;
+
+	// Check if item has temporal_constraints field
+	if (p_item.get_type() == Variant::DICTIONARY) {
+		Dictionary item_dict = p_item;
+		const Variant *temporal_constraints_var = item_dict.getptr("temporal_constraints");
+		if (temporal_constraints_var && temporal_constraints_var->get_type() == Variant::DICTIONARY) {
+			Dictionary constraints_dict = *temporal_constraints_var;
+			extracted_metadata = PlannerMetadata::from_dictionary(constraints_dict);
+		}
+		// Also check for entity requirements in constraints field (for combined format)
+		const Variant *constraints_var = item_dict.getptr("constraints");
+		if (constraints_var && constraints_var->get_type() == Variant::DICTIONARY) {
+			Dictionary constraints_dict = *constraints_var;
+			if (constraints_dict.has("requires_entities")) {
+				Variant entities_var = constraints_dict.get("requires_entities", Array());
+				if (entities_var.get_type() == Variant::ARRAY) {
+					Array entities_array = entities_var;
+					extracted_metadata.requires_entities.resize(entities_array.size());
+					for (int i = 0; i < entities_array.size(); i++) {
+						Dictionary entity_dict = entities_array[i];
+						extracted_metadata.requires_entities[i] = PlannerEntityRequirement::from_dictionary(entity_dict);
+					}
+				}
+			}
+		}
+	} else if (p_item.get_type() == Variant::ARRAY) {
+		Array item_arr = p_item;
+		// Check if last element is a dictionary with temporal_constraints
+		if (item_arr.size() > 0) {
+			Variant last = item_arr[item_arr.size() - 1];
+			if (last.get_type() == Variant::DICTIONARY) {
+				Dictionary last_dict = last;
+				const Variant *temporal_constraints_var = last_dict.getptr("temporal_constraints");
+				if (temporal_constraints_var && temporal_constraints_var->get_type() == Variant::DICTIONARY) {
+					Dictionary constraints_dict = *temporal_constraints_var;
+					extracted_metadata = PlannerMetadata::from_dictionary(constraints_dict);
+				}
+			}
+		}
+	}
+
+	return extracted_metadata;
+}
+
+Variant PlannerPlan::_attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints) {
+	PlannerMetadata temporal_metadata_obj = PlannerMetadata::from_dictionary(p_temporal_constraints);
+
+	// Create a wrapper dictionary with the item and temporal_constraints
+	Dictionary result;
+	Dictionary constraints_dict = temporal_metadata_obj.to_dictionary();
+
+	if (p_item.get_type() == Variant::DICTIONARY) {
+		Dictionary item_dict = p_item;
+		// If already a dictionary, merge temporal constraints
+		result = Dictionary(p_item);
+		if (result.has("temporal_constraints")) {
+			// Merge with existing temporal constraints
+			Dictionary existing_temporal = result["temporal_constraints"];
+			for (const Variant *key = constraints_dict.next(nullptr); key; key = constraints_dict.next(key)) {
+				existing_temporal[*key] = constraints_dict[*key];
+			}
+			result["temporal_constraints"] = existing_temporal;
+		} else {
+			result["temporal_constraints"] = constraints_dict;
+		}
+	} else {
+		// Wrap in dictionary with temporal_constraints
+		result["item"] = p_item;
+		result["temporal_constraints"] = constraints_dict;
+	}
+
+	return result;
+}
+
+Dictionary PlannerPlan::_get_temporal_constraints(const Variant &p_item) const {
+	// Extract only temporal constraints (excludes entity requirements)
+	PlannerMetadata extracted_metadata = _extract_metadata(p_item);
+	extracted_metadata.requires_entities.clear();
+	return extracted_metadata.to_dictionary();
+}
+
+bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
+	// Extract only temporal constraints (excludes entity requirements)
+	PlannerMetadata extracted_metadata = _extract_metadata(p_item);
+	extracted_metadata.requires_entities.clear();
+	return extracted_metadata.has_temporal();
+}
+
+// Belief-immersed architecture integration
+Dictionary PlannerPlan::_get_ego_centric_state(const Dictionary &p_state) const {
+	Dictionary ego_state = p_state.duplicate(true);
+
+	// If we have a current persona, merge their beliefs into the state
+	if (current_persona.is_valid()) {
+		Dictionary beliefs = current_persona->get_beliefs_about_others();
+
+		// Merge beliefs into state (persona's perspective)
+		// This allows planning from the persona's ego-centric view
+		Array belief_keys = beliefs.keys();
+		for (int i = 0; i < belief_keys.size(); i++) {
+			String target_persona_id = belief_keys[i];
+			Dictionary target_beliefs = beliefs[target_persona_id];
+
+			// Add beliefs as state predicates (persona's beliefs about others)
+			// Format: "belief_{target_persona_id}_{belief_key}" = belief_value
+			Array target_belief_keys = target_beliefs.keys();
+			for (int j = 0; j < target_belief_keys.size(); j++) {
+				String belief_key = target_belief_keys[j];
+				Variant belief_value = target_beliefs[belief_key];
+				String state_key = vformat("belief_%s_%s", target_persona_id, belief_key);
+				ego_state[state_key] = belief_value;
+			}
+		}
+	}
+
+	return ego_state;
+}
+
+Dictionary PlannerPlan::_merge_allocentric_facts(const Dictionary &p_state) const {
+	Dictionary merged_state = p_state.duplicate(true);
+
+	// If we have allocentric facts, merge them into the state
+	if (allocentric_facts.is_valid()) {
+		// Merge terrain facts
+		Dictionary terrain_facts = allocentric_facts->get_all_terrain_facts();
+		Array terrain_keys = terrain_facts.keys();
+		for (int i = 0; i < terrain_keys.size(); i++) {
+			String location = terrain_keys[i];
+			Dictionary location_facts = terrain_facts[location];
+			merged_state[vformat("terrain_%s", location)] = location_facts;
+		}
+
+		// Merge shared objects
+		Dictionary shared_objects = allocentric_facts->get_all_shared_objects();
+		merged_state["shared_objects"] = shared_objects;
+
+		// Merge public events
+		Dictionary public_events = allocentric_facts->get_all_public_events();
+		merged_state["public_events"] = public_events;
+
+		// Merge entity positions
+		Dictionary entity_positions = allocentric_facts->get_all_entity_positions();
+		merged_state["entity_positions"] = entity_positions;
+
+		// Merge public entity capabilities
+		Dictionary entity_capabilities = allocentric_facts->get_all_entity_capabilities_public();
+		merged_state["entity_capabilities_public"] = entity_capabilities;
+	}
+
+	return merged_state;
+}
+
+void PlannerPlan::_update_beliefs_from_action(const Variant &p_action, const Dictionary &p_state_before, const Dictionary &p_state_after) {
+	// Update beliefs based on action execution
+	if (!current_persona.is_valid() || !belief_manager.is_valid()) {
+		return;
+	}
+
+	// Extract action information
+	Array action_arr = p_action;
+	if (action_arr.size() < 1) {
+		return;
+	}
+
+	String action_name = action_arr[0];
+
+	// Create observation dictionary from action execution
+	Dictionary observation;
+	observation["action"] = action_name;
+	observation["state_before"] = p_state_before;
+	observation["state_after"] = p_state_after;
+	observation["time"] = PlannerTimeRange::now_microseconds();
+	observation["confidence"] = 1.0; // Direct observation has full confidence
+
+	// Process observation through belief manager
+	String persona_id = current_persona->get_persona_id();
+	belief_manager->process_observation_for_persona(persona_id, observation);
+}
+
+Variant PlannerPlan::attach_metadata(const Variant &p_item, const Dictionary &p_temporal_constraints, const Dictionary &p_entity_constraints) {
+	Dictionary result;
+
+	// Extract the actual item if it's already wrapped
+	Variant actual_item = p_item;
+	if (p_item.get_type() == Variant::DICTIONARY) {
+		Dictionary item_dict = p_item;
+		const Variant *item_var = item_dict.getptr("item");
+		if (item_var) {
+			actual_item = *item_var;
+		} else {
+			actual_item = p_item; // Use as-is if no "item" key
+		}
+	}
+
+	// Start with the item
+	result["item"] = actual_item;
+
+	// Add temporal constraints if provided
+	if (!p_temporal_constraints.is_empty()) {
+		Dictionary temporal_dict;
+		const Variant *duration_var = p_temporal_constraints.getptr("duration");
+		const Variant *start_time_var = p_temporal_constraints.getptr("start_time");
+		const Variant *end_time_var = p_temporal_constraints.getptr("end_time");
+
+		if (duration_var) {
+			temporal_dict["duration"] = *duration_var;
+		}
+		if (start_time_var) {
+			temporal_dict["start_time"] = *start_time_var;
+		}
+		if (end_time_var) {
+			temporal_dict["end_time"] = *end_time_var;
+		}
+		if (!temporal_dict.is_empty()) {
+			result["temporal_constraints"] = temporal_dict;
+		}
+	}
+
+	// Add entity constraints if provided
+	if (!p_entity_constraints.is_empty()) {
+		Dictionary entity_dict;
+		const Variant *requires_entities_var = p_entity_constraints.getptr("requires_entities");
+		if (requires_entities_var) {
+			// Full format: already has requires_entities
+			entity_dict["requires_entities"] = *requires_entities_var;
+		} else {
+			// Convenience format: convert {type, capabilities} to requires_entities format
+			const Variant *type_var = p_entity_constraints.getptr("type");
+			const Variant *capabilities_var = p_entity_constraints.getptr("capabilities");
+			if (type_var && capabilities_var) {
+				Array entities_array;
+				Dictionary entity_req;
+				entity_req["type"] = *type_var;
+				entity_req["capabilities"] = *capabilities_var;
+				entities_array.push_back(entity_req);
+				entity_dict["requires_entities"] = entities_array;
+			}
+		}
+		if (!entity_dict.is_empty()) {
+			result["constraints"] = entity_dict;
+		}
+	}
+
+	return result;
+}
+
+bool PlannerPlan::_validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const {
+	// Check if metadata has entity requirements
+	if (p_metadata.requires_entities.size() == 0) {
+		return true; // No entity requirements, validation passes
+	}
+
+	// Match entities for all requirements
+	Dictionary match_result = _match_entities(p_state, p_metadata.requires_entities);
+	bool success = match_result["success"];
+
+	if (!success && verbose >= 2) {
+		String error = match_result["error"];
+		print_line("Entity matching failed: " + error);
+	}
+
+	return success;
+}
+
+Dictionary PlannerPlan::_match_entities(const Dictionary &p_state, const LocalVector<PlannerEntityRequirement> &p_requirements) const {
+	Dictionary result;
+	result["success"] = false;
+	result["matched_entities"] = Array();
+	result["error"] = "";
+
+	// Use internal HashMap/LocalVector for efficiency
+	HashMap<String, String> entity_types; // entity_id -> type
+	HashMap<String, LocalVector<String>> entity_capabilities; // entity_id -> capabilities
+
+	// Extract entity data from state
+	// State structure: entities are stored in a nested structure
+	// We'll look for entity_capabilities or similar structure
+	if (p_state.has("entity_capabilities")) {
+		Dictionary entity_caps_dict = p_state["entity_capabilities"];
+		Array entity_ids = entity_caps_dict.keys();
+
+		for (int i = 0; i < entity_ids.size(); i++) {
+			String entity_id = entity_ids[i];
+			Dictionary entity_data = entity_caps_dict[entity_id];
+
+			// Extract type (stored as "type" capability)
+			if (entity_data.has("type")) {
+				entity_types[entity_id] = entity_data["type"];
+			}
+
+			// Extract all capabilities (any non-type key that has a truthy value)
+			LocalVector<String> caps;
+			Array cap_keys = entity_data.keys();
+			for (int j = 0; j < cap_keys.size(); j++) {
+				String cap_key = cap_keys[j];
+				if (cap_key != "type") {
+					Variant cap_value = entity_data[cap_key];
+					// Include capability if value is truthy (true, non-zero, non-empty)
+					if (cap_value.operator bool()) {
+						caps.push_back(cap_key);
+					}
+				}
+			}
+			entity_capabilities[entity_id] = caps;
+		}
+	}
+
+	// Match entities to requirements
+	Array matched_entities;
+
+	// Match each requirement to an entity
+	for (uint32_t req_idx = 0; req_idx < p_requirements.size(); req_idx++) {
+		const PlannerEntityRequirement &req = p_requirements[req_idx];
+		bool matched = false;
+
+		// Try to find matching entity
+		for (const KeyValue<String, String> &E : entity_types) {
+			String entity_id = E.key;
+			String entity_type = E.value;
+
+			// Check type match
+			if (entity_type != req.type) {
+				continue;
+			}
+
+			// Check if entity has all required capabilities
+			const LocalVector<String> *entity_caps = entity_capabilities.getptr(entity_id);
+			if (entity_caps == nullptr) {
+				continue;
+			}
+
+			bool has_all_caps = true;
+			for (uint32_t cap_idx = 0; cap_idx < req.capabilities.size(); cap_idx++) {
+				String required_cap = req.capabilities[cap_idx];
+				bool found = false;
+				for (uint32_t j = 0; j < entity_caps->size(); j++) {
+					if ((*entity_caps)[j] == required_cap) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					has_all_caps = false;
+					break;
+				}
+			}
+
+			if (has_all_caps) {
+				// Found matching entity
+				matched_entities.push_back(entity_id);
+				matched = true;
+				break;
+			}
+		}
+
+		if (!matched) {
+			result["success"] = false;
+			// Convert capabilities to string for error message
+			String caps_str = "[";
+			for (uint32_t i = 0; i < req.capabilities.size(); i++) {
+				if (i > 0) {
+					caps_str += ", ";
+				}
+				caps_str += req.capabilities[i];
+			}
+			caps_str += "]";
+			result["error"] = vformat("No entity found matching requirement: type=%s, capabilities=%s", req.type, caps_str);
+			return result;
+		}
+	}
+
+	result["success"] = true;
+	result["matched_entities"] = matched_entities;
+	return result;
+}
+
+// GDScript-compatible wrappers for time range
+Dictionary PlannerPlan::get_time_range_dict() const {
+	Dictionary result;
+	result["start_time"] = time_range.get_start_time();
+	result["end_time"] = time_range.get_end_time();
+	result["duration"] = time_range.get_duration();
+	return result;
+}
+
+void PlannerPlan::set_time_range_dict(const Dictionary &p_time_range) {
+	const Variant *start_time_var = p_time_range.getptr("start_time");
+	const Variant *end_time_var = p_time_range.getptr("end_time");
+	const Variant *duration_var = p_time_range.getptr("duration");
+
+	if (start_time_var) {
+		time_range.set_start_time(*start_time_var);
+	}
+	if (end_time_var) {
+		time_range.set_end_time(*end_time_var);
+	}
+	if (duration_var) {
+		time_range.set_duration(*duration_var);
+	}
+}

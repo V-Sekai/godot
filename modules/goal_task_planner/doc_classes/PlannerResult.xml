@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerResult" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Encapsulates the result of a planning operation, including the final state, solution graph, and success status.
+	</brief_description>
+	<description>
+		[PlannerResult] is returned by planning methods ([method PlannerPlan.find_plan], [method PlannerPlan.run_lazy_lookahead], [method PlannerPlan.run_lazy_refineahead]) and contains the outcome of the planning process. It provides access to the final state, the complete solution graph structure, and helper methods for inspecting the graph and extracting plans. The solution graph can be used with [method PlannerPlan.simulate] and [method PlannerPlan.replan] for plan execution and replanning.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="extract_plan" qualifiers="const">
+			<return type="Array" />
+			<param index="0" name="verbose" type="int" default="0" />
+			<description>
+				Extracts the sequence of actions from the solution graph. Returns an [Array] of action arrays, where each action array has the format "action_name", "arg1", "arg2", etc. Only successfully completed (CLOSED) actions are included in the extracted plan.
+			</description>
+		</method>
+		<method name="find_failed_nodes" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of [Dictionary] objects representing all nodes in the solution graph that have a FAILED status. Each dictionary contains "node_id", "type", and "info" keys. This is useful for identifying which nodes failed during planning, which can then be used with [method PlannerPlan.replan] to generate alternative plans.
+			</description>
+		</method>
+		<method name="get_all_nodes" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of [Dictionary] objects representing all nodes in the solution graph. Each dictionary contains "node_id", "type", "status", "info", and "tag" keys. This provides a complete overview of the planning graph structure and can be used for debugging or visualization.
+			</description>
+		</method>
+		<method name="get_node" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="node_id" type="int" />
+			<description>
+				Returns the node [Dictionary] for the specified node_id from the solution graph. The dictionary contains all node properties including "type", "status", "info", "tag", "successors", etc. Returns an empty dictionary if the node_id does not exist.
+			</description>
+		</method>
+		<method name="has_node" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="node_id" type="int" />
+			<description>
+				Returns true if the solution graph contains a node with the specified node_id, false otherwise.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="final_state" type="Dictionary" setter="set_final_state" getter="get_final_state" default="{}">
+			The final state [Dictionary] after planning completes. This represents the world state after all actions in the plan have been executed.
+		</member>
+		<member name="solution_graph" type="Dictionary" setter="set_solution_graph" getter="get_solution_graph" default="{}">
+			The complete solution graph [Dictionary] containing all nodes created during planning. The dictionary uses node IDs as keys and node dictionaries as values. This graph structure can be used for replanning, simulation, and detailed plan inspection.
+		</member>
+		<member name="success" type="bool" setter="set_success" getter="get_success" default="false">
+			Whether the planning operation succeeded. If true, a valid plan was found and all tasks were completed. If false, planning failed and no valid plan exists.
+		</member>
+	</members>
+</class>
