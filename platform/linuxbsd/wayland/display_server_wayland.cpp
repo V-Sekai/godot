@@ -806,18 +806,13 @@ void DisplayServerWayland::show_window(WindowID p_window_id) {
 		// graphics context window creation logic here.
 #ifdef RD_ENABLED
 		if (rendering_context) {
-			union {
-#ifdef VULKAN_ENABLED
-				RenderingContextDriverVulkanWayland::WindowPlatformData vulkan;
-#endif
-			} wpd;
+			Ref<RenderingNativeSurfaceWayland> ns;
 #ifdef VULKAN_ENABLED
 			if (rendering_driver == "vulkan") {
-				wpd.vulkan.surface = wayland_thread.window_get_wl_surface(wd.id);
-				wpd.vulkan.display = wayland_thread.get_wl_display();
+				ns = RenderingNativeSurfaceWayland::create(wayland_thread.get_wl_display(), wayland_thread.window_get_wl_surface(wd.id));
 			}
 #endif
-			Error err = rendering_context->window_create(wd.id, &wpd);
+			Error err = rendering_context->window_create(wd.id, ns);
 			ERR_FAIL_COND_MSG(err != OK, vformat("Can't create a %s window", rendering_driver));
 
 			rendering_context->window_set_size(wd.id, wd.rect.size.width, wd.rect.size.height);

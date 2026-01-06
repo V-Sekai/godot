@@ -59,6 +59,10 @@ RenderingContextDriver *RenderingNativeSurfaceWayland::create_rendering_context(
 	return nullptr;
 }
 
+void *RenderingNativeSurfaceWayland::get_native_id() const {
+	return (void *)surface;
+}
+
 RenderingNativeSurfaceWayland::RenderingNativeSurfaceWayland() {
 	// Does nothing.
 }
