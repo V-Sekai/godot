@@ -421,7 +421,10 @@ String PlannerResult::to_dot_graph() const {
 	dot += "  rankdir=TB;\n";
 	dot += "  size=\"12,16\";\n";  // Larger canvas size (12x16 inches)
 	dot += "  ratio=auto;\n";  // Auto aspect ratio
-	dot += "  node [shape=box, fontsize=10];\n";  // Smaller font size
+	dot += "  margin=2.0;\n";  // Large margin to prevent text clipping in corners
+	dot += "  nodesep=0.5;\n";  // Space between nodes
+	dot += "  ranksep=0.8;\n";  // Space between ranks
+	dot += "  node [shape=box, fontsize=10, width=0, height=0, fixedsize=false];\n";  // Auto-size nodes based on content
 	dot += "  edge [fontsize=8];\n";  // Smaller edge labels
 	dot += "\n";
 	
