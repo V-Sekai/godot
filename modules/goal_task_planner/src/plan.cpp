@@ -1473,9 +1473,9 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 		loop_count++;
 
 		// Safety: Check stack size to prevent excessive memory usage
-		if (stack.size() > max_stack_size) {
+		if (static_cast<int>(stack.size()) > max_stack_size) {
 			if (verbose >= 1) {
-				ERR_PRINT(vformat("Planning loop stack size (%d) exceeded maximum (%d), forcing exit", stack.size(), max_stack_size));
+				ERR_PRINT(vformat("Planning loop stack size (%d) exceeded maximum (%d), forcing exit", static_cast<int>(stack.size()), max_stack_size));
 			}
 			stack.clear();
 			break;

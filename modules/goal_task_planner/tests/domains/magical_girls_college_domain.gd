@@ -128,6 +128,50 @@ static func set_coordination(state: Dictionary, persona_id: String, coordination
 	coord_dict[persona_id] = coordination
 	state["coordination"] = coord_dict
 
+# The Sims-style needs helper functions
+static func get_need(state: Dictionary, persona_id: String, need_name: String, default_value: int = 50) -> int:
+	var needs_key = "needs"
+	if not state.has(needs_key):
+		return default_value
+	var needs = state[needs_key]
+	if not needs.has(persona_id):
+		return default_value
+	var persona_needs = needs[persona_id]
+	if not persona_needs.has(need_name):
+		return default_value
+	var val = persona_needs[need_name]
+	if val is int:
+		return val
+	return default_value
+
+static func set_need(state: Dictionary, persona_id: String, need_name: String, value: int) -> void:
+	if not state.has("needs"):
+		state["needs"] = {}
+	var needs = state["needs"]
+	if not needs.has(persona_id):
+		needs[persona_id] = {}
+	var persona_needs = needs[persona_id]
+	persona_needs[need_name] = clamp(value, 0, 100)  # Needs are 0-100
+	needs[persona_id] = persona_needs
+	state["needs"] = needs
+
+static func get_money(state: Dictionary, persona_id: String) -> int:
+	if not state.has("money"):
+		return 0
+	var money = state["money"]
+	if money.has(persona_id):
+		var val = money[persona_id]
+		if val is int:
+			return val
+	return 0
+
+static func set_money(state: Dictionary, persona_id: String, amount: int) -> void:
+	if not state.has("money"):
+		state["money"] = {}
+	var money = state["money"]
+	money[persona_id] = amount
+	state["money"] = money
+
 # Actions - Study
 static func action_attend_lecture(state: Dictionary, persona_id: Variant, subject: Variant) -> Variant:
 	var new_state = state.duplicate(true)
