@@ -3,8 +3,6 @@ extends Node
 # Test script demonstrating plan explanation and debugging features
 # Run this script to see plan explanation, debugging, and visualization features
 
-const Domain = preload("res://modules/goal_task_planner/tests/domains/plan_explanation_demo/domain.gd")
-
 func _ready():
 	print("=== Plan Explanation and Debugging Demo ===\n")
 	
