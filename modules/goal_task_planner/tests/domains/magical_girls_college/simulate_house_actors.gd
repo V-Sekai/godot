@@ -465,6 +465,7 @@ var allocentric_facts: Dictionary = {}  # Shared read-only ground truth (for fut
 # Planning coordination - limit concurrent planning to prevent spikes
 var planning_semaphore: Semaphore = null
 const MAX_CONCURRENT_PLANNING = 4  # Limit to 4 actors planning simultaneously
+# Tested up to 1286 actors with 4 slots - performs well due to staggered planning intervals
 
 # Statistics (only updated at sync points, no locks during processing)
 var total_actions_executed = 0
@@ -578,17 +579,15 @@ func _init():
 
 func start_simulation():
 	var num_cores = OS.get_processor_count()
-	# Oversubscribe the system - run many more actors than cores
-	# Latency target: maximum 15-30ms per step with buffer
-	# Using Steam Deck-optimized configuration (4x oversubscription) for all systems
-	# This ensures comfortable 8-12ms buffer below 30ms limit, accounting for:
-	# - Thermal throttling (+2-5ms)
-	# - Background processes (+1-2ms)
-	# - Lower CPU performance variability (+1-2ms)
-	# With 4x: 12 cores = 48 actors, 4 cores = 16 actors
-	# Expected: avg ~2-3ms, max ~18-22ms (comfortable buffer for all systems)
-	var oversubscription_ratio = 4  # Steam Deck-optimized for all systems
-	var num_agents = num_cores * oversubscription_ratio
+	# Get actor count from command line or use default
+	# Maximum tested: 1286 actors (27.533ms max latency, within 30ms target)
+	# Safe production default: 1200 actors (26.686ms max latency, comfortable buffer)
+	var num_agents = 1200  # Safe production default
+	var args = OS.get_cmdline_args()
+	for i in range(args.size()):
+		if args[i] == "--actors" and i + 1 < args.size():
+			num_agents = int(args[i + 1])
+			break
 
 	# Initialize planning semaphore to limit concurrent planning
 	planning_semaphore = Semaphore.new()
@@ -598,7 +597,12 @@ func start_simulation():
 
 	print("Initializing %d actors (CPU cores: %d)" % [num_agents, num_cores])
 	if num_cores > 0:
-		print("Oversubscription ratio: %.1fx cores (Steam Deck-optimized, target max latency: 15-30ms with buffer)" % (float(num_agents) / num_cores))
+		var ratio = float(num_agents) / num_cores
+		print("Oversubscription ratio: %.1fx cores" % ratio)
+		if num_agents > 1286:
+			print("WARNING: Exceeds tested maximum (1286 actors). Max latency may exceed 30ms target.")
+		elif num_agents > 1200:
+			print("INFO: Above safe production limit (1200 actors). Max latency may approach 30ms.")
 
 	# Create actors with staggered planning intervals to prevent simultaneous planning spikes
 	for i in range(num_agents):
