@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EditorFileSystemImportFormatSupportQueryUSD" inherits="EditorFileSystemImportFormatSupportQuery" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Handles USD file format detection and Blender path configuration for USD import.
+	</brief_description>
+	<description>
+		Detects USD files ([code].usd[/code], [code].usda[/code], [code].usdc[/code], [code].usdz[/code]) in the project. USDZ support requires Blender 3.5 or higher.
+		When USD files are detected in the project but Blender is not configured, this class prompts the user to set the Blender path via a configuration dialog. The configured path is stored in [member EditorSettings.filesystem/import/blender/blender_path].
+	</description>
+	<tutorials>
+	</tutorials>
+</class>
