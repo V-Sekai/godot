@@ -108,16 +108,22 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	stn.clear();
 	stn_snapshot = PlannerSTNSolver::Snapshot(); // Reset snapshot to empty state
 
-	// Initialize STN solver with origin time point (planning-specific initialization)
-	stn.add_time_point("origin");
+	// Lazy STN Validation: Only initialize STN if temporal constraints are present
+	bool has_temporal = _todo_list_has_temporal_constraints(p_todo_list);
+	if (has_temporal) {
+		// Initialize STN solver with origin time point (planning-specific initialization)
+		stn.add_time_point("origin");
 
-	// Initialize time range if not already set
-	if (time_range.get_start_time() == 0) {
-		time_range.set_start_time(PlannerTimeRange::now_microseconds());
+		// Initialize time range if not already set
+		if (time_range.get_start_time() == 0) {
+			time_range.set_start_time(PlannerTimeRange::now_microseconds());
+		}
+
+		// Anchor origin to current absolute time
+		PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
+	} else if (verbose >= 2) {
+		print_line("[LAZY_STN] No temporal constraints detected, skipping STN initialization");
 	}
-
-	// Anchor origin to current absolute time
-	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
 
 	// Guard: Domain must be set
 	if (!current_domain.is_valid()) {
@@ -1385,16 +1391,22 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 	stn.clear();
 	stn_snapshot = PlannerSTNSolver::Snapshot(); // Reset snapshot to empty state
 
-	// Initialize STN solver with origin time point (planning-specific initialization)
-	stn.add_time_point("origin"); // Origin time point (plan start)
+	// Lazy STN Validation: Only initialize STN if temporal constraints are present
+	bool has_temporal = _todo_list_has_temporal_constraints(p_todo_list);
+	if (has_temporal) {
+		// Initialize STN solver with origin time point (planning-specific initialization)
+		stn.add_time_point("origin"); // Origin time point (plan start)
 
-	// Initialize time range if not already set
-	if (time_range.get_start_time() == 0) {
-		time_range.set_start_time(PlannerTimeRange::now_microseconds());
+		// Initialize time range if not already set
+		if (time_range.get_start_time() == 0) {
+			time_range.set_start_time(PlannerTimeRange::now_microseconds());
+		}
+
+		// Anchor origin to current absolute time
+		PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
+	} else if (verbose >= 2) {
+		print_line("[LAZY_STN] No temporal constraints detected, skipping STN initialization");
 	}
-
-	// Anchor origin to current absolute time
-	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
 
 	// Validate that current_domain is set before accessing its members
 	if (!current_domain.is_valid()) {
@@ -3445,6 +3457,27 @@ bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
 	PlannerMetadata extracted_metadata = _extract_metadata(p_item);
 	extracted_metadata.requires_entities.clear();
 	return extracted_metadata.has_temporal();
+}
+
+bool PlannerPlan::_todo_list_has_temporal_constraints(const Array &p_todo_list) const {
+	// Check if any element in the todo_list has temporal constraints
+	for (int i = 0; i < p_todo_list.size(); i++) {
+		Variant item = p_todo_list[i];
+		if (_has_temporal_constraints(item)) {
+			return true;
+		}
+		// Also check if it's a multigoal array (array of arrays)
+		if (item.get_type() == Variant::ARRAY) {
+			Array item_arr = item;
+			for (int j = 0; j < item_arr.size(); j++) {
+				Variant sub_item = item_arr[j];
+				if (_has_temporal_constraints(sub_item)) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 // Belief-immersed architecture integration

@@ -440,8 +440,7 @@ void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, i
 			graph_internal.erase(node_id_to_remove);
 		}
 	}
-	// Update Dictionary for API compatibility
-	const Dictionary &graph_dict = p_graph.get_graph();
+	// Note: Dictionary is automatically updated via update_node() call below
 
 	// Clear successors of the node
 	successors.clear();
@@ -505,6 +504,8 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		print_line("[EXTRACT_SOLUTION_PLAN] Starting extract_solution_plan()");
 	}
 	Array plan;
+	// For STN-based extraction: collect actions with temporal metadata for sorting
+	Array actions_with_metadata; // Array of dictionaries: {"action": Variant, "start_time": int64_t, "node_id": int}
 
 	// Guard: Graph must not be empty
 	Dictionary graph_dict = p_graph.get_graph();
@@ -656,11 +657,16 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 				continue; // Skip nodes without info field
 			}
 			Variant info = node["info"];
+			Dictionary temporal_metadata;
 			// Unwrap if dictionary-wrapped (has constraints)
 			if (info.get_type() == Variant::DICTIONARY) {
 				Dictionary dict = info;
 				if (dict.has("item")) {
 					info = dict["item"];
+				}
+				// Extract temporal metadata if present
+				if (dict.has("temporal_constraints")) {
+					temporal_metadata = dict["temporal_constraints"];
 				}
 			}
 			// Debug: Log action extraction
@@ -675,7 +681,45 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 					}
 				}
 			}
-			plan.push_back(info);
+
+			// STN-Based Plan Extraction: Collect actions with temporal metadata for sorting
+			// Use all available temporal metadata (start_time, end_time, duration) from nodes
+			int64_t sort_time = INT64_MAX; // Use INT64_MAX as "no temporal constraint" marker
+
+			if (!temporal_metadata.is_empty()) {
+				// Prefer start_time (most accurate for sorting)
+				if (temporal_metadata.has("start_time")) {
+					sort_time = temporal_metadata["start_time"];
+				}
+				// If no start_time, calculate from end_time - duration
+				else if (temporal_metadata.has("end_time") && temporal_metadata.has("duration")) {
+					int64_t end_time = temporal_metadata["end_time"];
+					int64_t duration = temporal_metadata["duration"];
+					sort_time = end_time - duration;
+				}
+				// If only duration, we can't determine start time (need reference point)
+				// Keep as INT64_MAX to sort after actions with known start times
+			}
+
+			// Also check node's direct temporal fields (if stored separately)
+			if (sort_time == INT64_MAX && node.has("start_time")) {
+				int64_t node_start_time = node["start_time"];
+				if (node_start_time > 0) {
+					sort_time = node_start_time;
+				}
+			}
+
+			if (sort_time != INT64_MAX) {
+				// Has temporal constraint: collect for sorting
+				Dictionary action_entry;
+				action_entry["action"] = info;
+				action_entry["start_time"] = sort_time;
+				action_entry["node_id"] = node_id;
+				actions_with_metadata.push_back(action_entry);
+			} else {
+				// No temporal constraints: Use DFS order (original behavior)
+				plan.push_back(info);
+			}
 		}
 
 		// Only visit successors of closed nodes (skip failed branches)
@@ -745,6 +789,37 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 					// If parent doesn't match, skip this successor (it was removed during backtracking)
 				}
 			}
+		}
+	}
+
+	// STN-Based Plan Extraction: Sort actions with temporal constraints by start_time
+	if (actions_with_metadata.size() > 0) {
+		if (p_verbose >= 3) {
+			print_line(vformat("[EXTRACT_SOLUTION_PLAN] Sorting %d temporal actions by start_time", actions_with_metadata.size()));
+		}
+		// Sort actions by start_time (ascending order)
+		// Use a simple bubble sort (O(n^2)) since action count is typically small (< 100)
+		for (int i = 0; i < actions_with_metadata.size() - 1; i++) {
+			for (int j = 0; j < actions_with_metadata.size() - i - 1; j++) {
+				Dictionary action1 = actions_with_metadata[j];
+				Dictionary action2 = actions_with_metadata[j + 1];
+				int64_t time1 = action1.get("start_time", INT64_MAX);
+				int64_t time2 = action2.get("start_time", INT64_MAX);
+				// Sort by start_time (ascending)
+				if (time1 > time2) {
+					actions_with_metadata[j] = action2;
+					actions_with_metadata[j + 1] = action1;
+				}
+			}
+		}
+		// Extract sorted temporal actions and append to plan
+		// Non-temporal actions (already in plan) maintain DFS order, temporal actions are sorted
+		for (int i = 0; i < actions_with_metadata.size(); i++) {
+			Dictionary action_entry = actions_with_metadata[i];
+			plan.push_back(action_entry["action"]);
+		}
+		if (p_verbose >= 3) {
+			print_line(vformat("[EXTRACT_SOLUTION_PLAN] STN-based sorting complete, returning %d actions", plan.size()));
 		}
 	}
 

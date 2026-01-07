@@ -136,6 +136,8 @@ class PlannerPlan : public Resource {
 	Variant _attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints);
 	Dictionary _get_temporal_constraints(const Variant &p_item) const;
 	bool _has_temporal_constraints(const Variant &p_item) const;
+	// Check if any element in todo_list has temporal constraints (for lazy STN initialization)
+	bool _todo_list_has_temporal_constraints(const Array &p_todo_list) const;
 
 	// Belief-immersed architecture helpers
 	Dictionary _get_ego_centric_state(const Dictionary &p_state) const;

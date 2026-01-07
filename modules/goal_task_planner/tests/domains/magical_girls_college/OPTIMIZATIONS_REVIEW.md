@@ -24,7 +24,7 @@ We've implemented optimizations to the two highest-impact functions identified i
 - **Line 2845**: `TYPE_VERIFY_GOAL` case - uses `get_node_internal()` to read `parent_node->info`
 - **Line 2901**: `TYPE_VERIFY_MULTIGOAL` case - uses `get_node_internal()` to read `parent_node->info`
 
-**Impact**: 
+**Impact**:
 - Reduces Dictionary conversion overhead for parent node lookups
 - Direct access to internal structures is faster
 - Expected: ~1.25-1.9% overall improvement
@@ -93,7 +93,7 @@ if (score > best_candidate.score) {
     best_candidate.method = method;
     best_candidate.subtasks = candidate_subtasks;
     best_candidate.score = score;
-    
+
     // Early termination if we find a very high-scoring method
     if (score > 1000.0 && candidate_subtasks.size() <= 1) {
         if (verbose >= 3) {
@@ -196,4 +196,3 @@ The optimizations have been successfully implemented and are working as expected
 2. Profile specific functions to measure isolated improvements
 3. Consider adding `created_subtasks` to `PlannerNodeStruct` for further optimization
 4. Tune early termination threshold based on actual activity score distributions
-

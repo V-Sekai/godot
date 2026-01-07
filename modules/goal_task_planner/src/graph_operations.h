@@ -56,6 +56,9 @@ public:
 	static void remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id, bool p_also_remove_from_parent = false);
 
 	// Extract solution plan (sequence of actions) from graph
+	// Actions with temporal constraints are sorted by start_time (STN-Based Plan Extraction)
+	// Uses start_time, or calculates from (end_time - duration) if start_time not available
+	// Actions without temporal constraints maintain DFS order
 	static Array extract_solution_plan(PlannerSolutionGraph &p_graph, int p_verbose = 0);
 	// Extract only "new" actions from graph (for replanning)
 	static Array extract_new_actions(PlannerSolutionGraph &p_graph);

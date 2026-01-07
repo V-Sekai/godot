@@ -75,7 +75,7 @@ func cache_plan(state: Dictionary, critical_needs: Array, result: PlannerResult)
             planning_cache.erase(keys[i])
 ```
 
-**Expected Impact**: 
+**Expected Impact**:
 - Reduces planning calls by 30-50%
 - At 300 actors: 30-50 actors planning → 15-25 actors planning
 - Max latency: 40ms → **20-25ms** ✅
@@ -92,7 +92,7 @@ func get_planning_depth(critical_needs: Array) -> int:
     for need in critical_needs:
         var urgency = 100 - need["value"]
         max_urgency = max(max_urgency, urgency)
-    
+
     # Critical needs (urgency > 40): full depth
     if max_urgency > 40:
         return 10
@@ -225,4 +225,3 @@ func apply_batched_updates():
 **Timeline**: 1-2 weeks of focused development
 
 **Confidence**: **HIGH** - Current architecture is solid, optimizations are well-understood, and we have significant headroom (48x) at current scale.
-
