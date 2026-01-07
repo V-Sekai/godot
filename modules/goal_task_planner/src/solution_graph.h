@@ -188,7 +188,7 @@ public:
 		graph_internal.clear();
 		graph = Dictionary();
 		Array graph_keys = p_graph.keys();
-		for (int i = 0; i < graph_keys.size(); i++) {
+		for (size_t i = 0; i < graph_keys.size(); i++) {
 			Variant key = graph_keys[i];
 			if (key.get_type() != Variant::INT) {
 				continue;
@@ -201,7 +201,7 @@ public:
 		}
 		// Find max node ID to set next_node_id
 		int max_id = -1;
-		for (int i = 0; i < graph_keys.size(); i++) {
+		for (size_t i = 0; i < graph_keys.size(); i++) {
 			Variant key = graph_keys[i];
 			if (key.get_type() == Variant::INT) {
 				int node_id = key;
@@ -292,7 +292,7 @@ private:
 		dict["info"] = p_node.info;
 		// Convert LocalVector<int> to TypedArray<int>
 		TypedArray<int> successors_array;
-		for (int i = 0; i < p_node.successors.size(); i++) {
+		for (size_t i = 0; i < p_node.successors.size(); i++) {
 			successors_array.push_back(p_node.successors[i]);
 		}
 		dict["successors"] = successors_array;
@@ -323,7 +323,7 @@ private:
 			// Convert TypedArray<int> to LocalVector<int>
 			TypedArray<int> successors_array = p_dict["successors"];
 			node.successors.clear();
-			for (int i = 0; i < successors_array.size(); i++) {
+			for (size_t i = 0; i < successors_array.size(); i++) {
 				node.successors.push_back(successors_array[i]);
 			}
 		}
