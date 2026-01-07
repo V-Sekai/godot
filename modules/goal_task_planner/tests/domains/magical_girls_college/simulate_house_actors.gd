@@ -14,10 +14,10 @@ const PLANNING_TIMEOUT_MS = 0.025  # Skip planning if it takes longer than 25ms
 
 # Message types for actor communication
 enum MessageType {
+	TIME_TICK,
 	STATE_UPDATE,
 	OBSERVATION,
 	COMMUNICATION,
-	TIME_TICK,
 	SYNC_REQUEST
 }
 
@@ -71,10 +71,6 @@ class ActorMailbox:
 		read_pos = (read_pos + 1) & size_mask
 		return msg
 
-	func peek_message() -> ActorMessage:
-		if data_left() < 1:
-			return null
-		return messages[read_pos]
 
 # Actor - represents an agent with its own state and mailbox
 class Actor:
@@ -147,13 +143,13 @@ class Actor:
 
 		# Log state updates at reduced frequency (every 5 minutes) for readability
 		if is_tracked:
+			const GRADUATION_POINTS = 100
 			var time_since_last_log = current_time - last_logged_time
 			if last_logged_time < 0 or time_since_last_log >= LOG_INTERVAL_SECONDS:
 				var needs = state["needs"][persona_id]
 				var location = state["is_at"][persona_id]
 				var money = state["money"][persona_id]
 				var study_points = Domain.get_study_points(state, persona_id)
-				const GRADUATION_POINTS = 100
 				var graduation_status = "🎓 GRADUATED!" if study_points >= GRADUATION_POINTS else "📚 %d/%d" % [study_points, GRADUATION_POINTS]
 				print("[%s] Time: %.1f min | Location: %s | Money: $%d | Study: %s | Needs: H=%d E=%d S=%d F=%d Hy=%d" % [
 					persona_id, current_time / 60.0, location, money, graduation_status,
@@ -163,7 +159,6 @@ class Actor:
 
 			# Always check for graduation milestone (important event)
 			var study_points = Domain.get_study_points(state, persona_id)
-			const GRADUATION_POINTS = 100
 			if study_points >= GRADUATION_POINTS and not has_graduated:
 				print("  🎉🎉🎉 GRADUATION! %s has completed their studies! 🎉🎉🎉" % persona_id)
 				has_graduated = true
@@ -570,21 +565,16 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 
 	return new_state
 
-# Actors and allocentric facts
 var actors: Array = []
-var allocentric_facts: Dictionary = {}  # Shared read-only ground truth (for future PlannerFactsAllocentric integration)
+var allocentric_facts: Dictionary = {}
 
-# Actor tracking - follow one actor's behavior
-const NUM_TRACKED_ACTORS = 8  # Number of actors to track in detail
-var tracked_actor_ids: Array = []  # List of actor IDs to track
-var track_actor: bool = true  # Enable detailed tracking
+const NUM_TRACKED_ACTORS = 8
+var tracked_actor_ids: Array = []
+var track_actor: bool = true
 
-# Planning coordination - limit concurrent planning to prevent spikes
 var planning_semaphore: Semaphore = null
-const MAX_CONCURRENT_PLANNING = 4  # Limit to 4 actors planning simultaneously
-# Tested up to 1286 actors with 4 slots - performs well due to staggered planning intervals
+const MAX_CONCURRENT_PLANNING = 4
 
-# Statistics (only updated at sync points, no locks during processing)
 var total_actions_executed = 0
 var total_plans_generated = 0
 var total_replans = 0
@@ -592,12 +582,10 @@ var profile_data = {
 	"step_times": [],
 	"total_planning_time": 0.0,
 	"planning_calls": 0,
-	"planning_throttled": 0  # Track how often planning is throttled
+	"planning_throttled": 0
 }
 
 func create_domain() -> PlannerDomain:
-	# Use unified domain creation function - simulation needs study methods for graduation tracking
-	# but doesn't need social, unigoal, or multigoal methods
 	return Domain.create_planner_domain(true, false, false, false)
 
 func create_actor_state(persona_id: String) -> Dictionary:
@@ -619,23 +607,15 @@ func create_actor_state(persona_id: String) -> Dictionary:
 	state["study_points"] = {persona_id: 0}
 	state["relationship_points_%s_maya" % persona_id] = 0
 
-	# Initialize coordination state (empty - allows lecture/library methods to work)
-	# Study methods check for coordination - if it doesn't exist or is empty, they can proceed
+	# Initialize full state structure for study methods
 	state["coordination"] = {}
-
-	# Initialize temporal_puzzle state (empty - allows lecture/library methods to work)
-	# Study methods check for homework_deadline - if it doesn't exist, they can proceed
 	state["temporal_puzzle"] = {}
-
-	# Initialize preferences (for activity likes/dislikes if needed)
 	state["preferences"] = {
 		persona_id: {
 			"likes": [],
 			"dislikes": []
 		}
 	}
-
-	# Initialize burnout (for burnout tracking if needed)
 	state["burnout"] = {persona_id: 0}
 
 	return state
@@ -647,10 +627,7 @@ func _init():
 
 func start_simulation():
 	var num_cores = OS.get_processor_count()
-	# Get actor count from command line or use default
-	# Maximum tested: 1286 actors (27.533ms max latency, within 30ms target)
-	# Safe production default: 1200 actors (26.686ms max latency, comfortable buffer)
-	var num_agents = 8  # Default to 8 actors (matching tracked actors)
+	var num_agents = 8  # Default to 8 actors
 	var args = OS.get_cmdline_args()
 	for i in range(args.size()):
 		if args[i] == "--actors" and i + 1 < args.size():
@@ -667,18 +644,10 @@ func start_simulation():
 
 	# Initialize planning semaphore to limit concurrent planning
 	planning_semaphore = Semaphore.new()
-	# Pre-populate with permits (Semaphore starts at 0, so post to allow planning)
 	for i in range(MAX_CONCURRENT_PLANNING):
 		planning_semaphore.post()
 
 	print("Initializing %d actors (CPU cores: %d)" % [num_agents, num_cores])
-	if num_cores > 0:
-		var ratio = float(num_agents) / num_cores
-		print("Oversubscription ratio: %.1fx cores" % ratio)
-		if num_agents > 1286:
-			print("WARNING: Exceeds tested maximum (1286 actors). Max latency may exceed 30ms target.")
-		elif num_agents > 1200:
-			print("INFO: Above safe production limit (1200 actors). Max latency may approach 30ms.")
 
 	# Create actors with staggered planning intervals to prevent simultaneous planning spikes
 	for i in range(num_agents):
@@ -687,16 +656,9 @@ func start_simulation():
 		var domain = create_domain()
 		var plan = PlannerPlan.new()
 		plan.set_current_domain(domain)
-		# Enable verbose for tracked actors to debug planning issues
-		if track_actor and persona_id in tracked_actor_ids:
-			plan.set_verbose(0)  # Verbose for debugging
-		else:
-			plan.set_verbose(0)
-		# Increase max_depth to allow study task decomposition for graduation
-		plan.set_max_depth(15)  # Increased to 15 to allow study task decomposition
+		plan.set_verbose(0)
+		plan.set_max_depth(15)
 
-		# Stagger planning intervals to prevent all actors planning at once
-		# Spread planning checks over the planning_interval period
 		var stagger_offset = (planning_check_interval * float(i)) / float(num_agents)
 		var staggered_interval = planning_check_interval + stagger_offset
 
@@ -707,7 +669,6 @@ func start_simulation():
 			planning_semaphore,
 			track_actor and persona_id in tracked_actor_ids,
 			tracked_actor_ids)
-		# Set initial planning check to be staggered
 		actor.last_planning_check = -stagger_offset
 		actors.append(actor)
 
@@ -741,11 +702,7 @@ func process_actor(actor_index: int):
 	var actor = actors[actor_index]
 	var processing_start = Time.get_ticks_usec()
 
-	# Get current time (read-only, no lock needed)
 	var current_sim_time = simulation_time_seconds
-
-	# Send time tick message to self for processing (lockless write)
-	# Optimize: Reuse message object if available (message pooling would help here)
 	var time_msg = ActorMessage.new()
 	time_msg.message_type = MessageType.TIME_TICK
 	time_msg.sender_id = "system"
@@ -753,10 +710,7 @@ func process_actor(actor_index: int):
 	time_msg.timestamp = Time.get_ticks_msec() / 1000.0
 	actor.mailbox.write_message(time_msg)
 
-	# Process all messages in mailbox (lockless ring buffer)
 	actor.process_messages()
-
-	# Track max processing time per actor
 	var processing_time = (Time.get_ticks_usec() - processing_start) / 1000000.0
 	if processing_time > actor.local_stats["max_processing_time"]:
 		actor.local_stats["max_processing_time"] = processing_time
@@ -767,7 +721,6 @@ func simulation_step():
 		print("\n=== Simulation Complete ===")
 		print("Total simulation time: %.1f minutes" % (total_simulation_time / 60.0))
 
-		# Aggregate statistics from actors (no locks needed - actors are done)
 		for actor in actors:
 			total_plans_generated += actor.local_stats["plans_generated"]
 			total_replans += actor.local_stats.get("replans", 0)
@@ -789,21 +742,15 @@ func simulation_step():
 		quit(0)
 		return
 
-	# Process all actors in parallel (lockless)
 	var step_start = Time.get_ticks_usec()
 	var task_id = WorkerThreadPool.add_group_task(process_actor, actors.size(), -1, true, "Process actors")
 	WorkerThreadPool.wait_for_group_task_completion(task_id)
 	var step_duration = Time.get_ticks_usec() - step_start
 	var step_duration_ms = step_duration / 1000.0
 
-	# Track if step exceeded target latency
-	if step_duration_ms > 30.0:
-		# Log warning but continue - this helps identify problematic steps
-		pass  # Warning already shown in latency stats
 
 	profile_data["step_times"].append(step_duration / 1000000.0)
 
-	# Print state every 2 minutes (show subset for large numbers)
 	if int(simulation_time_seconds) % 120 < time_step:
 		var time_minutes = simulation_time_seconds / 60.0
 		print("\n[%.1f min] Actor States (showing first 5 and last 1):" % time_minutes)
@@ -829,7 +776,6 @@ func print_actor_stats():
 	print("  Messages: %d sent/received (lockless)" % total_messages)
 
 func print_latency_stats():
-	# Calculate latency stats from recent steps (last 60 steps = ~1 minute)
 	var recent_steps = min(60, profile_data["step_times"].size())
 	if recent_steps == 0:
 		return
@@ -847,8 +793,6 @@ func print_latency_stats():
 
 	var avg_latency = total / recent_steps
 	var current_latency = profile_data["step_times"][-1] if profile_data["step_times"].size() > 0 else 0.0
-
-	# Find slowest actors (top 3 by max processing time)
 	var actor_times = []
 	for actor in actors:
 		if actor.local_stats["max_processing_time"] > 0.0:
@@ -867,8 +811,7 @@ func print_latency_stats():
 		max_latency * 1000.0
 	])
 
-	# Warn if latency exceeds target (with buffer - warn at 28ms to maintain buffer)
-	var buffer_threshold = 28.0  # Warn at 28ms to maintain 2ms buffer below 30ms
+	var buffer_threshold = 28.0
 	if max_latency * 1000.0 > buffer_threshold:
 		print("    ⚠️  Peak latency (%.3fms) approaching/exceeding buffer threshold (%.1fms)" % [
 			max_latency * 1000.0, buffer_threshold
@@ -905,7 +848,6 @@ func print_profiling_summary():
 	print("  Min: %.3fms" % (min_step_time * 1000.0))
 	print("  Max: %.3fms" % (max_step_time * 1000.0))
 
-	# Thread utilization
 	var num_threads = min(actors.size(), OS.get_processor_count())
 	var theoretical_min_time = max_step_time / num_threads if num_threads > 0 else max_step_time
 	var efficiency = (theoretical_min_time / avg_step_time) * 100.0 if avg_step_time > 0 else 0.0
