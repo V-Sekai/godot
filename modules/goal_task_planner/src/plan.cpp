@@ -840,10 +840,16 @@ void PlannerPlan::_reward_method_immediate(Callable p_method, int p_current_acti
 	}
 }
 
-PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type) {
+PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type, bool p_track_alternatives, Array *p_alternatives) {
 	MethodCandidate best_candidate;
 	best_candidate.method = Callable();
 	best_candidate.score = INITIAL_SCORE; // Very negative initial score
+	best_candidate.method_id = "";
+	best_candidate.activity = 0.0;
+	best_candidate.reason = "";
+
+	// Track all candidates for explanation/debugging
+	Array all_candidates;
 
 	// Evaluate all methods and collect candidates
 	for (int i = 0; i < p_methods.size(); i++) {
@@ -995,15 +1001,28 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 		double score = activity * ACTIVITY_SCORE_MULTIPLIER; // Activity as primary score (VSIDS-style)
 
 		// Add small bonus for methods with fewer subtasks (prefer direct methods)
+		double subtask_bonus = 0.0;
 		if (candidate_subtasks.size() > 0) {
-			score += SUBTASK_BONUS_BASE / (1.0 + candidate_subtasks.size());
+			subtask_bonus = SUBTASK_BONUS_BASE / (1.0 + candidate_subtasks.size());
+			score += subtask_bonus;
 		}
 
 		if (verbose >= 3) {
 			double debug_scaled = activity * (ACTIVITY_SCORE_MULTIPLIER * 10.0); // For debug display only
-			double debug_bonus = candidate_subtasks.size() > 0 ? SUBTASK_BONUS_BASE / (1.0 + candidate_subtasks.size()) : 0.0;
 			print_line(vformat("VSIDS: Evaluating method '%s' - activity: %.6f, scaled: %.6f, subtask bonus: %.2f, total score: %.6f",
-					method_id, activity, debug_scaled, debug_bonus, score));
+					method_id, activity, debug_scaled, subtask_bonus, score));
+		}
+
+		// Track candidate for explanation/debugging
+		if (p_track_alternatives && p_alternatives != nullptr) {
+			Dictionary candidate_info;
+			candidate_info["method_id"] = method_id;
+			candidate_info["score"] = score;
+			candidate_info["activity"] = activity;
+			candidate_info["subtask_count"] = candidate_subtasks.size();
+			candidate_info["subtask_bonus"] = subtask_bonus;
+			candidate_info["subtasks"] = candidate_subtasks;
+			all_candidates.push_back(candidate_info);
 		}
 
 		// Update best candidate if this score is better
@@ -1011,6 +1030,9 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 			best_candidate.method = method;
 			best_candidate.subtasks = candidate_subtasks;
 			best_candidate.score = score;
+			best_candidate.method_id = method_id;
+			best_candidate.activity = activity;
+			best_candidate.reason = vformat("Selected due to highest score (%.2f) - activity: %.6f, subtask bonus: %.2f", score, activity, subtask_bonus);
 
 			// Optimized: Early termination if we find a method with very high score
 			// This indicates a method with high activity and few subtasks - likely optimal
@@ -1022,6 +1044,16 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 				break; // Early exit - unlikely to find better
 			}
 		}
+	}
+
+	// Store alternatives if tracking enabled
+	if (p_track_alternatives && p_alternatives != nullptr) {
+		*p_alternatives = all_candidates;
+	}
+
+	// Set reason for best candidate if not already set
+	if (best_candidate.method.is_valid() && best_candidate.reason.is_empty()) {
+		best_candidate.reason = vformat("Selected method '%s' with score %.2f", best_candidate.method_id, best_candidate.score);
 	}
 
 	return best_candidate;
@@ -1999,9 +2031,22 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						method_id, activity, best.score, subtasks.size()));
 			}
 
+			// Store decision info for explanation/debugging
+			Dictionary decision_info;
+			decision_info["selected_method_id"] = best.method_id;
+			decision_info["selected_score"] = best.score;
+			decision_info["selected_activity"] = best.activity;
+			decision_info["selected_reason"] = best.reason;
+			if (track_alternatives && alternatives.size() > 0) {
+				decision_info["alternatives"] = alternatives;
+				decision_info["total_candidates"] = alternatives.size();
+			}
+			decision_info["available_methods_count"] = available_methods.size();
+
 			p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 			p_curr_node["selected_method"] = selected_method;
 			p_curr_node["created_subtasks"] = subtasks;
+			p_curr_node["decision_info"] = decision_info;
 			solution_graph.update_node(p_curr_node_id, p_curr_node);
 
 			if (verbose >= 2) {
@@ -2573,7 +2618,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				return false;
 			}
 
-			MethodCandidate best = _select_best_method(available_methods, p_state, actual_unigoal_info, Variant(), static_cast<int>(PlannerNodeType::TYPE_UNIGOAL));
+			// Track alternatives for explanation/debugging if verbose enough
+			Array alternatives;
+			bool track_alternatives = (verbose >= 2);
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_unigoal_info, Variant(), static_cast<int>(PlannerNodeType::TYPE_UNIGOAL), track_alternatives, &alternatives);
 
 			Callable selected_method;
 			Array subtasks;
@@ -2595,9 +2643,22 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			}
 
 			if (found_working_method) {
+				// Store decision info for explanation/debugging
+				Dictionary decision_info;
+				decision_info["selected_method_id"] = best.method_id;
+				decision_info["selected_score"] = best.score;
+				decision_info["selected_activity"] = best.activity;
+				decision_info["selected_reason"] = best.reason;
+				if (track_alternatives && alternatives.size() > 0) {
+					decision_info["alternatives"] = alternatives;
+					decision_info["total_candidates"] = alternatives.size();
+				}
+				decision_info["available_methods_count"] = available_methods.size();
+
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				p_curr_node["selected_method"] = selected_method;
 				p_curr_node["created_subtasks"] = subtasks.duplicate(true);
+				p_curr_node["decision_info"] = decision_info;
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
 
 				PlannerGraphOperations::add_nodes_and_edges(
@@ -2768,7 +2829,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				return false;
 			}
 
-			MethodCandidate best = _select_best_method(available_methods, p_state, multigoal_variant, Variant(), static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL));
+			// Track alternatives for explanation/debugging if verbose enough
+			Array alternatives;
+			bool track_alternatives = (verbose >= 2);
+			MethodCandidate best = _select_best_method(available_methods, p_state, multigoal_variant, Variant(), static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL), track_alternatives, &alternatives);
 
 			Callable selected_method;
 			Array subgoals;
@@ -2790,9 +2854,22 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			}
 
 			if (found_working_method) {
+				// Store decision info for explanation/debugging
+				Dictionary decision_info;
+				decision_info["selected_method_id"] = best.method_id;
+				decision_info["selected_score"] = best.score;
+				decision_info["selected_activity"] = best.activity;
+				decision_info["selected_reason"] = best.reason;
+				if (track_alternatives && alternatives.size() > 0) {
+					decision_info["alternatives"] = alternatives;
+					decision_info["total_candidates"] = alternatives.size();
+				}
+				decision_info["available_methods_count"] = available_methods.size();
+
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				p_curr_node["selected_method"] = selected_method;
 				p_curr_node["created_subtasks"] = subgoals;
+				p_curr_node["decision_info"] = decision_info;
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
 
 				PlannerGraphOperations::add_nodes_and_edges(

@@ -107,8 +107,11 @@ class PlannerPlan : public Resource {
 		Callable method;
 		Array subtasks;
 		double score;
+		String method_id; // For explanation/debugging
+		double activity; // For explanation/debugging
+		String reason; // Why this method was chosen/rejected
 	};
-	MethodCandidate _select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type);
+	MethodCandidate _select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type, bool p_track_alternatives = false, Array *p_alternatives = nullptr);
 	// Graph-based planning methods
 	Dictionary _planning_loop_iterative(int p_parent_node_id, Dictionary p_state, int p_iter);
 	// Helper for iterative planning: processes a single node and pushes frames to stack or sets final_state

@@ -64,6 +64,14 @@ public:
 	Array get_all_nodes() const;
 	bool has_node(int p_node_id) const;
 
+	// Plan explanation and debugging methods
+	Dictionary explain_plan() const; // Get explanation of why this plan was chosen
+	Array get_alternative_methods(int p_node_id) const; // Get alternative methods considered for a node
+	Dictionary get_decision_path(int p_node_id) const; // Get decision path from root to node
+	String to_dot_graph() const; // Export plan graph as DOT format for visualization
+	Dictionary to_graph_json() const; // Export plan graph as JSON for visualization
+	String get_node_explanation(int p_node_id) const; // Get human-readable explanation for a node
+
 protected:
 	static void _bind_methods();
 };

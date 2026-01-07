@@ -75,6 +75,8 @@ struct PlannerNodeStruct {
 	int64_t end_time;
 	int64_t duration;
 	String tag;
+	// Plan explanation and debugging
+	Dictionary decision_info; // Stores why method was chosen, alternatives considered, scores, etc.
 
 	PlannerNodeStruct() :
 			type(PlannerNodeType::TYPE_ROOT),
@@ -82,7 +84,9 @@ struct PlannerNodeStruct {
 			start_time(0),
 			end_time(0),
 			duration(0),
-			tag("new") {}
+			tag("new") {
+		decision_info = Dictionary();
+	}
 };
 
 class PlannerSolutionGraph {
@@ -304,6 +308,7 @@ private:
 		dict["end_time"] = Variant(static_cast<int64_t>(p_node.end_time));
 		dict["duration"] = Variant(static_cast<int64_t>(p_node.duration));
 		dict["tag"] = Variant(p_node.tag);
+		dict["decision_info"] = p_node.decision_info;
 		return dict;
 	}
 
@@ -353,6 +358,9 @@ private:
 		}
 		if (p_dict.has("tag")) {
 			node.tag = p_dict["tag"];
+		}
+		if (p_dict.has("decision_info")) {
+			node.decision_info = p_dict["decision_info"];
 		}
 		return node;
 	}
