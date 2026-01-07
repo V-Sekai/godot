@@ -17,7 +17,7 @@ func run_test():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(2)  # Enable decision tracking
-	plan.set_max_depth(15)
+	plan.set_max_depth(50)
 
 	# Initial state
 	var state = {}
@@ -38,8 +38,8 @@ func run_test():
 	var money = {"yuki": 100}
 	state["money"] = money
 
-	# Goal: earn study points
-	var todo_list = [["task_earn_study_points", "yuki", 10]]
+	# Goal: earn study points and socialize (more varied plan)
+	var todo_list = [["task_earn_study_points", "yuki", 20], ["task_socialize", "yuki", "maya", 2]]
 
 	print("Initial State:")
 	print("  Location: ", state["is_at"]["yuki"])

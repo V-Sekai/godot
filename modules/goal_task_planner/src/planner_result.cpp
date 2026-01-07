@@ -530,6 +530,7 @@ String PlannerResult::to_dot_graph() const {
 	// Overlay sequential action path with bold edges
 	Array plan = extract_plan();
 	Array action_node_ids;
+	HashSet<int> used_nodes;
 	for (int i = 0; i < plan.size(); i++) {
 		Array action = plan[i];
 		for (int j = 0; j < graph_keys.size(); j++) {
@@ -538,10 +539,14 @@ String PlannerResult::to_dot_graph() const {
 				continue;
 			}
 			int node_id = key;
+			if (used_nodes.has(node_id)) {
+				continue;
+			}
 			Dictionary node = solution_graph[node_id];
 			int node_type = node.get("type", -1);
 			if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) && node.get("info", Variant()) == action) {
 				action_node_ids.push_back(node_id);
+				used_nodes.insert(node_id);
 				break;
 			}
 		}
