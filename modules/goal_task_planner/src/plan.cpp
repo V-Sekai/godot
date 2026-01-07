@@ -583,7 +583,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				if (!failed_nodes.is_empty()) {
 					// Convert LocalVector to Array for printing
 					Array failed_nodes_array;
-					for (size_t j = 0; j < failed_nodes.size(); j++) {
+					for (int j = 0; j < static_cast<int>(failed_nodes.size()); j++) {
 						failed_nodes_array.push_back(failed_nodes[j]);
 					}
 					print_line("Failed nodes: " + _item_to_string(failed_nodes_array));
@@ -591,7 +591,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				if (!open_nodes.is_empty()) {
 					// Convert LocalVector to Array for printing
 					Array open_nodes_array;
-					for (size_t j = 0; j < open_nodes.size(); j++) {
+					for (int j = 0; j < static_cast<int>(open_nodes.size()); j++) {
 						open_nodes_array.push_back(open_nodes[j]);
 					}
 					print_line("Open nodes: " + _item_to_string(open_nodes_array));
