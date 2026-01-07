@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerState" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Represents the state of the world in a planning problem, including predicates and entity capabilities.
+	</brief_description>
+	<description>
+		[PlannerState] stores the current state of the world as a collection of predicates (subject-predicate-value triples) and entity capabilities. Predicates represent facts about the world, such as "block A is on block B" or "the agent is at location X". Entity capabilities represent what entities (agents, objects, etc.) can do, such as "entity robot1 can move" or "entity tool1 can cut".
+		The state is used by [PlannerPlan] to track the current world state during planning and execution. Actions modify the state by returning new state dictionaries, and goals are checked against the state to determine if they have been achieved.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_all_entities" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of all entity IDs that have capabilities registered in the state.
+			</description>
+		</method>
+		<method name="get_entity_capability" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<description>
+				Returns the value of a specific capability for an entity. Returns null if the entity or capability does not exist.
+			</description>
+		</method>
+		<method name="get_predicate" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<description>
+				Returns the value of a predicate for a given subject. Returns null if the predicate does not exist.
+			</description>
+		</method>
+		<method name="get_subject_predicate_list" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of all subject-predicate pairs in the state. Each element is a [Dictionary] with "subject" and "predicate" keys.
+			</description>
+		</method>
+		<method name="has_entity" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_id" type="String" />
+			<description>
+				Returns true if the entity exists in the state (has any capabilities registered), false otherwise.
+			</description>
+		</method>
+		<method name="has_predicate" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<description>
+				Returns true if the predicate exists for the given subject, false otherwise.
+			</description>
+		</method>
+		<method name="has_subject_variable" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="variable" type="String" />
+			<description>
+				Returns true if the subject variable exists in the state (has any predicates), false otherwise.
+			</description>
+		</method>
+		<method name="set_entity_capability">
+			<return type="void" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				Sets a capability value for an entity. If the entity does not exist, it is created. If the capability already exists, its value is updated.
+			</description>
+		</method>
+		<method name="set_predicate">
+			<return type="void" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				Sets a predicate value for a subject. If the predicate does not exist, it is created. If it already exists, its value is updated.
+			</description>
+		</method>
+	</methods>
+</class>
