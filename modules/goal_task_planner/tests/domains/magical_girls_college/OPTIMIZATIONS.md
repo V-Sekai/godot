@@ -48,4 +48,3 @@ Key optimizations implemented for the HTN planner and actor simulation system.
 - `plan.h/cpp`: Internal structure access, STN optimizations
 - `graph_operations.cpp`: STN-based plan extraction
 - `simulate_house_actors.gd`: Actor model, state optimizations
-

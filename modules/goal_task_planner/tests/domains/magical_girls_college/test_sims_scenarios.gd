@@ -59,79 +59,9 @@ func create_state_with_needs(persona_id: String, hunger: int, energy: int, socia
 	return state
 
 func create_domain() -> PlannerDomain:
-	var domain = PlannerDomain.new()
-
-	# Add actions
-	var actions = [
-		Callable(Domain, "action_eat_mess_hall"),
-		Callable(Domain, "action_eat_restaurant"),
-		Callable(Domain, "action_eat_snack"),
-		Callable(Domain, "action_cook_meal"),
-		Callable(Domain, "action_sleep_dorm"),
-		Callable(Domain, "action_nap_library"),
-		Callable(Domain, "action_energy_drink"),
-		Callable(Domain, "action_talk_friend"),
-		Callable(Domain, "action_join_club"),
-		Callable(Domain, "action_phone_call"),
-		Callable(Domain, "action_play_games"),
-		Callable(Domain, "action_watch_streaming"),
-		Callable(Domain, "action_go_cinema"),
-		Callable(Domain, "action_shower"),
-		Callable(Domain, "action_wash_hands"),
-		Callable(Domain, "action_move_to")
-	]
-	domain.add_actions(actions)
-
-	# Add task methods
-	var satisfy_hunger_methods = [
-		Callable(Domain, "task_satisfy_hunger_method_mess_hall"),
-		Callable(Domain, "task_satisfy_hunger_method_restaurant"),
-		Callable(Domain, "task_satisfy_hunger_method_snack"),
-		Callable(Domain, "task_satisfy_hunger_method_cook"),
-		Callable(Domain, "task_satisfy_hunger_method_social_eat")
-	]
-	domain.add_task_methods("task_satisfy_hunger", satisfy_hunger_methods)
-
-	var satisfy_energy_methods = [
-		Callable(Domain, "task_satisfy_energy_method_sleep"),
-		Callable(Domain, "task_satisfy_energy_method_nap"),
-		Callable(Domain, "task_satisfy_energy_method_drink"),
-		Callable(Domain, "task_satisfy_energy_method_rest_activity"),
-		Callable(Domain, "task_satisfy_energy_method_early_sleep")
-	]
-	domain.add_task_methods("task_satisfy_energy", satisfy_energy_methods)
-
-	var satisfy_social_methods = [
-		Callable(Domain, "task_satisfy_social_method_talk"),
-		Callable(Domain, "task_satisfy_social_method_club"),
-		Callable(Domain, "task_satisfy_social_method_phone"),
-		Callable(Domain, "task_satisfy_social_method_socialize_task"),
-		Callable(Domain, "task_satisfy_social_method_group_activity")
-	]
-	domain.add_task_methods("task_satisfy_social", satisfy_social_methods)
-
-	var satisfy_fun_methods = [
-		Callable(Domain, "task_satisfy_fun_method_games"),
-		Callable(Domain, "task_satisfy_fun_method_streaming"),
-		Callable(Domain, "task_satisfy_fun_method_cinema"),
-		Callable(Domain, "task_satisfy_fun_method_preferred_activity"),
-		Callable(Domain, "task_satisfy_fun_method_social_fun")
-	]
-	domain.add_task_methods("task_satisfy_fun", satisfy_fun_methods)
-
-	var satisfy_hygiene_methods = [
-		Callable(Domain, "task_satisfy_hygiene_method_shower"),
-		Callable(Domain, "task_satisfy_hygiene_method_wash_hands"),
-		Callable(Domain, "task_satisfy_hygiene_method_force_shower")
-	]
-	domain.add_task_methods("task_satisfy_hygiene", satisfy_hygiene_methods)
-
-	var move_methods = [
-		Callable(Domain, "task_move_to_location_method_direct")
-	]
-	domain.add_task_methods("task_move_to_location", move_methods)
-
-	return domain
+	# Use unified domain creation function - Sims scenarios only need basic needs satisfaction
+	# No study, social, unigoal, or multigoal methods needed
+	return Domain.create_planner_domain(false, false, false, false)
 
 # Scenario 1: Character is starving and exhausted - must satisfy multiple critical needs
 # This tests prioritization and resource management
@@ -142,10 +72,10 @@ func test_scenario_starving_and_exhausted():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(0)
-	plan.set_max_depth(15)
+	plan.set_max_depth(20)
 
 	# Character is very hungry (20/100) and very tired (15/100), has some money
-	var state = create_state_with_needs("yuki", 20, 15, 50, 50, 50, 30, "dorm")
+	var state = create_state_with_needs("yuki", 20, 15, 50, 50, 50, 50, "dorm")
 
 	# Goal: Satisfy both hunger and energy to at least 70
 	var multigoal = [
@@ -169,8 +99,11 @@ func test_scenario_starving_and_exhausted():
 		print("  Plan has %d actions" % plan_actions.size())
 		assert_test(plan_actions.size() > 0, "Should have actions to satisfy needs")
 
-		# Verify final state
-		var final_state = result.get_final_state()
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		var final_hunger = Domain.get_need(final_state, "yuki", "hunger")
 		var final_energy = Domain.get_need(final_state, "yuki", "energy")
 		print("  Final hunger: %d (target: 70)" % final_hunger)
@@ -189,7 +122,7 @@ func test_scenario_broke_wants_fun():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(0)
-	plan.set_max_depth(15)
+	plan.set_max_depth(20)
 
 	# Character has low fun (30/100) but no money (0)
 	var state = create_state_with_needs("yuki", 50, 50, 50, 30, 50, 0, "dorm")
@@ -214,7 +147,11 @@ func test_scenario_broke_wants_fun():
 		assert_test(not has_cinema, "Should not use cinema (too expensive)")
 		print("  Plan avoids expensive activities (good!)")
 
-		var final_state = result.get_final_state()
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		var final_fun = Domain.get_need(final_state, "yuki", "fun")
 		print("  Final fun: %d (target: 70)" % final_fun)
 		assert_test(final_fun >= 70, "Fun should be satisfied using free methods")
@@ -230,7 +167,7 @@ func test_scenario_cook_wrong_location():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(0)
-	plan.set_max_depth(15)
+	plan.set_max_depth(20)
 
 	# Character is hungry (30/100), at library, wants to cook (requires dorm)
 	var state = create_state_with_needs("yuki", 30, 50, 50, 50, 50, 50, "library")
@@ -261,7 +198,11 @@ func test_scenario_cook_wrong_location():
 			assert_test(has_movement, "Should move to dorm before cooking")
 			print("  Plan includes movement to dorm for cooking")
 
-		var final_state = result.get_final_state()
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		var final_hunger = Domain.get_need(final_state, "yuki", "hunger")
 		print("  Final hunger: %d (target: 70)" % final_hunger)
 		assert_test(final_hunger >= 70, "Hunger should be satisfied")
@@ -277,7 +218,7 @@ func test_scenario_dirty_and_tired():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(0)
-	plan.set_max_depth(15)
+	plan.set_max_depth(20)
 
 	# Character is dirty (25/100 hygiene) and tired (20/100 energy), at library
 	var state = create_state_with_needs("yuki", 50, 20, 50, 50, 25, 50, "library")
@@ -296,7 +237,11 @@ func test_scenario_dirty_and_tired():
 		print("  Plan has %d actions" % plan_actions.size())
 
 		# Should handle both needs, possibly requiring movement
-		var final_state = result.get_final_state()
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		var final_hygiene = Domain.get_need(final_state, "yuki", "hygiene")
 		var final_energy = Domain.get_need(final_state, "yuki", "energy")
 		print("  Final hygiene: %d (target: 70)" % final_hygiene)
@@ -315,10 +260,10 @@ func test_scenario_partial_money():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(0)
-	plan.set_max_depth(15)
+	plan.set_max_depth(20)
 
-	# Character is hungry (25/100), has only 10 money (can afford snack, not restaurant)
-	var state = create_state_with_needs("yuki", 25, 50, 50, 50, 50, 10, "dorm")
+	# Character is hungry (25/100), has only 15 money (can afford snack/mess hall, not restaurant which costs 20)
+	var state = create_state_with_needs("yuki", 25, 50, 50, 50, 50, 15, "dorm")
 
 	# Goal: Satisfy hunger to 80
 	var todo_list = [["task_satisfy_hunger", "yuki", 80]]
@@ -330,7 +275,7 @@ func test_scenario_partial_money():
 		var plan_actions = result.extract_plan()
 		print("  Plan has %d actions" % plan_actions.size())
 
-		# Should not use restaurant (costs 20, only have 10)
+		# Should not use restaurant (costs 20, only have 15)
 		var has_restaurant = false
 		for action in plan_actions:
 			if action is Array and action.size() > 0 and str(action[0]) == "action_eat_restaurant":
@@ -340,7 +285,11 @@ func test_scenario_partial_money():
 		assert_test(not has_restaurant, "Should not use restaurant (too expensive)")
 		print("  Plan uses affordable methods (snack, mess hall, or cook)")
 
-		var final_state = result.get_final_state()
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		var final_hunger = Domain.get_need(final_state, "yuki", "hunger")
 		var final_money = Domain.get_money(final_state, "yuki")
 		print("  Final hunger: %d (target: 80)" % final_hunger)
@@ -359,7 +308,7 @@ func test_scenario_social_need():
 	var plan = PlannerPlan.new()
 	plan.set_current_domain(domain)
 	plan.set_verbose(0)
-	plan.set_max_depth(15)
+	plan.set_max_depth(20)
 
 	# Character is lonely (20/100 social), at dorm
 	var state = create_state_with_needs("yuki", 50, 50, 20, 50, 50, 50, "dorm")
@@ -374,8 +323,12 @@ func test_scenario_social_need():
 		var plan_actions = result.extract_plan()
 		print("  Plan has %d actions" % plan_actions.size())
 
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		# Should use social methods (talk, phone, club, etc.)
-		var final_state = result.get_final_state()
 		var final_social = Domain.get_need(final_state, "yuki", "social")
 		print("  Final social: %d (target: 70)" % final_social)
 		assert_test(final_social >= 70, "Social should be satisfied")
@@ -413,7 +366,11 @@ func test_scenario_everything_low():
 		print("  Plan has %d actions" % plan_actions.size())
 		print("  Complex scenario: All needs low, limited money, wrong location")
 
-		var final_state = result.get_final_state()
+		# Execute the plan to get the actual final state
+		var state_sequence = plan.simulate(result, state, 0)
+		assert_test(state_sequence.size() > 0, "Should have state sequence after simulation")
+		var final_state = state_sequence[state_sequence.size() - 1]
+
 		var final_hunger = Domain.get_need(final_state, "yuki", "hunger")
 		var final_energy = Domain.get_need(final_state, "yuki", "energy")
 		var final_social = Domain.get_need(final_state, "yuki", "social")

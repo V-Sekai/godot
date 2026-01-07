@@ -58,4 +58,3 @@ If needed, consider:
 ## Conclusion
 
 **Current system scales to 1200+ actors** with max latency under 30ms. The actor model with lockless mailboxes and C++ planner optimizations provide excellent scalability.
-

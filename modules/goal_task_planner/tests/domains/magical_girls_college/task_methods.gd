@@ -323,6 +323,9 @@ static func task_satisfy_hunger_method_mess_hall(state: Dictionary, persona_id: 
 		return []
 	var subtasks = []
 	subtasks.append(["action_eat_mess_hall", persona_id])
+	var hunger_after = min(100, current_hunger + 30)
+	if hunger_after < target_hunger:
+		subtasks.append(["task_satisfy_hunger", persona_id, target_hunger])
 	return subtasks
 
 static func task_satisfy_hunger_method_restaurant(state: Dictionary, persona_id: Variant, target_hunger: Variant) -> Variant:
@@ -359,6 +362,9 @@ static func task_satisfy_hunger_method_cook(state: Dictionary, persona_id: Varia
 		return null
 	var subtasks = []
 	subtasks.append(["action_cook_meal", persona_id])
+	var hunger_after = min(100, current_hunger + 35)
+	if hunger_after < target_hunger:
+		subtasks.append(["task_satisfy_hunger", persona_id, target_hunger])
 	return subtasks
 
 static func task_satisfy_hunger_method_social_eat(state: Dictionary, persona_id: Variant, target_hunger: Variant) -> Variant:
@@ -450,6 +456,9 @@ static func task_satisfy_social_method_club(state: Dictionary, persona_id: Varia
 		return []
 	var subtasks = []
 	subtasks.append(["action_join_club", persona_id, "magic_club"])
+	var social_after = min(100, current_social + 25)
+	if social_after < target_social:
+		subtasks.append(["task_satisfy_social", persona_id, target_social])
 	return subtasks
 
 static func task_satisfy_social_method_phone(state: Dictionary, persona_id: Variant, target_social: Variant) -> Variant:

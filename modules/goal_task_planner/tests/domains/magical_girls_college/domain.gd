@@ -45,6 +45,164 @@ static func likes_activity(state: Dictionary, persona_id: String, activity: Stri
 static func dislikes_activity(state: Dictionary, persona_id: String, activity: String) -> bool:
 	return Helpers.dislikes_activity(state, persona_id, activity)
 
+# Unified domain creation function
+# Parameters:
+#   include_study: Include study-related actions and task methods (default: true)
+#   include_social: Include social/relationship actions and methods (default: true)
+#   include_unigoal: Include unigoal methods (default: true)
+#   include_multigoal: Include multigoal methods (default: true)
+static func create_planner_domain(
+	include_study: bool = true,
+	include_social: bool = true,
+	include_unigoal: bool = true,
+	include_multigoal: bool = true
+) -> PlannerDomain:
+	var domain = PlannerDomain.new()
+
+	# Add actions - always include Sims-style needs satisfaction actions
+	var actions = [
+		Callable(MagicalGirlsCollegeDomain, "action_eat_mess_hall"),
+		Callable(MagicalGirlsCollegeDomain, "action_eat_restaurant"),
+		Callable(MagicalGirlsCollegeDomain, "action_eat_snack"),
+		Callable(MagicalGirlsCollegeDomain, "action_cook_meal"),
+		Callable(MagicalGirlsCollegeDomain, "action_sleep_dorm"),
+		Callable(MagicalGirlsCollegeDomain, "action_nap_library"),
+		Callable(MagicalGirlsCollegeDomain, "action_energy_drink"),
+		Callable(MagicalGirlsCollegeDomain, "action_talk_friend"),
+		Callable(MagicalGirlsCollegeDomain, "action_join_club"),
+		Callable(MagicalGirlsCollegeDomain, "action_phone_call"),
+		Callable(MagicalGirlsCollegeDomain, "action_play_games"),
+		Callable(MagicalGirlsCollegeDomain, "action_watch_streaming"),
+		Callable(MagicalGirlsCollegeDomain, "action_go_cinema"),
+		Callable(MagicalGirlsCollegeDomain, "action_shower"),
+		Callable(MagicalGirlsCollegeDomain, "action_wash_hands"),
+		Callable(MagicalGirlsCollegeDomain, "action_move_to")
+	]
+
+	# Add study actions if requested
+	if include_study:
+		actions.append_array([
+			Callable(MagicalGirlsCollegeDomain, "action_attend_lecture"),
+			Callable(MagicalGirlsCollegeDomain, "action_complete_homework"),
+			Callable(MagicalGirlsCollegeDomain, "action_study_library")
+		])
+
+	# Add social actions if requested
+	if include_social:
+		actions.append_array([
+			Callable(MagicalGirlsCollegeDomain, "action_eat_mess_hall_with_friend"),
+			Callable(MagicalGirlsCollegeDomain, "action_coffee_together"),
+			Callable(MagicalGirlsCollegeDomain, "action_watch_movie"),
+			Callable(MagicalGirlsCollegeDomain, "action_pool_hangout"),
+			Callable(MagicalGirlsCollegeDomain, "action_park_picnic"),
+			Callable(MagicalGirlsCollegeDomain, "action_beach_trip"),
+			Callable(MagicalGirlsCollegeDomain, "action_read_book"),
+			Callable(MagicalGirlsCollegeDomain, "action_club_activity"),
+			Callable(MagicalGirlsCollegeDomain, "action_optimize_schedule"),
+			Callable(MagicalGirlsCollegeDomain, "action_predict_outcome")
+		])
+
+	domain.add_actions(actions)
+
+	# Add task methods for The Sims-style needs satisfaction (always included)
+	var satisfy_hunger_methods = [
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hunger_method_mess_hall"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hunger_method_restaurant"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hunger_method_snack"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hunger_method_cook"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hunger_method_social_eat")
+	]
+	domain.add_task_methods("task_satisfy_hunger", satisfy_hunger_methods)
+
+	var satisfy_energy_methods = [
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_energy_method_sleep"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_energy_method_nap"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_energy_method_drink"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_energy_method_rest_activity"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_energy_method_early_sleep")
+	]
+	domain.add_task_methods("task_satisfy_energy", satisfy_energy_methods)
+
+	var satisfy_social_methods = [
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_social_method_talk"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_social_method_club"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_social_method_phone"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_social_method_socialize_task"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_social_method_group_activity")
+	]
+	domain.add_task_methods("task_satisfy_social", satisfy_social_methods)
+
+	var satisfy_fun_methods = [
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_fun_method_games"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_fun_method_streaming"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_fun_method_cinema"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_fun_method_preferred_activity"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_fun_method_social_fun")
+	]
+	domain.add_task_methods("task_satisfy_fun", satisfy_fun_methods)
+
+	var satisfy_hygiene_methods = [
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hygiene_method_shower"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hygiene_method_wash_hands"),
+		Callable(MagicalGirlsCollegeDomain, "task_satisfy_hygiene_method_force_shower")
+	]
+	domain.add_task_methods("task_satisfy_hygiene", satisfy_hygiene_methods)
+
+	# Add move task method (always included)
+	var move_to_location_methods = [
+		Callable(MagicalGirlsCollegeDomain, "task_move_to_location_method_direct")
+	]
+	domain.add_task_methods("task_move_to_location", move_to_location_methods)
+
+	# Add study task methods if requested
+	if include_study:
+		var earn_study_points_methods = [
+			Callable(MagicalGirlsCollegeDomain, "task_earn_study_points_method_done"),
+			Callable(MagicalGirlsCollegeDomain, "task_earn_study_points_method_lecture"),
+			Callable(MagicalGirlsCollegeDomain, "task_earn_study_points_method_homework"),
+			Callable(MagicalGirlsCollegeDomain, "task_earn_study_points_method_library"),
+			Callable(MagicalGirlsCollegeDomain, "task_earn_study_points_method_coordinated")
+		]
+		domain.add_task_methods("task_earn_study_points", earn_study_points_methods)
+
+	# Add social task methods if requested
+	if include_social:
+		var socialize_methods = [
+			Callable(MagicalGirlsCollegeDomain, "task_socialize_method_easy"),
+			Callable(MagicalGirlsCollegeDomain, "task_socialize_method_moderate"),
+			Callable(MagicalGirlsCollegeDomain, "task_socialize_method_challenging")
+		]
+		domain.add_task_methods("task_socialize", socialize_methods)
+
+		var manage_week_methods = [
+			Callable(MagicalGirlsCollegeDomain, "task_manage_week_method_balance"),
+			Callable(MagicalGirlsCollegeDomain, "task_manage_week_method_academics"),
+			Callable(MagicalGirlsCollegeDomain, "task_manage_week_method_relationships")
+		]
+		domain.add_task_methods("task_manage_week", manage_week_methods)
+
+	# Add unigoal methods if requested
+	if include_unigoal:
+		var study_unigoal_methods = [
+			Callable(MagicalGirlsCollegeDomain, "unigoal_achieve_study_goal")
+		]
+		domain.add_unigoal_methods("study_points", study_unigoal_methods)
+
+		var relationship_unigoal_methods = [
+			Callable(MagicalGirlsCollegeDomain, "unigoal_achieve_relationship_goal")
+		]
+		domain.add_unigoal_methods("relationship_points", relationship_unigoal_methods)
+
+	# Add multigoal methods if requested
+	if include_multigoal:
+		var multigoal_methods = [
+			Callable(MagicalGirlsCollegeDomain, "multigoal_balance_life"),
+			Callable(MagicalGirlsCollegeDomain, "multigoal_solve_temporal_puzzle")
+		]
+		domain.add_multigoal_methods(multigoal_methods)
+
+	return domain
+
 static func get_coordination(state: Dictionary, persona_id: String) -> Dictionary:
 	return Helpers.get_coordination(state, persona_id)
 

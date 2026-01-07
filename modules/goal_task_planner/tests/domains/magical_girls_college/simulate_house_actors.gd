@@ -103,8 +103,13 @@ class Actor:
 	var critical_needs_func: Callable
 	var execute_func: Callable
 	var planning_semaphore_ref: Semaphore = null  # Reference to shared planning semaphore
+	var track_actor_ref: bool = false  # Reference to tracking flag
+	var tracked_ids_ref: Array = []  # Reference to tracked actor IDs array
+	var has_graduated: bool = false  # Track if this actor has graduated
+	var last_logged_time: float = -1.0  # Last time we logged state (to reduce print rate)
+	const LOG_INTERVAL_SECONDS = 300.0  # Log state every 5 minutes (300 seconds)
 
-	func _init(p_id: String, p_state: Dictionary, p_plan: PlannerPlan, p_decay_rate: float, p_planning_interval: float, p_decay_func: Callable, p_critical_func: Callable, p_execute_func: Callable, p_planning_semaphore: Semaphore = null):
+	func _init(p_id: String, p_state: Dictionary, p_plan: PlannerPlan, p_decay_rate: float, p_planning_interval: float, p_decay_func: Callable, p_critical_func: Callable, p_execute_func: Callable, p_planning_semaphore: Semaphore = null, p_track_actor: bool = false, p_tracked_ids: Array = []):
 		persona_id = p_id
 		state = p_state
 		plan = p_plan
@@ -115,6 +120,8 @@ class Actor:
 		critical_needs_func = p_critical_func
 		execute_func = p_execute_func
 		planning_semaphore_ref = p_planning_semaphore
+		track_actor_ref = p_track_actor
+		tracked_ids_ref = p_tracked_ids
 
 	func process_messages() -> void:
 		# Process all messages in mailbox (lockless)
@@ -135,16 +142,50 @@ class Actor:
 				pass
 
 	func process_time_tick(current_time: float) -> void:
+		# Only check tracking once per tick for performance
+		var is_tracked = track_actor_ref and tracked_ids_ref.has(persona_id)
+
+		# Log state updates at reduced frequency (every 5 minutes) for readability
+		if is_tracked:
+			var time_since_last_log = current_time - last_logged_time
+			if last_logged_time < 0 or time_since_last_log >= LOG_INTERVAL_SECONDS:
+				var needs = state["needs"][persona_id]
+				var location = state["is_at"][persona_id]
+				var money = state["money"][persona_id]
+				var study_points = Domain.get_study_points(state, persona_id)
+				const GRADUATION_POINTS = 100
+				var graduation_status = "🎓 GRADUATED!" if study_points >= GRADUATION_POINTS else "📚 %d/%d" % [study_points, GRADUATION_POINTS]
+				print("[%s] Time: %.1f min | Location: %s | Money: $%d | Study: %s | Needs: H=%d E=%d S=%d F=%d Hy=%d" % [
+					persona_id, current_time / 60.0, location, money, graduation_status,
+					needs["hunger"], needs["energy"], needs["social"], needs["fun"], needs["hygiene"]
+				])
+				last_logged_time = current_time
+
+			# Always check for graduation milestone (important event)
+			var study_points = Domain.get_study_points(state, persona_id)
+			const GRADUATION_POINTS = 100
+			if study_points >= GRADUATION_POINTS and not has_graduated:
+				print("  🎉🎉🎉 GRADUATION! %s has completed their studies! 🎉🎉🎉" % persona_id)
+				has_graduated = true
+
 		state = decay_func.call(state, persona_id, decay_rate)
 
 		# Execute current plan if we have one
 		if current_plan_actions.size() > 0 and current_plan_index < current_plan_actions.size():
 			var action = current_plan_actions[current_plan_index]
-			state = execute_func.call(state, [action], persona_id)
+			# Unwrap temporal metadata if present
+			var actual_action = action
+			if action is Dictionary and action.has("item"):
+				actual_action = action["item"]
+			if is_tracked:
+				print("  → Executing action: %s" % str(actual_action))
+			state = execute_func.call(state, [actual_action], persona_id)
 			current_plan_index += 1
 			local_stats["actions_executed"] += 1
 
 			if current_plan_index >= current_plan_actions.size():
+				if is_tracked:
+					print("  ✓ Plan completed!")
 				_clear_plan_actions()
 
 		# Check for critical needs periodically
@@ -155,6 +196,8 @@ class Actor:
 			var critical_needs = critical_needs_func.call(state, persona_id)
 
 			if critical_needs.size() > 0:
+				if is_tracked:
+					print("  🔍 Critical needs detected: %s" % str(critical_needs))
 				# Limit concurrent planning to prevent latency spikes
 				var can_plan = true
 				if planning_semaphore_ref != null:
@@ -162,6 +205,8 @@ class Actor:
 					if not can_plan:
 						# Planning throttled - skip this step, retry next interval
 						# This prevents too many actors from planning simultaneously
+						if is_tracked:
+							print("  ⏸️  Planning throttled (too many concurrent planners)")
 						return
 
 				var planning_start = Time.get_ticks_usec()
@@ -169,12 +214,18 @@ class Actor:
 				var planning_time: float = 0.0
 				var is_replan = false
 
-				# Use replan() method if we have an existing plan result
-				if last_plan_result != null and last_plan_result.get_success():
+				# Use replan() method if we have an existing plan result AND we're still executing it
+				# Only replan if we have a current plan in progress (not if plan was cleared)
+				if last_plan_result != null and last_plan_result.get_success() and current_plan_actions.size() > 0:
 					is_replan = true
 					var fail_node_id = _get_fail_node_id()
+					if is_tracked:
+						print("  🔄 Replanning from node %d..." % fail_node_id)
 					result = plan.replan(last_plan_result, state, fail_node_id)
 				else:
+					# New plan or no valid plan to replan from
+					if is_tracked:
+						print("  📋 Generating new plan...")
 					result = plan.find_plan(state, critical_needs)
 
 				planning_time = (Time.get_ticks_usec() - planning_start) / 1000000.0
@@ -201,9 +252,27 @@ class Actor:
 					local_stats["plans_generated"] += 1
 
 				if result != null and result.get_success():
+					var plan_actions = result.extract_plan(0)
+					if is_tracked:
+						print("  ✓ Plan generated (%s): %d actions" % ["replan" if is_replan else "new", plan_actions.size()])
+						for i in range(min(5, plan_actions.size())):
+							print("    [%d] %s" % [i + 1, str(plan_actions[i])])
+						if plan_actions.size() > 5:
+							print("    ... and %d more actions" % (plan_actions.size() - 5))
 					_store_and_execute_plan(result)
 				else:
 					# Plan failed - clear stored plan
+					if is_tracked:
+						if result != null:
+							print("  ❌ Plan failed! (result exists but not successful)")
+							# Try to get more info about why it failed
+							var solution_graph = result.get_solution_graph()
+							if solution_graph != null:
+								var graph_dict = solution_graph.get_graph()
+								if graph_dict != null and graph_dict.size() > 0:
+									print("    Solution graph has %d nodes" % graph_dict.size())
+						else:
+							print("  ❌ Plan failed! (result is null)")
 					last_plan_result = null
 					_clear_plan_actions()
 
@@ -234,7 +303,11 @@ class Actor:
 		current_plan_index = 0
 
 		# Execute first action immediately
-		state = execute_func.call(state, [plan_actions[0]], persona_id)
+		var first_action = plan_actions[0]
+		# Unwrap temporal metadata if present
+		if first_action is Dictionary and first_action.has("item"):
+			first_action = first_action["item"]
+		state = execute_func.call(state, [first_action], persona_id)
 		current_plan_index = 1
 		local_stats["actions_executed"] += 1
 
@@ -320,7 +393,7 @@ class Actor:
 
 # Simulation parameters (accessible to Actor class)
 var simulation_time_seconds = 0.0
-var total_simulation_time = 60 * 60  # Increased to 60 minutes (3x) for better profiling accuracy
+var total_simulation_time = 120 * 60  # 120 minutes (2 hours) to allow time for graduation
 var time_step = 30.0
 var needs_decay_rate = 1.0
 var planning_check_interval = 60.0
@@ -347,6 +420,21 @@ func get_critical_needs_helper(state: Dictionary, persona_id: String) -> Array:
 	var needs = state["needs"][persona_id]
 	var threshold = 55
 	var urgent_threshold = 40
+
+	# Check graduation progress (academic goal)
+	# Only add if other needs are satisfied (prioritize survival needs first)
+	var study_points = Domain.get_study_points(state, persona_id)
+	const GRADUATION_POINTS = 50  # Need 50 study points to graduate (reduced for faster graduation)
+	var all_needs_ok = needs["hunger"] >= threshold and needs["energy"] >= threshold and needs["social"] >= threshold and needs["fun"] >= threshold and needs["hygiene"] >= threshold
+
+	if study_points < GRADUATION_POINTS and all_needs_ok:
+		# Add academic goal only when basic needs are satisfied
+		if study_points < GRADUATION_POINTS - 20:
+			# Far from graduation - add as important goal (smaller increments)
+			critical.append(["task_earn_study_points", persona_id, min(GRADUATION_POINTS, study_points + 10)])
+		elif study_points < GRADUATION_POINTS - 10:
+			# Getting close - make it more urgent
+			critical.append(["task_earn_study_points", persona_id, GRADUATION_POINTS])
 
 	if needs["hunger"] < urgent_threshold:
 		critical.append(["task_satisfy_hunger", persona_id, 70])
@@ -382,6 +470,8 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 	new_state["needs"] = state["needs"].duplicate(true)
 	new_state["money"] = state["money"].duplicate(true)
 	new_state["is_at"] = state["is_at"].duplicate(true)
+	if state.has("study_points"):
+		new_state["study_points"] = state["study_points"].duplicate(true)
 
 	# Cache dictionary lookups
 	var needs_dict = new_state["needs"]
@@ -390,10 +480,15 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 	var needs = needs_dict[persona_id]
 
 	for action in plan_actions:
-		if not (action is Array and action.size() > 0):
+		# Handle temporal metadata wrapping
+		var actual_action = action
+		if action is Dictionary and action.has("item"):
+			actual_action = action["item"]
+
+		if not (actual_action is Array and actual_action.size() > 0):
 			continue
 
-		var action_name = str(action[0])
+		var action_name = str(actual_action[0])
 
 		if action_name.begins_with("action_eat"):
 			needs["hunger"] = min(100, needs["hunger"] + 30)
@@ -447,8 +542,8 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 			needs_dict[persona_id] = needs
 			continue
 
-		if action_name == "action_move_to" and action.size() > 2:
-			is_at_dict[persona_id] = str(action[2])
+		if action_name == "action_move_to" and actual_action.size() > 2:
+			is_at_dict[persona_id] = str(actual_action[2])
 			continue
 
 		if action_name == "action_cook_meal":
@@ -456,11 +551,33 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 			needs_dict[persona_id] = needs
 			continue
 
+		# Study actions - update study points
+		if action_name == "action_attend_lecture":
+			var current_points = Domain.get_study_points(new_state, persona_id)
+			Domain.set_study_points(new_state, persona_id, current_points + 5)
+			continue
+
+		if action_name == "action_complete_homework":
+			var current_points = Domain.get_study_points(new_state, persona_id)
+			Domain.set_study_points(new_state, persona_id, current_points + 3)
+			continue
+
+		if action_name == "action_study_library":
+			var current_points = Domain.get_study_points(new_state, persona_id)
+			Domain.set_study_points(new_state, persona_id, current_points + 4)
+			is_at_dict[persona_id] = "library"
+			continue
+
 	return new_state
 
 # Actors and allocentric facts
 var actors: Array = []
 var allocentric_facts: Dictionary = {}  # Shared read-only ground truth (for future PlannerFactsAllocentric integration)
+
+# Actor tracking - follow one actor's behavior
+const NUM_TRACKED_ACTORS = 8  # Number of actors to track in detail
+var tracked_actor_ids: Array = []  # List of actor IDs to track
+var track_actor: bool = true  # Enable detailed tracking
 
 # Planning coordination - limit concurrent planning to prevent spikes
 var planning_semaphore: Semaphore = null
@@ -479,77 +596,9 @@ var profile_data = {
 }
 
 func create_domain() -> PlannerDomain:
-	var domain = PlannerDomain.new()
-
-	var actions = [
-		Callable(Domain, "action_eat_mess_hall"),
-		Callable(Domain, "action_eat_restaurant"),
-		Callable(Domain, "action_eat_snack"),
-		Callable(Domain, "action_cook_meal"),
-		Callable(Domain, "action_sleep_dorm"),
-		Callable(Domain, "action_nap_library"),
-		Callable(Domain, "action_energy_drink"),
-		Callable(Domain, "action_talk_friend"),
-		Callable(Domain, "action_join_club"),
-		Callable(Domain, "action_phone_call"),
-		Callable(Domain, "action_play_games"),
-		Callable(Domain, "action_watch_streaming"),
-		Callable(Domain, "action_go_cinema"),
-		Callable(Domain, "action_shower"),
-		Callable(Domain, "action_wash_hands"),
-		Callable(Domain, "action_move_to")
-	]
-	domain.add_actions(actions)
-
-	var satisfy_hunger_methods = [
-		Callable(Domain, "task_satisfy_hunger_method_mess_hall"),
-		Callable(Domain, "task_satisfy_hunger_method_restaurant"),
-		Callable(Domain, "task_satisfy_hunger_method_snack"),
-		Callable(Domain, "task_satisfy_hunger_method_cook"),
-		Callable(Domain, "task_satisfy_hunger_method_social_eat")
-	]
-	domain.add_task_methods("task_satisfy_hunger", satisfy_hunger_methods)
-
-	var satisfy_energy_methods = [
-		Callable(Domain, "task_satisfy_energy_method_sleep"),
-		Callable(Domain, "task_satisfy_energy_method_nap"),
-		Callable(Domain, "task_satisfy_energy_method_drink"),
-		Callable(Domain, "task_satisfy_energy_method_rest_activity"),
-		Callable(Domain, "task_satisfy_energy_method_early_sleep")
-	]
-	domain.add_task_methods("task_satisfy_energy", satisfy_energy_methods)
-
-	var satisfy_social_methods = [
-		Callable(Domain, "task_satisfy_social_method_talk"),
-		Callable(Domain, "task_satisfy_social_method_club"),
-		Callable(Domain, "task_satisfy_social_method_phone"),
-		Callable(Domain, "task_satisfy_social_method_socialize_task"),
-		Callable(Domain, "task_satisfy_social_method_group_activity")
-	]
-	domain.add_task_methods("task_satisfy_social", satisfy_social_methods)
-
-	var satisfy_fun_methods = [
-		Callable(Domain, "task_satisfy_fun_method_games"),
-		Callable(Domain, "task_satisfy_fun_method_streaming"),
-		Callable(Domain, "task_satisfy_fun_method_cinema"),
-		Callable(Domain, "task_satisfy_fun_method_preferred_activity"),
-		Callable(Domain, "task_satisfy_fun_method_social_fun")
-	]
-	domain.add_task_methods("task_satisfy_fun", satisfy_fun_methods)
-
-	var satisfy_hygiene_methods = [
-		Callable(Domain, "task_satisfy_hygiene_method_shower"),
-		Callable(Domain, "task_satisfy_hygiene_method_wash_hands"),
-		Callable(Domain, "task_satisfy_hygiene_method_force_shower")
-	]
-	domain.add_task_methods("task_satisfy_hygiene", satisfy_hygiene_methods)
-
-	var move_methods = [
-		Callable(Domain, "task_move_to_location_method_direct")
-	]
-	domain.add_task_methods("task_move_to_location", move_methods)
-
-	return domain
+	# Use unified domain creation function - simulation needs study methods for graduation tracking
+	# but doesn't need social, unigoal, or multigoal methods
+	return Domain.create_planner_domain(true, false, false, false)
 
 func create_actor_state(persona_id: String) -> Dictionary:
 	var state = {}
@@ -570,6 +619,25 @@ func create_actor_state(persona_id: String) -> Dictionary:
 	state["study_points"] = {persona_id: 0}
 	state["relationship_points_%s_maya" % persona_id] = 0
 
+	# Initialize coordination state (empty - allows lecture/library methods to work)
+	# Study methods check for coordination - if it doesn't exist or is empty, they can proceed
+	state["coordination"] = {}
+
+	# Initialize temporal_puzzle state (empty - allows lecture/library methods to work)
+	# Study methods check for homework_deadline - if it doesn't exist, they can proceed
+	state["temporal_puzzle"] = {}
+
+	# Initialize preferences (for activity likes/dislikes if needed)
+	state["preferences"] = {
+		persona_id: {
+			"likes": [],
+			"dislikes": []
+		}
+	}
+
+	# Initialize burnout (for burnout tracking if needed)
+	state["burnout"] = {persona_id: 0}
+
 	return state
 
 func _init():
@@ -588,6 +656,14 @@ func start_simulation():
 		if args[i] == "--actors" and i + 1 < args.size():
 			num_agents = int(args[i + 1])
 			break
+
+	# Initialize tracked actor IDs (first 8 actors)
+	tracked_actor_ids.clear()
+	for i in range(min(NUM_TRACKED_ACTORS, num_agents)):
+		tracked_actor_ids.append("actor_%d" % i)
+
+	if track_actor:
+		print("\n=== Tracking %d actors in detail: %s ===" % [tracked_actor_ids.size(), str(tracked_actor_ids)])
 
 	# Initialize planning semaphore to limit concurrent planning
 	planning_semaphore = Semaphore.new()
@@ -611,9 +687,13 @@ func start_simulation():
 		var domain = create_domain()
 		var plan = PlannerPlan.new()
 		plan.set_current_domain(domain)
-		plan.set_verbose(0)
-		# Reduce max_depth to keep planning fast and latency under 30ms
-		plan.set_max_depth(10)  # Reduced from 15 to improve latency
+		# Enable verbose for tracked actors to debug planning issues
+		if track_actor and persona_id in tracked_actor_ids:
+			plan.set_verbose(0)  # Verbose for debugging
+		else:
+			plan.set_verbose(0)
+		# Increase max_depth to allow study task decomposition for graduation
+		plan.set_max_depth(15)  # Increased to 15 to allow study task decomposition
 
 		# Stagger planning intervals to prevent all actors planning at once
 		# Spread planning checks over the planning_interval period
@@ -624,7 +704,9 @@ func start_simulation():
 			Callable(self, "decay_needs_helper"),
 			Callable(self, "get_critical_needs_helper"),
 			Callable(self, "execute_plan_helper"),
-			planning_semaphore)
+			planning_semaphore,
+			track_actor and persona_id in tracked_actor_ids,
+			tracked_actor_ids)
 		# Set initial planning check to be staggered
 		actor.last_planning_check = -stagger_offset
 		actors.append(actor)
