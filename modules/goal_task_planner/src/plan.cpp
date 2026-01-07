@@ -256,7 +256,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		// Only traverse through closed nodes (or root which is NA)
 		if (node->status == PlannerNodeStatus::STATUS_CLOSED || node_id == 0) {
 			// Use LocalVector successors directly (fast)
-			for (size_t j = 0; j < node->successors.size(); j++) {
+			for (uint32_t j = 0; j < node->successors.size(); j++) {
 				int succ_id = node->successors[j];
 				if (!visited.has(succ_id)) {
 					to_visit.push_back(succ_id);
@@ -274,7 +274,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	HashMap<int, LocalVector<int>> failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
 	LocalVector<int> closed_verify_multigoals;
 
-	for (size_t i = 0; i < reachable_nodes.size(); i++) {
+	for (uint32_t i = 0; i < reachable_nodes.size(); i++) {
 		int node_id = reachable_nodes[i];
 		if (node_id == 0) {
 			continue; // Skip root
@@ -309,7 +309,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 					}
 					const PlannerNodeStruct &candidate = kv.value;
 					// Check if this candidate has node_id as a successor
-					for (size_t j = 0; j < candidate.successors.size(); j++) {
+					for (uint32_t j = 0; j < candidate.successors.size(); j++) {
 						if (candidate.successors[j] == node_id) {
 							parent_id = candidate_id;
 							break;
@@ -349,7 +349,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		int parent_id = kv.key;
 		bool has_closed_verify_goal = false;
 		// Check if any closed verify goal has this parent (optimized: uses internal structure)
-		for (size_t j = 0; j < closed_verify_goals.size(); j++) {
+		for (uint32_t j = 0; j < closed_verify_goals.size(); j++) {
 			int verify_goal_id = closed_verify_goals[j];
 			// Find parent of this verify goal by searching graph_internal
 			for (const KeyValue<int, PlannerNodeStruct> &kv2 : graph_internal) {
@@ -359,7 +359,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				}
 				const PlannerNodeStruct &candidate = kv2.value;
 				// Check if this candidate has verify_goal_id as a successor
-				for (size_t k = 0; k < candidate.successors.size(); k++) {
+				for (uint32_t k = 0; k < candidate.successors.size(); k++) {
 					if (candidate.successors[k] == verify_goal_id && candidate_id == parent_id) {
 						has_closed_verify_goal = true;
 						break;
@@ -376,7 +376,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		// If no closed verify goal for this parent, the failed ones are real failures
 		if (!has_closed_verify_goal) {
 			const LocalVector<int> &failed_list = failed_verify_goals_by_parent[parent_id];
-			for (size_t j = 0; j < failed_list.size(); j++) {
+			for (uint32_t j = 0; j < failed_list.size(); j++) {
 				failed_nodes.push_back(failed_list[j]);
 			}
 			// Don't mark planning as failed just because of intermediate verify failures
@@ -389,7 +389,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		int parent_id = kv.key;
 		bool has_closed_verify_multigoal = false;
 		// Check if any closed verify multigoal has this parent (optimized: uses internal structure)
-		for (size_t j = 0; j < closed_verify_multigoals.size(); j++) {
+		for (uint32_t j = 0; j < closed_verify_multigoals.size(); j++) {
 			int verify_multigoal_id = closed_verify_multigoals[j];
 			// Find parent of this verify multigoal by searching graph_internal
 			for (const KeyValue<int, PlannerNodeStruct> &kv3 : graph_internal) {
@@ -399,7 +399,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				}
 				const PlannerNodeStruct &candidate = kv3.value;
 				// Check if this candidate has verify_multigoal_id as a successor
-				for (size_t k = 0; k < candidate.successors.size(); k++) {
+				for (uint32_t k = 0; k < candidate.successors.size(); k++) {
 					if (candidate.successors[k] == verify_multigoal_id && candidate_id == parent_id) {
 						has_closed_verify_multigoal = true;
 						break;
@@ -416,7 +416,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		// If no closed verify multigoal for this parent, the failed ones are real failures
 		if (!has_closed_verify_multigoal) {
 			const LocalVector<int> &failed_list = failed_verify_multigoals_by_parent[parent_id];
-			for (size_t j = 0; j < failed_list.size(); j++) {
+			for (uint32_t j = 0; j < failed_list.size(); j++) {
 				failed_nodes.push_back(failed_list[j]);
 			}
 			// Don't mark planning as failed just because of intermediate verify failures
@@ -583,7 +583,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				if (!failed_nodes.is_empty()) {
 					// Convert LocalVector to Array for printing
 					Array failed_nodes_array;
-					for (int j = 0; j < static_cast<int>(failed_nodes.size()); j++) {
+					for (uint32_t j = 0; j < failed_nodes.size(); j++) {
 						failed_nodes_array.push_back(failed_nodes[j]);
 					}
 					print_line("Failed nodes: " + _item_to_string(failed_nodes_array));
@@ -591,7 +591,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				if (!open_nodes.is_empty()) {
 					// Convert LocalVector to Array for printing
 					Array open_nodes_array;
-					for (int j = 0; j < static_cast<int>(open_nodes.size()); j++) {
+					for (uint32_t j = 0; j < open_nodes.size(); j++) {
 						open_nodes_array.push_back(open_nodes[j]);
 					}
 					print_line("Open nodes: " + _item_to_string(open_nodes_array));
