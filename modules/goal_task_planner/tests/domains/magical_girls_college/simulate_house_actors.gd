@@ -10,6 +10,7 @@
 extends SceneTree
 
 const Domain = preload("domain.gd")
+const PLANNING_TIMEOUT_MS = 0.025  # Skip planning if it takes longer than 25ms
 
 # Message types for actor communication
 enum MessageType {
@@ -82,13 +83,19 @@ class Actor:
 	var mailbox: ActorMailbox
 	var plan: PlannerPlan
 	var last_planning_check: float = 0.0
+	var last_plan_result: PlannerResult = null  # Store last plan for partial replanning
+	var current_plan_actions: Array = []  # Current plan actions being executed
+	var current_plan_node_ids: Array = []  # Node IDs corresponding to each action (for replan())
+	var current_plan_index: int = 0  # Index of current action in plan
 	var local_stats: Dictionary = {
 		"plans_generated": 0,
+		"replans": 0,  # Track partial replans
 		"actions_executed": 0,
 		"messages_sent": 0,
 		"messages_received": 0,
 		"max_processing_time": 0.0,
-		"max_planning_time": 0.0
+		"max_planning_time": 0.0,
+		"max_replan_time": 0.0
 	}
 	var decay_rate: float = 1.0
 	var planning_interval: float = 60.0
@@ -118,23 +125,25 @@ class Actor:
 
 	func handle_message(msg: ActorMessage) -> void:
 		match msg.message_type:
-			4:  # MessageType.TIME_TICK
-				# Time advanced, check if we need to plan
+			MessageType.TIME_TICK:
 				var current_time = msg.payload.get("time", 0.0)
 				process_time_tick(current_time)
-			1:  # MessageType.OBSERVATION
-				# Update beliefs based on observation
-				process_observation(msg.payload)
-			2:  # MessageType.COMMUNICATION
-				# Process communication from another actor
-				process_communication(msg.payload)
-			0:  # MessageType.STATE_UPDATE
-				# Update state from allocentric facts
-				update_from_allocentric(msg.payload)
+			MessageType.OBSERVATION, MessageType.COMMUNICATION, MessageType.STATE_UPDATE:
+				# Reserved for future PlannerPersona/PlannerFactsAllocentric integration
+				pass
 
 	func process_time_tick(current_time: float) -> void:
-		# Decay needs (using passed function)
 		state = decay_func.call(state, persona_id, decay_rate)
+
+		# Execute current plan if we have one
+		if current_plan_actions.size() > 0 and current_plan_index < current_plan_actions.size():
+			var action = current_plan_actions[current_plan_index]
+			state = execute_func.call(state, [action], persona_id)
+			current_plan_index += 1
+			local_stats["actions_executed"] += 1
+
+			if current_plan_index >= current_plan_actions.size():
+				_clear_plan_actions()
 
 		# Check for critical needs periodically
 		var time_since_last_plan = current_time - last_planning_check
@@ -144,46 +153,139 @@ class Actor:
 			var critical_needs = critical_needs_func.call(state, persona_id)
 
 			if critical_needs.size() > 0:
-				# Planning - main computation (time this operation)
 				var planning_start = Time.get_ticks_usec()
-				var result = plan.find_plan(state, critical_needs)
-				var planning_time = (Time.get_ticks_usec() - planning_start) / 1000000.0
+				var result: PlannerResult = null
+				var planning_time: float = 0.0
+				var is_replan = false
 
-				# Track max planning time per actor
-				if planning_time > local_stats["max_planning_time"]:
-					local_stats["max_planning_time"] = planning_time
+				# Use replan() method if we have an existing plan result
+				if last_plan_result != null and last_plan_result.get_success():
+					is_replan = true
+					var fail_node_id = _get_fail_node_id()
+					result = plan.replan(last_plan_result, state, fail_node_id)
+				else:
+					result = plan.find_plan(state, critical_needs)
+
+				planning_time = (Time.get_ticks_usec() - planning_start) / 1000000.0
+
+				# Track max planning/replan time
+				if is_replan:
+					if planning_time > local_stats["max_replan_time"]:
+						local_stats["max_replan_time"] = planning_time
+				else:
+					if planning_time > local_stats["max_planning_time"]:
+						local_stats["max_planning_time"] = planning_time
 
 				# Skip planning if it took too long (adaptive throttling)
-				# This prevents one slow planning operation from blocking the step
-				if planning_time > 0.025:  # 25ms threshold
-					# Planning took too long, skip this plan to maintain latency
-					# Will retry on next interval
+				if planning_time > PLANNING_TIMEOUT_MS:
 					return
 
-				local_stats["plans_generated"] += 1
+				if is_replan:
+					local_stats["replans"] += 1
+				else:
+					local_stats["plans_generated"] += 1
 
 				if result != null and result.get_success():
-					var plan_actions = result.extract_plan(0)
+					_store_and_execute_plan(result)
+				else:
+					# Plan failed - clear stored plan
+					last_plan_result = null
+					_clear_plan_actions()
 
-					if plan_actions.size() > 0:
-						# Execute the plan (using passed function)
-						state = execute_func.call(state, plan_actions, persona_id)
-						local_stats["actions_executed"] += plan_actions.size()
+	func _clear_plan_actions() -> void:
+		"""Clear plan actions but keep last_plan_result for replan detection."""
+		current_plan_actions.clear()
+		current_plan_node_ids.clear()
+		current_plan_index = 0
 
-	func process_observation(observation: Dictionary) -> void:
-		# Update beliefs based on allocentric observation
-		# This is where PlannerPersona.process_observation would be called
-		pass
+	func _store_and_execute_plan(result: PlannerResult) -> void:
+		"""Store plan result and execute first action."""
+		var plan_actions = result.extract_plan(0)
+		if plan_actions.size() == 0:
+			return
 
-	func process_communication(communication: Dictionary) -> void:
-		# Process communication from another persona
-		# This is where PlannerPersona.process_communication would be called
-		pass
+		# Extract node IDs for each action from solution graph for replan() usage
+		var solution_graph = result.get_solution_graph()
+		current_plan_node_ids = _extract_action_node_ids(solution_graph, plan_actions)
 
-	func update_from_allocentric(allocentric_data: Dictionary) -> void:
-		# Update state from shared allocentric facts (read-only, no locks needed)
-		# This is where PlannerFactsAllocentric observations would be used
-		pass
+		# Store plan for partial replanning
+		last_plan_result = result
+		current_plan_actions = plan_actions
+		current_plan_index = 0
+
+		# Execute first action immediately
+		state = execute_func.call(state, [plan_actions[0]], persona_id)
+		current_plan_index = 1
+		local_stats["actions_executed"] += 1
+
+		# If plan is complete after first action, clear actions but keep result
+		if current_plan_index >= current_plan_actions.size():
+			_clear_plan_actions()
+
+	func _get_fail_node_id() -> int:
+		"""Get the node ID to use as failure point for replan()."""
+		if current_plan_node_ids.size() > 0 and current_plan_index < current_plan_node_ids.size():
+			return current_plan_node_ids[current_plan_index]
+		elif current_plan_node_ids.size() > 0:
+			return current_plan_node_ids[current_plan_node_ids.size() - 1]
+		return 0  # Default to root
+
+	func _extract_action_node_ids(solution_graph: Dictionary, plan_actions: Array) -> Array:
+		"""Extract node IDs for each action in the plan for replan() usage."""
+		var node_ids: Array = []
+		var to_visit = [0]  # Start from root
+		var visited = []
+		var action_index = 0
+		const TYPE_ACTION = 3
+		const STATUS_CLOSED = 2
+
+		while not to_visit.is_empty() and action_index < plan_actions.size():
+			var node_id = to_visit.pop_back()
+			if visited.has(node_id):
+				continue
+			visited.append(node_id)
+
+			if not solution_graph.has(node_id):
+				continue
+
+			var node = solution_graph[node_id]
+			if not (node is Dictionary):
+				continue
+
+			var node_type = node.get("type", -1)
+			var node_status = node.get("status", -1)
+
+			if node_type == TYPE_ACTION and node_status == STATUS_CLOSED:
+				var node_info = node.get("info", null)
+				if node_info is Dictionary and node_info.has("item"):
+					node_info = node_info["item"]
+
+				if action_index < plan_actions.size() and _actions_match(node_info, plan_actions[action_index]):
+					node_ids.append(node_id)
+					action_index += 1
+
+			if node.has("successors"):
+				var successors = node["successors"]
+				if successors is Array:
+					for succ_id in successors:
+						if not visited.has(succ_id):
+							to_visit.append(succ_id)
+
+		return node_ids
+
+	func _actions_match(action1: Variant, action2: Variant) -> bool:
+		"""Check if two actions match (for node ID extraction)."""
+		if not (action1 is Array) or not (action2 is Array):
+			return false
+		var arr1: Array = action1
+		var arr2: Array = action2
+		if arr1.size() != arr2.size():
+			return false
+		for i in range(arr1.size()):
+			if arr1[i] != arr2[i]:
+				return false
+		return true
+
 
 	func send_message(to_actor: Actor, msg_type: int, payload: Dictionary) -> bool:
 		var msg = ActorMessage.new()
@@ -204,17 +306,23 @@ var planning_check_interval = 60.0
 
 # Helper functions (need to be accessible to Actor)
 func decay_needs_helper(state: Dictionary, persona_id: String, decay_rate: float) -> Dictionary:
-	var needs = state["needs"][persona_id]
+	# Cache dictionary lookup
+	var needs_dict = state["needs"]
+	var needs = needs_dict[persona_id]
+	
+	# Decay needs
 	needs["hunger"] = max(0, needs["hunger"] - decay_rate)
 	needs["energy"] = max(0, needs["energy"] - decay_rate)
 	needs["social"] = max(0, needs["social"] - decay_rate * 0.3)
 	needs["fun"] = max(0, needs["fun"] - decay_rate * 0.4)
 	needs["hygiene"] = max(0, needs["hygiene"] - decay_rate * 0.2)
-	state["needs"][persona_id] = needs
+	
+	needs_dict[persona_id] = needs
 	return state
 
 func get_critical_needs_helper(state: Dictionary, persona_id: String) -> Array:
 	var critical = []
+	# Cache dictionary lookup
 	var needs = state["needs"][persona_id]
 	var threshold = 55
 	var urgent_threshold = 40
@@ -247,14 +355,24 @@ func get_critical_needs_helper(state: Dictionary, persona_id: String) -> Array:
 	return critical
 
 func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: String) -> Dictionary:
-	var new_state = state.duplicate(true)
+	# Optimize: shallow copy with selective deep copy (faster than full deep copy)
+	var new_state = state.duplicate(false)  # Shallow copy
+	# Only deep copy nested dictionaries that will be modified
+	new_state["needs"] = state["needs"].duplicate(true)
+	new_state["money"] = state["money"].duplicate(true)
+	new_state["is_at"] = state["is_at"].duplicate(true)
+
+	# Cache dictionary lookups
+	var needs_dict = new_state["needs"]
+	var money_dict = new_state["money"]
+	var is_at_dict = new_state["is_at"]
+	var needs = needs_dict[persona_id]
 
 	for action in plan_actions:
 		if not (action is Array and action.size() > 0):
 			continue
 
 		var action_name = str(action[0])
-		var needs = new_state["needs"][persona_id]
 
 		if action_name.begins_with("action_eat"):
 			needs["hunger"] = min(100, needs["hunger"] + 30)
@@ -326,6 +444,7 @@ var allocentric_facts: Dictionary = {}  # Shared read-only ground truth (for fut
 # Statistics (only updated at sync points, no locks during processing)
 var total_actions_executed = 0
 var total_plans_generated = 0
+var total_replans = 0
 var profile_data = {
 	"step_times": [],
 	"total_planning_time": 0.0,
@@ -434,15 +553,20 @@ func _init():
 func start_simulation():
 	var num_cores = OS.get_processor_count()
 	# Oversubscribe the system - run many more actors than cores
-	# Latency target: maximum 15-30ms per step with buffer (target max ~25ms for 5ms buffer)
-	# Optimized to 6x oversubscription to maintain max latency with comfortable buffer
-	# With 12 cores: 72 actors, avg ~2.5ms, max ~22-25ms (within 15-30ms target with buffer)
-	var oversubscription_ratio = 6  # 6x cores - optimized for 15-30ms max latency with buffer
+	# Latency target: maximum 15-30ms per step with buffer
+	# Using Steam Deck-optimized configuration (4x oversubscription) for all systems
+	# This ensures comfortable 8-12ms buffer below 30ms limit, accounting for:
+	# - Thermal throttling (+2-5ms)
+	# - Background processes (+1-2ms)
+	# - Lower CPU performance variability (+1-2ms)
+	# With 4x: 12 cores = 48 actors, 4 cores = 16 actors
+	# Expected: avg ~2-3ms, max ~18-22ms (comfortable buffer for all systems)
+	var oversubscription_ratio = 4  # Steam Deck-optimized for all systems
 	var num_agents = num_cores * oversubscription_ratio
 
 	print("Initializing %d actors (CPU cores: %d)" % [num_agents, num_cores])
 	if num_cores > 0:
-		print("Oversubscription ratio: %.1fx cores (target max latency: 15-30ms with buffer)" % (float(num_agents) / num_cores))
+		print("Oversubscription ratio: %.1fx cores (Steam Deck-optimized, target max latency: 15-30ms with buffer)" % (float(num_agents) / num_cores))
 
 	# Create actors with staggered planning intervals to prevent simultaneous planning spikes
 	for i in range(num_agents):
@@ -526,10 +650,15 @@ func simulation_step():
 		# Aggregate statistics from actors (no locks needed - actors are done)
 		for actor in actors:
 			total_plans_generated += actor.local_stats["plans_generated"]
+			total_replans += actor.local_stats.get("replans", 0)
 			total_actions_executed += actor.local_stats["actions_executed"]
 
 		print("Total plans generated: %d" % total_plans_generated)
+		print("Total partial replans: %d" % total_replans)
 		print("Total actions executed: %d" % total_actions_executed)
+		if total_plans_generated > 0:
+			var replan_ratio = float(total_replans) / float(total_plans_generated + total_replans) * 100.0
+			print("Replan ratio: %.1f%% (partial replans vs full plans)" % replan_ratio)
 		print("\nFinal States (showing first 5 and last 1):")
 		var show_count = min(5, actors.size())
 		for i in range(show_count):
