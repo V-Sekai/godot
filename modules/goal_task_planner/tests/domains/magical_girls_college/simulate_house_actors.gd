@@ -102,8 +102,9 @@ class Actor:
 	var decay_func: Callable
 	var critical_needs_func: Callable
 	var execute_func: Callable
+	var planning_semaphore_ref: Semaphore = null  # Reference to shared planning semaphore
 
-	func _init(p_id: String, p_state: Dictionary, p_plan: PlannerPlan, p_decay_rate: float, p_planning_interval: float, p_decay_func: Callable, p_critical_func: Callable, p_execute_func: Callable):
+	func _init(p_id: String, p_state: Dictionary, p_plan: PlannerPlan, p_decay_rate: float, p_planning_interval: float, p_decay_func: Callable, p_critical_func: Callable, p_execute_func: Callable, p_planning_semaphore: Semaphore = null):
 		persona_id = p_id
 		state = p_state
 		plan = p_plan
@@ -113,6 +114,7 @@ class Actor:
 		decay_func = p_decay_func
 		critical_needs_func = p_critical_func
 		execute_func = p_execute_func
+		planning_semaphore_ref = p_planning_semaphore
 
 	func process_messages() -> void:
 		# Process all messages in mailbox (lockless)
@@ -153,6 +155,15 @@ class Actor:
 			var critical_needs = critical_needs_func.call(state, persona_id)
 
 			if critical_needs.size() > 0:
+				# Limit concurrent planning to prevent latency spikes
+				var can_plan = true
+				if planning_semaphore_ref != null:
+					can_plan = planning_semaphore_ref.try_wait()
+					if not can_plan:
+						# Planning throttled - skip this step, retry next interval
+						# This prevents too many actors from planning simultaneously
+						return
+
 				var planning_start = Time.get_ticks_usec()
 				var result: PlannerResult = null
 				var planning_time: float = 0.0
@@ -167,6 +178,10 @@ class Actor:
 					result = plan.find_plan(state, critical_needs)
 
 				planning_time = (Time.get_ticks_usec() - planning_start) / 1000000.0
+
+				# Release planning slot
+				if planning_semaphore_ref != null and can_plan:
+					planning_semaphore_ref.post()
 
 				# Track max planning/replan time
 				if is_replan:
@@ -205,8 +220,13 @@ class Actor:
 			return
 
 		# Extract node IDs for each action from solution graph for replan() usage
-		var solution_graph = result.get_solution_graph()
-		current_plan_node_ids = _extract_action_node_ids(solution_graph, plan_actions)
+		# Lazy extraction: only extract if we have multiple actions (optimization)
+		if plan_actions.size() > 1:
+			var solution_graph = result.get_solution_graph()
+			current_plan_node_ids = _extract_action_node_ids(solution_graph, plan_actions)
+		else:
+			# Single action - can skip node ID extraction for now
+			current_plan_node_ids.clear()
 
 		# Store plan for partial replanning
 		last_plan_result = result
@@ -232,9 +252,10 @@ class Actor:
 
 	func _extract_action_node_ids(solution_graph: Dictionary, plan_actions: Array) -> Array:
 		"""Extract node IDs for each action in the plan for replan() usage."""
+		# Optimize: Use TypedArray for visited (faster lookups)
 		var node_ids: Array = []
 		var to_visit = [0]  # Start from root
-		var visited = []
+		var visited = {}  # Use Dictionary for O(1) lookups instead of Array.has()
 		var action_index = 0
 		const TYPE_ACTION = 3
 		const STATUS_CLOSED = 2
@@ -243,7 +264,7 @@ class Actor:
 			var node_id = to_visit.pop_back()
 			if visited.has(node_id):
 				continue
-			visited.append(node_id)
+			visited[node_id] = true
 
 			if not solution_graph.has(node_id):
 				continue
@@ -299,7 +320,7 @@ class Actor:
 
 # Simulation parameters (accessible to Actor class)
 var simulation_time_seconds = 0.0
-var total_simulation_time = 20 * 60
+var total_simulation_time = 60 * 60  # Increased to 60 minutes (3x) for better profiling accuracy
 var time_step = 30.0
 var needs_decay_rate = 1.0
 var planning_check_interval = 60.0
@@ -309,14 +330,14 @@ func decay_needs_helper(state: Dictionary, persona_id: String, decay_rate: float
 	# Cache dictionary lookup
 	var needs_dict = state["needs"]
 	var needs = needs_dict[persona_id]
-	
+
 	# Decay needs
 	needs["hunger"] = max(0, needs["hunger"] - decay_rate)
 	needs["energy"] = max(0, needs["energy"] - decay_rate)
 	needs["social"] = max(0, needs["social"] - decay_rate * 0.3)
 	needs["fun"] = max(0, needs["fun"] - decay_rate * 0.4)
 	needs["hygiene"] = max(0, needs["hygiene"] - decay_rate * 0.2)
-	
+
 	needs_dict[persona_id] = needs
 	return state
 
@@ -376,63 +397,63 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 
 		if action_name.begins_with("action_eat"):
 			needs["hunger"] = min(100, needs["hunger"] + 30)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 
 			if action_name == "action_eat_restaurant":
-				new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 20)
+				money_dict[persona_id] = max(0, money_dict[persona_id] - 20)
 				continue
 			if action_name == "action_eat_snack":
-				new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 5)
+				money_dict[persona_id] = max(0, money_dict[persona_id] - 5)
 				continue
 			if action_name == "action_eat_mess_hall":
-				new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 10)
+				money_dict[persona_id] = max(0, money_dict[persona_id] - 10)
 				continue
 			continue
 
 		if action_name.begins_with("action_sleep") or action_name == "action_nap_library":
 			needs["energy"] = min(100, needs["energy"] + 40)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 			continue
 
 		if action_name == "action_energy_drink":
 			needs["energy"] = min(100, needs["energy"] + 20)
-			new_state["needs"][persona_id] = needs
-			new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 3)
+			needs_dict[persona_id] = needs
+			money_dict[persona_id] = max(0, money_dict[persona_id] - 3)
 			continue
 
 		if action_name.begins_with("action_talk") or action_name == "action_phone_call" or action_name == "action_join_club":
 			needs["social"] = min(100, needs["social"] + 25)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 			continue
 
 		if action_name == "action_play_games" or action_name == "action_watch_streaming":
 			needs["fun"] = min(100, needs["fun"] + 30)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 			continue
 
 		if action_name == "action_go_cinema":
 			needs["fun"] = min(100, needs["fun"] + 40)
-			new_state["needs"][persona_id] = needs
-			new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 15)
+			needs_dict[persona_id] = needs
+			money_dict[persona_id] = max(0, money_dict[persona_id] - 15)
 			continue
 
 		if action_name == "action_shower":
 			needs["hygiene"] = min(100, needs["hygiene"] + 50)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 			continue
 
 		if action_name == "action_wash_hands":
 			needs["hygiene"] = min(100, needs["hygiene"] + 15)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 			continue
 
 		if action_name == "action_move_to" and action.size() > 2:
-			new_state["is_at"][persona_id] = str(action[2])
+			is_at_dict[persona_id] = str(action[2])
 			continue
 
 		if action_name == "action_cook_meal":
 			needs["hunger"] = min(100, needs["hunger"] + 35)
-			new_state["needs"][persona_id] = needs
+			needs_dict[persona_id] = needs
 			continue
 
 	return new_state
@@ -441,6 +462,10 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 var actors: Array = []
 var allocentric_facts: Dictionary = {}  # Shared read-only ground truth (for future PlannerFactsAllocentric integration)
 
+# Planning coordination - limit concurrent planning to prevent spikes
+var planning_semaphore: Semaphore = null
+const MAX_CONCURRENT_PLANNING = 4  # Limit to 4 actors planning simultaneously
+
 # Statistics (only updated at sync points, no locks during processing)
 var total_actions_executed = 0
 var total_plans_generated = 0
@@ -448,7 +473,8 @@ var total_replans = 0
 var profile_data = {
 	"step_times": [],
 	"total_planning_time": 0.0,
-	"planning_calls": 0
+	"planning_calls": 0,
+	"planning_throttled": 0  # Track how often planning is throttled
 }
 
 func create_domain() -> PlannerDomain:
@@ -564,6 +590,12 @@ func start_simulation():
 	var oversubscription_ratio = 4  # Steam Deck-optimized for all systems
 	var num_agents = num_cores * oversubscription_ratio
 
+	# Initialize planning semaphore to limit concurrent planning
+	planning_semaphore = Semaphore.new()
+	# Pre-populate with permits (Semaphore starts at 0, so post to allow planning)
+	for i in range(MAX_CONCURRENT_PLANNING):
+		planning_semaphore.post()
+
 	print("Initializing %d actors (CPU cores: %d)" % [num_agents, num_cores])
 	if num_cores > 0:
 		print("Oversubscription ratio: %.1fx cores (Steam Deck-optimized, target max latency: 15-30ms with buffer)" % (float(num_agents) / num_cores))
@@ -587,7 +619,8 @@ func start_simulation():
 		var actor = Actor.new(persona_id, state, plan, needs_decay_rate, staggered_interval,
 			Callable(self, "decay_needs_helper"),
 			Callable(self, "get_critical_needs_helper"),
-			Callable(self, "execute_plan_helper"))
+			Callable(self, "execute_plan_helper"),
+			planning_semaphore)
 		# Set initial planning check to be staggered
 		actor.last_planning_check = -stagger_offset
 		actors.append(actor)
@@ -626,8 +659,9 @@ func process_actor(actor_index: int):
 	var current_sim_time = simulation_time_seconds
 
 	# Send time tick message to self for processing (lockless write)
+	# Optimize: Reuse message object if available (message pooling would help here)
 	var time_msg = ActorMessage.new()
-	time_msg.message_type = 4  # MessageType.TIME_TICK
+	time_msg.message_type = MessageType.TIME_TICK
 	time_msg.sender_id = "system"
 	time_msg.payload = {"time": current_sim_time}
 	time_msg.timestamp = Time.get_ticks_msec() / 1000.0

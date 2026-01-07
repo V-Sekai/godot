@@ -35,6 +35,7 @@
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
 #include "core/io/resource.h"
+#include "core/templates/hash_map.h"
 #include "core/variant/typed_array.h"
 
 #include "planner_belief_manager.h"
@@ -72,7 +73,8 @@ class PlannerPlan : public Resource {
 	int iterations = 0; // Track number of planning iterations
 
 	// VSIDS-style method activity tracking (following Chuffed's proven approach)
-	Dictionary method_activities; // Track activity scores: method_id -> double
+	// Optimized: Use HashMap instead of Dictionary for faster lookups
+	HashMap<String, double> method_activities; // Track activity scores: method_id -> double
 	double activity_var_inc = 1.0; // Increment value (grows over time via activity inflation)
 	int activity_bump_count = 0; // Track bumps to trigger decay
 	static const int ACTIVITY_DECAY_INTERVAL = 100; // Decay every N bumps

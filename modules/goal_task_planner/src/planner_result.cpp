@@ -107,7 +107,7 @@ Array PlannerResult::extract_plan(int p_verbose) const {
 	if (p_verbose >= 3) {
 		print_line("[EXTRACT_PLAN] Setting graph...");
 	}
-	graph.get_graph() = graph_dict;
+	graph.load_from_dictionary(graph_dict);
 
 	// Safety check: ensure graph_dict is not empty before processing
 	if (graph_dict.is_empty()) {
@@ -136,9 +136,9 @@ Array PlannerResult::extract_plan(int p_verbose) const {
 			}
 		}
 	}
-	graph.next_node_id = (max_id >= 0) ? (max_id + 1) : 1;
+	graph.set_next_node_id((max_id >= 0) ? (max_id + 1) : 1);
 	if (p_verbose >= 3) {
-		print_line(vformat("[EXTRACT_PLAN] Max node ID: %d, next_node_id: %d", max_id, graph.next_node_id));
+		print_line(vformat("[EXTRACT_PLAN] Max node ID: %d, next_node_id: %d", max_id, graph.get_next_node_id()));
 	}
 
 	// Extract the plan using the existing graph operations

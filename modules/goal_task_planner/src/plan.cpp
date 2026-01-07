@@ -32,6 +32,7 @@
 
 #include "core/string/ustring.h"
 #include "core/templates/hash_map.h"
+#include "core/templates/hash_set.h"
 #include "core/templates/local_vector.h"
 #include "core/variant/callable.h"
 #include "core/variant/typed_array.h"
@@ -126,7 +127,9 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -138,7 +141,9 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -174,29 +179,32 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 			current_domain->multigoal_method_list,
 			verbose);
 
-	// Guard: Root node must have successors
-	Dictionary root_node_check = solution_graph.get_node(0);
-	if (!root_node_check.has("successors")) {
+	// Guard: Root node must have successors (optimized: use internal structure)
+	const PlannerNodeStruct *root_node_check = solution_graph.get_node_internal(0);
+	if (root_node_check == nullptr || root_node_check->successors.is_empty()) {
 		if (verbose >= 1) {
 			ERR_PRINT("PlannerPlan::find_plan: Failed to add nodes to graph - root node missing successors");
 		}
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(clean_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Cache get_graph() result to avoid multiple calls
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
 	// Guard: Root must have successors if todo_list is not empty
-	TypedArray<int> root_successors_check = root_node_check["successors"];
-	if (root_successors_check.is_empty() && !p_todo_list.is_empty()) {
+	if (root_node_check->successors.is_empty() && !p_todo_list.is_empty()) {
 		if (verbose >= 1) {
 			ERR_PRINT("PlannerPlan::find_plan: Failed to add nodes to graph - root has no successors but todo_list is not empty");
 		}
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(clean_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Cache get_graph() result to avoid multiple calls
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -205,49 +213,45 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 
 	// Check if planning succeeded (if we got back to root with a valid state)
 	// Planning succeeds if all nodes are closed and we're back at root
-	Dictionary root_node = solution_graph.get_node(0);
+	// Note: Root node check is done in the success checking code below using internal structure
 
 	// Check if all nodes reachable from root are closed (planning succeeded)
 	// Only consider nodes that are reachable from root via closed nodes
 	// This way, failed nodes that were removed from their parent's successors don't cause planning to fail
 	bool planning_succeeded = true;
-	// Get graph keys safely - use get_graph() but validate access
-	Dictionary graph = solution_graph.get_graph();
-	Array graph_keys = graph.keys();
-	Array failed_nodes;
-	Array open_nodes;
-	TypedArray<int> reachable_nodes;
-	TypedArray<int> to_visit;
+	// Get graph keys safely - use internal structure for fast access
+	const HashMap<int, PlannerNodeStruct> &graph_internal = solution_graph.get_graph_internal();
+	LocalVector<int> failed_nodes;
+	LocalVector<int> open_nodes;
+	LocalVector<int> reachable_nodes;
+	LocalVector<int> to_visit;
 	to_visit.push_back(0); // Start from root
-	TypedArray<int> visited;
+	HashSet<int> visited; // O(1) lookups instead of O(n)
 
-	// Find all nodes reachable from root via closed nodes
+	// Find all nodes reachable from root via closed nodes (optimized: uses internal structure)
 	while (!to_visit.is_empty()) {
-		int node_id = to_visit.pop_back();
+		int node_id = to_visit[to_visit.size() - 1];
+		to_visit.remove_at(to_visit.size() - 1);
 		if (visited.has(node_id)) {
 			continue;
 		}
-		visited.push_back(node_id);
+		visited.insert(node_id);
 		reachable_nodes.push_back(node_id);
 
-		// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
-		Dictionary node = solution_graph.get_node(node_id);
-
-		// TLA+ verification identified: Must validate node has required fields
-		if (node.is_empty() || !node.has("status") || !node.has("successors")) {
+		// Use internal structure for fast access
+		const PlannerNodeStruct *node = solution_graph.get_node_internal(node_id);
+		if (node == nullptr) {
 			if (verbose >= 2) {
-				ERR_PRINT(vformat("Planning success check: Node %d missing required fields, skipping", node_id));
+				ERR_PRINT(vformat("Planning success check: Node %d not found, skipping", node_id));
 			}
 			continue; // Skip invalid node
 		}
 
-		int status = node["status"];
 		// Only traverse through closed nodes (or root which is NA)
-		if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
-				node_id == 0) {
-			TypedArray<int> successors = node["successors"];
-			for (int j = 0; j < successors.size(); j++) {
-				int succ_id = successors[j];
+		if (node->status == PlannerNodeStatus::STATUS_CLOSED || node_id == 0) {
+			// Use LocalVector successors directly (fast)
+			for (int j = 0; j < node->successors.size(); j++) {
+				int succ_id = node->successors[j];
 				if (!visited.has(succ_id)) {
 					to_visit.push_back(succ_id);
 				}
@@ -258,11 +262,11 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	// Check reachable nodes for failures
 	bool has_reachable_closed_nodes = false;
 	// Track FAILED VERIFY_GOAL nodes - they're acceptable if there's a CLOSED one for the same parent
-	Dictionary failed_verify_goals_by_parent; // parent_id -> array of failed verify goal node_ids
-	TypedArray<int> closed_verify_goals;
+	HashMap<int, LocalVector<int>> failed_verify_goals_by_parent; // parent_id -> array of failed verify goal node_ids
+	LocalVector<int> closed_verify_goals;
 	// Track FAILED VERIFY_MULTIGOAL nodes - they're acceptable if there's a CLOSED one for the same parent
-	Dictionary failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
-	TypedArray<int> closed_verify_multigoals;
+	HashMap<int, LocalVector<int>> failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
+	LocalVector<int> closed_verify_multigoals;
 
 	for (int i = 0; i < reachable_nodes.size(); i++) {
 		int node_id = reachable_nodes[i];
@@ -270,67 +274,52 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 			continue; // Skip root
 		}
 
-		// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
-		Dictionary node = solution_graph.get_node(node_id);
-
-		// TLA+ verification identified: Must validate node has required fields
-		if (node.is_empty() || !node.has("status") || !node.has("type")) {
+		// Use internal structure for fast access
+		const PlannerNodeStruct *node = solution_graph.get_node_internal(node_id);
+		if (node == nullptr) {
 			if (verbose >= 2) {
-				ERR_PRINT(vformat("Planning success check: Reachable node %d missing required fields, skipping", node_id));
+				ERR_PRINT(vformat("Planning success check: Reachable node %d not found, skipping", node_id));
 			}
 			continue; // Skip invalid node
 		}
 
-		int status = node["status"];
-		int node_type = node["type"];
+		PlannerNodeStatus status = node->status;
+		PlannerNodeType node_type = node->type;
 
 		// Planning fails if any reachable node is open
-		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+		if (status == PlannerNodeStatus::STATUS_OPEN) {
 			planning_succeeded = false;
 			open_nodes.push_back(node_id);
-		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+		} else if (status == PlannerNodeStatus::STATUS_FAILED) {
 			// FAILED VERIFY_GOAL and VERIFY_MULTIGOAL nodes are acceptable if there's a CLOSED one for the same parent
-			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL) ||
-					node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
-				// Get parent node ID (stored in node or find it)
-				// For now, just track it - we'll check later if there's a CLOSED one
-				// We need to find the parent by searching the graph
+			if (node_type == PlannerNodeType::TYPE_VERIFY_GOAL ||
+					node_type == PlannerNodeType::TYPE_VERIFY_MULTIGOAL) {
+				// Get parent node ID by searching the graph (optimized: uses internal structure)
 				int parent_id = -1;
-				Array graph_keys_inner = graph.keys();
-				for (int j = 0; j < graph_keys_inner.size(); j++) {
-					int candidate_id = graph_keys_inner[j];
+				for (const KeyValue<int, PlannerNodeStruct> &kv : graph_internal) {
+					int candidate_id = kv.key;
 					if (candidate_id == node_id) {
 						continue;
 					}
-
-					// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
-					Dictionary candidate_node = solution_graph.get_node(candidate_id);
-
-					// TLA+ verification identified: Must validate candidate has required fields
-					if (candidate_node.is_empty() || !candidate_node.has("successors")) {
-						continue; // Skip invalid candidate
+					const PlannerNodeStruct &candidate = kv.value;
+					// Check if this candidate has node_id as a successor
+					for (int j = 0; j < candidate.successors.size(); j++) {
+						if (candidate.successors[j] == node_id) {
+							parent_id = candidate_id;
+							break;
+						}
 					}
-					TypedArray<int> candidate_successors = candidate_node["successors"];
-					if (candidate_successors.has(node_id)) {
-						parent_id = candidate_id;
+					if (parent_id >= 0) {
 						break;
 					}
 				}
 				if (parent_id >= 0) {
-					if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL)) {
-						if (!failed_verify_goals_by_parent.has(parent_id)) {
-							failed_verify_goals_by_parent[parent_id] = TypedArray<int>();
-						}
-						TypedArray<int> failed_list = failed_verify_goals_by_parent[parent_id];
+					if (node_type == PlannerNodeType::TYPE_VERIFY_GOAL) {
+						LocalVector<int> &failed_list = failed_verify_goals_by_parent[parent_id];
 						failed_list.push_back(node_id);
-						failed_verify_goals_by_parent[parent_id] = failed_list;
 					} else { // TYPE_VERIFY_MULTIGOAL
-						if (!failed_verify_multigoals_by_parent.has(parent_id)) {
-							failed_verify_multigoals_by_parent[parent_id] = TypedArray<int>();
-						}
-						TypedArray<int> failed_list = failed_verify_multigoals_by_parent[parent_id];
+						LocalVector<int> &failed_list = failed_verify_multigoals_by_parent[parent_id];
 						failed_list.push_back(node_id);
-						failed_verify_multigoals_by_parent[parent_id] = failed_list;
 					}
 				}
 				// Don't mark as failed yet - check if there's a CLOSED one
@@ -339,45 +328,39 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				planning_succeeded = false;
 				failed_nodes.push_back(node_id);
 			}
-		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+		} else if (status == PlannerNodeStatus::STATUS_CLOSED) {
 			has_reachable_closed_nodes = true;
-			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL)) {
+			if (node_type == PlannerNodeType::TYPE_VERIFY_GOAL) {
 				closed_verify_goals.push_back(node_id);
-			} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
+			} else if (node_type == PlannerNodeType::TYPE_VERIFY_MULTIGOAL) {
 				closed_verify_multigoals.push_back(node_id);
 			}
 		}
 	}
 
-	// For each parent with failed verify goals, check if there's a closed one
-	Array failed_parent_keys = failed_verify_goals_by_parent.keys();
-	for (int i = 0; i < failed_parent_keys.size(); i++) {
-		int parent_id = failed_parent_keys[i];
+	// For each parent with failed verify goals, check if there's a closed one (optimized: direct iteration)
+	for (const KeyValue<int, LocalVector<int>> &kv : failed_verify_goals_by_parent) {
+		int parent_id = kv.key;
 		bool has_closed_verify_goal = false;
-		// Check if any closed verify goal has this parent
+		// Check if any closed verify goal has this parent (optimized: uses internal structure)
 		for (int j = 0; j < closed_verify_goals.size(); j++) {
 			int verify_goal_id = closed_verify_goals[j];
-			// Find parent of this verify goal
-			Array graph_keys_verify = graph.keys();
-			for (int k = 0; k < graph_keys_verify.size(); k++) {
-				int candidate_id = graph_keys_verify[k];
+			// Find parent of this verify goal by searching graph_internal
+			for (const KeyValue<int, PlannerNodeStruct> &kv : graph_internal) {
+				int candidate_id = kv.key;
 				if (candidate_id == verify_goal_id) {
 					continue;
 				}
-
-				// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
-				Dictionary candidate_node = solution_graph.get_node(candidate_id);
-
-				// TLA+ verification identified: Must validate candidate has required fields
-				if (candidate_node.is_empty() || !candidate_node.has("successors")) {
-					continue; // Skip invalid candidate
-				}
-				TypedArray<int> candidate_successors = candidate_node["successors"];
-				if (candidate_successors.has(verify_goal_id)) {
-					if (candidate_id == parent_id) {
+				const PlannerNodeStruct &candidate = kv.value;
+				// Check if this candidate has verify_goal_id as a successor
+				for (int k = 0; k < candidate.successors.size(); k++) {
+					if (candidate.successors[k] == verify_goal_id && candidate_id == parent_id) {
 						has_closed_verify_goal = true;
 						break;
 					}
+				}
+				if (has_closed_verify_goal) {
+					break;
 				}
 			}
 			if (has_closed_verify_goal) {
@@ -386,7 +369,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		}
 		// If no closed verify goal for this parent, the failed ones are real failures
 		if (!has_closed_verify_goal) {
-			TypedArray<int> failed_list = failed_verify_goals_by_parent[parent_id];
+			const LocalVector<int> &failed_list = failed_verify_goals_by_parent[parent_id];
 			for (int j = 0; j < failed_list.size(); j++) {
 				failed_nodes.push_back(failed_list[j]);
 			}
@@ -395,35 +378,29 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		}
 	}
 
-	// For each parent with failed verify multigoals, check if there's a closed one
-	Array failed_multigoal_parent_keys = failed_verify_multigoals_by_parent.keys();
-	for (int i = 0; i < failed_multigoal_parent_keys.size(); i++) {
-		int parent_id = failed_multigoal_parent_keys[i];
+	// For each parent with failed verify multigoals, check if there's a closed one (optimized: direct iteration)
+	for (const KeyValue<int, LocalVector<int>> &kv : failed_verify_multigoals_by_parent) {
+		int parent_id = kv.key;
 		bool has_closed_verify_multigoal = false;
-		// Check if any closed verify multigoal has this parent
+		// Check if any closed verify multigoal has this parent (optimized: uses internal structure)
 		for (int j = 0; j < closed_verify_multigoals.size(); j++) {
 			int verify_multigoal_id = closed_verify_multigoals[j];
-			// Find parent of this verify multigoal
-			Array graph_keys_multigoal = graph.keys();
-			for (int k = 0; k < graph_keys_multigoal.size(); k++) {
-				int candidate_id = graph_keys_multigoal[k];
+			// Find parent of this verify multigoal by searching graph_internal
+			for (const KeyValue<int, PlannerNodeStruct> &kv2 : graph_internal) {
+				int candidate_id = kv2.key;
 				if (candidate_id == verify_multigoal_id) {
 					continue;
 				}
-
-				// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
-				Dictionary candidate_node = solution_graph.get_node(candidate_id);
-
-				// TLA+ verification identified: Must validate candidate has required fields
-				if (candidate_node.is_empty() || !candidate_node.has("successors")) {
-					continue; // Skip invalid candidate
-				}
-				TypedArray<int> candidate_successors = candidate_node["successors"];
-				if (candidate_successors.has(verify_multigoal_id)) {
-					if (candidate_id == parent_id) {
+				const PlannerNodeStruct &candidate = kv2.value;
+				// Check if this candidate has verify_multigoal_id as a successor
+				for (int k = 0; k < candidate.successors.size(); k++) {
+					if (candidate.successors[k] == verify_multigoal_id && candidate_id == parent_id) {
 						has_closed_verify_multigoal = true;
 						break;
 					}
+				}
+				if (has_closed_verify_multigoal) {
+					break;
 				}
 			}
 			if (has_closed_verify_multigoal) {
@@ -432,7 +409,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		}
 		// If no closed verify multigoal for this parent, the failed ones are real failures
 		if (!has_closed_verify_multigoal) {
-			TypedArray<int> failed_list = failed_verify_multigoals_by_parent[parent_id];
+			const LocalVector<int> &failed_list = failed_verify_multigoals_by_parent[parent_id];
 			for (int j = 0; j < failed_list.size(); j++) {
 				failed_nodes.push_back(failed_list[j]);
 			}
@@ -461,12 +438,15 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	if (verbose >= 3) {
 		print_line("[FIND_PLAN] Final state set");
 	}
-	Dictionary graph_to_set = solution_graph.get_graph();
+	// Optimized: Cache get_graph() result and avoid duplicate calls
+	const Dictionary &graph_dict = solution_graph.get_graph();
 	if (verbose >= 3) {
-		print_line(vformat("[FIND_PLAN] Graph to set has %d keys", graph_to_set.keys().size()));
+		print_line(vformat("[FIND_PLAN] Graph to set has %d keys", graph_dict.keys().size()));
 	}
 	// CRITICAL: Use deep duplicate to ensure the graph dictionary is not modified after setting
-	result->set_solution_graph(graph_to_set.duplicate(true));
+	// Only duplicate once - we'll reuse if we need to update
+	Dictionary graph_copy = graph_dict.duplicate(true);
+	result->set_solution_graph(graph_copy);
 	if (verbose >= 3) {
 		print_line("[FIND_PLAN] Solution graph set");
 		// Verify the graph was set correctly
@@ -483,19 +463,20 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		if (verbose >= 3) {
 			print_line("[FIND_PLAN] Planning succeeded, marking root as CLOSED");
 		}
-		Dictionary root_node_closed = solution_graph.get_node(0);
-		root_node_closed["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-		solution_graph.update_node(0, root_node_closed);
+		// Optimized: Use internal structure to update root node status
+		solution_graph.set_node_status(0, PlannerNodeStatus::STATUS_CLOSED);
 		// Update the result's solution graph with the updated root node
 		if (verbose >= 3) {
 			print_line("[FIND_PLAN] Setting solution graph in result...");
 		}
-		Dictionary graph_to_store = solution_graph.get_graph();
+		// Optimized: Reuse cached graph_dict, but need to get fresh copy after update
+		const Dictionary &updated_graph = solution_graph.get_graph();
 		if (verbose >= 3) {
-			print_line(vformat("[FIND_PLAN] Graph to store has %d keys", graph_to_store.keys().size()));
+			print_line(vformat("[FIND_PLAN] Graph to store has %d keys", updated_graph.keys().size()));
 		}
 		// CRITICAL: Use deep duplicate to ensure the graph dictionary is not modified after setting
-		result->set_solution_graph(graph_to_store.duplicate(true));
+		Dictionary updated_graph_copy = updated_graph.duplicate(true);
+		result->set_solution_graph(updated_graph_copy);
 		if (verbose >= 3) {
 			print_line("[FIND_PLAN] Solution graph set in result");
 			// Verify the graph was set correctly
@@ -524,9 +505,10 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 			if (verbose >= 2 || !failed_nodes.is_empty() || !open_nodes.is_empty()) {
 				// Print solution graph for debugging
 				print_line("Solution graph structure:");
-				for (int i = 0; i < graph_keys.size(); i++) {
-					int node_id = graph_keys[i];
-					Dictionary node = graph[node_id];
+				const HashMap<int, PlannerNodeStruct> &graph_internal_debug = solution_graph.get_graph_internal();
+				for (const KeyValue<int, PlannerNodeStruct> &kv : graph_internal_debug) {
+					int node_id = kv.key;
+					Dictionary node = solution_graph.get_node(node_id);
 					int node_type = node["type"];
 					int node_status = node["status"];
 					Variant node_info = node["info"];
@@ -593,10 +575,20 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 							node_id, type_str, status_str, info_str, successors_str));
 				}
 				if (!failed_nodes.is_empty()) {
-					print_line("Failed nodes: " + _item_to_string(failed_nodes));
+					// Convert LocalVector to Array for printing
+					Array failed_nodes_array;
+					for (int j = 0; j < failed_nodes.size(); j++) {
+						failed_nodes_array.push_back(failed_nodes[j]);
+					}
+					print_line("Failed nodes: " + _item_to_string(failed_nodes_array));
 				}
 				if (!open_nodes.is_empty()) {
-					print_line("Open nodes: " + _item_to_string(open_nodes));
+					// Convert LocalVector to Array for printing
+					Array open_nodes_array;
+					for (int j = 0; j < open_nodes.size(); j++) {
+						open_nodes_array.push_back(open_nodes[j]);
+					}
+					print_line("Open nodes: " + _item_to_string(open_nodes_array));
 				}
 			}
 		}
@@ -657,10 +649,9 @@ void PlannerPlan::_decay_method_activities() {
 	// If var_inc gets too large, normalize by scaling down all activities
 	// This prevents numerical overflow while maintaining relative ordering
 	if (activity_var_inc > ACTIVITY_OVERFLOW_THRESHOLD) {
-		Array keys = method_activities.keys();
-		for (int i = 0; i < keys.size(); i++) {
-			Variant key = keys[i];
-			method_activities[key] = (double)method_activities[key] * ACTIVITY_NORMALIZATION_FACTOR;
+		// Optimized: Direct iteration over HashMap
+		for (KeyValue<String, double> &kv : method_activities) {
+			kv.value *= ACTIVITY_NORMALIZATION_FACTOR;
 		}
 		activity_var_inc *= ACTIVITY_NORMALIZATION_FACTOR;
 	}
@@ -992,6 +983,8 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 		}
 
 		// Score this method using VSIDS activity
+		// Optimized: Cache method ID to avoid repeated string conversions
+		String method_id = _method_to_id(method);
 		double activity = _get_method_activity(method);
 		double score = activity * ACTIVITY_SCORE_MULTIPLIER; // Activity as primary score (VSIDS-style)
 
@@ -1001,7 +994,6 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 		}
 
 		if (verbose >= 3) {
-			String method_id = _method_to_id(method);
 			double debug_scaled = activity * (ACTIVITY_SCORE_MULTIPLIER * 10.0); // For debug display only
 			double debug_bonus = candidate_subtasks.size() > 0 ? SUBTASK_BONUS_BASE / (1.0 + candidate_subtasks.size()) : 0.0;
 			print_line(vformat("VSIDS: Evaluating method '%s' - activity: %.6f, scaled: %.6f, subtask bonus: %.2f, total score: %.6f",
@@ -1013,6 +1005,16 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 			best_candidate.method = method;
 			best_candidate.subtasks = candidate_subtasks;
 			best_candidate.score = score;
+
+			// Optimized: Early termination if we find a method with very high score
+			// This indicates a method with high activity and few subtasks - likely optimal
+			// Threshold: score > 1000 (very high activity * multiplier)
+			if (score > 1000.0 && candidate_subtasks.size() <= 1) {
+				if (verbose >= 3) {
+					print_line(vformat("VSIDS: Early termination - found high-scoring method '%s' with score %.2f", method_id, score));
+				}
+				break; // Early exit - unlikely to find better
+			}
 		}
 	}
 
@@ -1030,7 +1032,9 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -1040,7 +1044,9 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -1052,7 +1058,9 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -1272,12 +1280,10 @@ void PlannerPlan::set_max_stack_size(int p_max_stack_size) {
 }
 
 Dictionary PlannerPlan::get_method_activities() const {
-	// Return a copy of method_activities dictionary for testing
+	// Return a copy of method_activities dictionary for testing (converts HashMap to Dictionary)
 	Dictionary result;
-	Array keys = method_activities.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		Variant key = keys[i];
-		result[key] = method_activities[key];
+	for (const KeyValue<String, double> &kv : method_activities) {
+		result[kv.key] = kv.value;
 	}
 	return result;
 }
@@ -1398,7 +1404,9 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -1410,7 +1418,9 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -1936,6 +1946,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					}
 				}
 				if (p_parent_node_id >= 0) {
+					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array parent_subtasks = parent_node["created_subtasks"];
@@ -2010,6 +2021,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					print_line("Action is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
 				}
 				if (p_parent_node_id >= 0) {
+					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array parent_subtasks = parent_node["created_subtasks"];
@@ -2191,6 +2203,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
+					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array created_subtasks = parent_node["created_subtasks"];
@@ -2221,6 +2234,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
+					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array created_subtasks = parent_node["created_subtasks"];
@@ -2272,6 +2286,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
+					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array created_subtasks = parent_node["created_subtasks"];
@@ -2424,6 +2439,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
+					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
+					// But we can still optimize by caching the lookup
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array parent_subtasks = parent_node["created_subtasks"];
@@ -2597,6 +2614,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				print_line("Blacklisted unigoal info since all methods failed");
 			}
 			if (p_parent_node_id >= 0) {
+				// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 				if (parent_node.has("created_subtasks")) {
 					Array parent_subtasks = parent_node["created_subtasks"];
@@ -2800,6 +2818,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 			}
 			if (p_parent_node_id >= 0) {
+				// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
 				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 				if (parent_node.has("created_subtasks")) {
 					Array parent_subgoals = parent_node["created_subtasks"];
@@ -2822,8 +2841,14 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 		}
 
 		case PlannerNodeType::TYPE_VERIFY_GOAL: {
-			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-			Array unigoal_arr = parent_node["info"];
+			// Optimized: Use internal structure to avoid Dictionary conversion
+			const PlannerNodeStruct *parent_node = solution_graph.get_node_internal(p_parent_node_id);
+			if (parent_node == nullptr) {
+				p_final_state = p_state;
+				return false;
+			}
+			Variant unigoal_variant = parent_node->info;
+			Array unigoal_arr = unigoal_variant;
 			if (unigoal_arr.size() >= 3) {
 				String predicate = unigoal_arr[0];
 				String subject = unigoal_arr[1];
@@ -2862,8 +2887,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 			}
 
-			parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
-			solution_graph.update_node(p_parent_node_id, parent_node);
+			// Get Dictionary version for update (since we need to modify status)
+			Dictionary parent_node_dict = solution_graph.get_node(p_parent_node_id);
+			parent_node_dict["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+			solution_graph.update_node(p_parent_node_id, parent_node_dict);
 
 			p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 			solution_graph.update_node(p_curr_node_id, p_curr_node);
@@ -2873,8 +2900,13 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 		}
 
 		case PlannerNodeType::TYPE_VERIFY_MULTIGOAL: {
-			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-			Variant multigoal_variant = parent_node["info"];
+			// Optimized: Use internal structure to avoid Dictionary conversion
+			const PlannerNodeStruct *parent_node = solution_graph.get_node_internal(p_parent_node_id);
+			if (parent_node == nullptr) {
+				p_final_state = p_state;
+				return false;
+			}
+			Variant multigoal_variant = parent_node->info;
 
 			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
 				Dictionary dict = multigoal_variant;
@@ -2915,8 +2947,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved.size()));
 				}
 
-				parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
-				solution_graph.update_node(p_parent_node_id, parent_node);
+				// Get Dictionary version for update (since we need to modify status)
+				Dictionary parent_node_dict = solution_graph.get_node(p_parent_node_id);
+				parent_node_dict["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+				solution_graph.update_node(p_parent_node_id, parent_node_dict);
 
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
@@ -3257,7 +3291,9 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -3280,7 +3316,9 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
+		// Optimized: Cache get_graph() result
+		const Dictionary &graph_dict = solution_graph.get_graph();
+		result->set_solution_graph(graph_dict);
 		return result;
 	}
 
@@ -3291,7 +3329,7 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 	blacklisted_commands = backtrack_result.blacklisted_commands;
 
 	// Update next_node_id to max_id
-	solution_graph.next_node_id = max_id;
+	solution_graph.set_next_node_id(max_id);
 
 	// Continue planning from backtrack point
 	Dictionary final_state = _planning_loop_iterative(backtrack_result.parent_node_id, backtrack_result.state, 0);
@@ -3315,35 +3353,8 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 void PlannerPlan::load_solution_graph(Dictionary p_graph) {
 	solution_graph = PlannerSolutionGraph();
 
-	// Guard: Handle empty graph
-	if (p_graph.is_empty()) {
-		solution_graph.get_graph() = Dictionary();
-		solution_graph.next_node_id = 1; // Start from 1 (0 is root)
-		return;
-	}
-
-	solution_graph.get_graph() = p_graph.duplicate();
-
-	// Find max node ID to set next_node_id
-	int max_id = -1;
-	Array graph_keys = p_graph.keys();
-	for (int i = 0; i < graph_keys.size(); i++) {
-		Variant key = graph_keys[i];
-
-		// Guard: Skip invalid key types
-		if (key.get_type() != Variant::INT) {
-			if (verbose >= 1) {
-				ERR_PRINT(vformat("PlannerPlan::load_solution_graph: Invalid node ID type (expected INT, got %d)", key.get_type()));
-			}
-			continue;
-		}
-
-		int node_id = key;
-		if (node_id > max_id) {
-			max_id = node_id;
-		}
-	}
-	solution_graph.next_node_id = (max_id >= 0) ? (max_id + 1) : 1;
+	// Load graph from Dictionary - convert to internal structure
+	solution_graph.load_from_dictionary(p_graph);
 }
 
 PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {

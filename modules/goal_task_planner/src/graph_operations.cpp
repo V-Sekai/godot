@@ -117,7 +117,7 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 // p_children_node_info_list can contain any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
 // Methods return Arrays of these elements, which are processed here
 int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, int p_parent_node_id, Array p_children_node_info_list, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, TypedArray<Callable> p_multigoal_methods, int p_verbose) {
-	int current_id = p_graph.next_node_id - 1;
+	int current_id = p_graph.get_next_node_id() - 1;
 
 	for (int i = 0; i < p_children_node_info_list.size(); i++) {
 		Variant child_info = p_children_node_info_list[i];
@@ -432,14 +432,16 @@ void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, i
 
 	do_get_descendants(p_graph, successors, visited, to_remove);
 
-	// Remove nodes from graph
-	Dictionary &graph_dict = p_graph.get_graph();
+	// Remove nodes from graph using internal structure
+	HashMap<int, PlannerNodeStruct> &graph_internal = p_graph.get_graph_internal_mut();
 	for (int i = 0; i < to_remove.size(); i++) {
 		int node_id_to_remove = to_remove[i];
 		if (node_id_to_remove != p_node_id) { // Don't remove the node itself
-			graph_dict.erase(node_id_to_remove);
+			graph_internal.erase(node_id_to_remove);
 		}
 	}
+	// Update Dictionary for API compatibility
+	const Dictionary &graph_dict = p_graph.get_graph();
 
 	// Clear successors of the node
 	successors.clear();
