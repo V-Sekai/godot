@@ -152,7 +152,7 @@ func get_critical_needs(state: Dictionary) -> Array:
 	var threshold = 55
 	var urgent_threshold = 40
 	
-	# Check urgent needs first (very low)
+	# Check each need - use guard style to skip if not critical
 	if needs["hunger"] < urgent_threshold:
 		critical.append(["task_satisfy_hunger", persona_id, 70])
 	elif needs["hunger"] < threshold:
@@ -185,65 +185,73 @@ func execute_plan(state: Dictionary, plan_actions: Array) -> Dictionary:
 	var new_state = state.duplicate(true)
 	
 	for action in plan_actions:
-		if action is Array and action.size() > 0:
-			var action_name = str(action[0])
-			# Find and execute the action
-			# For simplicity, we'll simulate execution by applying effects
-			# In a real implementation, you'd call the actual action functions
+		if not (action is Array and action.size() > 0):
+			continue
+		
+		var action_name = str(action[0])
+		var needs = new_state["needs"][persona_id]
+		
+		# Simulate action effects based on action name
+		if action_name.begins_with("action_eat"):
+			needs["hunger"] = min(100, needs["hunger"] + 30)
+			new_state["needs"][persona_id] = needs
 			
-			# Simulate action effects based on action name
-			if action_name.begins_with("action_eat"):
-				var needs = new_state["needs"][persona_id]
-				needs["hunger"] = min(100, needs["hunger"] + 30)
-				new_state["needs"][persona_id] = needs
-				if action_name == "action_eat_restaurant":
-					var money = new_state["money"][persona_id]
-					new_state["money"][persona_id] = max(0, money - 20)
-				elif action_name == "action_eat_snack":
-					var money = new_state["money"][persona_id]
-					new_state["money"][persona_id] = max(0, money - 5)
-				elif action_name == "action_eat_mess_hall":
-					var money = new_state["money"][persona_id]
-					new_state["money"][persona_id] = max(0, money - 10)
-			elif action_name.begins_with("action_sleep") or action_name == "action_nap_library":
-				var needs = new_state["needs"][persona_id]
-				needs["energy"] = min(100, needs["energy"] + 40)
-				new_state["needs"][persona_id] = needs
-			elif action_name == "action_energy_drink":
-				var needs = new_state["needs"][persona_id]
-				needs["energy"] = min(100, needs["energy"] + 20)
-				new_state["needs"][persona_id] = needs
-				var money = new_state["money"][persona_id]
-				new_state["money"][persona_id] = max(0, money - 3)
-			elif action_name.begins_with("action_talk") or action_name == "action_phone_call" or action_name == "action_join_club":
-				var needs = new_state["needs"][persona_id]
-				needs["social"] = min(100, needs["social"] + 25)
-				new_state["needs"][persona_id] = needs
-			elif action_name == "action_play_games" or action_name == "action_watch_streaming":
-				var needs = new_state["needs"][persona_id]
-				needs["fun"] = min(100, needs["fun"] + 30)
-				new_state["needs"][persona_id] = needs
-			elif action_name == "action_go_cinema":
-				var needs = new_state["needs"][persona_id]
-				needs["fun"] = min(100, needs["fun"] + 40)
-				new_state["needs"][persona_id] = needs
-				var money = new_state["money"][persona_id]
-				new_state["money"][persona_id] = max(0, money - 15)
-			elif action_name == "action_shower":
-				var needs = new_state["needs"][persona_id]
-				needs["hygiene"] = min(100, needs["hygiene"] + 50)
-				new_state["needs"][persona_id] = needs
-			elif action_name == "action_wash_hands":
-				var needs = new_state["needs"][persona_id]
-				needs["hygiene"] = min(100, needs["hygiene"] + 15)
-				new_state["needs"][persona_id] = needs
-			elif action_name == "action_move_to" and action.size() > 2:
-				var location = str(action[2])
-				new_state["is_at"][persona_id] = location
-			elif action_name == "action_cook_meal":
-				var needs = new_state["needs"][persona_id]
-				needs["hunger"] = min(100, needs["hunger"] + 35)
-				new_state["needs"][persona_id] = needs
+			if action_name == "action_eat_restaurant":
+				new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 20)
+				continue
+			if action_name == "action_eat_snack":
+				new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 5)
+				continue
+			if action_name == "action_eat_mess_hall":
+				new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 10)
+				continue
+			continue
+		
+		if action_name.begins_with("action_sleep") or action_name == "action_nap_library":
+			needs["energy"] = min(100, needs["energy"] + 40)
+			new_state["needs"][persona_id] = needs
+			continue
+		
+		if action_name == "action_energy_drink":
+			needs["energy"] = min(100, needs["energy"] + 20)
+			new_state["needs"][persona_id] = needs
+			new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 3)
+			continue
+		
+		if action_name.begins_with("action_talk") or action_name == "action_phone_call" or action_name == "action_join_club":
+			needs["social"] = min(100, needs["social"] + 25)
+			new_state["needs"][persona_id] = needs
+			continue
+		
+		if action_name == "action_play_games" or action_name == "action_watch_streaming":
+			needs["fun"] = min(100, needs["fun"] + 30)
+			new_state["needs"][persona_id] = needs
+			continue
+		
+		if action_name == "action_go_cinema":
+			needs["fun"] = min(100, needs["fun"] + 40)
+			new_state["needs"][persona_id] = needs
+			new_state["money"][persona_id] = max(0, new_state["money"][persona_id] - 15)
+			continue
+		
+		if action_name == "action_shower":
+			needs["hygiene"] = min(100, needs["hygiene"] + 50)
+			new_state["needs"][persona_id] = needs
+			continue
+		
+		if action_name == "action_wash_hands":
+			needs["hygiene"] = min(100, needs["hygiene"] + 15)
+			new_state["needs"][persona_id] = needs
+			continue
+		
+		if action_name == "action_move_to" and action.size() > 2:
+			new_state["is_at"][persona_id] = str(action[2])
+			continue
+		
+		if action_name == "action_cook_meal":
+			needs["hunger"] = min(100, needs["hunger"] + 35)
+			new_state["needs"][persona_id] = needs
+			continue
 	
 	return new_state
 
@@ -276,8 +284,8 @@ func start_simulation():
 var last_planning_check = 0.0
 
 func simulation_step():
+	# Early return: simulation complete
 	if simulation_time_seconds >= total_simulation_time:
-		# Simulation complete
 		print("\n=== Simulation Complete ===")
 		print("Total simulation time: %.1f minutes" % (total_simulation_time / 60.0))
 		print("Total plans generated: %d" % total_plans_generated)
@@ -294,53 +302,7 @@ func simulation_step():
 	var time_since_last_plan = simulation_time_seconds - last_planning_check
 	if time_since_last_plan >= planning_check_interval:
 		last_planning_check = simulation_time_seconds
-		
-		var critical_needs = get_critical_needs(current_state)
-		
-		if critical_needs.size() > 0:
-			# Generate plan to satisfy critical needs
-			var time_minutes = simulation_time_seconds / 60.0
-			print("\n[%.1f min] Planning to satisfy needs..." % time_minutes)
-			print("  Critical needs detected:")
-			for need_task in critical_needs:
-				if need_task is Array and need_task.size() >= 2:
-					var need_type = need_task[0] if need_task.size() > 0 else "unknown"
-					var target = need_task[2] if need_task.size() > 2 else "?"
-					print("    - %s (target: %s)" % [need_type, target])
-			
-			var result = plan.find_plan(current_state, critical_needs)
-			total_plans_generated += 1
-			
-			if result != null and result.get_success():
-				var plan_actions = result.extract_plan(1)  # Get verbose plan output
-				if plan_actions.size() > 0:
-					# Execute the plan
-					current_state = execute_plan(current_state, plan_actions)
-					total_actions_executed += plan_actions.size()
-					
-					# Print what we're doing
-					print("\n[%.1f min] ✓ Plan found! Executing %d actions..." % [time_minutes, plan_actions.size()])
-					for i in range(plan_actions.size()):
-						var action = plan_actions[i]
-						if action is Array and action.size() > 0:
-							var action_str = str(action[0])
-							if action.size() > 1:
-								action_str += "("
-								for j in range(1, action.size()):
-									if j > 1:
-										action_str += ", "
-									action_str += str(action[j])
-								action_str += ")"
-							print("  [%d] %s" % [i + 1, action_str])
-					
-					# Show state after action
-					print_state(time_minutes, current_state)
-			else:
-				print("\n[%.1f min] ✗ Planning failed - needs may be too complex or resources insufficient" % time_minutes)
-				if result != null:
-					var failed_nodes = result.find_failed_nodes()
-					if failed_nodes.size() > 0:
-						print("  Failed nodes: %d" % failed_nodes.size())
+		handle_planning()
 	
 	# Print state every 2 minutes
 	if int(simulation_time_seconds) % 120 < time_step:
@@ -351,4 +313,63 @@ func simulation_step():
 	
 	# Schedule next step
 	call_deferred("simulation_step")
+
+func handle_planning():
+	var critical_needs = get_critical_needs(current_state)
+	
+	# Early return: no critical needs
+	if critical_needs.size() == 0:
+		return
+	
+	var time_minutes = simulation_time_seconds / 60.0
+	print("\n[%.1f min] Planning to satisfy needs..." % time_minutes)
+	print("  Critical needs detected:")
+	for need_task in critical_needs:
+		if not (need_task is Array and need_task.size() >= 2):
+			continue
+		var need_type = need_task[0] if need_task.size() > 0 else "unknown"
+		var target = need_task[2] if need_task.size() > 2 else "?"
+		print("    - %s (target: %s)" % [need_type, target])
+	
+	var result = plan.find_plan(current_state, critical_needs)
+	total_plans_generated += 1
+	
+	# Early return: planning failed
+	if result == null or not result.get_success():
+		print("\n[%.1f min] ✗ Planning failed - needs may be too complex or resources insufficient" % time_minutes)
+		if result != null:
+			var failed_nodes = result.find_failed_nodes()
+			if failed_nodes.size() > 0:
+				print("  Failed nodes: %d" % failed_nodes.size())
+		return
+	
+	var plan_actions = result.extract_plan(1)  # Get verbose plan output
+	
+	# Early return: no actions in plan
+	if plan_actions.size() == 0:
+		return
+	
+	# Execute the plan
+	current_state = execute_plan(current_state, plan_actions)
+	total_actions_executed += plan_actions.size()
+	
+	# Print what we're doing
+	print("\n[%.1f min] ✓ Plan found! Executing %d actions..." % [time_minutes, plan_actions.size()])
+	for i in range(plan_actions.size()):
+		var action = plan_actions[i]
+		if not (action is Array and action.size() > 0):
+			continue
+		
+		var action_str = str(action[0])
+		if action.size() > 1:
+			action_str += "("
+			for j in range(1, action.size()):
+				if j > 1:
+					action_str += ", "
+				action_str += str(action[j])
+			action_str += ")"
+		print("  [%d] %s" % [i + 1, action_str])
+	
+	# Show state after action
+	print_state(time_minutes, current_state)
 
