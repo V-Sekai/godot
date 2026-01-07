@@ -86,7 +86,8 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 
 	// Reset current node's selected_method and state (IPyHOP-style)
 	Dictionary current_node = p_graph.get_node(p_current_node_id);
-	// Validate required dictionary keys exist
+
+	// Guard: Node must have type field
 	if (!current_node.has("type")) {
 		// Invalid node structure, return failure
 		BacktrackResult result;

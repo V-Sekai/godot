@@ -118,7 +118,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	// Anchor origin to current absolute time
 	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
 
-	// Validate that current_domain is set before accessing its members
+	// Guard: Domain must be set
 	if (!current_domain.is_valid()) {
 		if (verbose >= 1) {
 			print_line("result = false (no domain set)");
@@ -130,10 +130,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		return result;
 	}
 
-	// Store original todo_list to track completion of all tasks
-	original_todo_list = p_todo_list.duplicate();
-
-	// Handle empty todo_list edge case
+	// Guard: todo_list must not be empty
 	if (p_todo_list.is_empty()) {
 		if (verbose >= 1) {
 			print_line("result = false (empty todo_list)");
@@ -145,15 +142,8 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		return result;
 	}
 
-	// CRITICAL: Validate that domain is set before proceeding
-	if (!current_domain.is_valid()) {
-		ERR_PRINT("PlannerPlan::find_plan: current_domain is not set. Call set_current_domain() before find_plan().");
-		Ref<PlannerResult> result = memnew(PlannerResult);
-		result->set_success(false);
-		result->set_final_state(p_state);
-		result->set_solution_graph(solution_graph.get_graph());
-		return result;
-	}
+	// Store original todo_list to track completion of all tasks
+	original_todo_list = p_todo_list.duplicate();
 
 	// CRITICAL: Deep copy the state to prevent pollution from previous tests
 	// Use duplicate(true) which works correctly for nested dictionaries in Godot
@@ -184,7 +174,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 			current_domain->multigoal_method_list,
 			verbose);
 
-	// Validate that nodes were added to the graph
+	// Guard: Root node must have successors
 	Dictionary root_node_check = solution_graph.get_node(0);
 	if (!root_node_check.has("successors")) {
 		if (verbose >= 1) {
@@ -196,6 +186,8 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		result->set_solution_graph(solution_graph.get_graph());
 		return result;
 	}
+
+	// Guard: Root must have successors if todo_list is not empty
 	TypedArray<int> root_successors_check = root_node_check["successors"];
 	if (root_successors_check.is_empty() && !p_todo_list.is_empty()) {
 		if (verbose >= 1) {
@@ -2888,19 +2880,29 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 }
 
 void PlannerPlan::_restore_stn_from_node(int p_node_id) {
-	if (p_node_id >= 0) {
-		Dictionary node = solution_graph.get_node(p_node_id);
-		if (node.has("stn_snapshot") && node["stn_snapshot"].get_type() != Variant::NIL) {
-			Dictionary snapshot_dict = node["stn_snapshot"];
-			if (!snapshot_dict.is_empty()) {
-				PlannerSTNSolver::Snapshot snapshot = PlannerSTNSolver::Snapshot::from_dictionary(snapshot_dict);
-				stn.restore_snapshot(snapshot);
-				if (verbose >= 3) {
-					print_line("Restored STN snapshot from node " + itos(p_node_id));
-				}
-			}
-		}
-		// If no snapshot exists or it's empty, keep current STN state (don't restore)
+	// Guard: node_id must be valid
+	if (p_node_id < 0) {
+		return;
+	}
+
+	Dictionary node = solution_graph.get_node(p_node_id);
+
+	// Guard: node must have stn_snapshot
+	if (!node.has("stn_snapshot") || node["stn_snapshot"].get_type() == Variant::NIL) {
+		return; // No snapshot exists, keep current STN state
+	}
+
+	Dictionary snapshot_dict = node["stn_snapshot"];
+
+	// Guard: snapshot_dict must not be empty
+	if (snapshot_dict.is_empty()) {
+		return; // Empty snapshot, keep current STN state
+	}
+
+	PlannerSTNSolver::Snapshot snapshot = PlannerSTNSolver::Snapshot::from_dictionary(snapshot_dict);
+	stn.restore_snapshot(snapshot);
+	if (verbose >= 3) {
+		print_line("Restored STN snapshot from node " + itos(p_node_id));
 	}
 }
 
@@ -2983,6 +2985,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 	Array state_list;
 	state_list.push_back(p_state.duplicate()); // Initial state
 
+	// Guard: result must be valid
 	if (!p_result.is_valid()) {
 		if (verbose >= 1) {
 			ERR_PRINT("PlannerPlan::simulate: p_result is invalid");
@@ -2990,6 +2993,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 		return state_list;
 	}
 
+	// Guard: domain must be set
 	if (!current_domain.is_valid()) {
 		if (verbose >= 1) {
 			ERR_PRINT("PlannerPlan::simulate: current_domain is not set");
@@ -3003,6 +3007,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 	// Extract plan from solution graph
 	Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph, verbose);
 
+	// Guard: start_ind must be valid
 	if (p_start_ind < 0 || p_start_ind >= plan.size()) {
 		if (verbose >= 1) {
 			ERR_PRINT(vformat("PlannerPlan::simulate: start_ind %d is out of range (plan size: %d)", p_start_ind, plan.size()));
@@ -3026,6 +3031,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 			}
 		}
 
+		// Guard: action must be an Array
 		if (action_variant.get_type() != Variant::ARRAY) {
 			if (verbose >= 1) {
 				ERR_PRINT(vformat("PlannerPlan::simulate: action at index %d is not an Array", i));
@@ -3034,11 +3040,15 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 		}
 
 		action = action_variant;
+
+		// Guard: action must not be empty
 		if (action.is_empty() || action.size() < 1) {
 			continue;
 		}
 
 		String action_name = action[0];
+
+		// Guard: action must exist in domain
 		if (!action_dict.has(action_name)) {
 			if (verbose >= 1) {
 				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' not found in domain", action_name));
@@ -3052,8 +3062,9 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 		args.append_array(action.slice(1, action.size()));
 
 		Variant result = action_callable.callv(args);
+
+		// Guard: action must return a Dictionary (success)
 		if (result.get_type() != Variant::DICTIONARY) {
-			// Action failed
 			if (verbose >= 1) {
 				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' failed at index %d", action_name, i));
 			}
@@ -3249,10 +3260,9 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 }
 
 void PlannerPlan::load_solution_graph(Dictionary p_graph) {
-	// Load a solution graph from a PlannerResult
 	solution_graph = PlannerSolutionGraph();
 
-	// Handle empty or invalid graph
+	// Guard: Handle empty graph
 	if (p_graph.is_empty()) {
 		solution_graph.get_graph() = Dictionary();
 		solution_graph.next_node_id = 1; // Start from 1 (0 is root)
@@ -3266,12 +3276,15 @@ void PlannerPlan::load_solution_graph(Dictionary p_graph) {
 	Array graph_keys = p_graph.keys();
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
+
+		// Guard: Skip invalid key types
 		if (key.get_type() != Variant::INT) {
 			if (verbose >= 1) {
 				ERR_PRINT(vformat("PlannerPlan::load_solution_graph: Invalid node ID type (expected INT, got %d)", key.get_type()));
 			}
-			continue; // Skip invalid keys
+			continue;
 		}
+
 		int node_id = key;
 		if (node_id > max_id) {
 			max_id = node_id;
@@ -3435,12 +3448,12 @@ Dictionary PlannerPlan::_merge_allocentric_facts(const Dictionary &p_state) cons
 }
 
 void PlannerPlan::_update_beliefs_from_action(const Variant &p_action, const Dictionary &p_state_before, const Dictionary &p_state_after) {
-	// Update beliefs based on action execution
+	// Guard: persona and belief_manager must be valid
 	if (!current_persona.is_valid() || !belief_manager.is_valid()) {
 		return;
 	}
 
-	// Extract action information
+	// Guard: action must be an array with at least one element
 	Array action_arr = p_action;
 	if (action_arr.size() < 1) {
 		return;
@@ -3471,8 +3484,6 @@ Variant PlannerPlan::attach_metadata(const Variant &p_item, const Dictionary &p_
 		const Variant *item_var = item_dict.getptr("item");
 		if (item_var) {
 			actual_item = *item_var;
-		} else {
-			actual_item = p_item; // Use as-is if no "item" key
 		}
 	}
 
@@ -3501,37 +3512,39 @@ Variant PlannerPlan::attach_metadata(const Variant &p_item, const Dictionary &p_
 	}
 
 	// Add entity constraints if provided
-	if (!p_entity_constraints.is_empty()) {
-		Dictionary entity_dict;
-		const Variant *requires_entities_var = p_entity_constraints.getptr("requires_entities");
-		if (requires_entities_var) {
-			// Full format: already has requires_entities
-			entity_dict["requires_entities"] = *requires_entities_var;
-		} else {
-			// Convenience format: convert {type, capabilities} to requires_entities format
-			const Variant *type_var = p_entity_constraints.getptr("type");
-			const Variant *capabilities_var = p_entity_constraints.getptr("capabilities");
-			if (type_var && capabilities_var) {
-				Array entities_array;
-				Dictionary entity_req;
-				entity_req["type"] = *type_var;
-				entity_req["capabilities"] = *capabilities_var;
-				entities_array.push_back(entity_req);
-				entity_dict["requires_entities"] = entities_array;
-			}
+	if (p_entity_constraints.is_empty()) {
+		return result;
+	}
+
+	Dictionary entity_dict;
+	const Variant *requires_entities_var = p_entity_constraints.getptr("requires_entities");
+	if (requires_entities_var) {
+		// Full format: already has requires_entities
+		entity_dict["requires_entities"] = *requires_entities_var;
+	} else {
+		// Convenience format: convert {type, capabilities} to requires_entities format
+		const Variant *type_var = p_entity_constraints.getptr("type");
+		const Variant *capabilities_var = p_entity_constraints.getptr("capabilities");
+		if (type_var && capabilities_var) {
+			Array entities_array;
+			Dictionary entity_req;
+			entity_req["type"] = *type_var;
+			entity_req["capabilities"] = *capabilities_var;
+			entities_array.push_back(entity_req);
+			entity_dict["requires_entities"] = entities_array;
 		}
-		if (!entity_dict.is_empty()) {
-			result["constraints"] = entity_dict;
-		}
+	}
+	if (!entity_dict.is_empty()) {
+		result["constraints"] = entity_dict;
 	}
 
 	return result;
 }
 
 bool PlannerPlan::_validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const {
-	// Check if metadata has entity requirements
+	// Guard: No entity requirements means validation passes
 	if (p_metadata.requires_entities.size() == 0) {
-		return true; // No entity requirements, validation passes
+		return true;
 	}
 
 	// Match entities for all requirements
@@ -3557,8 +3570,6 @@ Dictionary PlannerPlan::_match_entities(const Dictionary &p_state, const LocalVe
 	HashMap<String, LocalVector<String>> entity_capabilities; // entity_id -> capabilities
 
 	// Extract entity data from state
-	// State structure: entities are stored in a nested structure
-	// We'll look for entity_capabilities or similar structure
 	if (p_state.has("entity_capabilities")) {
 		Dictionary entity_caps_dict = p_state["entity_capabilities"];
 		Array entity_ids = entity_caps_dict.keys();
@@ -3602,17 +3613,18 @@ Dictionary PlannerPlan::_match_entities(const Dictionary &p_state, const LocalVe
 			String entity_id = E.key;
 			String entity_type = E.value;
 
-			// Check type match
+			// Guard: Type must match
 			if (entity_type != req.type) {
 				continue;
 			}
 
-			// Check if entity has all required capabilities
+			// Guard: Entity must have capabilities
 			const LocalVector<String> *entity_caps = entity_capabilities.getptr(entity_id);
 			if (entity_caps == nullptr) {
 				continue;
 			}
 
+			// Check if entity has all required capabilities
 			bool has_all_caps = true;
 			for (uint32_t cap_idx = 0; cap_idx < req.capabilities.size(); cap_idx++) {
 				String required_cap = req.capabilities[cap_idx];
@@ -3637,6 +3649,7 @@ Dictionary PlannerPlan::_match_entities(const Dictionary &p_state, const LocalVe
 			}
 		}
 
+		// Guard: Each requirement must be matched
 		if (!matched) {
 			result["success"] = false;
 			// Convert capabilities to string for error message

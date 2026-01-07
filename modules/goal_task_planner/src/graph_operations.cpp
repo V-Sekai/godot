@@ -36,10 +36,10 @@
 // Supports all planner element types: actions, tasks, unigoals (goals), and multigoals
 // Methods can return Arrays containing any of these types
 PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, int p_verbose) {
-	// Check if it's a String - look up in dictionaries
+	// Guard: Handle String type - look up in dictionaries
 	if (p_node_info.get_type() == Variant::STRING) {
 		String node_str = p_node_info;
-		// Check action dictionary
+		// Check action dictionary first (actions take priority)
 		if (p_action_dict.has(node_str)) {
 			return PlannerNodeType::TYPE_ACTION;
 		}
@@ -51,11 +51,11 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		if (p_unigoal_dict.has(node_str)) {
 			return PlannerNodeType::TYPE_UNIGOAL;
 		}
-		// Not found in any dictionary, return ROOT
+		// Not found in any dictionary
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-	// Check if it's a Dictionary-wrapped item (with constraints/metadata)
+	// Guard: Handle Dictionary-wrapped item (with constraints/metadata)
 	if (p_node_info.get_type() == Variant::DICTIONARY) {
 		Dictionary dict = p_node_info;
 		if (dict.has("item")) {
@@ -63,53 +63,52 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 			Variant unwrapped_item = dict["item"];
 			return get_node_type(unwrapped_item, p_action_dict, p_task_dict, p_unigoal_dict, p_verbose);
 		}
-		// If it's a dictionary without "item", it's not a valid node (multigoals are Arrays)
+		// Dictionary without "item" is not a valid node
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-	// Check if it's an Array (can be task/goal/action/multigoal)
-	// Methods return Arrays containing any planner elements
-	if (p_node_info.get_type() == Variant::ARRAY) {
-		Array arr = p_node_info;
-		if (arr.is_empty() || arr.size() < 1) {
-			return PlannerNodeType::TYPE_ROOT;
+	// Guard: Handle Array type (can be task/goal/action/multigoal)
+	if (p_node_info.get_type() != Variant::ARRAY) {
+		return PlannerNodeType::TYPE_ROOT;
+	}
+
+	Array arr = p_node_info;
+
+	// Guard: Array must not be empty
+	if (arr.is_empty() || arr.size() < 1) {
+		return PlannerNodeType::TYPE_ROOT;
+	}
+
+	Variant first = arr[0];
+
+	// Guard: Check if it's a multigoal (Array of unigoal arrays)
+	if (first.get_type() == Variant::ARRAY) {
+		return PlannerNodeType::TYPE_MULTIGOAL;
+	}
+
+	// Otherwise, it's a single unigoal/action/task - check first element as string
+	String first_str = first;
+
+	// CRITICAL: Check action dictionary FIRST (actions take priority over tasks)
+	if (p_action_dict.has(first_str)) {
+		if (p_verbose >= 3 && first_str.begins_with("action_")) {
+			print_line(vformat("[GET_NODE_TYPE] Returning TYPE_ACTION (1) for '%s'", first_str));
 		}
+		return PlannerNodeType::TYPE_ACTION;
+	}
 
-		Variant first = arr[0];
-
-		// Check if it's a multigoal (Array of unigoal arrays)
-		// A multigoal is an Array where the first element is also an Array
-		if (first.get_type() == Variant::ARRAY) {
-			return PlannerNodeType::TYPE_MULTIGOAL;
+	// Check task method dictionary
+	if (p_task_dict.has(first_str)) {
+		// Debug: Log if action name is incorrectly in task_dict
+		if (p_verbose >= 2 && first_str.begins_with("action_")) {
+			print_line(vformat("[GET_NODE_TYPE] WARNING: '%s' is in task_dict but should be in action_dict! Returning TYPE_TASK", first_str));
 		}
+		return PlannerNodeType::TYPE_TASK;
+	}
 
-		// Otherwise, it's a single unigoal/action/task - check first element as string
-		String first_str = first;
-
-		// CRITICAL: Check action dictionary FIRST (actions take priority over tasks)
-		// This ensures that when methods return actions like ["action_pickup", "a"],
-		// they are correctly classified as ACTION nodes, not TASK nodes
-		if (p_action_dict.has(first_str)) {
-			// Debug: Log classification for action names
-			if (p_verbose >= 3 && first_str.begins_with("action_")) {
-				print_line(vformat("[GET_NODE_TYPE] Returning TYPE_ACTION (1) for '%s'", first_str));
-			}
-			return PlannerNodeType::TYPE_ACTION;
-		}
-
-		// Check task method dictionary
-		if (p_task_dict.has(first_str)) {
-			// Debug: Log if action name is incorrectly in task_dict
-			if (p_verbose >= 2 && first_str.begins_with("action_")) {
-				print_line(vformat("[GET_NODE_TYPE] WARNING: '%s' is in task_dict but should be in action_dict! Returning TYPE_TASK", first_str));
-			}
-			return PlannerNodeType::TYPE_TASK;
-		}
-
-		// Check unigoal method dictionary
-		if (p_unigoal_dict.has(first_str)) {
-			return PlannerNodeType::TYPE_UNIGOAL;
-		}
+	// Check unigoal method dictionary
+	if (p_unigoal_dict.has(first_str)) {
+		return PlannerNodeType::TYPE_UNIGOAL;
 	}
 
 	return PlannerNodeType::TYPE_ROOT;
@@ -154,43 +153,42 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 		}
 
 		// Set up node attributes based on type
-		// Handle strings directly (most frequent use case) and arrays
 		if (node_type == PlannerNodeType::TYPE_TASK) {
 			String task_name;
 			if (actual_item.get_type() == Variant::STRING) {
-				// Most frequent: string task name
 				task_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
 				Array arr = actual_item;
-				if (!arr.is_empty()) {
-					task_name = arr[0];
-				} else {
+				// Guard: Array must not be empty
+				if (arr.is_empty()) {
 					if (p_verbose >= 2) {
 						print_line("[ADD_NODES] WARNING: Task array is empty");
 					}
 					continue;
 				}
+				task_name = arr[0];
 			} else {
+				// Guard: Invalid type
 				if (p_verbose >= 2) {
 					print_line(vformat("[ADD_NODES] WARNING: Task actual_item has invalid type %d", actual_item.get_type()));
 				}
 				continue;
 			}
 
-			if (p_task_dict.has(task_name)) {
-				Variant methods_var = p_task_dict[task_name];
-				available_methods = TypedArray<Callable>(methods_var);
-				// Debug: Verify we got the right methods
-				if (p_verbose >= 3 && available_methods.size() > 0) {
-					Callable first_method = available_methods[0];
-					String method_name = first_method.get_method();
-					print_line(vformat("[ADD_NODES] Task '%s' has %d methods, first method: '%s'", task_name, available_methods.size(), method_name));
-				}
-			} else {
+			// Guard: Task must exist in domain
+			if (!p_task_dict.has(task_name)) {
 				if (p_verbose >= 2) {
 					print_line(vformat("[ADD_NODES] WARNING: Task '%s' not found in task_dict (has %d keys), skipping node creation", task_name, p_task_dict.keys().size()));
 				}
-				continue; // Skip creating node if task not found in domain
+				continue;
+			}
+
+			Variant methods_var = p_task_dict[task_name];
+			available_methods = TypedArray<Callable>(methods_var);
+			if (p_verbose >= 3 && available_methods.size() > 0) {
+				Callable first_method = available_methods[0];
+				String method_name = first_method.get_method();
+				print_line(vformat("[ADD_NODES] Task '%s' has %d methods, first method: '%s'", task_name, available_methods.size(), method_name));
 			}
 		} else if (node_type == PlannerNodeType::TYPE_UNIGOAL) {
 			String goal_name;
@@ -198,11 +196,11 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				goal_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
 				Array arr = actual_item;
-				if (!arr.is_empty()) {
-					goal_name = arr[0];
-				} else {
+				// Guard: Array must not be empty
+				if (arr.is_empty()) {
 					continue;
 				}
+				goal_name = arr[0];
 			} else {
 				continue;
 			}
@@ -216,11 +214,11 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				action_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
 				Array arr = actual_item;
-				if (!arr.is_empty()) {
-					action_name = arr[0];
-				} else {
+				// Guard: Array must not be empty
+				if (arr.is_empty()) {
 					continue;
 				}
+				action_name = arr[0];
 			} else {
 				continue;
 			}
@@ -384,18 +382,19 @@ Variant PlannerGraphOperations::find_open_node(PlannerSolutionGraph &p_graph, in
 	}
 
 	// If no OPEN node in direct successors, recursively search through CLOSED nodes
-	// This is needed because a CLOSED task may have OPEN action children
 	for (int i = 0; i < successors.size(); i++) {
 		int node_id = successors[i];
 		Dictionary node = p_graph.get_node(node_id);
 		int status = node["status"];
 
-		// Recursively search through CLOSED nodes (they may have OPEN descendants)
-		if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
-			Variant found = find_open_node(p_graph, node_id);
-			if (found.get_type() != Variant::NIL) {
-				return found;
-			}
+		// Guard: Only search CLOSED nodes (they may have OPEN descendants)
+		if (status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			continue;
+		}
+
+		Variant found = find_open_node(p_graph, node_id);
+		if (found.get_type() != Variant::NIL) {
+			return found;
 		}
 	}
 
@@ -507,7 +506,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 	}
 	Array plan;
 
-	// Safety check: ensure graph is not empty
+	// Guard: Graph must not be empty
 	Dictionary graph_dict = p_graph.get_graph();
 	if (graph_dict.is_empty()) {
 		if (p_verbose >= 1) {
@@ -516,7 +515,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		return plan;
 	}
 
-	// Safety check: ensure root node exists
+	// Guard: Root node must exist
 	Dictionary root_node_check = p_graph.get_node(0);
 	if (root_node_check.is_empty()) {
 		if (p_verbose >= 1) {
@@ -599,7 +598,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		}
 	}
 
-	// Debug: Check if root node exists and is valid
+	// Guard: Root node must be valid
 	Dictionary root_node = p_graph.get_node(0);
 	if (root_node.is_empty()) {
 		if (p_verbose >= 1) {
@@ -635,9 +634,8 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 
 		Dictionary node = p_graph.get_node(node_id);
 
-		// Validate node exists and has required fields
+		// Guard: Node must be valid and have required fields
 		if (node.is_empty() || !node.has("type") || !node.has("status")) {
-			// Skip invalid nodes (may have been removed during backtracking)
 			if (p_verbose >= 2) {
 				print_line(vformat("[EXTRACT_SOLUTION_PLAN] Node %d is invalid (empty=%s, has_type=%s, has_status=%s), skipping",
 						node_id, node.is_empty() ? "YES" : "NO",
