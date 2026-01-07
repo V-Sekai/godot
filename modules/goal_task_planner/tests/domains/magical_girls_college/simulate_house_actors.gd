@@ -650,7 +650,7 @@ func start_simulation():
 	# Get actor count from command line or use default
 	# Maximum tested: 1286 actors (27.533ms max latency, within 30ms target)
 	# Safe production default: 1200 actors (26.686ms max latency, comfortable buffer)
-	var num_agents = 1200  # Safe production default
+	var num_agents = 8  # Default to 8 actors (matching tracked actors)
 	var args = OS.get_cmdline_args()
 	for i in range(args.size()):
 		if args[i] == "--actors" and i + 1 < args.size():
