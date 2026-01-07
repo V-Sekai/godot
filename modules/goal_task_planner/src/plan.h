@@ -68,6 +68,7 @@ class PlannerPlan : public Resource {
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	int max_iterations = 50000; // Maximum planning loop iterations (safety limit to prevent infinite loops)
+	int max_stack_size = 10000; // Maximum stack size to prevent excessive memory usage
 	int iterations = 0; // Track number of planning iterations
 
 	// VSIDS-style method activity tracking (following Chuffed's proven approach)
@@ -151,6 +152,8 @@ public:
 	int get_max_depth() const;
 	void set_max_iterations(int p_max_iterations);
 	int get_max_iterations() const;
+	void set_max_stack_size(int p_max_stack_size);
+	int get_max_stack_size() const;
 	Ref<PlannerResult> find_plan(Dictionary p_state, Array p_todo_list);
 	Ref<PlannerResult> run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
 	// Graph-based lazy refinement (Elixir-style)

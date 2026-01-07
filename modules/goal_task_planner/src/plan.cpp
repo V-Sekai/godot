@@ -1203,6 +1203,10 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_max_iterations", "max_iterations"), &PlannerPlan::set_max_iterations);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_iterations"), "set_max_iterations", "get_max_iterations");
 
+	ClassDB::bind_method(D_METHOD("get_max_stack_size"), &PlannerPlan::get_max_stack_size);
+	ClassDB::bind_method(D_METHOD("set_max_stack_size", "max_stack_size"), &PlannerPlan::set_max_stack_size);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_stack_size"), "set_max_stack_size", "get_max_stack_size");
+
 	ClassDB::bind_method(D_METHOD("get_current_domain"), &PlannerPlan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &PlannerPlan::set_current_domain);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
@@ -1255,6 +1259,14 @@ int PlannerPlan::get_max_iterations() const {
 
 void PlannerPlan::set_max_iterations(int p_max_iterations) {
 	max_iterations = p_max_iterations;
+}
+
+int PlannerPlan::get_max_stack_size() const {
+	return max_stack_size;
+}
+
+void PlannerPlan::set_max_stack_size(int p_max_stack_size) {
+	max_stack_size = p_max_stack_size;
 }
 
 Dictionary PlannerPlan::get_method_activities() const {
@@ -1321,6 +1333,7 @@ void PlannerPlan::reset() {
 	// Reset configuration to defaults
 	max_depth = 10; // Default maximum recursion depth
 	max_iterations = 50000; // Default maximum planning loop iterations
+	max_stack_size = 10000; // Default maximum stack size
 	verbose = 0; // Default verbosity level
 
 	if (verbose >= 2) {
@@ -1453,15 +1466,14 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 	// Use max_depth * 1000 as a reasonable upper bound (allows ~1000 nodes per depth level on average)
 	// Also cap at max_iterations to prevent excessive memory usage even with very high max_depth
 	const int MAX_ITERATIONS = MIN(max_depth * 1000, max_iterations);
-	const int MAX_STACK_SIZE = 10000; // Prevent stack from growing too large
 	int loop_count = 0;
 	while (!stack.is_empty() && loop_count < MAX_ITERATIONS) {
 		loop_count++;
-
+		
 		// Safety: Check stack size to prevent excessive memory usage
-		if (stack.size() > MAX_STACK_SIZE) {
+		if (stack.size() > max_stack_size) {
 			if (verbose >= 1) {
-				ERR_PRINT(vformat("Planning loop stack size (%d) exceeded maximum (%d), forcing exit", stack.size(), MAX_STACK_SIZE));
+				ERR_PRINT(vformat("Planning loop stack size (%d) exceeded maximum (%d), forcing exit", stack.size(), max_stack_size));
 			}
 			stack.clear();
 			break;
