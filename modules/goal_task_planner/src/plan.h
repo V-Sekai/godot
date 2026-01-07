@@ -37,7 +37,6 @@
 #include "core/io/resource.h"
 #include "core/variant/typed_array.h"
 
-#include "multigoal.h"
 #include "planner_belief_manager.h"
 #include "planner_facts_allocentric.h"
 #include "planner_metadata.h"

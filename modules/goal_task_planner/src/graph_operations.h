@@ -35,7 +35,6 @@
 
 #include "core/variant/variant.h"
 #include "domain.h"
-#include "multigoal.h"
 #include "solution_graph.h"
 
 class PlannerGraphOperations {

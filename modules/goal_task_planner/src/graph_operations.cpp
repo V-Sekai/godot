@@ -30,7 +30,6 @@
 
 #include "graph_operations.h"
 #include "domain.h"
-#include "multigoal.h"
 
 // Determine node type from node_info
 // Supports all planner element types: actions, tasks, unigoals (goals), and multigoals
