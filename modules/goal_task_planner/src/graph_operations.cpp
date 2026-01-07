@@ -326,11 +326,10 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				Array arr;
 				arr.push_back(actual_item);
 				normalized_info = arr;
-			} else if (actual_item.get_type() == Variant::ARRAY) {
+			} else {
 				// Preserve full array structure including nested arrays/fluents
 				// This ensures tasks like ["move_task", "r1", [5, 5]] maintain their structure
-				normalized_info = actual_item;
-			} else {
+				// For ARRAY and other types, use as-is
 				normalized_info = actual_item;
 			}
 		} else {
