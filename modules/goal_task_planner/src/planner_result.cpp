@@ -309,15 +309,19 @@ Dictionary PlannerResult::explain_plan() const {
 			Dictionary full_node = get_node(node_id);
 			if (full_node.has("decision_info")) {
 				Dictionary decision_info = full_node["decision_info"];
-				if (decision_info.has("alternatives") && decision_info.get("alternatives", Array()).size() > 0) {
-					Dictionary decision_point;
-					decision_point["node_id"] = node_id;
-					decision_point["type"] = node.get("type", -1);
-					decision_point["info"] = node.get("info", Variant());
-					decision_point["selected_method"] = decision_info.get("selected_method_id", "");
-					decision_point["selected_score"] = decision_info.get("selected_score", 0.0);
-					decision_point["alternatives_count"] = decision_info.get("total_candidates", 0);
-					decision_points.push_back(decision_point);
+				Variant alternatives_var = decision_info.get("alternatives", Array());
+				if (alternatives_var.get_type() == Variant::ARRAY) {
+					Array alternatives_array = alternatives_var;
+					if (alternatives_array.size() > 0) {
+						Dictionary decision_point;
+						decision_point["node_id"] = node_id;
+						decision_point["type"] = node.get("type", -1);
+						decision_point["info"] = node.get("info", Variant());
+						decision_point["selected_method"] = decision_info.get("selected_method_id", "");
+						decision_point["selected_score"] = decision_info.get("selected_score", 0.0);
+						decision_point["alternatives_count"] = decision_info.get("total_candidates", 0);
+						decision_points.push_back(decision_point);
+					}
 				}
 			}
 		}
@@ -386,7 +390,9 @@ Dictionary PlannerResult::get_decision_path(int p_node_id) const {
 			if (candidate.has("successors")) {
 				TypedArray<int> successors = candidate["successors"];
 				for (int j = 0; j < successors.size(); j++) {
-					if (successors[j] == current_id) {
+					Variant succ_variant = successors[j];
+					int succ_id = succ_variant;
+					if (succ_id == current_id) {
 						parent_id = candidate_id;
 						break;
 					}

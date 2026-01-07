@@ -1970,7 +1970,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						state_keys.size(), _item_to_string(state_keys), additional_args_count));
 			}
 
-			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
+			// Track alternatives for explanation/debugging if verbose enough
+			Array alternatives;
+			bool track_alternatives = (verbose >= 2);
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK), track_alternatives, &alternatives);
 
 			// Guard: Must find a working method
 			if (!best.method.is_valid()) {
