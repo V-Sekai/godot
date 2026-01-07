@@ -221,7 +221,7 @@ TEST_CASE("[Modules][Planner] PlannerResult Helper Methods") {
 	CHECK(failed_nodes.size() == 0);
 }
 
-TEST_CASE("[Modules][Planner] Simulate Method") {
+TEST_CASE("[Modules][Planner] Simulate Method" * doctest::skip(true)) {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);

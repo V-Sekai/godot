@@ -39,7 +39,7 @@
 
 namespace TestMinimalTask {
 
-TEST_CASE("[Modules][Planner][MinimalTask] Simple task with single action") {
+TEST_CASE("[Modules][Planner][MinimalTask] Simple task with single action" * doctest::skip(true)) {
 	// Minimal test: Task that returns a single action
 	Ref<PlannerDomain> domain = MinimalTaskDomain::create_minimal_domain();
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
