@@ -37,3 +37,9 @@
 #define VK_NO_STDINT_H
 #include <vulkan/vulkan.h>
 #endif
+
+// X11 headers may be pulled in indirectly by Vulkan/Volk on Linux and define
+// common macros that can conflict with Godot identifiers.
+#ifdef CursorShape
+#undef CursorShape
+#endif
