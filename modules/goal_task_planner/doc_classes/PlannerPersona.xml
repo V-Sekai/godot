@@ -109,7 +109,7 @@
 			</description>
 		</method>
 		<method name="get_identity_type" qualifiers="const">
-			<return type="int" enum="PlannerPersonaIdentity" />
+			<return type="int" />
 			<description>
 				Get the persona's identity type (IDENTITY_BASIC, IDENTITY_HUMAN, IDENTITY_AI, or IDENTITY_HUMAN_AND_AI).
 			</description>
