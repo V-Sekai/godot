@@ -419,7 +419,11 @@ Dictionary PlannerResult::get_decision_path(int p_node_id) const {
 String PlannerResult::to_dot_graph() const {
 	String dot = "digraph SolutionGraph {\n";
 	dot += "  rankdir=TB;\n";
-	dot += "  node [shape=box];\n\n";
+	dot += "  size=\"12,16\";\n";  // Larger canvas size (12x16 inches)
+	dot += "  ratio=auto;\n";  // Auto aspect ratio
+	dot += "  node [shape=box, fontsize=10];\n";  // Smaller font size
+	dot += "  edge [fontsize=8];\n";  // Smaller edge labels
+	dot += "\n";
 	
 	// Node type colors and shapes
 	Dictionary type_styles;
@@ -451,18 +455,30 @@ String PlannerResult::to_dot_graph() const {
 		int node_status = node.get("status", -1);
 		Variant info = node.get("info", Variant());
 		
-		// Create node label
+		// Create node label with better truncation
 		String label = String(info);
-		if (label.length() > 20) {
-			label = label.substr(0, 17) + "...";
+		// Allow longer labels but truncate more intelligently
+		if (label.length() > 40) {
+			label = label.substr(0, 37) + "...";
 		}
 		label = label.replace("\"", "\\\"");
+		// Replace newlines with spaces for better display
+		label = label.replace("\n", " ");
 		
 		String node_label = vformat("  %d [label=\"%d: %s\"", node_id, node_id, label);
 		
-		// Add type style
+		// Add type style (extract attributes from style string, removing brackets)
 		if (type_styles.has(node_type)) {
-			node_label += " " + String(type_styles[node_type]);
+			String style_str = type_styles[node_type];
+			// Remove brackets and split by comma
+			style_str = style_str.replace("[", "").replace("]", "");
+			PackedStringArray attrs = style_str.split(", ");
+			for (int j = 0; j < attrs.size(); j++) {
+				String attr = attrs[j].strip_edges();
+				if (!attr.is_empty()) {
+					node_label += ", " + attr;
+				}
+			}
 		}
 		
 		// Add status color to border
