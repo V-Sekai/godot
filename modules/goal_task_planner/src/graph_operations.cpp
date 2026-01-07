@@ -506,7 +506,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		print_line("[EXTRACT_SOLUTION_PLAN] Starting extract_solution_plan()");
 	}
 	Array plan;
-	
+
 	// Safety check: ensure graph is not empty
 	Dictionary graph_dict = p_graph.get_graph();
 	if (graph_dict.is_empty()) {
@@ -515,7 +515,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		}
 		return plan;
 	}
-	
+
 	// Safety check: ensure root node exists
 	Dictionary root_node_check = p_graph.get_node(0);
 	if (root_node_check.is_empty()) {
@@ -524,7 +524,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		}
 		return plan;
 	}
-	
+
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
 	TypedArray<int> visited; // Track visited nodes to prevent revisiting

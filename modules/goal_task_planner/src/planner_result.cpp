@@ -116,7 +116,7 @@ Array PlannerResult::extract_plan(int p_verbose) const {
 		}
 		return Array();
 	}
-	
+
 	// Set next_node_id to prevent issues (find max node ID)
 	int max_id = -1;
 	Array graph_keys = graph_dict.keys();
@@ -154,14 +154,14 @@ Array PlannerResult::extract_plan(int p_verbose) const {
 
 Array PlannerResult::find_failed_nodes() const {
 	Array failed_nodes;
-	
+
 	// Safety check: ensure solution_graph is not empty
 	if (solution_graph.is_empty()) {
 		return failed_nodes;
 	}
-	
+
 	Array graph_keys = solution_graph.keys();
-	
+
 	// Safety check: ensure graph_keys is not empty
 	if (graph_keys.is_empty() || graph_keys.size() < 1) {
 		return failed_nodes;
@@ -205,14 +205,14 @@ Dictionary PlannerResult::get_node(int p_node_id) const {
 
 Array PlannerResult::get_all_nodes() const {
 	Array nodes;
-	
+
 	// Safety check: ensure solution_graph is not empty
 	if (solution_graph.is_empty()) {
 		return nodes;
 	}
-	
+
 	Array graph_keys = solution_graph.keys();
-	
+
 	// Safety check: ensure graph_keys is not empty
 	if (graph_keys.is_empty() || graph_keys.size() < 1) {
 		return nodes;
