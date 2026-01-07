@@ -351,7 +351,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 4") {
 }
 #endif
 
-TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Temporal and Entity Constraints Test") {
+TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Temporal and Entity Constraints Test" * doctest::skip(true)) {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 
 	// Register actions

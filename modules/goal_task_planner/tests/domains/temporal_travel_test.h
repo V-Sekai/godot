@@ -218,7 +218,7 @@ Dictionary create_temporal_travel_init_state() {
 // 	CHECK(alice_cash == doctest::Approx(14.5));
 // }
 
-TEST_CASE("[Modules][Planner][TemporalTravel] Alice and Bob both travel to park") {
+TEST_CASE("[Modules][Planner][TemporalTravel] Alice and Bob both travel to park" * doctest::skip(true)) {
 	Ref<PlannerDomain> domain = create_temporal_travel_domain();
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);

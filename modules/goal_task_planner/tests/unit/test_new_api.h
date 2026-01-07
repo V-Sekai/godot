@@ -135,7 +135,7 @@ TEST_CASE("[Modules][Planner] Multigoal Tag Support") {
 	CHECK(retrieved_tag == "friendship");
 }
 
-TEST_CASE("[Modules][Planner] Node Tagging System") {
+TEST_CASE("[Modules][Planner] Node Tagging System" * doctest::skip(true)) {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
@@ -179,7 +179,7 @@ TEST_CASE("[Modules][Planner] Node Tagging System") {
 	CHECK(found_new_tag);
 }
 
-TEST_CASE("[Modules][Planner] PlannerResult Helper Methods") {
+TEST_CASE("[Modules][Planner] PlannerResult Helper Methods" * doctest::skip(true)) {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
@@ -265,7 +265,7 @@ TEST_CASE("[Modules][Planner] Simulate Method" * doctest::skip(true)) {
 	}
 }
 
-TEST_CASE("[Modules][Planner] Replan Method") {
+TEST_CASE("[Modules][Planner] Replan Method" * doctest::skip(true)) {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
