@@ -23,7 +23,7 @@ func test_all_files():
 		"multigoal_methods.gd",
 		"domain.gd"
 	]
-	
+
 	for file in files_to_test:
 		print("\nTesting: %s" % file)
 		var script_path = "res://modules/goal_task_planner/tests/domains/magical_girls_college/" + file
@@ -36,7 +36,7 @@ func test_all_files():
 			# Try to get the class name
 			if script.has_method("get_script_path"):
 				print("  📄 Path: %s" % script.get_script_path())
-	
+
 	# Test that domain.gd can access all modules
 	print("\n=== Testing Domain Integration ===")
 	# Try to call a helper function through domain class
@@ -47,7 +47,7 @@ func test_all_files():
 	else:
 		errors.append("Domain.get_study_points() returned %s, expected 10" % result)
 		print("  ❌ Domain.get_study_points() failed")
-	
+
 	# Test that actions can be called
 	var test_state2 = {"is_at": {"yuki": "dorm"}, "needs": {"yuki": {"hunger": 50}}, "money": {"yuki": 100}}
 	var result2 = Domain.action_eat_mess_hall(test_state2, "yuki")
@@ -61,7 +61,7 @@ func test_all_files():
 	else:
 		errors.append("Domain.action_eat_mess_hall() returned null or invalid")
 		print("  ❌ Domain.action_eat_mess_hall() failed")
-	
+
 	print("\n=== Test Results ===")
 	if errors.size() == 0:
 		print("✅ All files loaded successfully!")
@@ -72,4 +72,3 @@ func test_all_files():
 		for error in errors:
 			print("  - %s" % error)
 		quit(1)
-

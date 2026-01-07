@@ -249,4 +249,3 @@ static func action_move_to(state: Dictionary, persona_id: Variant, location: Var
 	var new_state = state.duplicate(true)
 	Helpers.set_location(new_state, persona_id, str(location))
 	return new_state
-

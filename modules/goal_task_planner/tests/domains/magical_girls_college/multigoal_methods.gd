@@ -116,4 +116,3 @@ static func multigoal_solve_temporal_puzzle(state: Dictionary, multigoal: Array)
 						goals.append(unigoal)
 
 	return goals
-

@@ -584,4 +584,3 @@ static func task_move_to_location_method_direct(state: Dictionary, persona_id: V
 	var subtasks = []
 	subtasks.append(["action_move_to", persona_id, target_location])
 	return subtasks
-

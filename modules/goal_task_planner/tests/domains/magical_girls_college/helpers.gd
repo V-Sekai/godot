@@ -176,4 +176,3 @@ static func set_money(state: Dictionary, persona_id: String, amount: int) -> voi
 	var money = state["money"]
 	money[persona_id] = amount
 	state["money"] = money
-

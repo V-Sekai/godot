@@ -41,4 +41,3 @@ static func unigoal_achieve_relationship_goal(state: Dictionary, subject: Varian
 	var activity_level = 1 if points_needed <= 2 else (2 if points_needed <= 4 else 3)
 	task.append(activity_level)
 	return [task]
-

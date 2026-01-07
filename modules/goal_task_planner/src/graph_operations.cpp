@@ -71,43 +71,43 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-		Array arr = p_node_info;
+	Array arr = p_node_info;
 
 	// Guard: Array must not be empty
 	if (arr.is_empty() || arr.size() < 1) {
-			return PlannerNodeType::TYPE_ROOT;
-		}
+		return PlannerNodeType::TYPE_ROOT;
+	}
 
-		Variant first = arr[0];
+	Variant first = arr[0];
 
 	// Guard: Check if it's a multigoal (Array of unigoal arrays)
-		if (first.get_type() == Variant::ARRAY) {
-			return PlannerNodeType::TYPE_MULTIGOAL;
+	if (first.get_type() == Variant::ARRAY) {
+		return PlannerNodeType::TYPE_MULTIGOAL;
+	}
+
+	// Otherwise, it's a single unigoal/action/task - check first element as string
+	String first_str = first;
+
+	// CRITICAL: Check action dictionary FIRST (actions take priority over tasks)
+	if (p_action_dict.has(first_str)) {
+		if (p_verbose >= 3 && first_str.begins_with("action_")) {
+			print_line(vformat("[GET_NODE_TYPE] Returning TYPE_ACTION (1) for '%s'", first_str));
 		}
+		return PlannerNodeType::TYPE_ACTION;
+	}
 
-		// Otherwise, it's a single unigoal/action/task - check first element as string
-		String first_str = first;
-
-		// CRITICAL: Check action dictionary FIRST (actions take priority over tasks)
-		if (p_action_dict.has(first_str)) {
-			if (p_verbose >= 3 && first_str.begins_with("action_")) {
-				print_line(vformat("[GET_NODE_TYPE] Returning TYPE_ACTION (1) for '%s'", first_str));
-			}
-			return PlannerNodeType::TYPE_ACTION;
+	// Check task method dictionary
+	if (p_task_dict.has(first_str)) {
+		// Debug: Log if action name is incorrectly in task_dict
+		if (p_verbose >= 2 && first_str.begins_with("action_")) {
+			print_line(vformat("[GET_NODE_TYPE] WARNING: '%s' is in task_dict but should be in action_dict! Returning TYPE_TASK", first_str));
 		}
+		return PlannerNodeType::TYPE_TASK;
+	}
 
-		// Check task method dictionary
-		if (p_task_dict.has(first_str)) {
-			// Debug: Log if action name is incorrectly in task_dict
-			if (p_verbose >= 2 && first_str.begins_with("action_")) {
-				print_line(vformat("[GET_NODE_TYPE] WARNING: '%s' is in task_dict but should be in action_dict! Returning TYPE_TASK", first_str));
-			}
-			return PlannerNodeType::TYPE_TASK;
-		}
-
-		// Check unigoal method dictionary
-		if (p_unigoal_dict.has(first_str)) {
-			return PlannerNodeType::TYPE_UNIGOAL;
+	// Check unigoal method dictionary
+	if (p_unigoal_dict.has(first_str)) {
+		return PlannerNodeType::TYPE_UNIGOAL;
 	}
 
 	return PlannerNodeType::TYPE_ROOT;
@@ -157,7 +157,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 			if (actual_item.get_type() == Variant::STRING) {
 				task_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
-			Array arr = actual_item;
+				Array arr = actual_item;
 				// Guard: Array must not be empty
 				if (arr.is_empty()) {
 					if (p_verbose >= 2) {
@@ -182,19 +182,19 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				continue;
 			}
 
-					Variant methods_var = p_task_dict[task_name];
-					available_methods = TypedArray<Callable>(methods_var);
-					if (p_verbose >= 3 && available_methods.size() > 0) {
-						Callable first_method = available_methods[0];
-						String method_name = first_method.get_method();
-						print_line(vformat("[ADD_NODES] Task '%s' has %d methods, first method: '%s'", task_name, available_methods.size(), method_name));
+			Variant methods_var = p_task_dict[task_name];
+			available_methods = TypedArray<Callable>(methods_var);
+			if (p_verbose >= 3 && available_methods.size() > 0) {
+				Callable first_method = available_methods[0];
+				String method_name = first_method.get_method();
+				print_line(vformat("[ADD_NODES] Task '%s' has %d methods, first method: '%s'", task_name, available_methods.size(), method_name));
 			}
 		} else if (node_type == PlannerNodeType::TYPE_UNIGOAL) {
 			String goal_name;
 			if (actual_item.get_type() == Variant::STRING) {
 				goal_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
-			Array arr = actual_item;
+				Array arr = actual_item;
 				// Guard: Array must not be empty
 				if (arr.is_empty()) {
 					continue;
@@ -203,16 +203,16 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 			} else {
 				continue;
 			}
-				if (p_unigoal_dict.has(goal_name)) {
-					Variant methods_var = p_unigoal_dict[goal_name];
-					available_methods = TypedArray<Callable>(methods_var);
+			if (p_unigoal_dict.has(goal_name)) {
+				Variant methods_var = p_unigoal_dict[goal_name];
+				available_methods = TypedArray<Callable>(methods_var);
 			}
 		} else if (node_type == PlannerNodeType::TYPE_ACTION) {
 			String action_name;
 			if (actual_item.get_type() == Variant::STRING) {
 				action_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
-			Array arr = actual_item;
+				Array arr = actual_item;
 				// Guard: Array must not be empty
 				if (arr.is_empty()) {
 					continue;
@@ -221,8 +221,8 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 			} else {
 				continue;
 			}
-				if (p_action_dict.has(action_name)) {
-					action = p_action_dict[action_name];
+			if (p_action_dict.has(action_name)) {
+				action = p_action_dict[action_name];
 			}
 		} else if (node_type == PlannerNodeType::TYPE_MULTIGOAL) {
 			// MultiGoal methods are in a list
@@ -239,8 +239,8 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 			if (actual_item.get_type() == Variant::STRING) {
 				task_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
-			Array arr = actual_item;
-			if (!arr.is_empty()) {
+				Array arr = actual_item;
+				if (!arr.is_empty()) {
 					task_name = arr[0];
 					if (arr.size() > 1) {
 						task_args = arr.slice(1);
@@ -299,9 +299,9 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 										}
 										if (args_match) {
 											// Same task with same arguments (including nested fluents) - reuse existing node
-										existing_node_id = node_id;
-										break;
-									}
+											existing_node_id = node_id;
+											break;
+										}
 									}
 								} else if (task_args.size() == 0 && node_info.size() == 1) {
 									// Both are simple tasks with no args - reuse
@@ -390,9 +390,9 @@ Variant PlannerGraphOperations::find_open_node(PlannerSolutionGraph &p_graph, in
 			continue;
 		}
 
-			Variant found = find_open_node(p_graph, node_id);
-			if (found.get_type() != Variant::NIL) {
-				return found;
+		Variant found = find_open_node(p_graph, node_id);
+		if (found.get_type() != Variant::NIL) {
+			return found;
 		}
 	}
 
@@ -664,11 +664,11 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 			// Debug: Log action extraction
 			if (p_verbose >= 3) {
 				if (info.get_type() == Variant::ARRAY) {
-				Array info_arr = info;
+					Array info_arr = info;
 					if (!info_arr.is_empty() && info_arr.size() > 0 && info_arr[0].get_type() == Variant::STRING) {
-					String action_name = info_arr[0];
-					if (action_name.begins_with("action_")) {
-						print_line(vformat("[EXTRACT_SOLUTION_PLAN] Extracting action node %d: %s", node_id, String(Variant(info))));
+						String action_name = info_arr[0];
+						if (action_name.begins_with("action_")) {
+							print_line(vformat("[EXTRACT_SOLUTION_PLAN] Extracting action node %d: %s", node_id, String(Variant(info))));
 						}
 					}
 				}
