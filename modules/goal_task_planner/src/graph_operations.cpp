@@ -506,6 +506,25 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		print_line("[EXTRACT_SOLUTION_PLAN] Starting extract_solution_plan()");
 	}
 	Array plan;
+	
+	// Safety check: ensure graph is not empty
+	Dictionary graph_dict = p_graph.get_graph();
+	if (graph_dict.is_empty()) {
+		if (p_verbose >= 1) {
+			print_line("[EXTRACT_SOLUTION_PLAN] WARNING: Graph is empty, returning empty plan");
+		}
+		return plan;
+	}
+	
+	// Safety check: ensure root node exists
+	Dictionary root_node_check = p_graph.get_node(0);
+	if (root_node_check.is_empty()) {
+		if (p_verbose >= 1) {
+			print_line("[EXTRACT_SOLUTION_PLAN] WARNING: Root node (0) is empty, returning empty plan");
+		}
+		return plan;
+	}
+	
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
 	TypedArray<int> visited; // Track visited nodes to prevent revisiting
@@ -517,7 +536,6 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		print_line("[EXTRACT_SOLUTION_PLAN] Building parent map...");
 	}
 	Dictionary parent_map; // child_id -> parent_id
-	Dictionary graph_dict = p_graph.get_graph();
 	Array graph_keys = graph_dict.keys();
 	if (p_verbose >= 3) {
 		print_line(vformat("[EXTRACT_SOLUTION_PLAN] Graph has %d nodes", graph_keys.size()));

@@ -109,9 +109,24 @@ Array PlannerResult::extract_plan(int p_verbose) const {
 	}
 	graph.get_graph() = graph_dict;
 
+	// Safety check: ensure graph_dict is not empty before processing
+	if (graph_dict.is_empty()) {
+		if (p_verbose >= 1) {
+			print_line("[EXTRACT_PLAN] WARNING: graph_dict is empty, returning empty plan");
+		}
+		return Array();
+	}
+	
 	// Set next_node_id to prevent issues (find max node ID)
 	int max_id = -1;
 	Array graph_keys = graph_dict.keys();
+	// Safety check: ensure graph_keys is not empty
+	if (graph_keys.is_empty() || graph_keys.size() < 1) {
+		if (p_verbose >= 1) {
+			print_line("[EXTRACT_PLAN] WARNING: graph_keys is empty, returning empty plan");
+		}
+		return Array();
+	}
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
 		if (key.get_type() == Variant::INT) {
@@ -139,7 +154,18 @@ Array PlannerResult::extract_plan(int p_verbose) const {
 
 Array PlannerResult::find_failed_nodes() const {
 	Array failed_nodes;
+	
+	// Safety check: ensure solution_graph is not empty
+	if (solution_graph.is_empty()) {
+		return failed_nodes;
+	}
+	
 	Array graph_keys = solution_graph.keys();
+	
+	// Safety check: ensure graph_keys is not empty
+	if (graph_keys.is_empty() || graph_keys.size() < 1) {
+		return failed_nodes;
+	}
 
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
@@ -151,6 +177,10 @@ Array PlannerResult::find_failed_nodes() const {
 			continue; // Skip missing nodes
 		}
 		Dictionary node = solution_graph[node_id];
+		// Safety check: ensure node is not empty
+		if (node.is_empty()) {
+			continue; // Skip empty nodes
+		}
 		if (node.has("status")) {
 			int status = node["status"];
 			if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
@@ -175,7 +205,18 @@ Dictionary PlannerResult::get_node(int p_node_id) const {
 
 Array PlannerResult::get_all_nodes() const {
 	Array nodes;
+	
+	// Safety check: ensure solution_graph is not empty
+	if (solution_graph.is_empty()) {
+		return nodes;
+	}
+	
 	Array graph_keys = solution_graph.keys();
+	
+	// Safety check: ensure graph_keys is not empty
+	if (graph_keys.is_empty() || graph_keys.size() < 1) {
+		return nodes;
+	}
 
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
@@ -187,6 +228,10 @@ Array PlannerResult::get_all_nodes() const {
 			continue; // Skip missing nodes
 		}
 		Dictionary node = solution_graph[node_id];
+		// Safety check: ensure node is not empty
+		if (node.is_empty()) {
+			continue; // Skip empty nodes
+		}
 		Dictionary node_info;
 		node_info["node_id"] = node_id;
 		node_info["type"] = node.get("type", Variant());
