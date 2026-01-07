@@ -2693,10 +2693,10 @@ extern "C" bool fbx_stream_write_fn(void *user, uint64_t offset, const void *dat
 	if (!ctx || ctx->file.is_null()) {
 		return false;
 	}
-	
+
 	// Seek to the specified offset
 	ctx->file->seek(offset);
-	
+
 	// Write the data
 	bool success = ctx->file->store_buffer(static_cast<const uint8_t *>(data), size);
 	return success;
@@ -3316,7 +3316,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			String mat_name = "DefaultMaterial";
 			CharString mat_name_utf8 = mat_name.utf8();
 			ufbxw_set_name_len(write_scene, material_id, mat_name_utf8.get_data(), mat_name_utf8.length());
-			
+
 			// Set complete default material properties (not empty)
 			ufbxw_vec3 diffuse_color = { 1.0, 1.0, 1.0 };
 			ufbxw_set_vec3(write_scene, material_id, "DiffuseColor", diffuse_color);
@@ -3331,11 +3331,11 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		GLTFMeshIndex mesh_idx = it->key;
 		Vector<int32_t> material_indices = it->value;
 		ufbxw_mesh fbx_mesh = gltf_to_fbx_meshes[mesh_idx];
-		
+
 		// Connect materials in sequential order (0, 1, 2, ...) to match face_material_indices
 		for (int seq_i = 0; seq_i < material_indices.size(); seq_i++) {
 			int32_t mat_idx = material_indices[seq_i];
-			
+
 			if (mat_idx >= 0 && gltf_to_fbx_materials.has(mat_idx)) {
 				// Connect existing material to mesh
 				ufbxw_material fbx_material = gltf_to_fbx_materials[mat_idx];
@@ -3473,256 +3473,256 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	// 0 = None, 1 = Clustered (weights only, no transform adjustments)
 	if (fbx_meshes_skins != 0) {
 		for (int skin_i = 0; skin_i < state->skins.size(); skin_i++) {
-		Ref<GLTFSkin> gltf_skin = state->skins[skin_i];
-		if (gltf_skin.is_null()) {
-			continue;
-		}
-
-		// Find all meshes associated with this skin
-		// A skin can be used by multiple nodes, each potentially with a different mesh
-		// Collect all unique meshes that use this skin
-		HashMap<GLTFMeshIndex, GLTFNodeIndex> mesh_to_node_map; // Map mesh index to a node that uses it (for bind transform lookup)
-		for (int node_i = 0; node_i < state->nodes.size(); node_i++) {
-			Ref<GLTFNode> node = state->nodes[node_i];
-			if (node.is_null()) {
-				continue;
-			}
-			if (node->skin == skin_i && node->mesh >= 0 && gltf_to_fbx_meshes.has(node->mesh)) {
-				// Store the first node we find for each mesh (for bind transform lookup)
-				if (!mesh_to_node_map.has(node->mesh)) {
-					mesh_to_node_map[node->mesh] = node_i;
-				}
-			}
-		}
-
-		// Skip if no meshes found for this skin
-		if (mesh_to_node_map.is_empty()) {
-			continue;
-		}
-
-		// Process each mesh that uses this skin
-		Vector<GLTFNodeIndex> joints = gltf_skin->get_joints();
-		TypedArray<Transform3D> inverse_binds = gltf_skin->get_inverse_binds();
-		Vector<GLTFNodeIndex> joints_original = gltf_skin->get_joints_original();
-
-		// Verify that inverse_binds matches joints_original size
-		// joints_original is the minimal set from glTF, inverse_binds should match it
-		if (inverse_binds.size() != joints_original.size()) {
-			WARN_PRINT(vformat("FBX: Skin %d has %d inverse_binds but %d joints_original, skipping", skin_i, inverse_binds.size(), joints_original.size()));
-			continue;
-		}
-
-		// Build mapping from joints index to joints_original index (cluster index)
-		// Mesh bone indices refer to the expanded joints array, but cluster indices match joints_original order
-		HashMap<GLTFNodeIndex, int> node_to_joints_idx;
-		for (int joints_i = 0; joints_i < joints.size(); joints_i++) {
-			node_to_joints_idx[joints[joints_i]] = joints_i;
-		}
-		HashMap<GLTFNodeIndex, int> node_to_cluster_idx;
-		for (int orig_i = 0; orig_i < joints_original.size(); orig_i++) {
-			node_to_cluster_idx[joints_original[orig_i]] = orig_i;
-		}
-
-		ufbxw_skin_deformer primary_skin_deformer = { 0 };
-		bool is_first_mesh = true;
-
-		// Iterate through all meshes that use this skin
-		for (HashMap<GLTFMeshIndex, GLTFNodeIndex>::Iterator it = mesh_to_node_map.begin(); it != mesh_to_node_map.end(); ++it) {
-			GLTFMeshIndex associated_mesh_idx = it->key;
-			GLTFNodeIndex mesh_node_idx = it->value;
-
-			if (!gltf_to_fbx_meshes.has(associated_mesh_idx)) {
+			Ref<GLTFSkin> gltf_skin = state->skins[skin_i];
+			if (gltf_skin.is_null()) {
 				continue;
 			}
 
-			ufbxw_mesh fbx_mesh = gltf_to_fbx_meshes[associated_mesh_idx];
-			if (fbx_mesh.id == 0) {
-				continue;
-			}
-
-			// Get the mesh node's world rest transform for the bind pose
-			Transform3D mesh_bind_transform = Transform3D();
-			GLTFNodeIndex current = mesh_node_idx;
-			while (current >= 0 && current < state->nodes.size()) {
-				Ref<GLTFNode> node = state->nodes[current];
+			// Find all meshes associated with this skin
+			// A skin can be used by multiple nodes, each potentially with a different mesh
+			// Collect all unique meshes that use this skin
+			HashMap<GLTFMeshIndex, GLTFNodeIndex> mesh_to_node_map; // Map mesh index to a node that uses it (for bind transform lookup)
+			for (int node_i = 0; node_i < state->nodes.size(); node_i++) {
+				Ref<GLTFNode> node = state->nodes[node_i];
 				if (node.is_null()) {
-					break;
+					continue;
 				}
-				// Use rest transform if available, otherwise use current transform
-				Transform3D node_transform = node->transform;
-				Variant rest_transform_var = node->get_additional_data("GODOT_rest_transform");
-				if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
-					node_transform = rest_transform_var;
-				}
-				mesh_bind_transform = node_transform * mesh_bind_transform;
-				current = node->get_parent();
-			}
-
-			Ref<GLTFMesh> gltf_mesh = state->meshes[associated_mesh_idx];
-			Ref<ImporterMesh> importer_mesh = gltf_mesh.is_valid() ? gltf_mesh->get_mesh() : Ref<ImporterMesh>();
-
-			// Create skin deformer for the combined mesh
-			ufbxw_skin_deformer fbx_skin_deformer = ufbxw_create_skin_deformer(write_scene, fbx_mesh);
-			if (fbx_skin_deformer.id == 0) {
-				continue; // Skip if creation failed
-			}
-
-			// Set skin deformer properties
-			ufbxw_skin_deformer_set_skinning_type(write_scene, fbx_skin_deformer, UFBXW_SKINNING_TYPE_LINEAR);
-
-			// Clustered mode: set mesh bind transform to mesh's rest transform
-			// This matches the skeleton bone positions (same computation as node export)
-			ufbxw_matrix mesh_bind_matrix = _transform_to_ufbxw_matrix(mesh_bind_transform);
-			ufbxw_skin_deformer_set_mesh_bind_transform(write_scene, fbx_skin_deformer, mesh_bind_matrix);
-
-			// Set skin name if available
-			String skin_name = gltf_skin->get_name();
-			if (!skin_name.is_empty()) {
-				CharString skin_name_utf8 = skin_name.utf8();
-				ufbxw_set_name_len(write_scene, fbx_skin_deformer.id, skin_name_utf8.get_data(), skin_name_utf8.length());
-			}
-
-			// Store the first deformer as primary for reference
-			if (is_first_mesh) {
-				primary_skin_deformer = fbx_skin_deformer;
-			}
-
-			// Get bone indices and weights from all surfaces (combined mesh)
-			// We need to combine bone data from all surfaces
-			PackedInt32Array all_bones;
-			PackedFloat32Array all_weights;
-			int num_weights_per_vertex = 4;
-			bool has_bone_data = false;
-
-			if (importer_mesh.is_valid()) {
-				// Combine bone weights from all surfaces
-				for (int surface_i = 0; surface_i < importer_mesh->get_surface_count(); surface_i++) {
-					PackedInt32Array surface_bones;
-					PackedFloat32Array surface_weights;
-					int surface_num_weights = 4;
-					if (_get_mesh_bone_weights(state, associated_mesh_idx, surface_i, surface_bones, surface_weights, surface_num_weights)) {
-						// Update num_weights_per_vertex to max across all surfaces
-						if (surface_num_weights > num_weights_per_vertex) {
-							num_weights_per_vertex = surface_num_weights;
-						}
-						// Get vertex count for this surface
-						Array surface_arrays = importer_mesh->get_surface_arrays(surface_i);
-						Variant vertex_var = surface_arrays[Mesh::ARRAY_VERTEX];
-						if (vertex_var.get_type() == Variant::PACKED_VECTOR3_ARRAY) {
-							// Append bone data for this surface
-							for (int i = 0; i < surface_bones.size(); i++) {
-								all_bones.push_back(surface_bones[i]);
-							}
-							for (int i = 0; i < surface_weights.size(); i++) {
-								all_weights.push_back(surface_weights[i]);
-							}
-							has_bone_data = true;
-						}
+				if (node->skin == skin_i && node->mesh >= 0 && gltf_to_fbx_meshes.has(node->mesh)) {
+					// Store the first node we find for each mesh (for bind transform lookup)
+					if (!mesh_to_node_map.has(node->mesh)) {
+						mesh_to_node_map[node->mesh] = node_i;
 					}
 				}
 			}
 
-			// Create clusters for each joint in joints_original (matching reader order)
-			// Reader: iterates over fbx_skin->clusters and stores in joints_original order
-			// joints_original is the minimal set from glTF, inverse_binds matches it
-			// joints is the expanded set that includes all nodes between joints (used for mesh bone indices)
-			int clusters_created = 0;
-			for (int cluster_idx = 0; cluster_idx < joints_original.size(); cluster_idx++) {
-				GLTFNodeIndex joint_node_idx = joints_original[cluster_idx];
-				if (joint_node_idx < 0 || joint_node_idx >= state->nodes.size()) {
-					WARN_PRINT(vformat("FBX: Skin %d cluster %d has invalid joint node index %d", skin_i, cluster_idx, joint_node_idx));
+			// Skip if no meshes found for this skin
+			if (mesh_to_node_map.is_empty()) {
+				continue;
+			}
+
+			// Process each mesh that uses this skin
+			Vector<GLTFNodeIndex> joints = gltf_skin->get_joints();
+			TypedArray<Transform3D> inverse_binds = gltf_skin->get_inverse_binds();
+			Vector<GLTFNodeIndex> joints_original = gltf_skin->get_joints_original();
+
+			// Verify that inverse_binds matches joints_original size
+			// joints_original is the minimal set from glTF, inverse_binds should match it
+			if (inverse_binds.size() != joints_original.size()) {
+				WARN_PRINT(vformat("FBX: Skin %d has %d inverse_binds but %d joints_original, skipping", skin_i, inverse_binds.size(), joints_original.size()));
+				continue;
+			}
+
+			// Build mapping from joints index to joints_original index (cluster index)
+			// Mesh bone indices refer to the expanded joints array, but cluster indices match joints_original order
+			HashMap<GLTFNodeIndex, int> node_to_joints_idx;
+			for (int joints_i = 0; joints_i < joints.size(); joints_i++) {
+				node_to_joints_idx[joints[joints_i]] = joints_i;
+			}
+			HashMap<GLTFNodeIndex, int> node_to_cluster_idx;
+			for (int orig_i = 0; orig_i < joints_original.size(); orig_i++) {
+				node_to_cluster_idx[joints_original[orig_i]] = orig_i;
+			}
+
+			ufbxw_skin_deformer primary_skin_deformer = { 0 };
+			bool is_first_mesh = true;
+
+			// Iterate through all meshes that use this skin
+			for (HashMap<GLTFMeshIndex, GLTFNodeIndex>::Iterator it = mesh_to_node_map.begin(); it != mesh_to_node_map.end(); ++it) {
+				GLTFMeshIndex associated_mesh_idx = it->key;
+				GLTFNodeIndex mesh_node_idx = it->value;
+
+				if (!gltf_to_fbx_meshes.has(associated_mesh_idx)) {
 					continue;
 				}
 
-				if (!gltf_to_fbx_nodes.has(joint_node_idx)) {
-					WARN_PRINT(vformat("FBX: Skin %d cluster %d joint node %d was not exported, skipping cluster", skin_i, cluster_idx, joint_node_idx));
+				ufbxw_mesh fbx_mesh = gltf_to_fbx_meshes[associated_mesh_idx];
+				if (fbx_mesh.id == 0) {
 					continue;
 				}
 
-				ufbxw_node fbx_bone_node = gltf_to_fbx_nodes[joint_node_idx];
-
-				// Create skin cluster for this deformer
-				ufbxw_skin_cluster fbx_cluster = ufbxw_create_skin_cluster(write_scene, fbx_skin_deformer, fbx_bone_node);
-				if (fbx_cluster.id == 0) {
-					continue; // Skip if creation failed
-				}
-
-				// Explicitly set the bone node for this cluster (ensures proper linking)
-				ufbxw_skin_cluster_set_node(write_scene, fbx_cluster, fbx_bone_node);
-
-				// For clustered mode: compute bone world transform for link_transform and geometry_to_bone
-				// Compute bone world transform using rest transforms (same as node export)
-				Transform3D bone_world_transform = Transform3D();
-				GLTFNodeIndex current = joint_node_idx;
+				// Get the mesh node's world rest transform for the bind pose
+				Transform3D mesh_bind_transform = Transform3D();
+				GLTFNodeIndex current = mesh_node_idx;
 				while (current >= 0 && current < state->nodes.size()) {
 					Ref<GLTFNode> node = state->nodes[current];
 					if (node.is_null()) {
 						break;
 					}
 					// Use rest transform if available, otherwise use current transform
-					// This matches how we set the FBX node transforms during export
 					Transform3D node_transform = node->transform;
 					Variant rest_transform_var = node->get_additional_data("GODOT_rest_transform");
 					if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
 						node_transform = rest_transform_var;
 					}
-					bone_world_transform = node_transform * bone_world_transform;
+					mesh_bind_transform = node_transform * mesh_bind_transform;
 					current = node->get_parent();
 				}
-				
-				// Set link_transform to the bone's world transform at bind time (including rotation)
-				// This is needed for proper bone visualization (volume instead of thin lines)
-				// The bone node's local transform should match this, so there shouldn't be conflicts
-				ufbxw_matrix link_matrix = _transform_to_ufbxw_matrix(bone_world_transform);
-				ufbxw_skin_cluster_set_link_transform(write_scene, fbx_cluster, link_matrix);
-				
-				// For clustered mode: always compute geometry_to_bone from transforms for consistency
-				// This ensures geometry_to_bone matches the link_transform we set
-				// Stored inverse_bind values may be from a different coordinate system or incorrect for some bones
-				// geometry_to_bone = inverse(bone_world) * mesh_world
-				// This transforms from mesh world space to bone world space, then to bone local space
-				Transform3D geometry_to_bone = bone_world_transform.inverse() * mesh_bind_transform;
-				ufbxw_matrix fbx_matrix = _transform_to_ufbxw_matrix(geometry_to_bone);
-				ufbxw_skin_cluster_set_transform(write_scene, fbx_cluster, fbx_matrix);
 
-				// Extract and set vertex weights for this cluster
-				// Mesh bone indices refer to joints array, but cluster indices match joints_original order
-				if (has_bone_data) {
-					Vector<int32_t> vertex_indices;
-					Vector<ufbxw_real> cluster_weights;
-					int vertex_count = all_bones.size() / num_weights_per_vertex;
-					for (int vertex_i = 0; vertex_i < vertex_count; vertex_i++) {
-						for (int weight_i = 0; weight_i < num_weights_per_vertex; weight_i++) {
-							int mesh_bone_idx = all_bones[vertex_i * num_weights_per_vertex + weight_i];
-							float weight = all_weights[vertex_i * num_weights_per_vertex + weight_i];
-							if (weight > 0.0f && mesh_bone_idx >= 0 && mesh_bone_idx < joints.size()) {
-								// Map from joints index to cluster index (joints_original index)
-								GLTFNodeIndex mesh_joint_node = joints[mesh_bone_idx];
-								if (node_to_cluster_idx.has(mesh_joint_node) && node_to_cluster_idx[mesh_joint_node] == cluster_idx) {
-									vertex_indices.push_back(vertex_i);
-									cluster_weights.push_back((ufbxw_real)weight);
+				Ref<GLTFMesh> gltf_mesh = state->meshes[associated_mesh_idx];
+				Ref<ImporterMesh> importer_mesh = gltf_mesh.is_valid() ? gltf_mesh->get_mesh() : Ref<ImporterMesh>();
+
+				// Create skin deformer for the combined mesh
+				ufbxw_skin_deformer fbx_skin_deformer = ufbxw_create_skin_deformer(write_scene, fbx_mesh);
+				if (fbx_skin_deformer.id == 0) {
+					continue; // Skip if creation failed
+				}
+
+				// Set skin deformer properties
+				ufbxw_skin_deformer_set_skinning_type(write_scene, fbx_skin_deformer, UFBXW_SKINNING_TYPE_LINEAR);
+
+				// Clustered mode: set mesh bind transform to mesh's rest transform
+				// This matches the skeleton bone positions (same computation as node export)
+				ufbxw_matrix mesh_bind_matrix = _transform_to_ufbxw_matrix(mesh_bind_transform);
+				ufbxw_skin_deformer_set_mesh_bind_transform(write_scene, fbx_skin_deformer, mesh_bind_matrix);
+
+				// Set skin name if available
+				String skin_name = gltf_skin->get_name();
+				if (!skin_name.is_empty()) {
+					CharString skin_name_utf8 = skin_name.utf8();
+					ufbxw_set_name_len(write_scene, fbx_skin_deformer.id, skin_name_utf8.get_data(), skin_name_utf8.length());
+				}
+
+				// Store the first deformer as primary for reference
+				if (is_first_mesh) {
+					primary_skin_deformer = fbx_skin_deformer;
+				}
+
+				// Get bone indices and weights from all surfaces (combined mesh)
+				// We need to combine bone data from all surfaces
+				PackedInt32Array all_bones;
+				PackedFloat32Array all_weights;
+				int num_weights_per_vertex = 4;
+				bool has_bone_data = false;
+
+				if (importer_mesh.is_valid()) {
+					// Combine bone weights from all surfaces
+					for (int surface_i = 0; surface_i < importer_mesh->get_surface_count(); surface_i++) {
+						PackedInt32Array surface_bones;
+						PackedFloat32Array surface_weights;
+						int surface_num_weights = 4;
+						if (_get_mesh_bone_weights(state, associated_mesh_idx, surface_i, surface_bones, surface_weights, surface_num_weights)) {
+							// Update num_weights_per_vertex to max across all surfaces
+							if (surface_num_weights > num_weights_per_vertex) {
+								num_weights_per_vertex = surface_num_weights;
+							}
+							// Get vertex count for this surface
+							Array surface_arrays = importer_mesh->get_surface_arrays(surface_i);
+							Variant vertex_var = surface_arrays[Mesh::ARRAY_VERTEX];
+							if (vertex_var.get_type() == Variant::PACKED_VECTOR3_ARRAY) {
+								// Append bone data for this surface
+								for (int i = 0; i < surface_bones.size(); i++) {
+									all_bones.push_back(surface_bones[i]);
 								}
+								for (int i = 0; i < surface_weights.size(); i++) {
+									all_weights.push_back(surface_weights[i]);
+								}
+								has_bone_data = true;
 							}
 						}
 					}
-					if (vertex_indices.size() > 0) {
-						ufbxw_int_buffer indices_buffer = ufbxw_copy_int_array(write_scene, vertex_indices.ptr(), vertex_indices.size());
-						ufbxw_real_buffer weights_buffer = ufbxw_copy_real_array(write_scene, cluster_weights.ptr(), cluster_weights.size());
-						ufbxw_skin_cluster_set_weights(write_scene, fbx_cluster, indices_buffer, weights_buffer);
-					}
 				}
-				clusters_created++;
+
+				// Create clusters for each joint in joints_original (matching reader order)
+				// Reader: iterates over fbx_skin->clusters and stores in joints_original order
+				// joints_original is the minimal set from glTF, inverse_binds matches it
+				// joints is the expanded set that includes all nodes between joints (used for mesh bone indices)
+				int clusters_created = 0;
+				for (int cluster_idx = 0; cluster_idx < joints_original.size(); cluster_idx++) {
+					GLTFNodeIndex joint_node_idx = joints_original[cluster_idx];
+					if (joint_node_idx < 0 || joint_node_idx >= state->nodes.size()) {
+						WARN_PRINT(vformat("FBX: Skin %d cluster %d has invalid joint node index %d", skin_i, cluster_idx, joint_node_idx));
+						continue;
+					}
+
+					if (!gltf_to_fbx_nodes.has(joint_node_idx)) {
+						WARN_PRINT(vformat("FBX: Skin %d cluster %d joint node %d was not exported, skipping cluster", skin_i, cluster_idx, joint_node_idx));
+						continue;
+					}
+
+					ufbxw_node fbx_bone_node = gltf_to_fbx_nodes[joint_node_idx];
+
+					// Create skin cluster for this deformer
+					ufbxw_skin_cluster fbx_cluster = ufbxw_create_skin_cluster(write_scene, fbx_skin_deformer, fbx_bone_node);
+					if (fbx_cluster.id == 0) {
+						continue; // Skip if creation failed
+					}
+
+					// Explicitly set the bone node for this cluster (ensures proper linking)
+					ufbxw_skin_cluster_set_node(write_scene, fbx_cluster, fbx_bone_node);
+
+					// For clustered mode: compute bone world transform for link_transform and geometry_to_bone
+					// Compute bone world transform using rest transforms (same as node export)
+					Transform3D bone_world_transform = Transform3D();
+					GLTFNodeIndex current = joint_node_idx;
+					while (current >= 0 && current < state->nodes.size()) {
+						Ref<GLTFNode> node = state->nodes[current];
+						if (node.is_null()) {
+							break;
+						}
+						// Use rest transform if available, otherwise use current transform
+						// This matches how we set the FBX node transforms during export
+						Transform3D node_transform = node->transform;
+						Variant rest_transform_var = node->get_additional_data("GODOT_rest_transform");
+						if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
+							node_transform = rest_transform_var;
+						}
+						bone_world_transform = node_transform * bone_world_transform;
+						current = node->get_parent();
+					}
+
+					// Set link_transform to the bone's world transform at bind time (including rotation)
+					// This is needed for proper bone visualization (volume instead of thin lines)
+					// The bone node's local transform should match this, so there shouldn't be conflicts
+					ufbxw_matrix link_matrix = _transform_to_ufbxw_matrix(bone_world_transform);
+					ufbxw_skin_cluster_set_link_transform(write_scene, fbx_cluster, link_matrix);
+
+					// For clustered mode: always compute geometry_to_bone from transforms for consistency
+					// This ensures geometry_to_bone matches the link_transform we set
+					// Stored inverse_bind values may be from a different coordinate system or incorrect for some bones
+					// geometry_to_bone = inverse(bone_world) * mesh_world
+					// This transforms from mesh world space to bone world space, then to bone local space
+					Transform3D geometry_to_bone = bone_world_transform.inverse() * mesh_bind_transform;
+					ufbxw_matrix fbx_matrix = _transform_to_ufbxw_matrix(geometry_to_bone);
+					ufbxw_skin_cluster_set_transform(write_scene, fbx_cluster, fbx_matrix);
+
+					// Extract and set vertex weights for this cluster
+					// Mesh bone indices refer to joints array, but cluster indices match joints_original order
+					if (has_bone_data) {
+						Vector<int32_t> vertex_indices;
+						Vector<ufbxw_real> cluster_weights;
+						int vertex_count = all_bones.size() / num_weights_per_vertex;
+						for (int vertex_i = 0; vertex_i < vertex_count; vertex_i++) {
+							for (int weight_i = 0; weight_i < num_weights_per_vertex; weight_i++) {
+								int mesh_bone_idx = all_bones[vertex_i * num_weights_per_vertex + weight_i];
+								float weight = all_weights[vertex_i * num_weights_per_vertex + weight_i];
+								if (weight > 0.0f && mesh_bone_idx >= 0 && mesh_bone_idx < joints.size()) {
+									// Map from joints index to cluster index (joints_original index)
+									GLTFNodeIndex mesh_joint_node = joints[mesh_bone_idx];
+									if (node_to_cluster_idx.has(mesh_joint_node) && node_to_cluster_idx[mesh_joint_node] == cluster_idx) {
+										vertex_indices.push_back(vertex_i);
+										cluster_weights.push_back((ufbxw_real)weight);
+									}
+								}
+							}
+						}
+						if (vertex_indices.size() > 0) {
+							ufbxw_int_buffer indices_buffer = ufbxw_copy_int_array(write_scene, vertex_indices.ptr(), vertex_indices.size());
+							ufbxw_real_buffer weights_buffer = ufbxw_copy_real_array(write_scene, cluster_weights.ptr(), cluster_weights.size());
+							ufbxw_skin_cluster_set_weights(write_scene, fbx_cluster, indices_buffer, weights_buffer);
+						}
+					}
+					clusters_created++;
+				}
+				if (clusters_created == 0) {
+					WARN_PRINT(vformat("FBX: Skin %d mesh %d has no valid clusters created", skin_i, associated_mesh_idx));
+				}
+				is_first_mesh = false;
 			}
-			if (clusters_created == 0) {
-				WARN_PRINT(vformat("FBX: Skin %d mesh %d has no valid clusters created", skin_i, associated_mesh_idx));
+			// Store the primary skin deformer for reference
+			if (primary_skin_deformer.id != 0) {
+				gltf_to_fbx_skins[skin_i] = primary_skin_deformer;
 			}
-			is_first_mesh = false;
 		}
-		// Store the primary skin deformer for reference
-		if (primary_skin_deformer.id != 0) {
-			gltf_to_fbx_skins[skin_i] = primary_skin_deformer;
-		}
-	}
 	}
 
 	// Fifth pass: Export animations
@@ -4243,12 +4243,12 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	// Write FBX using stream protocol directly to file
 	ufbxw_error error = {};
 	bool success = ufbxw_save_stream(write_scene, &stream, &save_opts, &error);
-	
+
 	// Close the stream (will flush and close the file)
 	if (stream.close_fn) {
 		stream.close_fn(stream.user);
 	}
-	
+
 	ufbxw_free_scene(write_scene);
 
 	if (!success) {
