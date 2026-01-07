@@ -96,7 +96,7 @@ public:
 	// Getters
 	String get_persona_id() const { return persona_id; }
 	String get_persona_name() const { return persona_name; }
-	PlannerPersonaIdentity get_identity_type() const { return identity_type; }
+	int get_identity_type() const { return static_cast<int>(identity_type); }
 	bool is_active() const { return active; }
 	Dictionary get_metadata() const { return metadata; }
 	Dictionary get_beliefs_about_others() const { return beliefs_about_others; }
