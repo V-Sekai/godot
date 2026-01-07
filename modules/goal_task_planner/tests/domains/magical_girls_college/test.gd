@@ -7,7 +7,7 @@
 
 extends SceneTree
 
-const Domain = preload("magical_girls_college_domain.gd")
+const Domain = preload("domain.gd")
 
 var tests_passed = 0
 var tests_failed = 0
@@ -69,6 +69,56 @@ func create_magical_girls_college_init_state() -> Dictionary:
 	}
 	state["burnout"] = burnout
 
+	# The Sims-style needs (0-100 scale, 50 is neutral)
+	var needs = {
+		"yuki": {
+			"hunger": 50,
+			"energy": 50,
+			"social": 50,
+			"fun": 50,
+			"hygiene": 50
+		},
+		"maya": {
+			"hunger": 50,
+			"energy": 50,
+			"social": 50,
+			"fun": 50,
+			"hygiene": 50
+		},
+		"aria": {
+			"hunger": 50,
+			"energy": 50,
+			"social": 50,
+			"fun": 50,
+			"hygiene": 50
+		},
+		"kira": {
+			"hunger": 50,
+			"energy": 50,
+			"social": 50,
+			"fun": 50,
+			"hygiene": 50
+		},
+		"luna": {
+			"hunger": 50,
+			"energy": 50,
+			"social": 50,
+			"fun": 50,
+			"hygiene": 50
+		}
+	}
+	state["needs"] = needs
+
+	# Money (resource constraint)
+	var money = {
+		"yuki": 100,
+		"maya": 100,
+		"aria": 100,
+		"kira": 100,
+		"luna": 100
+	}
+	state["money"] = money
+
 	# Preferences
 	var preferences = {
 		"yuki": {
@@ -113,7 +163,7 @@ func create_magical_girls_college_domain() -> PlannerDomain:
 		Callable(Domain, "action_attend_lecture"),
 		Callable(Domain, "action_complete_homework"),
 		Callable(Domain, "action_study_library"),
-		Callable(Domain, "action_eat_mess_hall"),
+		Callable(Domain, "action_eat_mess_hall_with_friend"),
 		Callable(Domain, "action_coffee_together"),
 		Callable(Domain, "action_watch_movie"),
 		Callable(Domain, "action_pool_hangout"),
@@ -122,7 +172,24 @@ func create_magical_girls_college_domain() -> PlannerDomain:
 		Callable(Domain, "action_read_book"),
 		Callable(Domain, "action_club_activity"),
 		Callable(Domain, "action_optimize_schedule"),
-		Callable(Domain, "action_predict_outcome")
+		Callable(Domain, "action_predict_outcome"),
+		# The Sims-style needs satisfaction actions
+		Callable(Domain, "action_eat_mess_hall"),
+		Callable(Domain, "action_eat_restaurant"),
+		Callable(Domain, "action_eat_snack"),
+		Callable(Domain, "action_cook_meal"),
+		Callable(Domain, "action_sleep_dorm"),
+		Callable(Domain, "action_nap_library"),
+		Callable(Domain, "action_energy_drink"),
+		Callable(Domain, "action_talk_friend"),
+		Callable(Domain, "action_join_club"),
+		Callable(Domain, "action_phone_call"),
+		Callable(Domain, "action_play_games"),
+		Callable(Domain, "action_watch_streaming"),
+		Callable(Domain, "action_go_cinema"),
+		Callable(Domain, "action_shower"),
+		Callable(Domain, "action_wash_hands"),
+		Callable(Domain, "action_move_to")
 	]
 	domain.add_actions(actions)
 
@@ -151,6 +218,56 @@ func create_magical_girls_college_domain() -> PlannerDomain:
 		Callable(Domain, "task_manage_week_method_relationships")
 	]
 	domain.add_task_methods("task_manage_week", manage_week_methods)
+
+	# Add task methods for The Sims-style needs satisfaction (deep backtracking)
+	var satisfy_hunger_methods = [
+		Callable(Domain, "task_satisfy_hunger_method_mess_hall"),
+		Callable(Domain, "task_satisfy_hunger_method_restaurant"),
+		Callable(Domain, "task_satisfy_hunger_method_snack"),
+		Callable(Domain, "task_satisfy_hunger_method_cook"),
+		Callable(Domain, "task_satisfy_hunger_method_social_eat")
+	]
+	domain.add_task_methods("task_satisfy_hunger", satisfy_hunger_methods)
+
+	var satisfy_energy_methods = [
+		Callable(Domain, "task_satisfy_energy_method_sleep"),
+		Callable(Domain, "task_satisfy_energy_method_nap"),
+		Callable(Domain, "task_satisfy_energy_method_drink"),
+		Callable(Domain, "task_satisfy_energy_method_rest_activity"),
+		Callable(Domain, "task_satisfy_energy_method_early_sleep")
+	]
+	domain.add_task_methods("task_satisfy_energy", satisfy_energy_methods)
+
+	var satisfy_social_methods = [
+		Callable(Domain, "task_satisfy_social_method_talk"),
+		Callable(Domain, "task_satisfy_social_method_club"),
+		Callable(Domain, "task_satisfy_social_method_phone"),
+		Callable(Domain, "task_satisfy_social_method_socialize_task"),
+		Callable(Domain, "task_satisfy_social_method_group_activity")
+	]
+	domain.add_task_methods("task_satisfy_social", satisfy_social_methods)
+
+	var satisfy_fun_methods = [
+		Callable(Domain, "task_satisfy_fun_method_games"),
+		Callable(Domain, "task_satisfy_fun_method_streaming"),
+		Callable(Domain, "task_satisfy_fun_method_cinema"),
+		Callable(Domain, "task_satisfy_fun_method_preferred_activity"),
+		Callable(Domain, "task_satisfy_fun_method_social_fun")
+	]
+	domain.add_task_methods("task_satisfy_fun", satisfy_fun_methods)
+
+	var satisfy_hygiene_methods = [
+		Callable(Domain, "task_satisfy_hygiene_method_shower"),
+		Callable(Domain, "task_satisfy_hygiene_method_wash_hands"),
+		Callable(Domain, "task_satisfy_hygiene_method_force_shower")
+	]
+	domain.add_task_methods("task_satisfy_hygiene", satisfy_hygiene_methods)
+
+	# Add move task method
+	var move_to_location_methods = [
+		Callable(Domain, "task_move_to_location_method_direct")
+	]
+	domain.add_task_methods("task_move_to_location", move_to_location_methods)
 
 	# Add unigoal methods
 	var study_unigoal_methods = [
