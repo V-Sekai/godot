@@ -142,6 +142,9 @@
 		<member name="max_depth" type="int" setter="set_max_depth" getter="get_max_depth" default="10">
 			The maximum recursion depth to prevent infinite loops during planning. If planning exceeds this depth, it will fail.
 		</member>
+		<member name="max_iterations" type="int" setter="set_max_iterations" getter="get_max_iterations" default="50000">
+			The maximum number of planning loop iterations to prevent infinite loops. The actual limit used is the minimum of (max_depth * 1000) and max_iterations. This provides a safety bound to prevent excessive memory usage even with very high max_depth values.
+		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
 			The verbosity level of the [PlannerPlan]'s output. This is useful for debugging and understanding the plan's execution. Level 0 is off, levels 1 to 3 show increasing verbosity with 3 being the maximum.
 		</member>

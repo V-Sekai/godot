@@ -1199,6 +1199,10 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_max_depth", "max_depth"), &PlannerPlan::set_max_depth);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
 
+	ClassDB::bind_method(D_METHOD("get_max_iterations"), &PlannerPlan::get_max_iterations);
+	ClassDB::bind_method(D_METHOD("set_max_iterations", "max_iterations"), &PlannerPlan::set_max_iterations);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_iterations"), "set_max_iterations", "get_max_iterations");
+
 	ClassDB::bind_method(D_METHOD("get_current_domain"), &PlannerPlan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &PlannerPlan::set_current_domain);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
@@ -1243,6 +1247,14 @@ int PlannerPlan::get_max_depth() const {
 
 void PlannerPlan::set_max_depth(int p_max_depth) {
 	max_depth = p_max_depth;
+}
+
+int PlannerPlan::get_max_iterations() const {
+	return max_iterations;
+}
+
+void PlannerPlan::set_max_iterations(int p_max_iterations) {
+	max_iterations = p_max_iterations;
 }
 
 Dictionary PlannerPlan::get_method_activities() const {
@@ -1308,6 +1320,7 @@ void PlannerPlan::reset() {
 
 	// Reset configuration to defaults
 	max_depth = 10; // Default maximum recursion depth
+	max_iterations = 50000; // Default maximum planning loop iterations
 	verbose = 0; // Default verbosity level
 
 	if (verbose >= 2) {
@@ -1436,7 +1449,23 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 	Dictionary final_state = p_state;
 
 	// Main iterative loop - processes stack until empty
-	while (!stack.is_empty()) {
+	// Safety: Limit maximum iterations to prevent infinite loops
+	// Use max_depth * 1000 as a reasonable upper bound (allows ~1000 nodes per depth level on average)
+	// Also cap at max_iterations to prevent excessive memory usage even with very high max_depth
+	const int MAX_ITERATIONS = MIN(max_depth * 1000, max_iterations);
+	const int MAX_STACK_SIZE = 10000; // Prevent stack from growing too large
+	int loop_count = 0;
+	while (!stack.is_empty() && loop_count < MAX_ITERATIONS) {
+		loop_count++;
+
+		// Safety: Check stack size to prevent excessive memory usage
+		if (stack.size() > MAX_STACK_SIZE) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("Planning loop stack size (%d) exceeded maximum (%d), forcing exit", stack.size(), MAX_STACK_SIZE));
+			}
+			stack.clear();
+			break;
+		}
 		PlanningFrame frame = stack[stack.size() - 1];
 		stack.remove_at(stack.size() - 1);
 
@@ -1455,7 +1484,9 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 				ERR_PRINT(vformat("Planning depth limit (%d) exceeded, aborting", max_depth));
 			}
 			final_state = state;
-			continue;
+			// Clear stack to force exit - don't continue processing
+			stack.clear();
+			break;
 		}
 
 		// Validate that current_domain is set
@@ -1735,6 +1766,14 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 			break; // Final state set, exit loop
 		}
 		// Otherwise continue loop to process next frame from stack
+	}
+
+	// Safety check: Warn if we hit the iteration limit
+	if (loop_count >= MAX_ITERATIONS && !stack.is_empty()) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("Planning loop exceeded maximum iterations (%d, based on max_depth=%d and max_iterations=%d), forcing exit. Stack size: %d", MAX_ITERATIONS, max_depth, max_iterations, stack.size()));
+		}
+		stack.clear();
 	}
 
 	return final_state;

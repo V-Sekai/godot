@@ -67,6 +67,7 @@ class PlannerPlan : public Resource {
 	Ref<PlannerFactsAllocentric> allocentric_facts; // Shared ground truth observable by all personas
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
+	int max_iterations = 50000; // Maximum planning loop iterations (safety limit to prevent infinite loops)
 	int iterations = 0; // Track number of planning iterations
 
 	// VSIDS-style method activity tracking (following Chuffed's proven approach)
@@ -148,6 +149,8 @@ public:
 	void set_current_domain(Ref<PlannerDomain> p_current_domain) { current_domain = p_current_domain; }
 	void set_max_depth(int p_max_depth);
 	int get_max_depth() const;
+	void set_max_iterations(int p_max_iterations);
+	int get_max_iterations() const;
 	Ref<PlannerResult> find_plan(Dictionary p_state, Array p_todo_list);
 	Ref<PlannerResult> run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
 	// Graph-based lazy refinement (Elixir-style)
