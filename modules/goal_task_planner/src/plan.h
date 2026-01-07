@@ -76,7 +76,16 @@ class PlannerPlan : public Resource {
 	double activity_var_inc = 1.0; // Increment value (grows over time via activity inflation)
 	int activity_bump_count = 0; // Track bumps to trigger decay
 	static const int ACTIVITY_DECAY_INTERVAL = 100; // Decay every N bumps
-	// Note: No activity_decay_factor - we use activity inflation (var_inc *= 1.05) instead
+	inline static constexpr double ACTIVITY_INFLATION_FACTOR = 1.05; // Increase increment by 5% (matches Chuffed)
+	inline static constexpr double ACTIVITY_OVERFLOW_THRESHOLD = 1e100; // Threshold for activity overflow normalization
+	inline static constexpr double ACTIVITY_NORMALIZATION_FACTOR = 1e-100; // Factor to normalize activities when overflow occurs
+	inline static constexpr double ACTIVITY_SCORE_MULTIPLIER = 10.0; // Multiplier for activity in method scoring
+	inline static constexpr double SUBTASK_BONUS_BASE = 10.0; // Base value for subtask count bonus in method scoring
+	inline static constexpr double REWARD_BASE = 10000.0; // Base reward value for successful method rewards
+	inline static constexpr double INITIAL_SCORE = -1e100; // Very negative initial score for method selection
+	static const int ITERATIONS_PER_DEPTH = 1000; // Multiplier for max_depth in iteration limit calculation
+	static const int MIN_UNIGOAL_SIZE = 3; // Minimum number of elements in unigoal array
+	// Note: No activity_decay_factor - we use activity inflation (var_inc *= ACTIVITY_INFLATION_FACTOR) instead
 	TypedArray<String> rewarded_methods_this_solve; // Track which methods already rewarded this solve
 
 	static String _item_to_string(Variant p_item);

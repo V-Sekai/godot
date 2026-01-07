@@ -652,17 +652,17 @@ void PlannerPlan::_decay_method_activities() {
 	// Activity inflation (like Chuffed's varDecayActivity)
 	// Instead of decaying activities directly, increase var_inc
 	// This makes newer bumps worth more relative to older ones
-	activity_var_inc *= 1.05; // Increase increment by 5% (matches Chuffed)
+	activity_var_inc *= ACTIVITY_INFLATION_FACTOR;
 
 	// If var_inc gets too large, normalize by scaling down all activities
 	// This prevents numerical overflow while maintaining relative ordering
-	if (activity_var_inc > 1e100) {
+	if (activity_var_inc > ACTIVITY_OVERFLOW_THRESHOLD) {
 		Array keys = method_activities.keys();
 		for (int i = 0; i < keys.size(); i++) {
 			Variant key = keys[i];
-			method_activities[key] = (double)method_activities[key] * 1e-100;
+			method_activities[key] = (double)method_activities[key] * ACTIVITY_NORMALIZATION_FACTOR;
 		}
-		activity_var_inc *= 1e-100;
+		activity_var_inc *= ACTIVITY_NORMALIZATION_FACTOR;
 	}
 	// NOTE: We do NOT multiply activities by decay_factor here
 	// Activity inflation (increasing var_inc) achieves the same effect more efficiently
@@ -709,7 +709,7 @@ void PlannerPlan::_reward_successful_methods(int p_plan_length) {
 	// Calculate reward: inverse of plan length (shorter = better = higher reward)
 	// Use much larger scale to ensure rewards dominate over subtask bonuses
 	// For 30 actions: ~1000, for 300 actions: ~100 (10x difference)
-	double base_reward = 10000.0 / (1.0 + p_plan_length);
+	double base_reward = REWARD_BASE / (1.0 + p_plan_length);
 	double reward = base_reward * activity_var_inc;
 
 	// Walk through solution graph and reward all methods that were used
@@ -846,7 +846,7 @@ void PlannerPlan::_reward_method_immediate(Callable p_method, int p_current_acti
 PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type) {
 	MethodCandidate best_candidate;
 	best_candidate.method = Callable();
-	best_candidate.score = -1e100; // Very negative initial score
+	best_candidate.score = INITIAL_SCORE; // Very negative initial score
 
 	// Evaluate all methods and collect candidates
 	for (int i = 0; i < p_methods.size(); i++) {
@@ -960,8 +960,8 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 			}
 		} else if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) {
 			Array unigoal_arr = p_node_info;
-			// Guard: unigoal must have at least 3 elements
-			if (unigoal_arr.size() < 3) {
+			// Guard: unigoal must have at least MIN_UNIGOAL_SIZE elements
+			if (unigoal_arr.size() < MIN_UNIGOAL_SIZE) {
 				continue; // Invalid unigoal
 			}
 			String subject = unigoal_arr[1];
@@ -993,17 +993,19 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 
 		// Score this method using VSIDS activity
 		double activity = _get_method_activity(method);
-		double score = activity * 10.0; // Activity as primary score (VSIDS-style)
+		double score = activity * ACTIVITY_SCORE_MULTIPLIER; // Activity as primary score (VSIDS-style)
 
 		// Add small bonus for methods with fewer subtasks (prefer direct methods)
 		if (candidate_subtasks.size() > 0) {
-			score += 10.0 / (1.0 + candidate_subtasks.size());
+			score += SUBTASK_BONUS_BASE / (1.0 + candidate_subtasks.size());
 		}
 
 		if (verbose >= 3) {
 			String method_id = _method_to_id(method);
+			double debug_scaled = activity * (ACTIVITY_SCORE_MULTIPLIER * 10.0); // For debug display only
+			double debug_bonus = candidate_subtasks.size() > 0 ? SUBTASK_BONUS_BASE / (1.0 + candidate_subtasks.size()) : 0.0;
 			print_line(vformat("VSIDS: Evaluating method '%s' - activity: %.6f, scaled: %.6f, subtask bonus: %.2f, total score: %.6f",
-					method_id, activity, activity * 100.0, candidate_subtasks.size() > 0 ? 10.0 / (1.0 + candidate_subtasks.size()) : 0.0, score));
+					method_id, activity, debug_scaled, debug_bonus, score));
 		}
 
 		// Update best candidate if this score is better
@@ -1463,13 +1465,13 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 
 	// Main iterative loop - processes stack until empty
 	// Safety: Limit maximum iterations to prevent infinite loops
-	// Use max_depth * 1000 as a reasonable upper bound (allows ~1000 nodes per depth level on average)
+	// Use max_depth * ITERATIONS_PER_DEPTH as a reasonable upper bound (allows ~ITERATIONS_PER_DEPTH nodes per depth level on average)
 	// Also cap at max_iterations to prevent excessive memory usage even with very high max_depth
-	const int MAX_ITERATIONS = MIN(max_depth * 1000, max_iterations);
+	const int MAX_ITERATIONS = MIN(max_depth * ITERATIONS_PER_DEPTH, max_iterations);
 	int loop_count = 0;
 	while (!stack.is_empty() && loop_count < MAX_ITERATIONS) {
 		loop_count++;
-		
+
 		// Safety: Check stack size to prevent excessive memory usage
 		if (stack.size() > max_stack_size) {
 			if (verbose >= 1) {

@@ -35,6 +35,8 @@
 
 struct PlannerTimeRange {
 	// All times in absolute microseconds since Unix epoch (1970-01-01 00:00:00 UTC)
+	static constexpr double MICROSECONDS_PER_SECOND = 1000000.0; // Conversion factor from seconds to microseconds
+
 	int64_t start_time = 0; // Absolute microseconds
 	int64_t end_time = 0; // Absolute microseconds
 	int64_t duration = 0; // Duration in microseconds
@@ -53,7 +55,7 @@ struct PlannerTimeRange {
 	// Helper methods for absolute time conversion
 	// Convert from Godot's unix time (seconds) to microseconds
 	static int64_t unix_time_to_microseconds(double p_unix_time) {
-		return static_cast<int64_t>(p_unix_time * 1000000.0);
+		return static_cast<int64_t>(p_unix_time * MICROSECONDS_PER_SECOND);
 	}
 
 	// Get current absolute time in microseconds
