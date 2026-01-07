@@ -34,14 +34,14 @@
 
 #include "core/object/class_db.h"
 
-#include "domain.h"
-#include "multigoal.h"
-#include "plan.h"
-#include "planner_belief_manager.h"
-#include "planner_facts_allocentric.h"
-#include "planner_persona.h"
-#include "planner_result.h"
-#include "planner_state.h"
+#include "src/domain.h"
+#include "src/multigoal.h"
+#include "src/plan.h"
+#include "src/planner_belief_manager.h"
+#include "src/planner_facts_allocentric.h"
+#include "src/planner_persona.h"
+#include "src/planner_result.h"
+#include "src/planner_state.h"
 
 void initialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {

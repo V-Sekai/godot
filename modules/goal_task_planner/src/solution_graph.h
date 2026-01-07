@@ -188,7 +188,7 @@ public:
 		graph_internal.clear();
 		graph = Dictionary();
 		Array graph_keys = p_graph.keys();
-		for (size_t i = 0; i < graph_keys.size(); i++) {
+		for (int i = 0; i < graph_keys.size(); i++) {
 			Variant key = graph_keys[i];
 			if (key.get_type() != Variant::INT) {
 				continue;
@@ -201,7 +201,7 @@ public:
 		}
 		// Find max node ID to set next_node_id
 		int max_id = -1;
-		for (size_t i = 0; i < graph_keys.size(); i++) {
+		for (int i = 0; i < graph_keys.size(); i++) {
 			Variant key = graph_keys[i];
 			if (key.get_type() == Variant::INT) {
 				int node_id = key;
@@ -323,7 +323,7 @@ private:
 			// Convert TypedArray<int> to LocalVector<int>
 			TypedArray<int> successors_array = p_dict["successors"];
 			node.successors.clear();
-			for (size_t i = 0; i < successors_array.size(); i++) {
+			for (int i = 0; i < successors_array.size(); i++) {
 				node.successors.push_back(successors_array[i]);
 			}
 		}
