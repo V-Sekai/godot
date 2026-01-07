@@ -13,7 +13,15 @@ This directory contains a split GDScript domain implementation for testing the g
 -   `test.gd` - Full test suite
 -   `test_sims_scenarios.gd` - Sims-style scenario tests
 -   `test_syntax.gd` - Syntax validation test
+-   `simulate_house_actors.gd` - Multi-agent simulation (1200+ actors)
+
+## Documentation
+
 -   `SIMS_SCENARIOS.md` - Documentation of Sims scenarios
+-   `LITERATURE_REVIEW.md` - HTN planning optimization literature review
+-   `SCALING.md` - Scaling to 300+ actors analysis
+-   `OPTIMIZATIONS.md` - Implemented optimizations summary
+-   `PERFORMANCE.md` - Performance analysis and metrics
 
 ## How to Test
 
