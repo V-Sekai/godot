@@ -871,17 +871,26 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 
 		// Call method with appropriate arguments based on node type
 		if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
+			// Safety: Ensure p_args is an Array before converting
+			if (p_args.get_type() != Variant::ARRAY) {
+				if (verbose >= 2) {
+					ERR_PRINT(vformat("_select_best_method: p_args is not an Array (type: %d), skipping", p_args.get_type()));
+				}
+				continue;
+			}
 			Array args = p_args;
 			// CRITICAL: Task methods must receive the state as the first argument
 			// If args is empty, this is an error - fail instead of trying to fix it
-			if (args.is_empty()) {
+			if (args.is_empty() || args.size() < 1) {
 				if (verbose >= 2) {
 					ERR_PRINT("_select_best_method: Task method args is empty - state must be provided");
 				}
 				continue;
 			}
 			// Ensure first arg is a dictionary (state)
-			if (args[0].get_type() != Variant::DICTIONARY) {
+			// Safety: extract first arg to avoid multiple array accesses
+			Variant first_arg = args[0];
+			if (first_arg.get_type() != Variant::DICTIONARY) {
 				if (verbose >= 2) {
 					ERR_PRINT("_select_best_method: Task method first arg is not a dictionary (state)");
 				}
@@ -889,14 +898,13 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 			}
 			if (verbose >= 3) {
 				print_line(vformat("_select_best_method: Calling task method with %d args", args.size()));
-				if (args.size() > 0) {
-					print_line(vformat("_select_best_method: First arg type: %d (DICT=%d), is_empty: %s",
-							args[0].get_type(), Variant::DICTIONARY, args[0].get_type() == Variant::DICTIONARY ? "false" : "true"));
-					if (args[0].get_type() == Variant::DICTIONARY) {
-						Dictionary state_dict = args[0];
-						Array keys = state_dict.keys();
-						print_line(vformat("_select_best_method: State dict has %d keys: %s", state_dict.size(), _item_to_string(keys)));
-					}
+				// first_arg already extracted above
+				print_line(vformat("_select_best_method: First arg type: %d (DICT=%d), is_empty: %s",
+						first_arg.get_type(), Variant::DICTIONARY, first_arg.get_type() == Variant::DICTIONARY ? "false" : "true"));
+				if (first_arg.get_type() == Variant::DICTIONARY) {
+					Dictionary state_dict = first_arg;
+					Array keys = state_dict.keys();
+					print_line(vformat("_select_best_method: State dict has %d keys: %s", state_dict.size(), _item_to_string(keys)));
 				}
 			}
 			if (!method.is_valid()) {
@@ -1111,13 +1119,15 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 					}
 					continue;
 				}
-				if (!current_domain->action_dictionary.has(action[0])) {
+				// Safety: extract action name first to avoid multiple array accesses
+				String action_name_str = action[0];
+				if (!current_domain->action_dictionary.has(action_name_str)) {
 					if (verbose >= 1) {
-						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", action[0]));
+						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", action_name_str));
 					}
 					continue;
 				}
-				Callable action_name = current_domain->action_dictionary[action[0]];
+				Callable action_name = current_domain->action_dictionary[action_name_str];
 				if (verbose >= 1) {
 					String action_arguments;
 					Array actions = action.slice(1, action.size());
@@ -1506,7 +1516,21 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					} else {
 						// Normal case: check which tasks are missing or failed
 						for (int i = 0; i < original_todo_list.size(); i++) {
-							Array task_info = original_todo_list[i];
+							Variant task_item = original_todo_list[i];
+							// Handle both strings (most frequent) and arrays
+							String task_name;
+							if (task_item.get_type() == Variant::STRING) {
+								task_name = task_item;
+							} else if (task_item.get_type() == Variant::ARRAY) {
+								Array task_info = task_item;
+								if (task_info.size() > 0) {
+									task_name = task_info[0];
+								} else {
+									continue; // Skip empty arrays
+								}
+							} else {
+								continue; // Skip invalid types
+							}
 							bool found_closed = false;
 							// Check if this task exists in root's successors and is CLOSED
 							for (int j = 0; j < root_successors.size(); j++) {
@@ -1516,9 +1540,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 								}
 								Dictionary child_node = solution_graph.get_node(child_id);
 								int child_status = child_node["status"];
-								Array child_info = child_node["info"];
-								// Compare task info (simplified - just check first element)
-								if (child_info.size() > 0 && task_info.size() > 0 && child_info[0] == task_info[0]) {
+								Variant child_info_variant = child_node["info"];
+								// Handle both strings and arrays in child_info
+								String child_task_name;
+								if (child_info_variant.get_type() == Variant::STRING) {
+									child_task_name = child_info_variant;
+								} else if (child_info_variant.get_type() == Variant::ARRAY) {
+									Array child_info = child_info_variant;
+									if (child_info.size() > 0) {
+										child_task_name = child_info[0];
+									} else {
+										continue;
+									}
+								} else {
+									continue;
+								}
+								// Compare task names
+								if (child_task_name == task_name) {
 									// Task exists - only consider it found if it's CLOSED
 									// If it's FAILED, we need to remove it and recreate it
 									if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
@@ -1533,7 +1571,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 								}
 							}
 							if (!found_closed) {
-								tasks_to_recreate.push_back(task_info);
+								tasks_to_recreate.push_back(task_item);
 							}
 						}
 					}
@@ -1706,8 +1744,18 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// CRITICAL: Retrieve methods dynamically from current_domain to prevent domain pollution
 			// Do NOT use stored available_methods from node - it may be stale from a previous domain
-			Array task_arr = actual_task_info;
-			String task_name = task_arr.is_empty() ? String() : String(task_arr[0]);
+			// Handle both strings (most frequent) and arrays
+			String task_name;
+			if (actual_task_info.get_type() == Variant::STRING) {
+				task_name = actual_task_info;
+			} else if (actual_task_info.get_type() == Variant::ARRAY) {
+				Array task_arr = actual_task_info;
+				if (task_arr.is_empty() || task_arr.size() < 1) {
+					task_name = String();
+				} else {
+					task_name = String(task_arr[0]);
+				}
+			}
 			TypedArray<Callable> available_methods;
 			if (current_domain.is_valid() && current_domain->task_method_dictionary.has(task_name)) {
 				Variant methods_var = current_domain->task_method_dictionary[task_name];
@@ -1767,23 +1815,31 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// Use VSIDS-style method selection (select best method by activity score)
 			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
-			// task_arr already defined above
-			if (verbose >= 3) {
-				print_line(vformat("Task refinement: task_arr = %s (size %d)", _item_to_string(task_arr), task_arr.size()));
-			}
-			// Build args array: state is first argument, then additional arguments from task array (if any)
-			// Task array format: [task_name, arg1, arg2, ...]
+			// Build args array: state is first argument, then additional arguments from task (if any)
+			// Task format: string "task_name" or array [task_name, arg1, arg2, ...]
 			// Method signature: method(Dictionary p_state, arg1, arg2, ...)
 			Array args;
 			args.push_back(p_state);
-			// Append additional arguments from task array (skip task_name at index 0)
-			if (task_arr.size() > 1) {
-				args.append_array(task_arr.slice(1));
+			int additional_args_count = 0;
+			if (actual_task_info.get_type() == Variant::ARRAY) {
+				Array task_arr = actual_task_info;
+				if (verbose >= 3) {
+					print_line(vformat("Task refinement: task_arr = %s (size %d)", _item_to_string(task_arr), task_arr.size()));
+				}
+				// Append additional arguments from task array (skip task_name at index 0)
+				// CRITICAL: slice(1) preserves nested arrays/fluents (e.g., [5, 5] in ["move_task", "r1", [5, 5]])
+				// This ensures fluent arguments are passed correctly to task methods
+				if (task_arr.size() > 1) {
+					args.append_array(task_arr.slice(1));
+					additional_args_count = task_arr.size() - 1;
+				}
+			} else if (verbose >= 3) {
+				print_line(vformat("Task refinement: task = %s (string, no args)", task_name));
 			}
 			if (verbose >= 3) {
 				Array state_keys = p_state.keys();
-				print_line(vformat("Task refinement: args = [state with %d keys: %s] + %d additional args from task array",
-						state_keys.size(), _item_to_string(state_keys), task_arr.size() > 1 ? task_arr.size() - 1 : 0));
+				print_line(vformat("Task refinement: args = [state with %d keys: %s] + %d additional args from task",
+						state_keys.size(), _item_to_string(state_keys), additional_args_count));
 			}
 
 			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
@@ -1845,10 +1901,20 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 			// Bump activity of methods in conflict path (VSIDS-style)
 			_bump_conflict_path_activities(curr_node_id);
-			// Blacklist the task info since all methods failed (IPyHOP-style)
-			_blacklist_command(actual_task_info);
-			if (verbose >= 2) {
-				print_line("Blacklisted task info since all methods failed");
+			// Only blacklist the task if it's a subtask (not a root-level task)
+			// Root-level tasks should be retried with different methods after backtracking
+			// Subtasks should be blacklisted to prevent infinite loops
+			if (p_parent_node_id > 0) {
+				// This is a subtask - blacklist it to prevent retrying the same failed subtask
+				_blacklist_command(actual_task_info);
+				if (verbose >= 2) {
+					print_line("Blacklisted subtask info since all methods failed");
+				}
+			} else {
+				// Root-level task - don't blacklist, allow retry with different methods
+				if (verbose >= 2) {
+					print_line("Root-level task failed - will retry with different methods after backtracking");
+				}
 			}
 			// If this node was created by a parent's method subtasks, blacklist those subtasks
 			if (p_parent_node_id >= 0) {
@@ -2967,7 +3033,21 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 							tasks_to_recreate = original_todo_list.duplicate();
 						} else {
 							for (int i = 0; i < original_todo_list.size(); i++) {
-								Array task_info = original_todo_list[i];
+								Variant task_item = original_todo_list[i];
+								// Handle both strings (most frequent) and arrays
+								String task_name;
+								if (task_item.get_type() == Variant::STRING) {
+									task_name = task_item;
+								} else if (task_item.get_type() == Variant::ARRAY) {
+									Array task_info = task_item;
+									if (task_info.size() > 0) {
+										task_name = task_info[0];
+									} else {
+										continue; // Skip empty arrays
+									}
+								} else {
+									continue; // Skip invalid types
+								}
 								bool found_closed = false;
 								for (int j = 0; j < root_successors.size(); j++) {
 									int child_id = root_successors[j];
@@ -2976,8 +3056,23 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 									}
 									Dictionary child_node = solution_graph.get_node(child_id);
 									int child_status = child_node["status"];
-									Array child_info = child_node["info"];
-									if (child_info.size() > 0 && task_info.size() > 0 && child_info[0] == task_info[0]) {
+									Variant child_info_variant = child_node["info"];
+									// Handle both strings and arrays in child_info
+									String child_task_name;
+									if (child_info_variant.get_type() == Variant::STRING) {
+										child_task_name = child_info_variant;
+									} else if (child_info_variant.get_type() == Variant::ARRAY) {
+										Array child_info = child_info_variant;
+										if (child_info.size() > 0) {
+											child_task_name = child_info[0];
+										} else {
+											continue;
+										}
+									} else {
+										continue;
+									}
+									// Compare task names
+									if (child_task_name == task_name) {
 										if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 											found_closed = true;
 											break;
@@ -2989,7 +3084,7 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 									}
 								}
 								if (!found_closed) {
-									tasks_to_recreate.push_back(task_info);
+									tasks_to_recreate.push_back(task_item);
 								}
 							}
 						}
@@ -3186,8 +3281,18 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 			}
 
-			Array task_arr = actual_task_info;
-			String task_name = task_arr.is_empty() ? String() : String(task_arr[0]);
+			// Handle both strings (most frequent) and arrays
+			String task_name;
+			if (actual_task_info.get_type() == Variant::STRING) {
+				task_name = actual_task_info;
+			} else if (actual_task_info.get_type() == Variant::ARRAY) {
+				Array task_arr = actual_task_info;
+				if (task_arr.is_empty() || task_arr.size() < 1) {
+					task_name = String();
+				} else {
+					task_name = String(task_arr[0]);
+				}
+			}
 			TypedArray<Callable> available_methods;
 			if (current_domain.is_valid() && current_domain->task_method_dictionary.has(task_name)) {
 				Variant methods_var = current_domain->task_method_dictionary[task_name];
@@ -3238,18 +3343,29 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 			}
 
-			if (verbose >= 3) {
-				print_line(vformat("Task refinement: task_arr = %s (size %d)", _item_to_string(task_arr), task_arr.size()));
-			}
+			// Build args array: state is first argument, then additional arguments from task (if any)
+			// Task format: string "task_name" or array [task_name, arg1, arg2, ...]
 			Array args;
 			args.push_back(p_state);
-			if (task_arr.size() > 1) {
-				args.append_array(task_arr.slice(1));
+			int additional_args_count = 0;
+			if (actual_task_info.get_type() == Variant::ARRAY) {
+				Array task_arr = actual_task_info;
+				if (verbose >= 3) {
+					print_line(vformat("Task refinement: task_arr = %s (size %d)", _item_to_string(task_arr), task_arr.size()));
+				}
+				// CRITICAL: slice(1) preserves nested arrays/fluents (e.g., [5, 5] in ["move_task", "r1", [5, 5]])
+				// This ensures fluent arguments are passed correctly to task methods
+				if (task_arr.size() > 1) {
+					args.append_array(task_arr.slice(1));
+					additional_args_count = task_arr.size() - 1;
+				}
+			} else if (verbose >= 3) {
+				print_line(vformat("Task refinement: task = %s (string, no args)", String(actual_task_info)));
 			}
 			if (verbose >= 3) {
 				Array state_keys = p_state.keys();
-				print_line(vformat("Task refinement: args = [state with %d keys: %s] + %d additional args from task array",
-						state_keys.size(), _item_to_string(state_keys), task_arr.size() > 1 ? task_arr.size() - 1 : 0));
+				print_line(vformat("Task refinement: args = [state with %d keys: %s] + %d additional args from task",
+						state_keys.size(), _item_to_string(state_keys), additional_args_count));
 			}
 
 			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
@@ -3304,9 +3420,16 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				print_line("Task refinement failed, backtracking");
 			}
 			_bump_conflict_path_activities(p_curr_node_id);
-			_blacklist_command(actual_task_info);
-			if (verbose >= 2) {
-				print_line("Blacklisted task info since all methods failed");
+			// Only blacklist the task if it's a subtask (not a root-level task)
+			if (p_parent_node_id > 0) {
+				_blacklist_command(actual_task_info);
+				if (verbose >= 2) {
+					print_line("Blacklisted subtask info since all methods failed");
+				}
+			} else {
+				if (verbose >= 2) {
+					print_line("Root-level task failed - will retry with different methods after backtracking");
+				}
 			}
 			if (p_parent_node_id >= 0) {
 				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
