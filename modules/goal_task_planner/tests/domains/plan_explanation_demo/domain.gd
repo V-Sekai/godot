@@ -1,25 +1,25 @@
-extends Node
-
 # Simple domain for demonstrating plan explanation and debugging features
 # This domain models a simple "go to store and buy item" scenario
+
+class_name PlanExplanationDemoDomain
 
 static func create_planner_domain() -> PlannerDomain:
 	var domain = PlannerDomain.new()
 	
 	# Register actions
 	var actions = []
-	actions.append(Callable(Domain, "action_walk"))
-	actions.append(Callable(Domain, "action_buy"))
+	actions.append(Callable(PlanExplanationDemoDomain, "action_walk"))
+	actions.append(Callable(PlanExplanationDemoDomain, "action_buy"))
 	domain.add_actions(actions)
 	
 	# Register task methods
 	var go_to_methods = []
-	go_to_methods.append(Callable(Domain, "method_go_to_direct"))
-	go_to_methods.append(Callable(Domain, "method_go_to_via_landmark"))
+	go_to_methods.append(Callable(PlanExplanationDemoDomain, "method_go_to_direct"))
+	go_to_methods.append(Callable(PlanExplanationDemoDomain, "method_go_to_via_landmark"))
 	domain.add_task_methods("go_to", go_to_methods)
 	
 	var buy_methods = []
-	buy_methods.append(Callable(Domain, "method_buy_item"))
+	buy_methods.append(Callable(PlanExplanationDemoDomain, "method_buy_item"))
 	domain.add_task_methods("buy", buy_methods)
 	
 	return domain

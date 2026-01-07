@@ -9,7 +9,7 @@ func _ready():
 	print("=== Plan Explanation and Debugging Demo ===\n")
 	
 	# Create domain
-	var domain = Domain.create_planner_domain()
+	var domain = PlanExplanationDemoDomain.create_planner_domain()
 	
 	# Create planner
 	var plan = PlannerPlan.new()
