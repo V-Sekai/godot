@@ -1,13 +1,19 @@
-extends Node
-
+#!/usr/bin/env -S godot --headless --script
 # Test script demonstrating plan explanation and debugging features
 # Run this script to see plan explanation, debugging, and visualization features
 
-func _ready():
+extends SceneTree
+
+const Domain = preload("res://modules/goal_task_planner/tests/domains/plan_explanation_demo/domain.gd")
+
+func _init():
 	print("=== Plan Explanation and Debugging Demo ===\n")
+	call_deferred("run_demo")
+	
+func run_demo():
 	
 	# Create domain
-	var domain = PlanExplanationDemoDomain.create_planner_domain()
+	var domain = Domain.create_planner_domain()
 	
 	# Create planner
 	var plan = PlannerPlan.new()
@@ -170,4 +176,4 @@ func _ready():
 	print("\n" + ("=".repeat(50)))
 	print("Demo complete!")
 	print(("=".repeat(50)))
-
+	quit()

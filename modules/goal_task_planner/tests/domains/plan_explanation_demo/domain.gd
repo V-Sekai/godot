@@ -57,7 +57,7 @@ static func method_go_to_direct(state: Dictionary, destination: String) -> Varia
 	
 	# Direct path - faster but might not always work
 	if destination == "store" and current == "home":
-		return [["walk", "home", "store"]]
+		return [["action_walk", "home", "store"]]
 	
 	return null
 
@@ -69,16 +69,16 @@ static func method_go_to_via_landmark(state: Dictionary, destination: String) ->
 	# Via landmark - slower but more reliable
 	if destination == "store" and current == "home":
 		return [
-			["walk", "home", "park"],
-			["walk", "park", "store"]
+			["action_walk", "home", "park"],
+			["action_walk", "park", "store"]
 		]
 	
 	return null
 
-static func method_buy_item(state: Dictionary, item: String) -> Variant:
+static func method_buy_item(state: Dictionary, item: String, store: String) -> Variant:
 	var location = state.get("location", "home")
-	if location != "store":
-		return [["go_to", "store"], ["buy", item, "store"]]
+	if location != store:
+		return [["go_to", store], ["action_buy", item, store]]
 	
-	return [["buy", item, "store"]]
+	return [["action_buy", item, store]]
 
