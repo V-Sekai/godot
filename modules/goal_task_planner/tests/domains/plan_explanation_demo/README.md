@@ -145,4 +145,3 @@ Decision Points: 2
   Render with: dot -Tpng [path] -o plan_graph.png
 ✓ JSON graph saved to: user://plan_graph.json
 ```
-

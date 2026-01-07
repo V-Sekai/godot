@@ -262,44 +262,44 @@ Dictionary PlannerResult::explain_plan() const {
 	Dictionary explanation;
 	explanation["success"] = success;
 	explanation["total_nodes"] = solution_graph.size();
-	
+
 	// Count nodes by type and status
 	Dictionary node_counts;
 	int action_count = 0;
 	int task_count = 0;
 	int failed_count = 0;
 	int closed_count = 0;
-	
+
 	Array all_nodes = get_all_nodes();
 	for (int i = 0; i < all_nodes.size(); i++) {
 		Dictionary node = all_nodes[i];
 		int node_type = node.get("type", -1);
 		int node_status = node.get("status", -1);
-		
+
 		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION)) {
 			action_count++;
 		} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
 			task_count++;
 		}
-		
+
 		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
 			failed_count++;
 		} else if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			closed_count++;
 		}
 	}
-	
+
 	node_counts["actions"] = action_count;
 	node_counts["tasks"] = task_count;
 	node_counts["failed"] = failed_count;
 	node_counts["closed"] = closed_count;
 	explanation["node_counts"] = node_counts;
-	
+
 	// Extract plan summary
 	Array plan = extract_plan();
 	explanation["plan_length"] = plan.size();
 	explanation["plan_actions"] = plan;
-	
+
 	// Get decision points (nodes with alternatives)
 	Array decision_points;
 	for (int i = 0; i < all_nodes.size(); i++) {
@@ -327,7 +327,7 @@ Dictionary PlannerResult::explain_plan() const {
 		}
 	}
 	explanation["decision_points"] = decision_points;
-	
+
 	return explanation;
 }
 
@@ -336,7 +336,7 @@ Array PlannerResult::get_alternative_methods(int p_node_id) const {
 	if (!has_node(p_node_id)) {
 		return alternatives;
 	}
-	
+
 	Dictionary node = get_node(p_node_id);
 	if (node.has("decision_info")) {
 		Dictionary decision_info = node["decision_info"];
@@ -344,39 +344,39 @@ Array PlannerResult::get_alternative_methods(int p_node_id) const {
 			alternatives = decision_info["alternatives"];
 		}
 	}
-	
+
 	return alternatives;
 }
 
 Dictionary PlannerResult::get_decision_path(int p_node_id) const {
 	Dictionary path;
 	Array path_nodes;
-	
+
 	if (!has_node(p_node_id)) {
 		return path;
 	}
-	
+
 	// Traverse from node to root following parent relationships
 	int current_id = p_node_id;
 	HashSet<int> visited;
-	
+
 	while (current_id >= 0 && has_node(current_id) && !visited.has(current_id)) {
 		visited.insert(current_id);
 		Dictionary node = get_node(current_id);
-		
+
 		Dictionary path_node;
 		path_node["node_id"] = current_id;
 		path_node["type"] = node.get("type", -1);
 		path_node["status"] = node.get("status", -1);
 		path_node["info"] = node.get("info", Variant());
-		
+
 		// Add decision info if available
 		if (node.has("decision_info")) {
 			path_node["decision_info"] = node["decision_info"];
 		}
-		
+
 		path_nodes.push_back(path_node);
-		
+
 		// Find parent by searching for nodes that have current_id as successor
 		int parent_id = -1;
 		Array graph_keys = solution_graph.keys();
@@ -402,50 +402,53 @@ Dictionary PlannerResult::get_decision_path(int p_node_id) const {
 				}
 			}
 		}
-		
+
 		if (parent_id < 0 || parent_id == current_id) {
 			break; // Reached root or cycle
 		}
 		current_id = parent_id;
 	}
-	
+
 	path["path"] = path_nodes;
 	path["length"] = path_nodes.size();
 	path["target_node_id"] = p_node_id;
-	
+
 	return path;
 }
 
 String PlannerResult::to_dot_graph() const {
-	String dot = "digraph SolutionGraph {\n";
-	dot += "  rankdir=TB;\n";
-	dot += "  size=\"12,16\";\n";  // Larger canvas size (12x16 inches)
-	dot += "  ratio=auto;\n";  // Auto aspect ratio
-	dot += "  margin=2.0;\n";  // Large margin to prevent text clipping in corners
-	dot += "  nodesep=0.5;\n";  // Space between nodes
-	dot += "  ranksep=0.8;\n";  // Space between ranks
-	dot += "  node [shape=box, fontsize=10, width=0, height=0, fixedsize=false];\n";  // Auto-size nodes based on content
-	dot += "  edge [fontsize=8];\n";  // Smaller edge labels
-	dot += "\n";
-	
-	// Node type colors and shapes
-	Dictionary type_styles;
-	type_styles[static_cast<int>(PlannerNodeType::TYPE_ROOT)] = "[shape=ellipse, style=filled, fillcolor=lightblue]";
-	type_styles[static_cast<int>(PlannerNodeType::TYPE_ACTION)] = "[shape=box, style=filled, fillcolor=lightgreen]";
-	type_styles[static_cast<int>(PlannerNodeType::TYPE_TASK)] = "[shape=box, style=filled, fillcolor=lightyellow]";
-	type_styles[static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)] = "[shape=diamond, style=filled, fillcolor=lightcoral]";
-	type_styles[static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)] = "[shape=diamond, style=filled, fillcolor=lightpink]";
-	
-	// Status colors
-	Dictionary status_colors;
-	status_colors[static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)] = "green";
-	status_colors[static_cast<int>(PlannerNodeStatus::STATUS_FAILED)] = "red";
-	status_colors[static_cast<int>(PlannerNodeStatus::STATUS_OPEN)] = "yellow";
-	status_colors[static_cast<int>(PlannerNodeStatus::STATUS_NOT_APPLICABLE)] = "gray";
-	
+	String dot = "digraph ActivityGraph {\n";
+	dot += "  rankdir=TB;\n"; // top-bottom for hierarchical decomposition
+	dot += "  layout=dot;\n";
+	dot += "  newrank=true;\n";
+	dot += "  nodesep=0.7;\n";
+	dot += "  ranksep=1.0;\n";
+	dot += "  bgcolor=\"#FFFFFF\";\n";
+	dot += "  fontname=\"Arial,sans-serif\";\n";
+	dot += "  fontsize=20;\n";
+	dot += "  label=\"Goal Task Planner - Decomposition Tree with Sequential Path\";\n";
+	dot += "  labelloc=t;\n";
+	dot += "  labeljust=c;\n";
+
+	// Default node/edge styles
+	dot += "  node [shape=box, style=rounded, fillcolor=\"#F8F8F8\", fontcolor=\"#222222\", color=\"#888888\", penwidth=1.5, fontsize=12, fontname=\"Arial,sans-serif\"];\n";
+	dot += "  edge [color=\"#888888\", arrowsize=0.9, penwidth=1.0, fontname=\"Arial,sans-serif\", fontsize=11];\n";
+
+	// Start and end markers
+	dot += "  start [shape=circle, label=\"\", width=0.25, fixedsize=true, style=filled, fillcolor=\"#222222\", color=\"#222222\"];\n";
+	dot += "  end [shape=circle, peripheries=2, label=\"\", width=0.45, fixedsize=true, style=filled, fillcolor=\"#222222\", color=\"#222222\"];\n";
+
+	// Legend
+	dot += "  legend [shape=plaintext, label=<\n";
+	dot += "    <TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"6\" CELLPADDING=\"4\">\n";
+	dot += "      <TR><TD><B>Node Types</B></TD><TD><B>Sequential Path</B></TD></TR>\n";
+	dot += "      <TR><TD>Boxes: Tasks/Actions</TD><TD>Bold edges</TD></TR>\n";
+	dot += "    </TABLE>\n";
+	dot += "  >];\n";
+
 	Array graph_keys = solution_graph.keys();
-	
-	// Add nodes
+
+	// Draw Nodes
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
 		if (key.get_type() != Variant::INT) {
@@ -453,49 +456,46 @@ String PlannerResult::to_dot_graph() const {
 		}
 		int node_id = key;
 		Dictionary node = solution_graph[node_id];
-		
+
 		int node_type = node.get("type", -1);
 		int node_status = node.get("status", -1);
 		Variant info = node.get("info", Variant());
-		
-		// Create node label with better truncation
-		String label = String(info);
-		// Allow longer labels but truncate more intelligently
-		if (label.length() > 40) {
-			label = label.substr(0, 37) + "...";
+
+		String label = String(info).replace("\"", "\\\"").replace("\n", " ");
+
+		String shape = "box";
+		String fill = "#F8F8F8";
+		String border = "#888888";
+
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ROOT)) {
+			shape = "ellipse";
+			fill = "#FFF3E0";
+			border = "#FB8C00";
+		} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION)) {
+			fill = "#E3F2FD";
+			border = "#0288D1";
+		} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) || node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) || node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
+			fill = "#E8F5E9";
+			border = "#2E7D32";
 		}
-		label = label.replace("\"", "\\\"");
-		// Replace newlines with spaces for better display
-		label = label.replace("\n", " ");
-		
-		String node_label = vformat("  %d [label=\"%d: %s\"", node_id, node_id, label);
-		
-		// Add type style (extract attributes from style string, removing brackets)
-		if (type_styles.has(node_type)) {
-			String style_str = type_styles[node_type];
-			// Remove brackets and split by comma
-			style_str = style_str.replace("[", "").replace("]", "");
-			PackedStringArray attrs = style_str.split(", ");
-			for (int j = 0; j < attrs.size(); j++) {
-				String attr = attrs[j].strip_edges();
-				if (!attr.is_empty()) {
-					node_label += ", " + attr;
-				}
-			}
+
+		if (node.has("decision_info")) {
+			shape = "diamond";
+			fill = "#FFFDE7";
+			border = "#F9A825";
 		}
-		
-		// Add status color to border
-		if (status_colors.has(node_status)) {
-			node_label += vformat(", color=%s, penwidth=3", String(status_colors[node_status]));
+
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+			border = "#B71C1C";
+		} else if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			border = "#1B5E20";
 		}
-		
-		node_label += "];\n";
+
+		String node_label = vformat("    %d [shape=%s, style=filled, fillcolor=\"%s\", color=\"%s\", label=\"%s\"];\n", node_id, shape, fill, border, label);
 		dot += node_label;
 	}
-	
-	dot += "\n";
-	
-	// Add edges
+
+	// Draw decomposition edges
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
 		if (key.get_type() != Variant::INT) {
@@ -503,16 +503,59 @@ String PlannerResult::to_dot_graph() const {
 		}
 		int node_id = key;
 		Dictionary node = solution_graph[node_id];
-		
+
 		if (node.has("successors")) {
 			TypedArray<int> successors = node["successors"];
 			for (int j = 0; j < successors.size(); j++) {
 				int succ_id = successors[j];
-				dot += vformat("  %d -> %d;\n", node_id, succ_id);
+				dot += vformat("    %d -> %d;\n", node_id, succ_id);
 			}
 		}
 	}
-	
+
+	// Connect start -> root
+	for (int i = 0; i < graph_keys.size(); i++) {
+		Variant key = graph_keys[i];
+		if (key.get_type() != Variant::INT) {
+			continue;
+		}
+		int node_id = key;
+		Dictionary node = solution_graph[node_id];
+		int node_type = node.get("type", -1);
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ROOT)) {
+			dot += vformat("    start -> %d;\n", node_id);
+		}
+	}
+
+	// Overlay sequential action path with bold edges
+	Array plan = extract_plan();
+	Array action_node_ids;
+	for (int i = 0; i < plan.size(); i++) {
+		Array action = plan[i];
+		for (int j = 0; j < graph_keys.size(); j++) {
+			Variant key = graph_keys[j];
+			if (key.get_type() != Variant::INT) {
+				continue;
+			}
+			int node_id = key;
+			Dictionary node = solution_graph[node_id];
+			int node_type = node.get("type", -1);
+			if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) && node.get("info", Variant()) == action) {
+				action_node_ids.push_back(node_id);
+				break;
+			}
+		}
+	}
+	for (int i = 0; i < action_node_ids.size() - 1; i++) {
+		int from_id = action_node_ids[i];
+		int to_id = action_node_ids[i + 1];
+		dot += vformat("    %d -> %d [style=bold, color=\"#000000\", penwidth=3.0];\n", from_id, to_id);
+	}
+	if (!action_node_ids.is_empty()) {
+		int last_id = action_node_ids[action_node_ids.size() - 1];
+		dot += vformat("    %d -> end;\n", last_id);
+	}
+
 	dot += "}\n";
 	return dot;
 }
@@ -521,12 +564,12 @@ Dictionary PlannerResult::to_graph_json() const {
 	Dictionary graph_json;
 	graph_json["type"] = "SolutionGraph";
 	graph_json["success"] = success;
-	
+
 	Array nodes;
 	Array edges;
-	
+
 	Array graph_keys = solution_graph.keys();
-	
+
 	// Add nodes
 	for (int i = 0; i < graph_keys.size(); i++) {
 		Variant key = graph_keys[i];
@@ -535,18 +578,18 @@ Dictionary PlannerResult::to_graph_json() const {
 		}
 		int node_id = key;
 		Dictionary node = solution_graph[node_id];
-		
+
 		Dictionary node_json;
 		node_json["id"] = node_id;
 		node_json["type"] = node.get("type", -1);
 		node_json["status"] = node.get("status", -1);
 		node_json["info"] = node.get("info", Variant());
 		node_json["tag"] = node.get("tag", "new");
-		
+
 		if (node.has("decision_info")) {
 			node_json["decision_info"] = node["decision_info"];
 		}
-		
+
 		if (node.has("successors")) {
 			TypedArray<int> successors = node["successors"];
 			for (int j = 0; j < successors.size(); j++) {
@@ -556,13 +599,13 @@ Dictionary PlannerResult::to_graph_json() const {
 				edges.push_back(edge);
 			}
 		}
-		
+
 		nodes.push_back(node_json);
 	}
-	
+
 	graph_json["nodes"] = nodes;
 	graph_json["edges"] = edges;
-	
+
 	return graph_json;
 }
 
@@ -570,14 +613,14 @@ String PlannerResult::get_node_explanation(int p_node_id) const {
 	if (!has_node(p_node_id)) {
 		return vformat("Node %d does not exist in the solution graph.", p_node_id);
 	}
-	
+
 	Dictionary node = get_node(p_node_id);
 	int node_type = node.get("type", -1);
 	int node_status = node.get("status", -1);
 	Variant info = node.get("info", Variant());
-	
+
 	String explanation = vformat("Node %d: ", p_node_id);
-	
+
 	// Add type description
 	String type_name = "Unknown";
 	switch (static_cast<PlannerNodeType>(node_type)) {
@@ -600,7 +643,7 @@ String PlannerResult::get_node_explanation(int p_node_id) const {
 			break;
 	}
 	explanation += type_name + " - " + String(info) + "\n";
-	
+
 	// Add status
 	String status_name = "Unknown";
 	switch (static_cast<PlannerNodeStatus>(node_status)) {
@@ -620,7 +663,7 @@ String PlannerResult::get_node_explanation(int p_node_id) const {
 			break;
 	}
 	explanation += "Status: " + status_name + "\n";
-	
+
 	// Add decision info if available
 	if (node.has("decision_info")) {
 		Dictionary decision_info = node["decision_info"];
@@ -636,23 +679,20 @@ String PlannerResult::get_node_explanation(int p_node_id) const {
 		if (decision_info.has("alternatives")) {
 			Array alternatives = decision_info["alternatives"];
 			explanation += vformat("Alternative Methods Considered: %d\n", alternatives.size());
-			for (int i = 0; i < alternatives.size() && i < 5; i++) {
+			for (int i = 0; i < alternatives.size(); i++) {
 				Dictionary alt = alternatives[i];
-				explanation += vformat("  - %s (score: %.2f)\n", 
-					String(alt.get("method_id", "")), 
-					double(alt.get("score", 0.0)));
-			}
-			if (alternatives.size() > 5) {
-				explanation += vformat("  ... and %d more\n", alternatives.size() - 5);
+				explanation += vformat("  - %s (score: %.2f)\n",
+						String(alt.get("method_id", "")),
+						double(alt.get("score", 0.0)));
 			}
 		}
 	}
-	
+
 	// Add successors info
 	if (node.has("successors")) {
 		TypedArray<int> successors = node["successors"];
 		explanation += vformat("Child Nodes: %d\n", successors.size());
 	}
-	
+
 	return explanation;
 }
