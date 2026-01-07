@@ -431,8 +431,6 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 			node_to_retry["state"] = Dictionary(); // Clear state snapshot - use current state instead
 			node_to_retry["stn_snapshot"] = Variant(); // Clear STN snapshot too
 			node_to_retry["created_subtasks"] = Variant(); // Clear created_subtasks
-			// Note: available_methods is retrieved fresh from domain in _planning_loop_recursive,
-			// so we don't need to reset it here - it will be re-fetched with all methods available
 			p_graph.update_node(new_parent_node_id, node_to_retry);
 
 			BacktrackResult result;

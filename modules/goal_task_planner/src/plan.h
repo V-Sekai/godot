@@ -98,7 +98,6 @@ class PlannerPlan : public Resource {
 	};
 	MethodCandidate _select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type);
 	// Graph-based planning methods
-	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
 	Dictionary _planning_loop_iterative(int p_parent_node_id, Dictionary p_state, int p_iter);
 	// Helper for iterative planning: processes a single node and pushes frames to stack or sets final_state
 	// Returns true to continue loop, false if final_state is set
