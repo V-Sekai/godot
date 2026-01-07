@@ -919,12 +919,15 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 				print_line(vformat("_select_best_method: About to call %s with %d args", method_info, args.size()));
 			}
 			// Use callp to get error information (Godot doesn't use exceptions)
+			// Use LocalVector instead of alloca() for sanitizer compatibility
+			LocalVector<const Variant *> argptrs_vec;
+			argptrs_vec.resize(args.size());
 			const Variant **argptrs = nullptr;
 			if (args.size() > 0) {
-				argptrs = (const Variant **)alloca(sizeof(Variant *) * args.size());
 				for (int j = 0; j < args.size(); j++) {
-					argptrs[j] = &args[j];
+					argptrs_vec[j] = &args[j];
 				}
+				argptrs = argptrs_vec.ptr();
 			}
 			Callable::CallError call_error;
 			Variant return_value;
