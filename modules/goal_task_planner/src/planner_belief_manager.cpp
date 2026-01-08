@@ -81,14 +81,14 @@ void PlannerBeliefManager::process_observation_for_persona(const String &p_perso
 		bool is_fact = p_observation.get("is_fact", false);
 
 		if (!subject.is_empty() && !predicate.is_empty()) {
-			Dictionary metadata;
-			metadata["type"] = is_fact ? "fact" : "belief";
-			metadata["source"] = is_fact ? "allocentric" : p_persona_id;
-			metadata["confidence"] = 1.0;
-			metadata["timestamp"] = OS::get_singleton()->get_ticks_msec();
-			metadata["accessibility"] = "public"; // or based on observation
+			Dictionary belief_metadata;
+			belief_metadata["type"] = is_fact ? "fact" : "belief";
+			belief_metadata["source"] = is_fact ? "allocentric" : p_persona_id;
+			belief_metadata["confidence"] = 1.0;
+			belief_metadata["timestamp"] = OS::get_singleton()->get_ticks_msec();
+			belief_metadata["accessibility"] = "public"; // or based on observation
 
-			persona->get_belief_state()->set_predicate(subject, predicate, value, metadata);
+			persona->get_belief_state()->set_predicate(subject, predicate, value, belief_metadata);
 		}
 	}
 }

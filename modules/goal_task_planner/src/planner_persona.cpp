@@ -213,13 +213,13 @@ Dictionary PlannerPersona::get_beliefs_about(const String &p_target_persona_id) 
 }
 
 void PlannerPersona::set_belief_about(const String &p_target_persona_id, const String &p_belief_key, const Variant &p_belief_value, double p_confidence, int64_t p_timestamp) {
-	Dictionary metadata;
-	metadata["confidence"] = p_confidence;
-	metadata["type"] = "belief";
-	metadata["source"] = persona_id;
-	metadata["timestamp"] = p_timestamp == 0 ? OS::get_singleton()->get_ticks_msec() : p_timestamp;
-	metadata["accessibility"] = "private";
-	belief_state->set_belief_about(persona_id, p_target_persona_id, p_belief_key, p_belief_value, metadata);
+	Dictionary belief_metadata;
+	belief_metadata["confidence"] = p_confidence;
+	belief_metadata["type"] = "belief";
+	belief_metadata["source"] = persona_id;
+	belief_metadata["timestamp"] = p_timestamp == 0 ? OS::get_singleton()->get_ticks_msec() : p_timestamp;
+	belief_metadata["accessibility"] = "private";
+	belief_state->set_belief_about(persona_id, p_target_persona_id, p_belief_key, p_belief_value, belief_metadata);
 }
 
 double PlannerPersona::get_belief_confidence_for(const String &p_target_persona_id, const String &p_belief_key) const {
