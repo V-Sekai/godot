@@ -35,7 +35,6 @@
 
 #include "../../src/plan.h"
 #include "../../src/planner_belief_manager.h"
-#include "../../src/planner_facts_allocentric.h"
 #include "../../src/planner_persona.h"
 
 #include "core/math/vector3.h"
@@ -87,7 +86,7 @@ TEST_CASE("[Modules][Planner][Persona] Belief formation and information asymmetr
 	Ref<PlannerPersona> persona_b = PlannerPersona::create_ai("persona_b", "Bob");
 
 	// Information asymmetry: Cannot directly access planner state
-	Dictionary result = PlannerPersona::get_planner_state("persona_b", "persona_a");
+	Dictionary result = persona_b->get_planner_state("persona_b", "persona_a");
 	CHECK(result.has("error"));
 	CHECK(String(result["error"]) == "hidden");
 
@@ -119,8 +118,8 @@ TEST_CASE("[Modules][Planner][BeliefManager] Register and manage personas") {
 	CHECK(retrieved->get_persona_id() == "p1");
 }
 
-TEST_CASE("[Modules][Planner][FactsAllocentric] Shared ground truth") {
-	Ref<PlannerFactsAllocentric> facts = memnew(PlannerFactsAllocentric);
+TEST_CASE("[Modules][Planner][State] Shared ground truth") {
+	Ref<PlannerState> facts = memnew(PlannerState);
 
 	// Set terrain facts
 	facts->set_terrain_fact("location_a", "type", "forest");
@@ -150,15 +149,12 @@ TEST_CASE("[Modules][Planner][Persona] Integration with PlannerPlan") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerPersona> persona = PlannerPersona::create_human("p1", "Alice");
 	Ref<PlannerBeliefManager> manager = memnew(PlannerBeliefManager);
-	Ref<PlannerFactsAllocentric> facts = memnew(PlannerFactsAllocentric);
 
 	plan->set_current_persona(persona);
 	plan->set_belief_manager(manager);
-	plan->set_allocentric_facts(facts);
 
 	CHECK(plan->get_current_persona().is_valid());
 	CHECK(plan->get_belief_manager().is_valid());
-	CHECK(plan->get_allocentric_facts().is_valid());
 }
 
 } // namespace TestPersonaBelief

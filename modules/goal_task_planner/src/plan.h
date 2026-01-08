@@ -39,7 +39,6 @@
 #include "core/variant/typed_array.h"
 
 #include "planner_belief_manager.h"
-#include "planner_facts_allocentric.h"
 #include "planner_metadata.h"
 #include "planner_persona.h"
 #include "planner_result.h"
@@ -65,7 +64,6 @@ class PlannerPlan : public Resource {
 	// Belief-immersed architecture support
 	Ref<PlannerPersona> current_persona; // Current persona for ego-centric planning
 	Ref<PlannerBeliefManager> belief_manager; // Belief manager for multi-persona interactions
-	Ref<PlannerFactsAllocentric> allocentric_facts; // Shared ground truth observable by all personas
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	int max_iterations = 50000; // Maximum planning loop iterations (safety limit to prevent infinite loops)
@@ -196,8 +194,6 @@ public:
 	void set_current_persona(Ref<PlannerPersona> p_persona) { current_persona = p_persona; }
 	Ref<PlannerBeliefManager> get_belief_manager() const { return belief_manager; }
 	void set_belief_manager(Ref<PlannerBeliefManager> p_manager) { belief_manager = p_manager; }
-	Ref<PlannerFactsAllocentric> get_allocentric_facts() const { return allocentric_facts; }
-	void set_allocentric_facts(Ref<PlannerFactsAllocentric> p_facts) { allocentric_facts = p_facts; }
 
 protected:
 	static void _bind_methods();

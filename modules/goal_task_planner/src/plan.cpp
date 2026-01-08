@@ -1281,10 +1281,6 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_belief_manager", "manager"), &PlannerPlan::set_belief_manager);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "belief_manager", PROPERTY_HINT_RESOURCE_TYPE, "PlannerBeliefManager"), "set_belief_manager", "get_belief_manager");
 
-	ClassDB::bind_method(D_METHOD("get_allocentric_facts"), &PlannerPlan::get_allocentric_facts);
-	ClassDB::bind_method(D_METHOD("set_allocentric_facts", "facts"), &PlannerPlan::set_allocentric_facts);
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "allocentric_facts", PROPERTY_HINT_RESOURCE_TYPE, "PlannerFactsAllocentric"), "set_allocentric_facts", "get_allocentric_facts");
-
 	// Temporal planning methods
 	ClassDB::bind_method(D_METHOD("get_time_range_dict"), &PlannerPlan::get_time_range_dict);
 	ClassDB::bind_method(D_METHOD("set_time_range_dict", "time_range"), &PlannerPlan::set_time_range_dict);
@@ -1354,7 +1350,6 @@ void PlannerPlan::reset() {
 	// Reset persona-related state (belief-immersed architecture)
 	current_persona = Ref<PlannerPersona>();
 	belief_manager = Ref<PlannerBeliefManager>();
-	allocentric_facts = Ref<PlannerFactsAllocentric>();
 
 	// Reset iteration counter
 	iterations = 0;
@@ -3591,37 +3586,7 @@ Dictionary PlannerPlan::_get_ego_centric_state(const Dictionary &p_state) const 
 }
 
 Dictionary PlannerPlan::_merge_allocentric_facts(const Dictionary &p_state) const {
-	Dictionary merged_state = p_state.duplicate(true);
-
-	// If we have allocentric facts, merge them into the state
-	if (allocentric_facts.is_valid()) {
-		// Merge terrain facts
-		Dictionary terrain_facts = allocentric_facts->get_all_terrain_facts();
-		Array terrain_keys = terrain_facts.keys();
-		for (int i = 0; i < terrain_keys.size(); i++) {
-			String location = terrain_keys[i];
-			Dictionary location_facts = terrain_facts[location];
-			merged_state[vformat("terrain_%s", location)] = location_facts;
-		}
-
-		// Merge shared objects
-		Dictionary shared_objects = allocentric_facts->get_all_shared_objects();
-		merged_state["shared_objects"] = shared_objects;
-
-		// Merge public events
-		Dictionary public_events = allocentric_facts->get_all_public_events();
-		merged_state["public_events"] = public_events;
-
-		// Merge entity positions
-		Dictionary entity_positions = allocentric_facts->get_all_entity_positions();
-		merged_state["entity_positions"] = entity_positions;
-
-		// Merge public entity capabilities
-		Dictionary entity_capabilities = allocentric_facts->get_all_entity_capabilities_public();
-		merged_state["entity_capabilities_public"] = entity_capabilities;
-	}
-
-	return merged_state;
+	return p_state; // TODO: merge allocentric triples from belief_manager
 }
 
 void PlannerPlan::_update_beliefs_from_action(const Variant &p_action, const Dictionary &p_state_before, const Dictionary &p_state_after) {

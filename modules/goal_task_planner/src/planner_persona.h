@@ -36,6 +36,7 @@
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
+#include "planner_state.h"
 
 // Persona identity types based on capabilities
 enum PlannerPersonaIdentity {
@@ -56,9 +57,7 @@ private:
 	PlannerPersonaIdentity identity_type;
 	bool active;
 	Dictionary metadata; // Stores character, position, capabilities data
-	Dictionary beliefs_about_others; // Ego-centric beliefs about other personas
-	Dictionary belief_confidence; // Confidence levels for beliefs (0.0 to 1.0)
-	Dictionary belief_timestamps; // Timestamps for beliefs (absolute microseconds since Unix epoch)
+	Ref<PlannerState> belief_state; // Unified state for beliefs
 	TypedArray<String> capabilities; // Capabilities that determine persona type
 
 	// Human persona capabilities
@@ -99,8 +98,9 @@ public:
 	int get_identity_type() const { return static_cast<int>(identity_type); }
 	bool is_active() const { return active; }
 	Dictionary get_metadata() const { return metadata; }
-	Dictionary get_beliefs_about_others() const { return beliefs_about_others; }
-	Dictionary get_belief_confidence() const { return belief_confidence; }
+	Ref<PlannerState> get_belief_state() const { return belief_state; }
+	Dictionary get_beliefs_about_others() const { return Dictionary(); } // Deprecated, use get_beliefs_about
+	Dictionary get_belief_confidence() const { return Dictionary(); } // Deprecated
 	TypedArray<String> get_capabilities() const { return capabilities; }
 
 	// Setters
@@ -124,8 +124,7 @@ public:
 	void update_belief_confidence(const String &p_target_persona_id, const String &p_belief_key, double p_confidence);
 
 	// Information asymmetry: Personas cannot directly access each other's internal states
-	// This method returns an error to demonstrate information asymmetry
-	static Dictionary get_planner_state(const String &p_target_persona_id, const String &p_requesting_persona_id);
+	Dictionary get_planner_state(const String &p_target_persona_id, const String &p_requesting_persona_id) const;
 
 	// Observation and communication for belief formation
 	void process_observation(const Dictionary &p_observation);

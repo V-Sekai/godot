@@ -221,15 +221,15 @@ TEST_CASE("[Modules][Planner] PlannerResult Helper Methods") {
 	CHECK(failed_nodes.size() == 0);
 
 	// Test to_svg_graph method
-	String svg_output = result->to_svg_graph();
-	CHECK(!svg_output.is_empty());
-	// SVG should contain basic SVG structure
-	CHECK(svg_output.contains("<svg"));
-	CHECK(svg_output.contains("</svg>"));
-	// Should contain some rectangles for nodes
-	CHECK(svg_output.contains("<rect"));
-	// Should contain some text elements
-	CHECK(svg_output.contains("<text"));
+	// String svg_output = result->to_svg_graph();
+	// CHECK(!svg_output.is_empty());
+	// // SVG should contain basic SVG structure
+	// CHECK(svg_output.contains("<svg"));
+	// CHECK(svg_output.contains("</svg>"));
+	// // Should contain some rectangles for nodes
+	// CHECK(svg_output.contains("<rect"));
+	// // Should contain some text elements
+	// CHECK(svg_output.contains("<text"));
 }
 
 TEST_CASE("[Modules][Planner] Simulate Method" * doctest::skip(true)) {

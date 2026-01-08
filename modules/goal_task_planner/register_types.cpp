@@ -38,7 +38,6 @@
 #include "src/multigoal.h"
 #include "src/plan.h"
 #include "src/planner_belief_manager.h"
-#include "src/planner_facts_allocentric.h"
 #include "src/planner_persona.h"
 #include "src/planner_result.h"
 #include "src/planner_state.h"
@@ -55,7 +54,6 @@ void initialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	ClassDB::register_class<PlannerMultigoal>();
 	ClassDB::register_class<PlannerPersona>();
 	ClassDB::register_class<PlannerBeliefManager>();
-	ClassDB::register_class<PlannerFactsAllocentric>();
 }
 
 void uninitialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
