@@ -165,8 +165,8 @@ TEST_CASE("[Modules][Planner] STN with many constraints") {
 	}
 
 	for (int i = 0; i < 9; i++) {
-		stn.add_constraint("tp" + String::num(i), "tp" + String::num(i + 1), 
-			i * 100, (i + 1) * 100);
+		stn.add_constraint("tp" + String::num(i), "tp" + String::num(i + 1),
+				i * 100, (i + 1) * 100);
 	}
 
 	CHECK(stn.is_consistent());
