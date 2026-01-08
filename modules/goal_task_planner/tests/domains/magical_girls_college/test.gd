@@ -183,7 +183,7 @@ func setup_belief_manager() -> PlannerBeliefManager:
 	manager.register_persona(create_luna_persona())
 	return manager
 
-func setup_allocentric_facts() -> PlannerState:
+func setup_shared_state() -> PlannerState:
 	var facts = PlannerState.new()
 
 	# Set terrain facts
@@ -277,10 +277,10 @@ func test_setup_personas():
 	assert_test(manager.has_persona("kira"), "Manager should have kira")
 	assert_test(manager.has_persona("luna"), "Manager should have luna")
 
-func test_setup_allocentric_facts():
-	test("Setup allocentric facts - terrain, objects, events, positions")
+func test_setup_shared_state():
+	test("Setup shared state - terrain, objects, events, positions")
 
-	var facts = setup_allocentric_facts()
+	var facts = setup_shared_state()
 
 	assert_test(facts.has_terrain_fact("library", "type"), "Should have library terrain fact")
 	assert_test(str(facts.get_terrain_fact("library", "type")) == "indoor", "Library should be indoor")
@@ -326,15 +326,13 @@ func test_planning_with_persona():
 
 	var yuki = create_yuki_persona()
 	var manager = setup_belief_manager()
-	var facts = setup_allocentric_facts()
+	var facts = setup_shared_state()
 
 	plan.set_current_persona(yuki)
 	plan.set_belief_manager(manager)
-	plan.set_allocentric_facts(facts)
 
 	assert_test(plan.get_current_persona() != null, "Plan should have current persona")
 	assert_test(plan.get_belief_manager() != null, "Plan should have belief manager")
-	assert_test(plan.get_allocentric_facts() != null, "Plan should have allocentric facts")
 
 	var state = create_magical_girls_college_init_state()
 	var todo_list = [["task_manage_week", "yuki"]]
@@ -1083,7 +1081,7 @@ func test_reset():
 
 func run_all_tests():
 	test_setup_personas()
-	test_setup_allocentric_facts()
+	test_setup_shared_state()
 	test_planning_with_persona()
 	test_belief_formation()
 	test_simple_planning()

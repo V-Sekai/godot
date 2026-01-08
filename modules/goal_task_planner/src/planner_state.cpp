@@ -32,12 +32,14 @@
 
 #include "core/error/error_macros.h"
 #include "core/object/class_db.h"
-#include "core/variant/variant.h"
-#include "core/templates/vector.h"
 #include "core/os/os.h"
+#include "core/templates/vector.h"
+#include "core/variant/variant.h"
 
 void PlannerState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_predicate", "subject", "predicate"), &PlannerState::get_predicate);
+	ClassDB::bind_method(D_METHOD("set_predicate", "subject", "predicate", "value", "metadata"), &PlannerState::set_predicate, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("get_triples_as_array"), &PlannerState::get_triples_as_array);
 	ClassDB::bind_method(D_METHOD("get_subject_predicate_list"), &PlannerState::get_subject_predicate_list);
 
 	ClassDB::bind_method(D_METHOD("has_subject_variable", "variable"), &PlannerState::has_subject_variable);
@@ -49,6 +51,51 @@ void PlannerState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("has_entity", "entity_id"), &PlannerState::has_entity);
 	ClassDB::bind_method(D_METHOD("get_entity_capabilities", "entity_id"), &PlannerState::get_entity_capabilities);
 	ClassDB::bind_method(D_METHOD("get_all_entity_capabilities"), &PlannerState::get_all_entity_capabilities);
+	ClassDB::bind_method(D_METHOD("get_all_entities"), &PlannerState::get_all_entities);
+
+	// Terrain facts (allocentric)
+	ClassDB::bind_method(D_METHOD("set_terrain_fact", "location", "fact_key", "value"), &PlannerState::set_terrain_fact);
+	ClassDB::bind_method(D_METHOD("get_terrain_fact", "location", "fact_key"), &PlannerState::get_terrain_fact);
+	ClassDB::bind_method(D_METHOD("has_terrain_fact", "location", "fact_key"), &PlannerState::has_terrain_fact);
+	ClassDB::bind_method(D_METHOD("get_all_terrain_facts"), &PlannerState::get_all_terrain_facts);
+
+	// Shared objects
+	ClassDB::bind_method(D_METHOD("add_shared_object", "object_id", "object_data"), &PlannerState::add_shared_object);
+	ClassDB::bind_method(D_METHOD("remove_shared_object", "object_id"), &PlannerState::remove_shared_object);
+	ClassDB::bind_method(D_METHOD("get_shared_object", "object_id"), &PlannerState::get_shared_object);
+	ClassDB::bind_method(D_METHOD("has_shared_object", "object_id"), &PlannerState::has_shared_object);
+	ClassDB::bind_method(D_METHOD("get_all_shared_object_ids"), &PlannerState::get_all_shared_object_ids);
+	ClassDB::bind_method(D_METHOD("get_all_shared_objects"), &PlannerState::get_all_shared_objects);
+
+	// Public events
+	ClassDB::bind_method(D_METHOD("add_public_event", "event_id", "event_data"), &PlannerState::add_public_event);
+	ClassDB::bind_method(D_METHOD("remove_public_event", "event_id"), &PlannerState::remove_public_event);
+	ClassDB::bind_method(D_METHOD("get_public_event", "event_id"), &PlannerState::get_public_event);
+	ClassDB::bind_method(D_METHOD("has_public_event", "event_id"), &PlannerState::has_public_event);
+	ClassDB::bind_method(D_METHOD("get_all_public_event_ids"), &PlannerState::get_all_public_event_ids);
+	ClassDB::bind_method(D_METHOD("get_all_public_events"), &PlannerState::get_all_public_events);
+
+	// Entity positions
+	ClassDB::bind_method(D_METHOD("set_entity_position", "entity_id", "position"), &PlannerState::set_entity_position);
+	ClassDB::bind_method(D_METHOD("get_entity_position", "entity_id"), &PlannerState::get_entity_position);
+	ClassDB::bind_method(D_METHOD("has_entity_position", "entity_id"), &PlannerState::has_entity_position);
+	ClassDB::bind_method(D_METHOD("get_all_entity_positions"), &PlannerState::get_all_entity_positions);
+
+	// Public entity capabilities
+	ClassDB::bind_method(D_METHOD("set_entity_capability_public", "entity_id", "capability", "value"), &PlannerState::set_entity_capability_public);
+	ClassDB::bind_method(D_METHOD("get_entity_capability_public", "entity_id", "capability"), &PlannerState::get_entity_capability_public);
+	ClassDB::bind_method(D_METHOD("has_entity_capability_public", "entity_id", "capability"), &PlannerState::has_entity_capability_public);
+	ClassDB::bind_method(D_METHOD("get_all_entity_capabilities_public"), &PlannerState::get_all_entity_capabilities_public);
+
+	// Observation methods
+	ClassDB::bind_method(D_METHOD("observe_terrain", "location"), &PlannerState::observe_terrain);
+	ClassDB::bind_method(D_METHOD("observe_shared_objects", "location"), &PlannerState::observe_shared_objects);
+	ClassDB::bind_method(D_METHOD("observe_public_events"), &PlannerState::observe_public_events);
+	ClassDB::bind_method(D_METHOD("observe_entity_positions"), &PlannerState::observe_entity_positions);
+	ClassDB::bind_method(D_METHOD("observe_entity_capabilities"), &PlannerState::observe_entity_capabilities);
+
+	// Clear methods
+	ClassDB::bind_method(D_METHOD("clear_allocentric_facts"), &PlannerState::clear_allocentric_facts);
 
 	// Belief management with metadata
 	ClassDB::bind_method(D_METHOD("get_beliefs_about", "persona_id", "target"), &PlannerState::get_beliefs_about);
@@ -92,6 +139,19 @@ void PlannerState::set_predicate(const String &p_subject, const String &p_predic
 	new_triple.object = p_value;
 	new_triple.metadata = metadata;
 	triples.push_back(new_triple);
+}
+
+TypedArray<Dictionary> PlannerState::get_triples_as_array() const {
+	TypedArray<Dictionary> result;
+	for (const auto &triple : triples) {
+		Dictionary dict;
+		dict["subject"] = triple.subject;
+		dict["predicate"] = triple.predicate;
+		dict["object"] = triple.object;
+		dict["metadata"] = triple.metadata;
+		result.push_back(dict);
+	}
+	return result;
 }
 
 TypedArray<String> PlannerState::get_subject_predicate_list() const {
@@ -512,10 +572,6 @@ void PlannerState::clear_allocentric_facts() {
 }
 
 // Belief methods implementations
-
-
-
-
 
 int64_t PlannerState::get_belief_timestamp(const String &p_persona_id, const String &p_target, const String &p_predicate) const {
 	for (const auto &triple : triples) {

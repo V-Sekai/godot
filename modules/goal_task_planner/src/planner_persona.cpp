@@ -33,11 +33,11 @@
 
 #include "planner_persona.h"
 
+#include "core/os/os.h"
 #include "core/string/print_string.h"
 #include "core/string/ustring.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/variant.h"
-#include "core/os/os.h"
 #include "planner_time_range.h"
 
 // Capability constants

@@ -5,7 +5,7 @@
 # Sims House Simulation - Actor Model with Mailboxes
 # Uses lockless ring buffers for message passing between actors
 # Each agent is an actor with its own mailbox
-# Allocentric facts provide shared read-only ground truth
+# Unified state provides shared knowledge representation
 
 extends SceneTree
 
@@ -262,10 +262,8 @@ class Actor:
 							print("  ❌ Plan failed! (result exists but not successful)")
 							# Try to get more info about why it failed
 							var solution_graph = result.get_solution_graph()
-							if solution_graph != null:
-								var graph_dict = solution_graph.get_graph()
-								if graph_dict != null and graph_dict.size() > 0:
-									print("    Solution graph has %d nodes" % graph_dict.size())
+							if solution_graph != null and solution_graph.size() > 0:
+								print("    Solution graph has %d nodes" % solution_graph.size())
 						else:
 							print("  ❌ Plan failed! (result is null)")
 					last_plan_result = null
@@ -566,7 +564,7 @@ func execute_plan_helper(state: Dictionary, plan_actions: Array, persona_id: Str
 	return new_state
 
 var actors: Array = []
-var allocentric_facts: Dictionary = {}
+var shared_state: Dictionary = {}
 
 const NUM_TRACKED_ACTORS = 8
 var tracked_actor_ids: Array = []
@@ -622,7 +620,7 @@ func create_actor_state(persona_id: String) -> Dictionary:
 
 func _init():
 	print("=== Sims House Simulation - Actor Model (Lockless) ===")
-	print("Using mailboxes and allocentric facts for lockless communication")
+	print("Using mailboxes and unified state for lockless communication")
 	call_deferred("start_simulation")
 
 func start_simulation():
