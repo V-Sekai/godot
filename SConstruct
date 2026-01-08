@@ -346,7 +346,8 @@ if env["library_type"] == "static_library":
 elif env["library_type"] == "shared_library":
     env.Append(CPPDEFINES=["LIBGODOT_ENABLED"])
     env.Append(CCFLAGS=["-fPIC"])
-    env.Append(STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME=True)
+    # SCons expects this to be a boolean env var, not an appended list.
+    env["STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME"] = True
 else:
     env.__class__.add_program = methods.add_program
 
