@@ -24,7 +24,7 @@ Key components:
 -   `PlannerTask` / `PlannerTaskMetadata`: Task metadata support
 -   `PlannerPersona`: Persona entity for belief-immersed planning (human, AI, hybrid)
 -   `PlannerBeliefManager`: Belief formation and updating across personas
--   `PlannerFactsAllocentric`: Shared ground truth observable by all personas
+-   `PlannerState`: Unified knowledge representation using triples with metadata
 
 ## Build Commands
 
@@ -200,7 +200,7 @@ All source files are located in `src/` directory:
 -   `planner_time_range.h`: Time range management
 -   `planner_persona.h/cpp`: Persona entity for belief-immersed planning
 -   `planner_belief_manager.h/cpp`: Belief formation and updating across personas
--   `planner_facts_allocentric.h/cpp`: Shared ground truth observable by all personas
+-   `planner_state.h/cpp`: Unified knowledge representation using triples with metadata
 
 ### Test Files
 
@@ -513,11 +513,11 @@ The planner supports belief-immersed planning through three key classes:
 
 -   **`PlannerBeliefManager`**: Handles belief formation, updating, and confidence management across personas. Manages the persona registry and enforces information asymmetry (personas cannot directly access each other's internal states). Use `register_persona()` to register personas, `get_beliefs_about()` to retrieve ego-centric beliefs, and `process_observation_for_persona()` / `process_communication_for_persona()` to update beliefs.
 
--   **`PlannerFactsAllocentric`**: Represents shared ground truth observable by all personas. Includes terrain facts, shared objects, public events, entity positions, and publicly observable entity capabilities. Unlike ego-centric beliefs (which are persona-specific), allocentric facts represent the shared reality that all personas can observe. Use `observe_terrain()`, `observe_shared_objects()`, `observe_public_events()`, etc. to observe facts.
+-   **`PlannerState`**: Unified knowledge representation using subject-predicate-object triples with metadata for information asymmetry. Stores facts, beliefs, terrain information, shared objects, public events, and entity data. Supports different knowledge types (facts, beliefs, states) with metadata including confidence, timestamps, and accessibility levels. Use `set_predicate()` with metadata to store beliefs, `observe_*()` methods to access observable information.
 
-**Integration with PlannerPlan**: Set `current_persona`, `belief_manager`, and `allocentric_facts` on a `PlannerPlan` instance to enable belief-immersed planning. The planner will:
+**Integration with PlannerPlan**: Set `current_persona` and `belief_manager` on a `PlannerPlan` instance to enable belief-immersed planning. The planner will:
 
-1. **Merge allocentric facts** into the planning state automatically (terrain, shared objects, public events, entity positions, public capabilities)
+1. **Merge observable facts** from the unified state into the planning state automatically (terrain, shared objects, public events, entity positions, public capabilities)
 2. **Apply ego-centric perspective** by merging the persona's beliefs about others into the state (beliefs are accessible as state predicates like `belief_{target_persona_id}_{belief_key}`)
 3. **Update beliefs** automatically when actions execute, processing observations through the belief manager
 
@@ -578,7 +578,7 @@ The Godot planner is focused on core HTN planning functionality and does not inc
 
 1. **Persona System**: ✅ **IMPLEMENTED** - The Godot planner now includes `PlannerPersona` with unified persona models (human, AI, hybrid) and capability-based differentiation. Personas can be created using `PlannerPersona::create_human()`, `create_ai()`, `create_hybrid()`, or `create_basic()`. The planner supports both domain-centric and persona-centric planning.
 
-2. **Belief-Immersed Architecture**: ✅ **IMPLEMENTED** - The Godot planner now implements ego-centric planning with allocentric execution, information asymmetry, and belief formation through `PlannerPersona`, `PlannerBeliefManager`, and `PlannerFactsAllocentric`. Personas maintain ego-centric beliefs about other personas, and the belief manager enforces information asymmetry. Allocentric facts represent shared ground truth observable by all personas.
+2. **Belief-Immersed Architecture**: ✅ **IMPLEMENTED** - The Godot planner now implements ego-centric planning with allocentric execution, information asymmetry, and belief formation through `PlannerPersona`, `PlannerBeliefManager`, and unified `PlannerState`. Personas maintain ego-centric beliefs about other personas, and the belief manager enforces information asymmetry. The unified state represents shared ground truth observable by all personas using triples with metadata.
 
 3. **Plan Lifecycle Management**: aria-planner has comprehensive plan lifecycle tracking with execution status ("planned", "executing", "completed", "failed"), plan persistence, and performance metrics. The Godot planner has `PlannerResult` with success status but no execution lifecycle management.
 

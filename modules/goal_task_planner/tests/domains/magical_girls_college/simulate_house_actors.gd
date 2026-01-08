@@ -134,7 +134,7 @@ class Actor:
 				var current_time = msg.payload.get("time", 0.0)
 				process_time_tick(current_time)
 			MessageType.OBSERVATION, MessageType.COMMUNICATION, MessageType.STATE_UPDATE:
-				# Reserved for future PlannerPersona/PlannerFactsAllocentric integration
+				# Reserved for future PlannerPersona/PlannerState integration
 				pass
 
 	func process_time_tick(current_time: float) -> void:

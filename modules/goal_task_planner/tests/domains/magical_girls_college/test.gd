@@ -183,8 +183,8 @@ func setup_belief_manager() -> PlannerBeliefManager:
 	manager.register_persona(create_luna_persona())
 	return manager
 
-func setup_allocentric_facts() -> PlannerFactsAllocentric:
-	var facts = PlannerFactsAllocentric.new()
+func setup_allocentric_facts() -> PlannerState:
+	var facts = PlannerState.new()
 
 	# Set terrain facts
 	facts.set_terrain_fact("mess_hall", "type", "indoor")
