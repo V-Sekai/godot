@@ -30,10 +30,10 @@
 
 #pragma once
 
-#include "../../src/domain.h"
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
+#include "modules/goal_task_planner/src/domain.h"
 
 // Minimal domain with backtracking: Task has two methods, first fails, second succeeds
 namespace MinimalBacktrackingDomain {

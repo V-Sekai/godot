@@ -30,13 +30,7 @@
 
 #pragma once
 
-#include "../src/domain.h"
-#include "../src/plan.h"
-#include "../src/planner_result.h"
-#include "../src/stn_solver.h"
-#include "minimal_backtracking_domain.h"
-#include "minimal_task_domain.h"
-#include "tests/test_macros.h"
+#include "helpers/planner_test_helpers.h"
 
 namespace TestBacktrackingCombinations {
 
