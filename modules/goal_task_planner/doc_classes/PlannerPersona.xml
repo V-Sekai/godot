@@ -6,12 +6,19 @@
 	<description>
 		Represents a persona (human, AI, or hybrid) with capabilities and ego-centric beliefs. Personas are the core abstraction in the belief-immersed planning system, where each persona plans from their own perspective with beliefs about others.
 
+		[b]Capabilities:[/b]
 		Personas are differentiated by capabilities:
 		- **Human capabilities**: movable, inventory, craft, mine, build, interact
 		- **AI capabilities**: movable, compute, optimize, predict, learn, navigate
 		- **Hybrid**: Both human and AI capabilities
 
-		Each persona maintains ego-centric beliefs about other personas, which are updated through observation and communication. Personas cannot directly access each other's internal states (information asymmetry).
+		[b]Belief Semantics:[/b]
+		- Confidence: A normalized float (0.0 - 1.0) indicating certainty.
+		- Timestamp: Last time the belief was updated (game tick).
+		- Information Asymmetry: Personas plan based solely on their beliefs. (e.g., if believing a door is open, they plan to walk through it, even if locked in reality).
+
+		[b]Capability Filtering:[/b]
+		Planning methods filter themselves based on the current persona's capabilities. For example, a "mine_resources" method is pruned if the persona lacks the "mine" capability.
 	</description>
 	<tutorials>
 	</tutorials>

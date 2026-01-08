@@ -7,6 +7,20 @@
 		The [PlannerPlan] class provides methods for declaring actions, goals, [PlannerMultigoal], and tasks. It also facilitates the process of finding and executing plans to achieve those goals within a specific [PlannerDomain].
 		[PlannerPlan] represents a totally-ordered version of Goal-Task-Network (GTN) planning. However, it does not support sharing and task insertion.
 		[PlannerPlan] supports optional temporal constraints through temporal metadata. Actions, tasks, and goals can include temporal constraints specifying start_time, end_time, and/or duration. These values are stored as int64_t representing absolute time in microseconds since Unix epoch. Actions without temporal metadata can occur at any time and are not constrained by the Simple Temporal Network (STN). Actions with temporal metadata are added to the STN and their timing constraints are validated for consistency.
+
+		[b]Planning Algorithm:[/b]
+		The planner uses an iterative Depth-First Search (DFS) with backtracking, protected by resource limits.
+		1. Inputs: Initial State, Task Agenda (todo_list), Domain.
+		2. Process: Pops the current task/command from the Task Agenda.
+		   - If Command: Checks preconditions, validates against blacklist, and updates state.
+		   - If Compound Task: Selects best Method using VSIDS-like scoring, decomposes into subtasks, and pushes to Agenda.
+		3. Termination: Success if Agenda is empty; Failure if no applicable methods/commands found (backtracks).
+
+		[b]Method Selection (VSIDS-like):[/b]
+		Methods are scored dynamically based on activity and history. Successful applications increase activity, which decays over time to prioritize recent effective strategies.
+
+		[b]Replanning &amp; Failure Handling:[/b]
+		Compatible with IPyHOP's "Replanning from the Middle". When a node fails, it is blacklisted, and planning resumes from the nearest open ancestor.
 	</description>
 	<tutorials>
 	</tutorials>
