@@ -1864,8 +1864,6 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 
 			if (all_successors_closed) {
 				// All successors are closed, planning succeeded
-				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-				solution_graph.update_node(p_curr_node_id, p_curr_node);
 				p_final_state = p_state;
 				return false; // Return false to stop planning (success)
 			} else {
