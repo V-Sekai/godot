@@ -549,7 +549,7 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 	}
 }
 
-TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 

@@ -39,7 +39,7 @@
 
 namespace TestMinimalBacktracking {
 
-TEST_CASE("[Modules][Planner][MinimalBacktracking] Task with backtracking - first method fails, second succeeds" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner][MinimalBacktracking] Task with backtracking - first method fails, second succeeds") {
 	// Minimal backtracking test: Task has two methods
 	// First method returns empty array (fails), second method returns action (succeeds)
 	// This verifies backtracking works correctly

@@ -101,7 +101,7 @@ TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Initial State") {
 	CHECK(activities.is_empty());
 }
 
-TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Method Selection Uses Activity" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Method Selection Uses Activity") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
@@ -184,7 +184,7 @@ TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - TASK Failure Triggers VS
 	CHECK(true); // Test passes if planning completes without crash
 }
 
-TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Activity Decay" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Activity Decay") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
@@ -223,7 +223,7 @@ TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Activity Decay" * doctes
 	CHECK(true); // Test passes if no crash occurs
 }
 
-TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Method Selection Preference" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Method Selection Preference") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
@@ -313,7 +313,7 @@ TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - String-Based Domain") {
 	CHECK(true);
 }
 
-TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Verify Activity Bumping and Rewarding" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] VSIDS Activity Tracking - Verify Activity Bumping and Rewarding") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);

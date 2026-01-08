@@ -466,7 +466,7 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 	}
 }
 
-TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 
@@ -686,7 +686,7 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 	}
 }
 
-TEST_CASE("[Modules][Planner] String-Based Domain - TemporalEntityTestDomain" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] String-Based Domain - TemporalEntityTestDomain") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
