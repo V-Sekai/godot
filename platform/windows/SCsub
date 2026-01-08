@@ -33,6 +33,10 @@ libgodot_files = [
     "libgodot_windows.cpp",
 ]
 
+# Extra source files used only by specific build variants.
+# Keep defined (even if empty) since it is referenced below.
+host_interface = []
+
 if env.msvc:
     common_win += ["crash_handler_windows_seh.cpp"]
 else:
