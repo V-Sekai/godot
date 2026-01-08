@@ -115,20 +115,20 @@ Variant PlannerState::get_predicate(const String &p_subject, const String &p_pre
 }
 
 void PlannerState::set_predicate(const String &p_subject, const String &p_predicate, const Variant &p_value, const Dictionary &p_metadata) {
-	Dictionary metadata = p_metadata;
-	if (metadata.is_empty()) {
-		metadata["type"] = "state";
-		metadata["confidence"] = 1.0;
-		metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
-		metadata["accessibility"] = "private";
-		metadata["source"] = "planner";
+	Dictionary predicate_metadata = p_metadata;
+	if (predicate_metadata.is_empty()) {
+		predicate_metadata["type"] = "state";
+		predicate_metadata["confidence"] = 1.0;
+		predicate_metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
+		predicate_metadata["accessibility"] = "private";
+		predicate_metadata["source"] = "planner";
 	}
 
 	// Check if triple exists, update it
 	for (auto &triple : triples) {
 		if (triple.subject == p_subject && triple.predicate == p_predicate) {
 			triple.object = p_value;
-			triple.metadata = metadata;
+			triple.metadata = predicate_metadata;
 			return;
 		}
 	}
@@ -137,7 +137,7 @@ void PlannerState::set_predicate(const String &p_subject, const String &p_predic
 	new_triple.subject = p_subject;
 	new_triple.predicate = p_predicate;
 	new_triple.object = p_value;
-	new_triple.metadata = metadata;
+	new_triple.metadata = predicate_metadata;
 	triples.push_back(new_triple);
 }
 
@@ -268,12 +268,12 @@ Dictionary PlannerState::get_all_entity_capabilities() const {
 
 void PlannerState::set_terrain_fact(const String &p_location, const String &p_fact_key, const Variant &p_value) {
 	String subject = "terrain_" + p_location;
-	Dictionary metadata;
-	metadata["type"] = "fact";
-	metadata["source"] = "allocentric";
-	metadata["accessibility"] = "public";
-	metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
-	set_predicate(subject, p_fact_key, p_value, metadata);
+	Dictionary terrain_metadata;
+	terrain_metadata["type"] = "fact";
+	terrain_metadata["source"] = "allocentric";
+	terrain_metadata["accessibility"] = "public";
+	terrain_metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
+	set_predicate(subject, p_fact_key, p_value, terrain_metadata);
 }
 
 Variant PlannerState::get_terrain_fact(const String &p_location, const String &p_fact_key) const {
@@ -593,15 +593,15 @@ Dictionary PlannerState::get_beliefs_about(const String &p_persona_id, const Str
 }
 
 void PlannerState::set_belief_about(const String &p_persona_id, const String &p_target, const String &p_predicate, const Variant &p_value, const Dictionary &p_metadata) {
-	Dictionary metadata = p_metadata;
-	if (metadata.is_empty()) {
-		metadata["type"] = "belief";
-		metadata["source"] = p_persona_id;
-		metadata["confidence"] = 1.0;
-		metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
-		metadata["accessibility"] = "private";
+	Dictionary belief_metadata = p_metadata;
+	if (belief_metadata.is_empty()) {
+		belief_metadata["type"] = "belief";
+		belief_metadata["source"] = p_persona_id;
+		belief_metadata["confidence"] = 1.0;
+		belief_metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
+		belief_metadata["accessibility"] = "private";
 	}
-	set_predicate(p_target, p_predicate, p_value, metadata);
+	set_predicate(p_target, p_predicate, p_value, belief_metadata);
 }
 
 double PlannerState::get_belief_confidence(const String &p_persona_id, const String &p_target, const String &p_predicate) const {
