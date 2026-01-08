@@ -1847,6 +1847,45 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_id, Dictionary p_curr_node, int p_node_type, Dictionary &p_state, int p_iter, LocalVector<PlanningFrame> &p_stack, Dictionary &p_final_state) {
 	// Full iterative implementation - duplicates switch statement logic and converts all recursive calls to stack pushes
 	switch (static_cast<PlannerNodeType>(p_node_type)) {
+		case PlannerNodeType::TYPE_ROOT: {
+			// Root node: check if all successors are closed
+			TypedArray<int> successors = p_curr_node["successors"];
+			bool all_successors_closed = true;
+
+			for (int i = 0; i < successors.size(); i++) {
+				int succ_id = successors[i];
+				Dictionary succ_node = solution_graph.get_node(succ_id);
+				int succ_status = succ_node["status"];
+				if (succ_status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+					all_successors_closed = false;
+					break;
+				}
+			}
+
+			if (all_successors_closed) {
+				// All successors are closed, planning succeeded
+				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				solution_graph.update_node(p_curr_node_id, p_curr_node);
+				p_final_state = p_state;
+				return false; // Return false to stop planning (success)
+			} else {
+				// Not all successors are closed yet, continue processing
+				// Find the first open successor and push it to stack
+				for (int i = 0; i < successors.size(); i++) {
+					int succ_id = successors[i];
+					Dictionary succ_node = solution_graph.get_node(succ_id);
+					int succ_status = succ_node["status"];
+					if (succ_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+						p_stack.push_back({ succ_id, p_state, p_iter + 1 });
+						return true;
+					}
+				}
+				// This shouldn't happen - if not all are closed, there should be at least one open
+				p_final_state = p_state;
+				return false;
+			}
+		}
+
 		case PlannerNodeType::TYPE_TASK: {
 			Variant task_info = p_curr_node["info"];
 
