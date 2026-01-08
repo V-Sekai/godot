@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerBeliefManager" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_persona">
+			<return type="PlannerPersona" />
+			<param index="0" name="persona_id" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_planner_state">
+			<return type="Dictionary" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="requester_persona_id" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="has_persona" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="persona_id" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="process_observation_for_persona">
+			<return type="void" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="observation" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="register_persona">
+			<return type="void" />
+			<param index="0" name="persona" type="PlannerPersona" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>

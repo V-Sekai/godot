@@ -10,10 +10,38 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_all_entities" qualifiers="const">
-			<return type="Array" />
+		<method name="get_all_entity_capabilities" qualifiers="const">
+			<return type="Dictionary" />
 			<description>
-				Returns an [Array] of all entity IDs that have capabilities registered in the state.
+			</description>
+		</method>
+		<method name="get_belief_confidence" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_belief_timestamp" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_beliefs_about" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_entity_capabilities" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="entity_id" type="String" />
+			<description>
 			</description>
 		</method>
 		<method name="get_entity_capability" qualifiers="const">
@@ -33,7 +61,7 @@
 			</description>
 		</method>
 		<method name="get_subject_predicate_list" qualifiers="const">
-			<return type="Array" />
+			<return type="String[]" />
 			<description>
 				Returns an [Array] of all subject-predicate pairs in the state. Each element is a [Dictionary] with "subject" and "predicate" keys.
 			</description>
@@ -60,6 +88,16 @@
 				Returns true if the subject variable exists in the state (has any predicates), false otherwise.
 			</description>
 		</method>
+		<method name="set_belief_about">
+			<return type="void" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<param index="3" name="value" type="Variant" />
+			<param index="4" name="metadata" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
 		<method name="set_entity_capability">
 			<return type="void" />
 			<param index="0" name="entity_id" type="String" />
@@ -69,13 +107,13 @@
 				Sets a capability value for an entity. If the entity does not exist, it is created. If the capability already exists, its value is updated.
 			</description>
 		</method>
-		<method name="set_predicate">
+		<method name="update_belief_confidence">
 			<return type="void" />
-			<param index="0" name="subject" type="String" />
-			<param index="1" name="predicate" type="String" />
-			<param index="2" name="value" type="Variant" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<param index="3" name="confidence" type="float" />
 			<description>
-				Sets a predicate value for a subject. If the predicate does not exist, it is created. If it already exists, its value is updated.
 			</description>
 		</method>
 	</methods>

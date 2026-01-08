@@ -132,7 +132,7 @@
 				Get the persona's name.
 			</description>
 		</method>
-		<method name="get_planner_state" qualifiers="static">
+		<method name="get_planner_state" qualifiers="const">
 			<return type="Dictionary" />
 			<param index="0" name="target_persona_id" type="String" />
 			<param index="1" name="requesting_persona_id" type="String" />

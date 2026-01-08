@@ -127,9 +127,6 @@
 		</method>
 	</methods>
 	<members>
-		<member name="allocentric_facts" type="PlannerFactsAllocentric" setter="set_allocentric_facts" getter="get_allocentric_facts">
-			The allocentric facts (shared ground truth) observable by all personas. Used in belief-immersed planning architecture.
-		</member>
 		<member name="belief_manager" type="PlannerBeliefManager" setter="set_belief_manager" getter="get_belief_manager">
 			The belief manager that handles belief formation and updating across personas. Used in belief-immersed planning architecture.
 		</member>
