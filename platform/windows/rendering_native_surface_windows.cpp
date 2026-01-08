@@ -68,6 +68,10 @@ RenderingContextDriver *RenderingNativeSurfaceWindows::create_rendering_context(
 	return nullptr;
 }
 
+void *RenderingNativeSurfaceWindows::get_native_id() const {
+	return (void *)window;
+}
+
 RenderingNativeSurfaceWindows::RenderingNativeSurfaceWindows() {
 	// Does nothing.
 }
