@@ -69,12 +69,6 @@
 				Returns true if the solution graph contains a node with the specified node_id, false otherwise.
 			</description>
 		</method>
-		<method name="to_dot_graph" qualifiers="const">
-			<return type="String" />
-			<description>
-				Exports the plan graph as a DOT format string for visualization with Graphviz. The graph includes color-coded nodes by type (Root, Action, Task, Goal) and status indicators (green=completed, red=failed, yellow=open). Can be saved to a file and rendered with: [code]dot -Tpng plan.dot -o plan.png[/code]
-			</description>
-		</method>
 		<method name="to_graph_json" qualifiers="const">
 			<return type="Dictionary" />
 			<description>

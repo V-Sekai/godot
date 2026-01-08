@@ -179,7 +179,7 @@ TEST_CASE("[Modules][Planner] Node Tagging System" * doctest::skip(true)) {
 	CHECK(found_new_tag);
 }
 
-TEST_CASE("[Modules][Planner] PlannerResult Helper Methods" * doctest::skip(true)) {
+TEST_CASE("[Modules][Planner] PlannerResult Helper Methods") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
@@ -219,6 +219,17 @@ TEST_CASE("[Modules][Planner] PlannerResult Helper Methods" * doctest::skip(true
 	// Test find_failed_nodes (should be empty for successful plan)
 	Array failed_nodes = result->find_failed_nodes();
 	CHECK(failed_nodes.size() == 0);
+
+	// Test to_svg_graph method
+	String svg_output = result->to_svg_graph();
+	CHECK(!svg_output.is_empty());
+	// SVG should contain basic SVG structure
+	CHECK(svg_output.contains("<svg"));
+	CHECK(svg_output.contains("</svg>"));
+	// Should contain some rectangles for nodes
+	CHECK(svg_output.contains("<rect"));
+	// Should contain some text elements
+	CHECK(svg_output.contains("<text"));
 }
 
 TEST_CASE("[Modules][Planner] Simulate Method" * doctest::skip(true)) {
