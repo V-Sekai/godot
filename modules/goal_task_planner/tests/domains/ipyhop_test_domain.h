@@ -31,9 +31,9 @@
 #pragma once
 
 #include "../../src/domain.h"
+#include "core/variant/array.h"
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
-#include "core/variant/array.h"
 #include "core/variant/variant.h"
 
 // IPyHOP test domain - used for compatibility testing

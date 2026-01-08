@@ -30,9 +30,9 @@
 
 #pragma once
 
+#include "core/variant/array.h"
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
-#include "core/variant/array.h"
 #include "core/variant/variant.h"
 
 // Test domain for temporal and entity constraints

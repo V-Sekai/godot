@@ -33,8 +33,8 @@
 #include "../../src/domain.h"
 #include "../../src/plan.h"
 #include "../../src/planner_result.h"
-#include "core/variant/callable.h"
 #include "../domains/minimal_backtracking_domain.h"
+#include "core/variant/callable.h"
 #include "tests/test_macros.h"
 
 namespace TestMinimalBacktracking {

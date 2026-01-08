@@ -30,17 +30,17 @@
 
 #pragma once
 
-#include "../domains/temporal_entity_test_domain.h"
 #include "../../src/domain.h"
 #include "../../src/plan.h"
 #include "../../src/planner_result.h"
 #include "../../src/planner_time_range.h"
-#include "core/variant/callable.h"
+#include "../domains/temporal_entity_test_domain.h"
 #include "../helpers/ipyhop_test_helpers.h"
+#include "core/variant/callable.h"
 #include "tests/test_macros.h"
 
-#include "core/io/json.h"
 #include "core/io/file_access.h"
+#include "core/io/json.h"
 
 namespace TestIPyHOPCompatibility {
 
@@ -95,10 +95,10 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
 		CHECK_MESSAGE(err == OK, ("JSON parse error: " + json.get_error_message()).utf8().get_data());
 		expected_plan = json.get_data();
 	} else {
-        // Fallback for when file is not found (e.g. CI or different CWD) so we see what fails but don't crash hard?
-        // Actually, if file fails, the test should fail.
-        // We can keep the manual construction as a fallback OR just fail. 
-        // Failing is better to enforce fixture usage.
+		// Fallback for when file is not found (e.g. CI or different CWD) so we see what fails but don't crash hard?
+		// Actually, if file fails, the test should fail.
+		// We can keep the manual construction as a fallback OR just fail.
+		// Failing is better to enforce fixture usage.
 	}
 
 	CHECK(result.is_valid());
@@ -106,7 +106,6 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
 	CHECK(validate_plan_result(result, expected_plan));
 }
 #endif
-
 
 // Disabled: Test failing - needs investigation
 #if 1
