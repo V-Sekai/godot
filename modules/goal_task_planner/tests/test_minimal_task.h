@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_all.h                                                            */
+/*  test_minimal_task.h                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,22 +30,59 @@
 
 #pragma once
 
-// Central test file that includes all test files in the goal_task_planner module.
-// This file is included by the test runner to ensure all tests are registered.
+#include "../src/domain.h"
+#include "../src/plan.h"
+#include "../src/planner_result.h"
+#include "core/variant/callable.h"
+#include "minimal_task_domain.h"
+#include "tests/test_macros.h"
 
-// Unit tests
-#include "unit/test_comprehensive.h"
-#include "unit/test_ipyhop_compatibility.h"
-#include "unit/test_new_api.h"
-#include "unit/test_persona_belief.h"
-#include "unit/test_planner_components.h"
-#include "unit/test_vsids.h"
+namespace TestMinimalTask {
 
-// Problem/integration tests
+TEST_CASE("[Modules][Planner][MinimalTask] Simple task with single action") {
+	// Minimal test: Task that returns a single action
+	Ref<PlannerDomain> domain = MinimalTaskDomain::create_minimal_domain();
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	plan->reset();
+	plan->set_current_domain(domain);
+	plan->set_max_depth(10);
+	plan->set_verbose(0);
 
-// Domain tests
-#include "domains/fox_geese_corn_test.h"
-#include "domains/minimal_backtracking_test.h"
-#include "domains/minimal_task_test.h"
-#include "domains/rescue_test.h"
-#include "domains/temporal_travel_test.h"
+	// Create initial state with value = 0
+	Dictionary init_state;
+	Dictionary value_dict;
+	value_dict["value"] = 0;
+	init_state["value"] = value_dict;
+	Dictionary clean_init_state = init_state.duplicate(true);
+
+	// Create todo list with increment task
+	Array todo_list;
+	todo_list.push_back("increment");
+
+	// Plan should succeed
+	Ref<PlannerResult> result = plan->find_plan(clean_init_state, todo_list);
+
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
+
+	// Extract plan and verify it contains the increment action
+	Array plan_result = result->extract_plan();
+	CHECK(plan_result.size() > 0); // Should have at least one action
+
+	// Verify the action is correct
+	if (plan_result.size() > 0) {
+		Array first_action = plan_result[0];
+		CHECK(first_action.size() == 2);
+		CHECK(first_action[0] == "action_increment");
+		CHECK(int(first_action[1]) == 1); // increment amount
+	}
+
+	// Verify final state
+	Dictionary final_state = result->get_final_state();
+	CHECK(final_state.has("value"));
+	Dictionary final_value_dict = final_state["value"];
+	CHECK(final_value_dict.has("value"));
+	CHECK(int(final_value_dict["value"]) == 1); // Value should be incremented to 1
+}
+
+} // namespace TestMinimalTask

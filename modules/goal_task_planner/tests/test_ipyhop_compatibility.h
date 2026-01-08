@@ -30,14 +30,14 @@
 
 #pragma once
 
-#include "../../src/domain.h"
-#include "../../src/plan.h"
-#include "../../src/planner_result.h"
-#include "../../src/planner_time_range.h"
-#include "../domains/ipyhop_test_domain.h"
 #include "../domains/temporal_entity_test_domain.h"
 #include "../helpers/ipyhop_test_helpers.h"
+#include "../src/domain.h"
+#include "../src/plan.h"
+#include "../src/planner_result.h"
+#include "../src/planner_time_range.h"
 #include "core/variant/callable.h"
+#include "helpers/ipyhop_test_helpers.h"
 #include "tests/test_macros.h"
 
 namespace TestIPyHOPCompatibility {

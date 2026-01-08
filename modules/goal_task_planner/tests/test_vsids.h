@@ -30,11 +30,9 @@
 
 #pragma once
 
-#include "../../src/domain.h"
-#include "../../src/plan.h"
-#include "../../src/planner_result.h"
-#include "../domains/fox_geese_corn_domain.h"
-#include "../domains/temporal_entity_test_domain.h"
+#include "../src/domain.h"
+#include "../src/plan.h"
+#include "../src/planner_result.h"
 #include "tests/test_macros.h"
 
 // Test domain with methods that can fail/succeed for VSIDS testing

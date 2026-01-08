@@ -30,12 +30,12 @@
 
 #pragma once
 
-#include "../../src/domain.h"
-#include "../../src/multigoal.h"
-#include "../../src/plan.h"
-#include "../../src/planner_result.h"
-#include "../../src/solution_graph.h"
-#include "../domains/ipyhop_test_domain.h"
+#include "../src/domain.h"
+#include "../src/multigoal.h"
+#include "../src/plan.h"
+#include "../src/planner_result.h"
+#include "../src/solution_graph.h"
+#include "helpers/ipyhop_test_helpers.h"
 #include "tests/test_macros.h"
 
 TEST_CASE("[Modules][Planner] Public Blacklist API") {

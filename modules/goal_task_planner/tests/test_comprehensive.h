@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include "../domains/ipyhop_test_domain.h"
 #include "../domains/temporal_entity_test_domain.h"
 #include "../helpers/test_helpers.h"
+#include "helpers/ipyhop_test_helpers.h"
 #include "test_planner_components.h"
 
 TEST_CASE("[Modules][Planner] PlannerEntityRequirement - Entity matching") {

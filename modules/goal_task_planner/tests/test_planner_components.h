@@ -30,22 +30,22 @@
 
 #pragma once
 
-#include "../../src/backtracking.h"
-#include "../../src/domain.h"
-#include "../../src/entity_requirement.h"
-#include "../../src/graph_operations.h"
-#include "../../src/multigoal.h"
-#include "../../src/plan.h"
-#include "../../src/planner_metadata.h"
-#include "../../src/planner_result.h"
-#include "../../src/planner_state.h"
-#include "../../src/planner_time_range.h"
-#include "../../src/solution_graph.h"
-#include "../../src/stn_solver.h"
+#include "../src/backtracking.h"
+#include "../src/domain.h"
+#include "../src/entity_requirement.h"
+#include "../src/graph_operations.h"
+#include "../src/multigoal.h"
+#include "../src/plan.h"
+#include "../src/planner_metadata.h"
+#include "../src/planner_result.h"
+#include "../src/planner_state.h"
+#include "../src/planner_time_range.h"
+#include "../src/solution_graph.h"
+#include "../src/stn_solver.h"
 #include "tests/test_macros.h"
 
-#include "../domains/ipyhop_test_domain.h"
 #include "../helpers/test_helpers.h"
+#include "helpers/ipyhop_test_helpers.h"
 
 namespace TestComprehensivePlanner {
 

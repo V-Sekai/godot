@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  minimal_backtracking_test.h                                           */
+/*  test_minimal_backtracking.h                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include "../../src/domain.h"
-#include "../../src/plan.h"
-#include "../../src/planner_result.h"
+#include "../src/domain.h"
+#include "../src/plan.h"
+#include "../src/planner_result.h"
 #include "core/variant/callable.h"
 #include "minimal_backtracking_domain.h"
 #include "tests/test_macros.h"

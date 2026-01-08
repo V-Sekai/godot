@@ -33,9 +33,9 @@
 // SPDX-FileCopyrightText: 2025-present K. S. Ernest (iFire) Lee
 // SPDX-License-Identifier: MIT
 
-#include "../../src/plan.h"
-#include "../../src/planner_belief_manager.h"
-#include "../../src/planner_persona.h"
+#include "../src/plan.h"
+#include "../src/planner_belief_manager.h"
+#include "../src/planner_persona.h"
 
 #include "core/math/vector3.h"
 #include "core/variant/dictionary.h"
