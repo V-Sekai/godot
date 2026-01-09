@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EditorSceneFormatImporterUSD" inherits="EditorSceneFormatImporter" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Importer for USD (Universal Scene Description) scene file format.
+	</brief_description>
+	<description>
+		Imports USD scenes in the [code].usd[/code], [code].usda[/code], [code].usdc[/code], and [code].usdz[/code] file formats through the glTF 2.0 3D import pipeline. This importer requires Blender 3.0 or higher to be installed by the user, so that it can be used to convert USD files to glTF 2.0 format for import into Godot. USDZ (compressed USD) import requires Blender 3.5 or higher.
+		The location of the Blender binary is set via the [member EditorSettings.filesystem/import/blender/blender_path] setting.
+		This importer is only used if [member ProjectSettings.filesystem/import/blender/enabled] is enabled, otherwise USD files present in the project folder are not imported.
+		The importer uses Blender's USD import functionality and then exports the scene as glTF 2.0 for compatibility with Godot's existing glTF import pipeline. Import options are available for controlling materials, cameras, lights, skins, meshes (UVs, normals, colors), and animations through the glTF export settings.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>
