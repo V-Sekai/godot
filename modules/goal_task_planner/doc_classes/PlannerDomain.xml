@@ -30,11 +30,11 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="add_commands">
+		<method name="add_command">
 			<return type="void" />
-			<param index="0" name="commands" type="Callable[]" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="command" type="Callable" />
 			<description>
-				Adds a list of [Callable]s representing commands to the domain. Each [Callable] should refer to a function whose arguments are treated as read-only (the first usually being the current state [Dictionary]) and which returns false if the command is not applicable, or a new [Dictionary] representing the state after the command (state changes).
 			</description>
 		</method>
 		<method name="add_multigoal_methods">
