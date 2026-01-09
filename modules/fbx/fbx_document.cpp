@@ -630,7 +630,7 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 
 						Vector3 face_normal = Plane(v0, v1, v2).normal;
 
-						bool is_smooth = (face_idx < fbx_mesh->face_smoothing.count) ? fbx_mesh->face_smoothing.data[face_idx] : false;
+						bool is_smooth = (face_idx < fbx_mesh->face_smoothing.count) && fbx_mesh->face_smoothing.data[face_idx];
 
 						HashMap<Vector3, Vector3> &normal_accum = is_smooth ? normal_accum_smooth : normal_accum_faceted;
 						HashMap<Vector3, int> &normal_count = is_smooth ? normal_count_smooth : normal_count_faceted;
