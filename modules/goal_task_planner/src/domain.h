@@ -54,8 +54,8 @@ public:
 	PlannerDomain();
 
 public:
-	// Add commands to domain. Commands return false or a new state Dictionary.
-	void add_commands(TypedArray<Callable> p_commands);
+	// Add a command with an explicit name (useful when method names are stripped in non-tools builds).
+	void add_command(String p_name, Callable p_command);
 	// Add task methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, commands).
 	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
 	// Add unigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, commands).

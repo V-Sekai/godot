@@ -37,7 +37,7 @@ void PlannerDomain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_multigoal_methods", "methods"), &PlannerDomain::add_multigoal_methods);
 	ClassDB::bind_method(D_METHOD("add_unigoal_methods", "task_name", "methods"), &PlannerDomain::add_unigoal_methods);
 	ClassDB::bind_method(D_METHOD("add_task_methods", "task_name", "methods"), &PlannerDomain::add_task_methods);
-	ClassDB::bind_method(D_METHOD("add_commands", "commands"), &PlannerDomain::add_commands);
+	ClassDB::bind_method(D_METHOD("add_command", "name", "command"), &PlannerDomain::add_command);
 
 	ClassDB::bind_static_method("PlannerDomain", D_METHOD("method_verify_goal", "state", "method", "state_var", "arguments", "desired_values", "depth", "verbose"), &PlannerDomain::method_verify_goal);
 }
@@ -135,20 +135,9 @@ void PlannerDomain::add_task_methods(String p_task_name, TypedArray<Callable> p_
 	}
 }
 
-void PlannerDomain::add_commands(TypedArray<Callable> p_commands) {
-	for (int64_t i = 0; i < p_commands.size(); ++i) {
-		Callable command = p_commands[i];
-		if (command.is_null()) {
-			continue;
-		}
-		String method_name = command.get_method();
-		// Extract just the method name without class prefix (e.g., "action_transfer_flag" from "IPyHOPTestDomainCallable::action_transfer_flag")
-		if (method_name.contains("::")) {
-			PackedStringArray parts = method_name.split("::");
-			if (parts.size() > 0) {
-				method_name = parts[parts.size() - 1];
-			}
-		}
-		command_dictionary[method_name] = command;
+void PlannerDomain::add_command(String p_name, Callable p_command) {
+	if (p_command.is_null() || p_name.is_empty()) {
+		return;
 	}
+	command_dictionary[p_name] = p_command;
 }

@@ -9,7 +9,7 @@
 		[b]Structure: Predicate-Subject-Object (PSO) Triples[/b]
 		- [code]Predicate[/code] (String): The attribute or relationship identifier (e.g., "is_open").
 		- [code]Subject[/code] (String): The entity being described (e.g., "door_1").
-		- [code]Object[/code] (Variant): The value or target of the relationship (e.g., [code]true[/code], [code]Vector3(1,0,0)[/code]).
+		- Object (Variant): The value or target of the relationship (e.g., [code]true[/code], [code]Vector3(1,0,0)[/code]).
 		- [code]Metadata[/code] (Dictionary): Context info like confidence, timestamp, source (Persona ID), and type ("fact", "belief").
 
 		The triple system supports different types of knowledge:

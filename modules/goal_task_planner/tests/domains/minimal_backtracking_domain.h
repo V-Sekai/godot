@@ -99,12 +99,8 @@ public:
 Ref<PlannerDomain> create_minimal_backtracking_domain() {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 
-	// Add action
-	TypedArray<Callable> actions;
-	actions.push_back(callable_mp_static(&MinimalBacktrackingDomainCallable::action_increment));
-	domain->add_commands(actions);
-
-	// Add task methods (first fails, second succeeds - tests backtracking)
+	// Add action with explicit name to ensure it survives tools-disabled builds.
+	domain->add_command("action_increment", callable_mp_static(&MinimalBacktrackingDomainCallable::action_increment));
 	TypedArray<Callable> task_methods;
 	task_methods.push_back(callable_mp_static(&MinimalBacktrackingDomainCallable::task_increment_method_fail));
 	task_methods.push_back(callable_mp_static(&MinimalBacktrackingDomainCallable::task_increment_method_succeed));
