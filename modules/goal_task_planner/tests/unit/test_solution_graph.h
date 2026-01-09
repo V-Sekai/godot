@@ -51,15 +51,15 @@ TEST_CASE("[Modules][Planner][SolutionGraph] Basic Operations") {
 	}
 
 	SUBCASE("Create Node") {
-		Variant info = "action1";
+		Variant info = "command1";
 		TypedArray<Callable> methods;
-		int node_id = graph.create_node(PlannerNodeType::TYPE_ACTION, info, methods);
+		int node_id = graph.create_node(PlannerNodeType::TYPE_COMMAND, info, methods);
 
 		CHECK(node_id == 1);
 
 		Dictionary node = graph.get_node(node_id);
-		CHECK(int(node["type"]) == (int)PlannerNodeType::TYPE_ACTION);
-		CHECK(String(node["info"]) == "action1");
+		CHECK(int(node["type"]) == (int)PlannerNodeType::TYPE_COMMAND);
+		CHECK(String(node["info"]) == "command1");
 		CHECK(String(node["tag"]) == "new");
 		CHECK(int(node["status"]) == (int)PlannerNodeStatus::STATUS_OPEN);
 	}
@@ -110,7 +110,7 @@ TEST_CASE("[Modules][Planner][GraphOps] Operations") {
 
 		// Check edges (parent's children list)
 		Dictionary parent = graph.get_node(parent_id);
-		Array children = parent["children"];
+		Array children = parent["successors"];
 		CHECK(children.size() == 2);
 		if (children.size() >= 2) {
 			CHECK(int(children[0]) == 2);
@@ -123,22 +123,22 @@ TEST_CASE("[Modules][Planner][GraphOps] Operations") {
 	}
 
 	SUBCASE("Find Open Node") {
-		int n1 = graph.create_node(PlannerNodeType::TYPE_ACTION, "a1"); // OPEN by default
-		int n2 = graph.create_node(PlannerNodeType::TYPE_ACTION, "a2");
+		int n1 = graph.create_node(PlannerNodeType::TYPE_COMMAND, "a1"); // OPEN by default
+		int n2 = graph.create_node(PlannerNodeType::TYPE_COMMAND, "a2");
 
 		// Set n1 closed
 		Dictionary d1 = graph.get_node(n1);
 		d1["status"] = (int)PlannerNodeStatus::STATUS_CLOSED;
-		Array d1_children;
-		d1_children.push_back(n2);
-		d1["children"] = d1_children; // Link n1 -> n2
+		Array d1_successors;
+		d1_successors.push_back(n2);
+		d1["successors"] = d1_successors; // Link n1 -> n2
 		graph.update_node(n1, d1);
 
 		// Link root -> n1
 		Dictionary root = graph.get_node(0);
-		Array root_children;
-		root_children.push_back(n1);
-		root["children"] = root_children;
+		Array root_successors;
+		root_successors.push_back(n1);
+		root["successors"] = root_successors;
 		graph.update_node(0, root);
 
 		// Let's test find_open_node on n1 (which has open child n2)
@@ -157,12 +157,12 @@ TEST_CASE("[Modules][Planner][GraphOps] Operations") {
 
 	SUBCASE("Remove Descendants") {
 		int n1 = graph.create_node(PlannerNodeType::TYPE_TASK, "t1");
-		int n2 = graph.create_node(PlannerNodeType::TYPE_ACTION, "a1");
+		int n2 = graph.create_node(PlannerNodeType::TYPE_COMMAND, "a1");
 
 		Dictionary d1 = graph.get_node(n1);
 		Array ch;
 		ch.push_back(n2);
-		d1["children"] = ch;
+		d1["successors"] = ch;
 		graph.update_node(n1, d1);
 
 		// Remove descendants of n1 (should remove n2)
@@ -177,7 +177,7 @@ TEST_CASE("[Modules][Planner][GraphOps] Operations") {
 
 		// n1's children list should be empty
 		Dictionary d1_updated = graph.get_node(n1);
-		Array kids = d1_updated["children"];
+		Array kids = d1_updated["successors"];
 		CHECK(kids.is_empty());
 	}
 }

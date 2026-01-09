@@ -19,7 +19,7 @@
 			<return type="Array" />
 			<param index="0" name="verbose" type="int" default="0" />
 			<description>
-				Extracts the sequence of actions from the solution graph. Returns an [Array] of action arrays, where each action array has the format "action_name", "arg1", "arg2", etc. Only successfully completed (CLOSED) actions are included in the extracted plan.
+				Extracts the sequence of commands from the solution graph. Returns an [Array] of command arrays, where each command array has the format "command_name", "arg1", "arg2", etc. Only successfully completed (CLOSED) commands are included in the extracted plan.
 			</description>
 		</method>
 		<method name="find_failed_nodes" qualifiers="const">
@@ -78,7 +78,7 @@
 	</methods>
 	<members>
 		<member name="final_state" type="Dictionary" setter="set_final_state" getter="get_final_state" default="{}">
-			The final state [Dictionary] after planning completes. This represents the world state after all actions in the plan have been executed.
+			The final state [Dictionary] after planning completes. This represents the world state after all commands in the plan have been executed.
 		</member>
 		<member name="solution_graph" type="Dictionary" setter="set_solution_graph" getter="get_solution_graph" default="{}">
 			The complete solution graph [Dictionary] containing all nodes created during planning. The dictionary uses node IDs as keys and node dictionaries as values. This graph structure can be used for replanning, simulation, and detailed plan inspection.

@@ -39,13 +39,13 @@
 #include "core/variant/typed_array.h"
 
 struct KnowledgeTriple {
-	String subject;
 	String predicate;
+	String subject;
 	Variant object;
 	Dictionary metadata;
 
 	KnowledgeTriple() = default;
-	KnowledgeTriple(const String &p_subject, const String &p_predicate, const Variant &p_object, const Dictionary &p_metadata = Dictionary()) : subject(p_subject), predicate(p_predicate), object(p_object), metadata(p_metadata) {}
+	KnowledgeTriple(const String &p_predicate, const String &p_subject, const Variant &p_object, const Dictionary &p_metadata = Dictionary()) : predicate(p_predicate), subject(p_subject), object(p_object), metadata(p_metadata) {}
 };
 
 class PlannerState : public Resource {

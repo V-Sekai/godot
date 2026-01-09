@@ -40,10 +40,10 @@
 class PlannerGraphOperations {
 public:
 	// Determine node type from node_info
-	static PlannerNodeType get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, int p_verbose = 0);
+	static PlannerNodeType get_node_type(Variant p_node_info, Dictionary p_command_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, int p_verbose = 0);
 
 	// Add nodes and edges to solution graph
-	static int add_nodes_and_edges(PlannerSolutionGraph &p_graph, int p_parent_node_id, Array p_children_node_info_list, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, TypedArray<Callable> p_multigoal_methods, int p_verbose = 0);
+	static int add_nodes_and_edges(PlannerSolutionGraph &p_graph, int p_parent_node_id, Array p_children_node_info_list, Dictionary p_command_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, TypedArray<Callable> p_multigoal_methods, int p_verbose = 0);
 
 	// Find first open node in successors of parent
 	static Variant find_open_node(PlannerSolutionGraph &p_graph, int p_parent_node_id);
@@ -55,16 +55,16 @@ public:
 	// If p_also_remove_from_parent is true, also remove the node itself from its parent's successors list
 	static void remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id, bool p_also_remove_from_parent = false);
 
-	// Extract solution plan (sequence of actions) from graph
-	// Actions with temporal constraints are sorted by start_time (STN-Based Plan Extraction)
+	// Extract solution plan (sequence of commands) from graph
+	// Commands with temporal constraints are sorted by start_time (STN-Based Plan Extraction)
 	// Uses start_time, or calculates from (end_time - duration) if start_time not available
-	// Actions without temporal constraints maintain DFS order
+	// Commands without temporal constraints maintain DFS order
 	static Array extract_solution_plan(PlannerSolutionGraph &p_graph, int p_verbose = 0);
-	// Extract only "new" actions from graph (for replanning)
-	static Array extract_new_actions(PlannerSolutionGraph &p_graph);
-	// Execute actions directly from solution graph, returning final state
-	// Takes initial state and domain, executes actions as it traverses the graph
-	// Uses domain->action_dictionary to look up action callables
+	// Extract only "new" commands from graph (for replanning)
+	static Array extract_new_commands(PlannerSolutionGraph &p_graph);
+	// Execute commands directly from solution graph, returning final state
+	// Takes initial state and domain, executes commands as it traverses the graph
+	// Uses domain->command_dictionary to look up command callables
 	static Dictionary execute_solution_graph(PlannerSolutionGraph &p_graph, Dictionary p_initial_state, Ref<PlannerDomain> p_domain);
 
 private:

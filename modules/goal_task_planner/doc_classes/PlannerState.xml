@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="PlannerState" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		Unified knowledge representation for planning problems using subject-predicate-object triples with metadata.
+		Unified knowledge representation for planning problems using predicate-subject-object triples with metadata.
 	</brief_description>
 	<description>
 		[PlannerState] represents the complete state of the world in a planning problem using a unified Predicate-Subject-Object (PSO) knowledge representation system. Each piece of knowledge is stored as a triple, along with optional metadata for information asymmetry and belief management.

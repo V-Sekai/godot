@@ -34,13 +34,13 @@
 // Determine node type from node_info
 // Supports all planner element types: actions, tasks, unigoals (goals), and multigoals
 // Methods can return Arrays containing any of these types
-PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, int p_verbose) {
+PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_command_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, int p_verbose) {
 	// Guard: Handle String type - look up in dictionaries
 	if (p_node_info.get_type() == Variant::STRING) {
 		String node_str = p_node_info;
 		// Check action dictionary first (actions take priority)
-		if (p_action_dict.has(node_str)) {
-			return PlannerNodeType::TYPE_ACTION;
+		if (p_command_dict.has(node_str)) {
+			return PlannerNodeType::TYPE_COMMAND;
 		}
 		// Check task method dictionary
 		if (p_task_dict.has(node_str)) {
@@ -60,7 +60,7 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		if (dict.has("item")) {
 			// Unwrap and recursively check the item
 			Variant unwrapped_item = dict["item"];
-			return get_node_type(unwrapped_item, p_action_dict, p_task_dict, p_unigoal_dict, p_verbose);
+			return get_node_type(unwrapped_item, p_command_dict, p_task_dict, p_unigoal_dict, p_verbose);
 		}
 		// Dictionary without "item" is not a valid node
 		return PlannerNodeType::TYPE_ROOT;
@@ -89,18 +89,18 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 	String first_str = first;
 
 	// CRITICAL: Check action dictionary FIRST (actions take priority over tasks)
-	if (p_action_dict.has(first_str)) {
+	if (p_command_dict.has(first_str)) {
 		if (p_verbose >= 3 && first_str.begins_with("action_")) {
-			print_line(vformat("[GET_NODE_TYPE] Returning TYPE_ACTION (1) for '%s'", first_str));
+			print_line(vformat("[GET_NODE_TYPE] Returning TYPE_COMMAND (1) for '%s'", first_str));
 		}
-		return PlannerNodeType::TYPE_ACTION;
+		return PlannerNodeType::TYPE_COMMAND;
 	}
 
 	// Check task method dictionary
 	if (p_task_dict.has(first_str)) {
 		// Debug: Log if action name is incorrectly in task_dict
 		if (p_verbose >= 2 && first_str.begins_with("action_")) {
-			print_line(vformat("[GET_NODE_TYPE] WARNING: '%s' is in task_dict but should be in action_dict! Returning TYPE_TASK", first_str));
+			print_line(vformat("[GET_NODE_TYPE] WARNING: '%s' is in task_dict but should be in command_dict! Returning TYPE_TASK", first_str));
 		}
 		return PlannerNodeType::TYPE_TASK;
 	}
@@ -116,31 +116,31 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 // Add nodes and edges to solution graph
 // p_children_node_info_list can contain any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
 // Methods return Arrays of these elements, which are processed here
-int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, int p_parent_node_id, Array p_children_node_info_list, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, TypedArray<Callable> p_multigoal_methods, int p_verbose) {
+int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, int p_parent_node_id, Array p_children_node_info_list, Dictionary p_command_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, TypedArray<Callable> p_multigoal_methods, int p_verbose) {
 	int current_id = p_graph.get_next_node_id() - 1;
 
 	for (int i = 0; i < p_children_node_info_list.size(); i++) {
 		Variant child_info = p_children_node_info_list[i];
 		// Determine type of planner element (action, task, unigoal, multigoal)
-		PlannerNodeType node_type = get_node_type(child_info, p_action_dict, p_task_dict, p_unigoal_dict, p_verbose);
+		PlannerNodeType node_type = get_node_type(child_info, p_command_dict, p_task_dict, p_unigoal_dict, p_verbose);
 
-		// Debug: Log node type determination for action arrays
+		// Debug: Log node type determination for command arrays
 		if (p_verbose >= 3 && child_info.get_type() == Variant::ARRAY) {
 			Array arr = child_info;
 			if (!arr.is_empty() && arr[0].get_type() == Variant::STRING) {
 				String first_str = arr[0];
-				if (first_str.begins_with("action_")) {
-					print_line(vformat("[ADD_NODES] After get_node_type: child_info=%s, node_type=%d (ACTION=1, TASK=2), expected=ACTION(1)",
+				if (first_str.begins_with("command_")) {
+					print_line(vformat("[ADD_NODES] After get_node_type: child_info=%s, node_type=%d (COMMAND=1, TASK=2), expected=COMMAND(1)",
 							String(Variant(child_info)), static_cast<int>(node_type)));
 					if (static_cast<int>(node_type) != 1) {
-						print_line(vformat("[ADD_NODES] ERROR: node_type is %d but should be 1 (TYPE_ACTION)!", static_cast<int>(node_type)));
+						print_line(vformat("[ADD_NODES] ERROR: node_type is %d but should be 1 (TYPE_COMMAND)!", static_cast<int>(node_type)));
 					}
 				}
 			}
 		}
 
 		TypedArray<Callable> available_methods;
-		Callable action;
+		Callable command;
 
 		// Extract actual item if wrapped in dictionary
 		Variant actual_item = child_info;
@@ -207,22 +207,22 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				Variant methods_var = p_unigoal_dict[goal_name];
 				available_methods = TypedArray<Callable>(methods_var);
 			}
-		} else if (node_type == PlannerNodeType::TYPE_ACTION) {
-			String action_name;
+		} else if (node_type == PlannerNodeType::TYPE_COMMAND) {
+			String command_name;
 			if (actual_item.get_type() == Variant::STRING) {
-				action_name = actual_item;
+				command_name = actual_item;
 			} else if (actual_item.get_type() == Variant::ARRAY) {
 				Array arr = actual_item;
 				// Guard: Array must not be empty
 				if (arr.is_empty()) {
 					continue;
 				}
-				action_name = arr[0];
+				command_name = arr[0];
 			} else {
 				continue;
 			}
-			if (p_action_dict.has(action_name)) {
-				action = p_action_dict[action_name];
+			if (p_command_dict.has(command_name)) {
+				command = p_command_dict[command_name];
 			}
 		} else if (node_type == PlannerNodeType::TYPE_MULTIGOAL) {
 			// MultiGoal methods are in a list
@@ -320,7 +320,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 		// CRITICAL: For array tasks with fluents (e.g., ["move_task", "r1", [5, 5]]),
 		// we preserve the entire array structure including nested arrays/fluents
 		Variant normalized_info;
-		if (node_type == PlannerNodeType::TYPE_TASK || node_type == PlannerNodeType::TYPE_ACTION || node_type == PlannerNodeType::TYPE_UNIGOAL) {
+		if (node_type == PlannerNodeType::TYPE_TASK || node_type == PlannerNodeType::TYPE_COMMAND || node_type == PlannerNodeType::TYPE_UNIGOAL) {
 			if (actual_item.get_type() == Variant::STRING) {
 				// Convert string to array for node storage
 				Array arr;
@@ -341,7 +341,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 			// Reuse existing node instead of creating new one
 			child_id = existing_node_id;
 		} else {
-			child_id = p_graph.create_node(node_type, normalized_info, available_methods, action);
+			child_id = p_graph.create_node(node_type, normalized_info, available_methods, command);
 		}
 		p_graph.add_successor(p_parent_node_id, child_id);
 		current_id = child_id;
@@ -504,8 +504,8 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		print_line("[EXTRACT_SOLUTION_PLAN] Starting extract_solution_plan()");
 	}
 	Array plan;
-	// For STN-based extraction: collect actions with temporal metadata for sorting
-	Array actions_with_metadata; // Array of dictionaries: {"action": Variant, "start_time": int64_t, "node_id": int}
+	// For STN-based extraction: collect commands with temporal metadata for sorting
+	Array commands_with_metadata; // Array of dictionaries: {"command": Variant, "start_time": int64_t, "node_id": int}
 
 	// Guard: Graph must not be empty
 	Dictionary graph_dict = p_graph.get_graph();
@@ -649,8 +649,8 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		int node_type = node["type"];
 		int node_status = node["status"];
 
-		// Only extract actions that are closed (successful)
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+		// Only extract commands that are closed (successful)
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_COMMAND) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			// Validate info field exists
 			if (!node.has("info")) {
@@ -669,20 +669,20 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 					temporal_metadata = dict["temporal_constraints"];
 				}
 			}
-			// Debug: Log action extraction
+			// Debug: Log command extraction
 			if (p_verbose >= 3) {
 				if (info.get_type() == Variant::ARRAY) {
 					Array info_arr = info;
 					if (!info_arr.is_empty() && info_arr.size() > 0 && info_arr[0].get_type() == Variant::STRING) {
-						String action_name = info_arr[0];
-						if (action_name.begins_with("action_")) {
-							print_line(vformat("[EXTRACT_SOLUTION_PLAN] Extracting action node %d: %s", node_id, String(Variant(info))));
+						String command_name = info_arr[0];
+						if (command_name.begins_with("command_")) {
+							print_line(vformat("[EXTRACT_SOLUTION_PLAN] Extracting command node %d: %s", node_id, String(Variant(info))));
 						}
 					}
 				}
 			}
 
-			// STN-Based Plan Extraction: Collect actions with temporal metadata for sorting
+			// STN-Based Plan Extraction: Collect commands with temporal metadata for sorting
 			// Use all available temporal metadata (start_time, end_time, duration) from nodes
 			int64_t sort_time = INT64_MAX; // Use INT64_MAX as "no temporal constraint" marker
 
@@ -698,7 +698,7 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 					sort_time = end_time - duration;
 				}
 				// If only duration, we can't determine start time (need reference point)
-				// Keep as INT64_MAX to sort after actions with known start times
+				// Keep as INT64_MAX to sort after commands with known start times
 			}
 
 			// Also check node's direct temporal fields (if stored separately)
@@ -711,11 +711,11 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 
 			if (sort_time != INT64_MAX) {
 				// Has temporal constraint: collect for sorting
-				Dictionary action_entry;
-				action_entry["action"] = info;
-				action_entry["start_time"] = sort_time;
-				action_entry["node_id"] = node_id;
-				actions_with_metadata.push_back(action_entry);
+				Dictionary command_entry;
+				command_entry["command"] = info;
+				command_entry["start_time"] = sort_time;
+				command_entry["node_id"] = node_id;
+				commands_with_metadata.push_back(command_entry);
 			} else {
 				// No temporal constraints: Use DFS order (original behavior)
 				plan.push_back(info);
@@ -792,41 +792,41 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		}
 	}
 
-	// STN-Based Plan Extraction: Sort actions with temporal constraints by start_time
-	if (actions_with_metadata.size() > 0) {
+	// STN-Based Plan Extraction: Sort commands with temporal constraints by start_time
+	if (commands_with_metadata.size() > 0) {
 		if (p_verbose >= 3) {
-			print_line(vformat("[EXTRACT_SOLUTION_PLAN] Sorting %d temporal actions by start_time", actions_with_metadata.size()));
+			print_line(vformat("[EXTRACT_SOLUTION_PLAN] Sorting %d temporal commands by start_time", commands_with_metadata.size()));
 		}
-		// Sort actions by start_time (ascending order)
-		// Use a simple bubble sort (O(n^2)) since action count is typically small (< 100)
-		for (int i = 0; i < actions_with_metadata.size() - 1; i++) {
-			for (int j = 0; j < actions_with_metadata.size() - i - 1; j++) {
-				Dictionary action1 = actions_with_metadata[j];
-				Dictionary action2 = actions_with_metadata[j + 1];
-				int64_t time1 = action1.get("start_time", INT64_MAX);
-				int64_t time2 = action2.get("start_time", INT64_MAX);
+		// Sort commands by start_time (ascending order)
+		// Use a simple bubble sort (O(n^2)) since command count is typically small (< 100)
+		for (int i = 0; i < commands_with_metadata.size() - 1; i++) {
+			for (int j = 0; j < commands_with_metadata.size() - i - 1; j++) {
+				Dictionary command1 = commands_with_metadata[j];
+				Dictionary command2 = commands_with_metadata[j + 1];
+				int64_t time1 = command1.get("start_time", INT64_MAX);
+				int64_t time2 = command2.get("start_time", INT64_MAX);
 				// Sort by start_time (ascending)
 				if (time1 > time2) {
-					actions_with_metadata[j] = action2;
-					actions_with_metadata[j + 1] = action1;
+					commands_with_metadata[j] = command2;
+					commands_with_metadata[j + 1] = command1;
 				}
 			}
 		}
-		// Extract sorted temporal actions and append to plan
-		// Non-temporal actions (already in plan) maintain DFS order, temporal actions are sorted
-		for (int i = 0; i < actions_with_metadata.size(); i++) {
-			Dictionary action_entry = actions_with_metadata[i];
-			plan.push_back(action_entry["action"]);
+		// Extract sorted temporal commands and append to plan
+		// Non-temporal commands (already in plan) maintain DFS order, temporal commands are sorted
+		for (int i = 0; i < commands_with_metadata.size(); i++) {
+			Dictionary command_entry = commands_with_metadata[i];
+			plan.push_back(command_entry["command"]);
 		}
 		if (p_verbose >= 3) {
-			print_line(vformat("[EXTRACT_SOLUTION_PLAN] STN-based sorting complete, returning %d actions", plan.size()));
+			print_line(vformat("[EXTRACT_SOLUTION_PLAN] STN-based sorting complete, returning %d commands", plan.size()));
 		}
 	}
 
 	return plan;
 }
 
-Array PlannerGraphOperations::extract_new_actions(PlannerSolutionGraph &p_graph) {
+Array PlannerGraphOperations::extract_new_commands(PlannerSolutionGraph &p_graph) {
 	Array plan;
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
@@ -853,8 +853,8 @@ Array PlannerGraphOperations::extract_new_actions(PlannerSolutionGraph &p_graph)
 		int node_status = node["status"];
 		String node_tag = p_graph.get_node_tag(node_id);
 
-		// Only extract actions that are closed (successful) and tagged as "new"
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+		// Only extract commands that are closed (successful) and tagged as "new"
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_COMMAND) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) &&
 				node_tag == "new") {
 			// Validate info field exists
@@ -900,7 +900,7 @@ Dictionary PlannerGraphOperations::execute_solution_graph(PlannerSolutionGraph &
 	}
 
 	Dictionary state = p_initial_state.duplicate(true);
-	Dictionary action_dict = p_domain->action_dictionary;
+	Dictionary command_dict = p_domain->command_dictionary;
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
 	TypedArray<int> visited; // Track visited nodes to prevent revisiting
@@ -954,8 +954,8 @@ Dictionary PlannerGraphOperations::execute_solution_graph(PlannerSolutionGraph &
 		int node_type = node["type"];
 		int node_status = node["status"];
 
-		// Execute actions that are closed (successful)
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+		// Execute commands that are closed (successful)
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_COMMAND) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			// Validate info field exists
 			if (!node.has("info")) {
@@ -970,37 +970,37 @@ Dictionary PlannerGraphOperations::execute_solution_graph(PlannerSolutionGraph &
 				}
 			}
 
-			// Extract action info
+			// Extract command info
 			if (info.get_type() != Variant::ARRAY) {
 				continue;
 			}
-			Array action_arr = info;
-			if (action_arr.is_empty() || action_arr.size() < 1) {
+			Array command_arr = info;
+			if (command_arr.is_empty() || command_arr.size() < 1) {
 				continue;
 			}
 
-			// Safety check: ensure action_arr is not empty
-			if (action_arr.is_empty() || action_arr.size() < 1) {
+			// Safety check: ensure command_arr is not empty
+			if (command_arr.is_empty() || command_arr.size() < 1) {
 				continue;
 			}
-			String action_name = action_arr[0];
-			if (!action_dict.has(action_name)) {
-				// Action not found in dictionary, skip
+			String command_name = command_arr[0];
+			if (!command_dict.has(command_name)) {
+				// Command not found in dictionary, skip
 				continue;
 			}
 
-			// Get action callable and execute
-			Callable action_callable = action_dict[action_name];
+			// Get command callable and execute
+			Callable command_callable = command_dict[command_name];
 			Array args;
 			args.push_back(state);
-			args.append_array(action_arr.slice(1, action_arr.size()));
+			args.append_array(command_arr.slice(1, command_arr.size()));
 
-			Variant result = action_callable.callv(args);
+			Variant result = command_callable.callv(args);
 			if (result.get_type() == Variant::DICTIONARY) {
-				// Action succeeded, update state
+				// Command succeeded, update state
 				state = result;
 			} else {
-				// Action failed, stop execution
+				// Command failed, stop execution
 				break;
 			}
 		}

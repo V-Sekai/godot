@@ -75,9 +75,9 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		print_line("    state = " + _item_to_string(p_state));
 		print_line("    todo_list = " + _item_to_string(p_todo_list));
 		if (verbose >= 2 && current_domain.is_valid()) {
-			Dictionary action_dict = current_domain->action_dictionary;
-			Array action_keys = action_dict.keys();
-			print_line("    Available actions: " + _item_to_string(action_keys));
+			Dictionary command_dict = current_domain->command_dictionary;
+			Array command_keys = command_dict.keys();
+			print_line("    Available commands: " + _item_to_string(command_keys));
 		}
 	}
 
@@ -179,7 +179,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 			solution_graph,
 			parent_node_id,
 			p_todo_list,
-			current_domain->action_dictionary,
+			current_domain->command_dictionary,
 			current_domain->task_method_dictionary,
 			current_domain->unigoal_method_dictionary,
 			current_domain->multigoal_method_list,
@@ -525,8 +525,8 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 						case PlannerNodeType::TYPE_ROOT:
 							type_str = "ROOT";
 							break;
-						case PlannerNodeType::TYPE_ACTION:
-							type_str = "ACTION";
+						case PlannerNodeType::TYPE_COMMAND:
+							type_str = "COMMAND";
 							break;
 						case PlannerNodeType::TYPE_TASK:
 							type_str = "TASK";
@@ -786,7 +786,7 @@ int PlannerPlan::_count_closed_actions() {
 		}
 		int node_type = node["type"];
 		int node_status = node["status"];
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_COMMAND) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			count++;
 		}
@@ -1163,21 +1163,21 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 					continue;
 				}
 				// Safety: extract action name first to avoid multiple array accesses
-				String action_name_str = action[0];
-				if (!current_domain->action_dictionary.has(action_name_str)) {
+				String command_name_str = action[0];
+				if (!current_domain->command_dictionary.has(command_name_str)) {
 					if (verbose >= 1) {
-						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", action_name_str));
+						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", command_name_str));
 					}
 					continue;
 				}
-				Callable action_name = current_domain->action_dictionary[action_name_str];
+				Callable command_name = current_domain->command_dictionary[command_name_str];
 				if (verbose >= 1) {
 					String action_arguments;
 					Array actions = action.slice(1, action.size());
 					for (Variant element : actions) {
 						action_arguments += String(" ") + String(element);
 					}
-					print_line(vformat("run_lazy_lookahead: Task: %s, %s", action_name.get_method(), action_arguments));
+					print_line(vformat("run_lazy_lookahead: Task: %s, %s", command_name.get_method(), action_arguments));
 				}
 
 				// Inline _apply_task_and_continue (single use)
@@ -1185,15 +1185,15 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 				argument.push_back(p_state);
 				argument.append_array(action.slice(1, action.size()));
 				if (verbose >= 3) {
-					print_line(vformat("_apply_task_and_continue %s, args = %s", action_name.get_method(), _item_to_string(action.slice(1, action.size()))));
+					print_line(vformat("_apply_task_and_continue %s, args = %s", command_name.get_method(), _item_to_string(action.slice(1, action.size()))));
 				}
-				Variant result = action_name.callv(argument);
+				Variant result = command_name.callv(argument);
 				if (!result) {
 					if (verbose >= 3) {
 						print_line(vformat("Not applicable command %s", argument));
 					}
 					if (verbose >= 1) {
-						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
+						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", command_name));
 					}
 					break;
 				}
@@ -1210,7 +1210,7 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 				} else {
 					// Result is not a Dictionary, action failed
 					if (verbose >= 1) {
-						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
+						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", command_name));
 					}
 					break;
 				}
@@ -1473,7 +1473,7 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 			solution_graph,
 			parent_node_id,
 			p_todo_list,
-			current_domain->action_dictionary,
+			current_domain->command_dictionary,
 			current_domain->task_method_dictionary,
 			current_domain->unigoal_method_dictionary,
 			current_domain->multigoal_method_list,
@@ -1700,7 +1700,7 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 									solution_graph,
 									0,
 									tasks_to_recreate,
-									current_domain->action_dictionary,
+									current_domain->command_dictionary,
 									current_domain->task_method_dictionary,
 									current_domain->unigoal_method_dictionary,
 									current_domain->multigoal_method_list,
@@ -2092,7 +2092,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					solution_graph,
 					p_curr_node_id,
 					subtasks,
-					current_domain->action_dictionary,
+					current_domain->command_dictionary,
 					current_domain->task_method_dictionary,
 					current_domain->unigoal_method_dictionary,
 					current_domain->multigoal_method_list,
@@ -2105,12 +2105,12 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			return true;
 		}
 
-		case PlannerNodeType::TYPE_ACTION: {
+		case PlannerNodeType::TYPE_COMMAND: {
 			Variant action_info = p_curr_node["info"];
 
 			if (_is_command_blacklisted(action_info)) {
 				if (verbose >= 2) {
-					print_line("Action is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
+					print_line("Command is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
 				}
 				if (p_parent_node_id >= 0) {
 					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
@@ -2163,9 +2163,9 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				return false;
 			}
 
-			if (!p_curr_node.has("action")) {
+			if (!p_curr_node.has("command")) {
 				if (verbose >= 1) {
-					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Action node %d missing 'action' field", p_curr_node_id));
+					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Command node %d missing 'command' field", p_curr_node_id));
 				}
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
@@ -2181,7 +2181,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				p_final_state = p_state;
 				return false;
 			}
-			Callable action = p_curr_node["action"];
+			Callable command = p_curr_node["command"];
 			Variant actual_action_info = action_info;
 			if (action_info.get_type() == Variant::DICTIONARY) {
 				Dictionary dict = action_info;
@@ -2193,7 +2193,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 
 			// Log temporal metadata if present
 			if (!temporal_metadata.is_empty() && verbose >= 1) {
-				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 				String temporal_info = "";
 				if (temporal_metadata.has("start_time")) {
 					int64_t start_time = temporal_metadata.get("start_time", 0);
@@ -2207,12 +2207,12 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					int64_t duration = temporal_metadata.get("duration", 0);
 					temporal_info += " duration=" + String::num_int64(duration);
 				}
-				print_line(vformat("[METADATA] Action '%s' has temporal constraints:%s", action_name, temporal_info));
+				print_line(vformat("[METADATA] Action '%s' has temporal constraints:%s", command_name, temporal_info));
 			}
 
 			// Log entity requirements if present
 			if (item_metadata.requires_entities.size() > 0 && verbose >= 1) {
-				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 				String entity_info = "";
 				for (uint32_t i = 0; i < item_metadata.requires_entities.size(); i++) {
 					const PlannerEntityRequirement &req = item_metadata.requires_entities[i];
@@ -2228,7 +2228,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					}
 					entity_info += "]";
 				}
-				print_line(vformat("[METADATA] Action '%s' has entity requirements: %s", action_name, entity_info));
+				print_line(vformat("[METADATA] Action '%s' has entity requirements: %s", command_name, entity_info));
 			}
 
 			if (action_arr.is_empty()) {
@@ -2250,10 +2250,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				return false;
 			}
 
-			if (!action.is_valid() || action.is_null()) {
+			if (!command.is_valid() || command.is_null()) {
 				if (verbose >= 1) {
-					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-					print_line(vformat("Action '%s' not found in domain, marking as failed", action_name));
+					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Command '%s' not found in domain, marking as failed", command_name));
 				}
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
@@ -2282,16 +2282,16 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			}
 
 			if (verbose >= 2) {
-				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-				print_line(vformat("Executing action '%s' with args: %s", action_name, _item_to_string(args.slice(1))));
+				String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				print_line(vformat("Executing command '%s' with args: %s", command_name, _item_to_string(args.slice(1))));
 			}
 
-			Variant result = action.callv(args);
+			Variant result = command.callv(args);
 
 			if (result.get_type() == Variant::NIL) {
 				if (verbose >= 2) {
-					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-					print_line(vformat("Action '%s' failed (returned NIL), backtracking", action_name));
+					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Command '%s' failed (returned NIL), backtracking", command_name));
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
@@ -2321,8 +2321,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			}
 			if (result.get_type() == Variant::BOOL && result == Variant(false)) {
 				if (verbose >= 2) {
-					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-					print_line(vformat("Action '%s' failed (returned false), backtracking", action_name));
+					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned false), backtracking", command_name));
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
@@ -2352,9 +2352,9 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			}
 			if (result.get_type() != Variant::DICTIONARY) {
 				if (verbose >= 1) {
-					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 					ERR_PRINT(vformat("PlannerPlan::_process_node_iterative: Action '%s' returned non-Dictionary result (type: %d), marking as failed",
-							action_name, result.get_type()));
+							command_name, result.get_type()));
 				}
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
@@ -2373,8 +2373,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 			Dictionary new_state = result;
 			if (new_state.is_empty()) {
 				if (verbose >= 2) {
-					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-					print_line(vformat("Action '%s' failed (returned empty dictionary), backtracking", action_name));
+					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned empty dictionary), backtracking", command_name));
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
@@ -2419,8 +2419,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 
 			if (result.get_type() == Variant::DICTIONARY) {
 				if (verbose >= 2) {
-					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-					print_line(vformat("Action '%s' succeeded, new state keys: %s", action_name, String(Variant(new_state.keys()))));
+					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' succeeded, new state keys: %s", command_name, String(Variant(new_state.keys()))));
 				}
 
 				bool has_temporal = temporal_metadata.has("start_time") || temporal_metadata.has("end_time") || temporal_metadata.has("duration");
@@ -2503,8 +2503,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					}
 				} else {
 					if (verbose >= 3) {
-						String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-						print_line(vformat("Action '%s' has no temporal constraints, skipping STN addition", action_name));
+						String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+						print_line(vformat("Action '%s' has no temporal constraints, skipping STN addition", command_name));
 					}
 				}
 
@@ -2520,10 +2520,10 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				p_stack.push_back({ p_parent_node_id, new_state, p_iter + 1 });
 				return true;
 			} else {
-				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 				if (verbose >= 1) {
 					print_line(vformat("Action '%s' failed (returned %s, expected Dictionary), backtracking",
-							action_name, Variant::get_type_name(result.get_type())));
+							command_name, Variant::get_type_name(result.get_type())));
 					if (verbose >= 2) {
 						print_line(vformat("  Action args: %s", _item_to_string(args.slice(1))));
 						print_line(vformat("  Current state: %s", _item_to_string(p_state)));
@@ -2700,7 +2700,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						solution_graph,
 						p_curr_node_id,
 						subtasks,
-						current_domain->action_dictionary,
+						current_domain->command_dictionary,
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list,
@@ -2808,7 +2808,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						solution_graph,
 						p_curr_node_id,
 						empty_subgoals,
-						current_domain->action_dictionary,
+						current_domain->command_dictionary,
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list,
@@ -2911,7 +2911,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						solution_graph,
 						p_curr_node_id,
 						subgoals,
-						current_domain->action_dictionary,
+						current_domain->command_dictionary,
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list,
@@ -3227,7 +3227,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 	}
 
 	Dictionary state_copy = p_state.duplicate();
-	Dictionary action_dict = current_domain->action_dictionary;
+	Dictionary command_dict = current_domain->command_dictionary;
 
 	// Execute actions starting from p_start_ind
 	for (int i = p_start_ind; i < plan.size(); i++) {
@@ -3257,27 +3257,27 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 			continue;
 		}
 
-		String action_name = action[0];
+		String command_name = action[0];
 
 		// Guard: action must exist in domain
-		if (!action_dict.has(action_name)) {
+		if (!command_dict.has(command_name)) {
 			if (verbose >= 1) {
-				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' not found in domain", action_name));
+				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' not found in domain", command_name));
 			}
 			break;
 		}
 
-		Callable action_callable = action_dict[action_name];
+		Callable command_callable = command_dict[command_name];
 		Array args;
 		args.push_back(state_copy);
 		args.append_array(action.slice(1, action.size()));
 
-		Variant result = action_callable.callv(args);
+		Variant result = command_callable.callv(args);
 
 		// Guard: action must return a Dictionary (success)
 		if (result.get_type() != Variant::DICTIONARY) {
 			if (verbose >= 1) {
-				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' failed at index %d", action_name, i));
+				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' failed at index %d", command_name, i));
 			}
 			break;
 		}
@@ -3459,7 +3459,7 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 	Dictionary final_state = _planning_loop_iterative(backtrack_result.parent_node_id, backtrack_result.state, 0);
 
 	// Extract only "new" actions
-	Array new_plan = PlannerGraphOperations::extract_new_actions(solution_graph);
+	Array new_plan = PlannerGraphOperations::extract_new_commands(solution_graph);
 
 	// Create result
 	Ref<PlannerResult> result = memnew(PlannerResult);
@@ -3638,11 +3638,11 @@ void PlannerPlan::_update_beliefs_from_action(const Variant &p_action, const Dic
 		return;
 	}
 
-	String action_name = action_arr[0];
+	String command_name = action_arr[0];
 
 	// Create observation dictionary from action execution
 	Dictionary observation;
-	observation["action"] = action_name;
+	observation["action"] = command_name;
 	observation["state_before"] = p_state_before;
 	observation["state_after"] = p_state_after;
 	observation["time"] = PlannerTimeRange::now_microseconds();

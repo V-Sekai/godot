@@ -85,7 +85,7 @@ TEST_CASE("[Modules][Planner][Multigoal] PlannerMultigoal Basics") {
 		CHECK(tagged.get_type() == Variant::DICTIONARY);
 		Dictionary tagged_dict = tagged;
 		CHECK(String(tagged_dict["goal_tag"]) == "my_goal");
-		CHECK(tagged_dict.has("multigoal"));
+		CHECK(tagged_dict.has("item"));
 
 		// Get tag
 		String retrieved_tag = PlannerMultigoal::get_goal_tag(tagged);
@@ -107,13 +107,13 @@ TEST_CASE("[Modules][Planner][GraphOps] Node Types") {
 		// Actions/Commands are typically strings in node info or arrays starting with string
 		Variant node_info = "move";
 		PlannerNodeType type = PlannerGraphOperations::get_node_type(node_info, action_dict, task_dict, unigoal_dict);
-		CHECK(type == PlannerNodeType::TYPE_ACTION);
+		CHECK(type == PlannerNodeType::TYPE_COMMAND);
 
 		Array node_info_arr;
 		node_info_arr.push_back("move");
 		node_info_arr.push_back("arg1");
 		type = PlannerGraphOperations::get_node_type(node_info_arr, action_dict, task_dict, unigoal_dict);
-		CHECK(type == PlannerNodeType::TYPE_ACTION);
+		CHECK(type == PlannerNodeType::TYPE_COMMAND);
 	}
 
 	SUBCASE("Detect Task") {

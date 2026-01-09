@@ -93,7 +93,7 @@ TEST_CASE("[Modules][Planner][Persona] Belief formation and information asymmetr
 	// But can form beliefs through observation
 	Dictionary observation;
 	observation["entity"] = "persona_b";
-	observation["action"] = "movement";
+	observation["command"] = "movement";
 	observation["confidence"] = 0.8;
 	persona_a->process_observation(observation);
 

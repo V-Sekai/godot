@@ -57,7 +57,7 @@ Ref<PlannerDomain> create_ipyhop_test_domain() {
 	actions.push_back(callable_mp_static(&IPyHOPTestDomainCallable::action_transfer_flag));
 	actions.push_back(callable_mp_static(&IPyHOPTestDomainCallable::action_putv));
 	actions.push_back(callable_mp_static(&IPyHOPTestDomainCallable::action_getv));
-	domain->add_actions(actions);
+	domain->add_commands(actions);
 
 	return domain;
 }

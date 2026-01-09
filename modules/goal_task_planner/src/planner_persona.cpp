@@ -260,13 +260,13 @@ Dictionary PlannerPersona::get_planner_state(const String &p_target_persona_id, 
 
 void PlannerPersona::process_observation(const Dictionary &p_observation) {
 	// Process an observation to update beliefs
-	// Expected format: {"entity": String, "action": String, "confidence": float, "time": int64_t, ...}
+	// Expected format: {"entity": String, "command": String, "confidence": float, "time": int64_t, ...}
 	if (!p_observation.has("entity")) {
 		return;
 	}
 
 	String entity_id = p_observation.get("entity", "");
-	String action = p_observation.get("action", "");
+	String command = p_observation.get("command", "");
 	double confidence = p_observation.get("confidence", 1.0);
 
 	if (entity_id.is_empty()) {
@@ -291,7 +291,7 @@ void PlannerPersona::process_observation(const Dictionary &p_observation) {
 	}
 
 	// Update belief about observed entity with temporal metadata
-	String belief_key = vformat("observed_%s", action);
+	String belief_key = vformat("observed_%s", command);
 	set_belief_about(entity_id, belief_key, p_observation, confidence, timestamp);
 
 	// Increase confidence with consistent observations

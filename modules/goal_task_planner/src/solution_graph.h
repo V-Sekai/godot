@@ -43,7 +43,7 @@
 // Node types matching Elixir planner
 enum class PlannerNodeType {
 	TYPE_ROOT = 0, // :D - Root node
-	TYPE_ACTION = 1, // :A - Action node
+	TYPE_COMMAND = 1, // :A - Command node
 	TYPE_TASK = 2, // :T - Task node
 	TYPE_UNIGOAL = 3, // :G - Unigoal node (internal use only, not for todo list input)
 	TYPE_MULTIGOAL = 4, // :M - MultiGoal node
@@ -70,7 +70,7 @@ struct PlannerNodeStruct {
 	Dictionary state;
 	Variant selected_method;
 	TypedArray<Callable> available_methods;
-	Callable action;
+	Callable command;
 	int64_t start_time;
 	int64_t end_time;
 	int64_t duration;
@@ -117,7 +117,7 @@ public:
 	}
 
 	// Create a new node and return its ID
-	int create_node(PlannerNodeType p_type, Variant p_info, TypedArray<Callable> p_available_methods = TypedArray<Callable>(), Callable p_action = Callable()) {
+	int create_node(PlannerNodeType p_type, Variant p_info, TypedArray<Callable> p_available_methods = TypedArray<Callable>(), Callable p_command = Callable()) {
 		int node_id = next_node_id++;
 		PlannerNodeStruct node;
 		node.type = p_type;
@@ -131,7 +131,7 @@ public:
 		}
 		node.state = Dictionary();
 		node.available_methods = p_available_methods;
-		node.action = p_action;
+		node.command = p_command;
 		node.tag = "new"; // New nodes default to "new"
 		graph_internal[node_id] = node;
 		// Also update Dictionary for API compatibility
@@ -303,7 +303,7 @@ private:
 		dict["state"] = p_node.state;
 		dict["selected_method"] = p_node.selected_method;
 		dict["available_methods"] = p_node.available_methods;
-		dict["action"] = p_node.action;
+		dict["command"] = p_node.command;
 		dict["start_time"] = Variant(static_cast<int64_t>(p_node.start_time));
 		dict["end_time"] = Variant(static_cast<int64_t>(p_node.end_time));
 		dict["duration"] = Variant(static_cast<int64_t>(p_node.duration));
@@ -344,8 +344,8 @@ private:
 				node.available_methods = TypedArray<Callable>(methods_var);
 			}
 		}
-		if (p_dict.has("action")) {
-			node.action = p_dict["action"];
+		if (p_dict.has("command")) {
+			node.command = p_dict["command"];
 		}
 		if (p_dict.has("start_time")) {
 			node.start_time = static_cast<int64_t>(p_dict["start_time"]);

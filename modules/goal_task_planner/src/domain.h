@@ -44,7 +44,7 @@ class PlannerDomain : public Resource {
 	friend PlannerPlan;
 
 public:
-	Dictionary action_dictionary; // Public for testing
+	Dictionary command_dictionary; // Public for testing
 private:
 	Dictionary task_method_dictionary;
 	Dictionary unigoal_method_dictionary; // Internal use only (for multigoal decomposition)
@@ -54,14 +54,14 @@ public:
 	PlannerDomain();
 
 public:
-	// Add actions to domain. Actions return false or a new state Dictionary.
-	void add_actions(TypedArray<Callable> p_actions);
-	// Add task methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions).
+	// Add commands to domain. Commands return false or a new state Dictionary.
+	void add_commands(TypedArray<Callable> p_commands);
+	// Add task methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, commands).
 	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
-	// Add unigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions).
-	// Note: Unigoals are internal only - users should use multigoals in todo lists.
+	// Add unigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, commands).
+	// Note: Unigoals are internal only - users should use multigoals in task agendas.
 	void add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods);
-	// Add multigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions).
+	// Add multigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, commands).
 	void add_multigoal_methods(TypedArray<Callable> p_methods);
 
 public:

@@ -275,7 +275,7 @@ Dictionary PlannerResult::explain_plan() const {
 		int node_type = node.get("type", -1);
 		int node_status = node.get("status", -1);
 
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION)) {
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_COMMAND)) {
 			action_count++;
 		} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
 			task_count++;
@@ -482,8 +482,8 @@ String PlannerResult::get_node_explanation(int p_node_id) const {
 		case PlannerNodeType::TYPE_ROOT:
 			type_name = "Root";
 			break;
-		case PlannerNodeType::TYPE_ACTION:
-			type_name = "Action";
+		case PlannerNodeType::TYPE_COMMAND:
+			type_name = "Command";
 			break;
 		case PlannerNodeType::TYPE_TASK:
 			type_name = "Task";

@@ -112,7 +112,7 @@
 		<method name="get_capabilities" qualifiers="const">
 			<return type="String[]" />
 			<description>
-				Returns an [Array] of all capabilities that the persona has. Capabilities determine what actions the persona can perform.
+				Returns an [Array] of all capabilities that the persona has. Capabilities determine what commands the persona can perform.
 			</description>
 		</method>
 		<method name="get_identity_type" qualifiers="const">
@@ -179,7 +179,7 @@
 			<return type="void" />
 			<param index="0" name="observation" type="Dictionary" />
 			<description>
-				Process an observation to update beliefs. Expected format: {"entity": String, "action": String, "confidence": float, ...}
+				Process an observation to update beliefs. Expected format: {"entity": String, "command": String, "confidence": float, ...}
 			</description>
 		</method>
 		<method name="remove_capability">
