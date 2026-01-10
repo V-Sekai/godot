@@ -14,4 +14,4 @@ def get_doc_classes():
 
 
 def get_doc_path():
-    return "."
+    return "doc_classes"
