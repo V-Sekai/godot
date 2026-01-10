@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/V-Sekai.cassie.git
 	branch = main
-	commit = 0f2defca8c965a8923ad346f6dc4b234e1badba4
-	parent = e548422439ddda62a83ec1c94427674ef8f63782
+	commit = fb9b25fc94e47506259e1a8e0213410374105916
+	parent = 4262aea3822b427c32fe90f3727902501971dc09
 	method = merge
 	cmdver = 0.4.9
