@@ -59,8 +59,12 @@ PolygonTriangulation::PolygonTriangulation() {
 	withNormal = false;
 	useBiTri = true;
 	dot = 2;
+	timeReadIn = 0.0;
 	timePreprocess = 0.0;
 	timeMWT = 0.0;
+	timeDelaunay3d = 0.0;
+	timeTotal = 0.0;
+	optimalCost = 0.0;
 	round = 0;
 	numoftilingtris = 0;
 }
@@ -74,7 +78,7 @@ PolygonTriangulation::PolygonTriangulation(int ptn, double *pts, double *deGenPt
 }
 
 PolygonTriangulation::~PolygonTriangulation() {
-	// tris and points will be destroyed by tetgen
+	// tris and points will be destroyed by delaunay3d
 	// delete [] filename;
 	if (!EXPSTOP) {
 		if (tiling != nullptr)
@@ -111,8 +115,12 @@ void PolygonTriangulation::init_basics() {
 	useBiTri = true;
 	dot = 2;
 	useWorstDihedral = false;
+	timeReadIn = 0.0;
 	timePreprocess = 0.0;
 	timeMWT = 0.0;
+	timeDelaunay3d = 0.0;
+	timeTotal = 0.0;
+	optimalCost = 0.0;
 	round = 0;
 	numoftilingtris = 0;
 	isDeGen = false;
@@ -257,8 +265,9 @@ void PolygonTriangulation::build_tiling(int eind, char side, int ti) {
 	tiling[numoftilingtris] = tind;
 	numoftilingtris++;
 	for (int ej = 0; ej < 3; ej++) {
-		if (ej == ei)
+		if (ej == ei) {
 			continue;
+		}
 		if (tinfo->optCost[ej] == FLT_MIN) {
 			// cout << "Error in building Tiling! Tri:" << tind << " Edgei:" << ej << endl;
 			return;
@@ -274,8 +283,9 @@ char PolygonTriangulation::get_side(int v1, int v2, int v3) {
 	return (v3 < v2 && v3 > v1);
 }
 char PolygonTriangulation::getSide(int i) {
-	if (i == 2)
+	if (i == 2) {
 		return 1;
+	}
 	return 0;
 }
 
@@ -412,46 +422,138 @@ void PolygonTriangulation::build_list() {
 	delete[] ehash;
 }
 
-//==================================TetGen Functions============================//
+//==================================Delaunay3D Functions============================//
+
+// Simple triangle structure for face counting
+struct TriangleKey {
+	uint32_t points[3];
+	
+	TriangleKey(uint32_t a, uint32_t b, uint32_t c) {
+		// Sort points to ensure consistent hashing
+		if (a > b) { 
+			SWAP(a, b);
+		}
+		if (b > c) { 
+			SWAP(b, c);
+		}
+		if (a > b) { 
+			SWAP(a, b);
+		}
+		points[0] = a;
+		points[1] = b;
+		points[2] = c;
+	}
+	
+	bool operator==(const TriangleKey &p_other) const {
+		return points[0] == p_other.points[0] && 
+			   points[1] == p_other.points[1] && 
+			   points[2] == p_other.points[2];
+	}
+};
+
+struct TriangleKeyHasher {
+	static uint32_t hash(const TriangleKey &p_key) {
+		uint32_t h = hash_djb2_one_32(p_key.points[0]);
+		h = hash_djb2_one_32(p_key.points[1], h);
+		return hash_fmix32(hash_djb2_one_32(p_key.points[2], h));
+	}
+};
 
 void PolygonTriangulation::gen_triangle_candidates() {
-	in.resize(numofpoints);
-	
-	// Project 3D points to 2D for planar Delaunay triangulation
-	// Assume points lie in XY plane (Z = 0)
-	Vector<Vector2> points_2d;
-	points_2d.resize(numofpoints);
-	
+	// For 3 points (triangle), handle directly
+	if (numofpoints == 3) {
+		numoftris = 1;
+		tris = new int[3];
+		tris[0] = 0;
+		tris[1] = 1;
+		tris[2] = 2;
+		return;
+	}
+
+	// For 4+ points, check if they are coplanar
+	bool coplanar = true;
+	if (numofpoints >= 4) {
+		// Check if all points lie in the same plane by computing the volume of tetrahedra formed by first 4 points
+		Vector3 p0 = Vector3(points[0], points[1], points[2]);
+		Vector3 p1 = Vector3(points[3], points[4], points[5]);
+		Vector3 p2 = Vector3(points[6], points[7], points[8]);
+		Vector3 p3 = Vector3(points[9], points[10], points[11]);
+		
+		// Volume of tetrahedron = (1/6) * |scalar triple product|
+		Vector3 v1 = p1 - p0;
+		Vector3 v2 = p2 - p0;
+		Vector3 v3 = p3 - p0;
+		float volume = v1.dot(v2.cross(v3)) / 6.0f;
+		
+		// If volume is very small, points are coplanar
+		coplanar = Math::abs(volume) < 1e-10f;
+	}
+
+	if (coplanar) {
+		// Fall back to 2D Delaunay triangulation for coplanar points
+		Vector<Vector2> points_2d;
+		points_2d.resize(numofpoints);
+		for (int i = 0; i < numofpoints; ++i) {
+			points_2d.write[i] = Vector2(points[i * 3 + 0], points[i * 3 + 1]);
+		}
+
+		Vector<Delaunay2D::Triangle> triangles_2d = Delaunay2D::triangulate(points_2d);
+
+		// Convert to triangle array
+		numoftris = triangles_2d.size();
+		tris = new int[numoftris * 3];
+		for (int i = 0; i < numoftris; ++i) {
+			tris[i * 3 + 0] = triangles_2d[i].points[0];
+			tris[i * 3 + 1] = triangles_2d[i].points[1];
+			tris[i * 3 + 2] = triangles_2d[i].points[2];
+		}
+		return;
+	}
+
+	// For non-coplanar 3D points, use Delaunay3D tetrahedralization
+	// Convert 3D points to Vector<Vector3>
+	Vector<Vector3> points_3d;
+	points_3d.resize(numofpoints);
 	for (int i = 0; i < numofpoints; ++i) {
-		points_2d.write[i] = Vector2(points[i * 3 + 0], points[i * 3 + 1]);
+		points_3d.write[i] = Vector3(points[i * 3 + 0], points[i * 3 + 1], points[i * 3 + 2]);
 	}
 
-	// Use 2D Delaunay triangulation for planar polygons
-	out = Delaunay2D::triangulate(points_2d);
-	PackedInt32Array triangles;
+	// Call Delaunay3D::tetrahedralize
+	tetrahedra = Delaunay3D::tetrahedralize(points_3d);
 
-	// Convert Delaunay2D triangles to triangle array
-	for (int i = 0; i < out.size(); i++) {
-		triangles.push_back(out[i].points[0]);
-		triangles.push_back(out[i].points[1]);
-		triangles.push_back(out[i].points[2]);
+	// Extract surface triangles from tetrahedra using a hash map to count face occurrences
+	AHashMap<TriangleKey, int, TriangleKeyHasher> face_count;
+	for (const Delaunay3D::OutputSimplex &tetra : tetrahedra) {
+		// Each tetrahedron has 4 faces
+		static const uint32_t face_indices[4][3] = {
+			{0, 1, 2},
+			{0, 1, 3},
+			{0, 2, 3},
+			{1, 2, 3}
+		};
+		for (int f = 0; f < 4; ++f) {
+			TriangleKey face(tetra.points[face_indices[f][0]], tetra.points[face_indices[f][1]], tetra.points[face_indices[f][2]]);
+			face_count[face] += 1;
+		}
 	}
 
-	numoftris = triangles.size() / 3;
+	// Collect triangles that appear only once (surface faces)
+	Vector<int> surface_tris;
+	for (const auto &entry : face_count) {
+		if (entry.value == 1) {
+			const TriangleKey &face = entry.key;
+			surface_tris.push_back(face.points[0]);
+			surface_tris.push_back(face.points[1]);
+			surface_tris.push_back(face.points[2]);
+		}
+	}
 
-	// Allocate memory for tris and copy the elements from triangles
+	// Store triangles in tris array
+	numoftris = surface_tris.size() / 3;
 	tris = new int[numoftris * 3];
-	for (int i = 0; i < numoftris * 3; i++) {
-		tris[i] = triangles[i];
+	for (int i = 0; i < numoftris * 3; ++i) {
+		tris[i] = surface_tris[i];
 	}
-
-	// TODO: Memory leak
-
-	// output .node & .face file
-	// out.save_nodes(filename);
-#if (SAVE_FACE == 1)
-	out.save_faces(filename);
-#endif
 }
 //==================================IO Read Functions============================//
 
@@ -605,7 +707,7 @@ float PolygonTriangulation::get_size() {
 }
 
 void PolygonTriangulation::statistics() {
-	timeTotal = timePreprocess + timeMWT + timeTetgen;
+	timeTotal = timePreprocess + timeMWT + timeDelaunay3d;
 	const bool DO_EXP = false;
 	if (!DO_EXP) {
 		if (dot == 1) {
@@ -622,7 +724,7 @@ void PolygonTriangulation::statistics() {
 			 << weightBiTri << "," << weightTriBd << endl;
 		cout << "" << endl;
 		cout<<" Read files:\t"<<timeReadIn<<endl;
-		cout << " (T) Call TetGen:\t" << timeTetgen << endl;
+		cout << " (T) Call Delaunay3D:\t" << timeDelaunay3d << endl;
 		cout << " (T) Preprocess:\t" << timePreprocess << endl;
 		cout << " (T) MWT & Tiling:\t" << timeMWT << endl;
 		cout << "" << endl;
@@ -639,7 +741,7 @@ void PolygonTriangulation::statistics() {
 		}
 		cout << numofpoints << "\t" << numofedges << "\t" << numoftris << "\t"
 			 << "w" << weightTri << weightEdge << weightBiTri << weightTriBd << "\t"
-			 << timeTetgen << "\t" << timePreprocess << "\t" << timeMWT << "\t"
+			 << timeDelaunay3d << "\t" << timePreprocess << "\t" << timeMWT << "\t"
 			 << timeTotal << "\t" << optimalCost << "\t" << get_size() << "\t"
 			 << hasIntersect << "\t" << hasIntersect2 << "\t" << intsTriInd[0]
 			 << "\t" << intsTriInd[1] << "\t" << filename << endl;

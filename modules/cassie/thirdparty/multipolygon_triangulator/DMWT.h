@@ -5,7 +5,9 @@
 #include "TriangleInfo.h"
 
 #include "core/math/delaunay_2d.h"
+#include "core/math/delaunay_3d.h"
 #include "core/object/ref_counted.h"
+#include "core/templates/a_hash_map.h"
 #include "core/templates/vector.h"
 #include "core/variant/variant.h"
 
@@ -47,7 +49,7 @@ public:
 protected:
 	char *filename = nullptr;
 	Vector<Vector3> in;
-	Vector<Delaunay2D::Triangle> out;
+	Vector<Delaunay3D::OutputSimplex> tetrahedra;
 	int round = 0;
 	int startEdge = 0;
 	bool withNormal = false;
@@ -115,7 +117,7 @@ protected:
 	float timePreprocess;
 	float timeMWT;
 	float timeTotal;
-	float timeTetgen;
+	float timeDelaunay3d;
 	float get_size();
 };
 
