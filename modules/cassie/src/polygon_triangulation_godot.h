@@ -42,8 +42,8 @@
 /// and provides access to detailed triangulation statistics.
 ///
 /// The DMWT algorithm optimizes polygon triangulation by:
-/// 1. Building a Delaunay tetrahedralization of the input points
-/// 2. Using dynamic programming to find optimal triangle configuration
+/// 1. Building a planar Delaunay triangulation of the boundary polygon
+/// 2. Using dynamic programming to select the optimal triangle configuration
 /// 3. Supporting custom cost weights for triangle quality optimization
 ///
 /// @par Algorithm Details:

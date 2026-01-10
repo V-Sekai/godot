@@ -32,6 +32,8 @@
 
 #include "cassie_path_3d.h"
 #include "core/object/ref_counted.h"
+#include "intrinsic_triangulation.h"
+#include "polygon_triangulation_godot.h"
 #include "scene/resources/mesh.h"
 
 /// @brief High-level orchestrator for CASSIE 3D surface generation pipeline.
