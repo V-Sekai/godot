@@ -41,7 +41,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	Error process_animation(AnimationPlayer *p_animation_player, MeshInstance3D *p_mesh_instance, const StringName &p_animation_name);
+	Error process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name);
 
 	PackedVector3Array get_rest_vertices() const;
 	Array get_skinning_weights() const;

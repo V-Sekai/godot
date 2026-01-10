@@ -32,33 +32,45 @@
 
 #include "dem_bones_extension.h"
 
+#include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/animation/animation_player.h"
 
 void DemBonesProcessor::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("process_animation", "animation_player", "mesh_instance", "animation_name"), &DemBonesProcessor::process_animation);
+	ClassDB::bind_method(D_METHOD("process_animation", "animation_player", "node", "animation_name"), &DemBonesProcessor::process_animation);
 	ClassDB::bind_method(D_METHOD("get_rest_vertices"), &DemBonesProcessor::get_rest_vertices);
 	ClassDB::bind_method(D_METHOD("get_skinning_weights"), &DemBonesProcessor::get_skinning_weights);
 	ClassDB::bind_method(D_METHOD("get_bone_transforms"), &DemBonesProcessor::get_bone_transforms);
 	ClassDB::bind_method(D_METHOD("get_bone_count"), &DemBonesProcessor::get_bone_count);
 }
 
-Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, MeshInstance3D *p_mesh_instance, const StringName &p_animation_name) {
+Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name) {
 	ERR_FAIL_NULL_V(p_animation_player, ERR_INVALID_PARAMETER);
-	ERR_FAIL_NULL_V(p_mesh_instance, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
 
 	Ref<Animation> animation = p_animation_player->get_animation(p_animation_name);
 	ERR_FAIL_COND_V(animation.is_null(), ERR_INVALID_PARAMETER);
 
-	Ref<ArrayMesh> mesh = p_mesh_instance->get_mesh();
-	ERR_FAIL_COND_V(mesh.is_null(), ERR_INVALID_PARAMETER);
+	Ref<Resource> mesh_resource;
+	if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node)) {
+		mesh_resource = mesh_instance->get_mesh();
+	} else if (ImporterMeshInstance3D *importer_mesh_instance = Object::cast_to<ImporterMeshInstance3D>(p_node)) {
+		mesh_resource = importer_mesh_instance->get_mesh();
+	} else {
+		ERR_FAIL_V_MSG(ERR_INVALID_PARAMETER, "Node must be MeshInstance3D or ImporterMeshInstance3D");
+	}
+	ERR_FAIL_COND_V(mesh_resource.is_null(), ERR_INVALID_PARAMETER);
 
-	int blend_shape_count = mesh->get_blend_shape_count();
+	Mesh *mesh = Object::cast_to<Mesh>(mesh_resource.ptr());
+	ImporterMesh *importer_mesh = Object::cast_to<ImporterMesh>(mesh_resource.ptr());
+	ERR_FAIL_COND_V(!mesh && !importer_mesh, ERR_INVALID_PARAMETER);
+
+	int blend_shape_count = mesh ? mesh->get_blend_shape_count() : importer_mesh->get_blend_shape_count();
 	ERR_FAIL_COND_V(blend_shape_count == 0, ERR_INVALID_DATA);
 
 	// Extract blend shape data from animation
 	HashMap<NodePath, Vector<Vector3>> blend_shapes;
-	NodePath mesh_path = p_animation_player->get_path_to(p_mesh_instance);
+	NodePath mesh_path = p_animation_player->get_path_to(p_node);
 
 	// Get animation length and frame rate
 	float length = animation->get_length();
@@ -69,7 +81,7 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	Dem::DemBonesExt<double, float> bones;
 	bones.num_subjects = 1;
 	bones.num_total_frames = frame_count;
-	Array surface_arrays = mesh->surface_get_arrays(0);
+	Array surface_arrays = mesh ? mesh->surface_get_arrays(0) : importer_mesh->get_surface_arrays(0);
 	PackedVector3Array vertex_array = surface_arrays[ArrayMesh::ARRAY_VERTEX];
 	bones.num_vertices = vertex_array.size();
 	ERR_FAIL_COND_V(bones.num_vertices == 0, ERR_INVALID_DATA);
@@ -108,7 +120,7 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 
 		// Get deformed vertices
 		for (int blend_i = 0; blend_i < blend_shape_count; blend_i++) {
-			StringName blend_name = mesh->get_blend_shape_name(blend_i);
+			StringName blend_name = StringName(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
 			String track_path = String(mesh_path) + ":" + String(blend_name);
 
 			// Find the track index for this blend shape
@@ -130,12 +142,16 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 				continue;
 			}
 
-			Array blend_arrays = mesh->surface_get_blend_shape_arrays(0);
-			if (blend_i >= blend_arrays.size()) {
-				continue;
+			Array blend_array;
+			if (mesh) {
+				Array blend_arrays = mesh->surface_get_blend_shape_arrays(0);
+				if (blend_i >= blend_arrays.size()) {
+					continue;
+				}
+				blend_array = blend_arrays[blend_i];
+			} else {
+				blend_array = importer_mesh->get_surface_blend_shape_arrays(0, blend_i);
 			}
-
-			Array blend_array = blend_arrays[blend_i];
 			if (blend_array.size() <= ArrayMesh::ARRAY_VERTEX) {
 				continue;
 			}
@@ -158,7 +174,7 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	int surface_count = mesh->get_surface_count();
 	bones.fv.clear();
 	for (int s = 0; s < surface_count; s++) {
-		Array surface_data = mesh->surface_get_arrays(s);
+		Array surface_data = mesh ? mesh->surface_get_arrays(s) : importer_mesh->get_surface_arrays(s);
 		if (surface_data.size() <= ArrayMesh::ARRAY_INDEX) {
 			continue;
 		}
