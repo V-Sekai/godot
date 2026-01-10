@@ -61,6 +61,14 @@
 				Enables or disables DOT format debug output for visualization.
 			</description>
 		</method>
+		<method name="get_importer_mesh" qualifiers="const">
+			<return type="ImporterMesh" />
+			<param index="0" name="smooth" type="bool" default="false" />
+			<param index="1" name="subdivisions" type="int" default="0" />
+			<param index="2" name="laplacian_iterations" type="int" default="0" />
+			<description>
+			</description>
+		</method>
 		<method name="get_indices" qualifiers="const">
 			<return type="PackedInt32Array" />
 			<description>
