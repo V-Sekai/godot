@@ -194,6 +194,7 @@ float CassieSurface::get_target_edge_length() const {
 
 // Surface generation
 Ref<ArrayMesh> CassieSurface::generate_surface() {
+	print_line("[Cassie] Starting generate_surface");
 	ERR_FAIL_COND_V_MSG(boundary_paths.size() == 0, Ref<ArrayMesh>(), "No boundary paths added.");
 
 	// Step 1: Process boundary paths
@@ -217,6 +218,7 @@ Ref<ArrayMesh> CassieSurface::generate_surface() {
 
 	// Step 2: Triangulate
 	ERR_FAIL_COND_V_MSG(processed_boundaries.size() == 0, Ref<ArrayMesh>(), "No valid boundaries after processing.");
+	print_line("[Cassie] Creating triangulator");
 
 	Ref<PolygonTriangulationGodot> triangulator;
 	if (processed_boundaries.size() == 1) {
@@ -230,16 +232,61 @@ Ref<ArrayMesh> CassieSurface::generate_surface() {
 	}
 
 	ERR_FAIL_COND_V_MSG(triangulator.is_null(), Ref<ArrayMesh>(), "Failed to create triangulator.");
+	print_line("[Cassie] Preprocessing");
 
 	// Preprocess and triangulate
 	bool preprocess_ok = triangulator->preprocess();
 	ERR_FAIL_COND_V_MSG(!preprocess_ok, Ref<ArrayMesh>(), "Triangulation preprocessing failed.");
+	print_line("[Cassie] Triangulating");
 
 	bool triangulate_ok = triangulator->triangulate();
 	ERR_FAIL_COND_V_MSG(!triangulate_ok, Ref<ArrayMesh>(), "Triangulation failed.");
+	print_line("[Cassie] Triangulation done");
 
-	Ref<ArrayMesh> base_mesh = triangulator->get_mesh();
-	ERR_FAIL_COND_V_MSG(base_mesh.is_null(), Ref<ArrayMesh>(), "Failed to get triangulated mesh.");
+	Ref<ArrayMesh> base_mesh;
+	if (RenderingServer::get_singleton()) {
+		base_mesh = triangulator->get_mesh();
+	} else {
+		// Headless mode: create ArrayMesh directly from triangulator data
+		base_mesh.instantiate();
+		Array arrays;
+		arrays.resize(Mesh::ARRAY_MAX);
+		PackedVector3Array vertices = triangulator->get_vertices();
+		PackedInt32Array indices = triangulator->get_indices();
+		PackedVector3Array normals = triangulator->get_normals();
+
+		// Validate indices
+		int vertex_count = vertices.size();
+		int index_count = indices.size();
+		print_line(vformat("[Cassie] Surface: vertices %d, indices %d", vertex_count, index_count));
+		for (int i = 0; i < index_count; i++) {
+			int idx = indices[i];
+			if (idx < 0 || idx >= vertex_count) {
+				print_line(vformat("[Cassie] Invalid index at %d: %d", i, idx));
+				ERR_FAIL_COND_V_MSG(idx < 0 || idx >= vertex_count, Ref<ArrayMesh>(), vformat("Invalid index %d at %d, vertex count %d", idx, i, vertex_count));
+			}
+		}
+
+		arrays[Mesh::ARRAY_VERTEX] = vertices;
+		arrays[Mesh::ARRAY_INDEX] = indices;
+		if (normals.size() > 0) {
+			arrays[Mesh::ARRAY_NORMAL] = normals;
+		}
+		// Set other arrays to empty to avoid null
+		arrays[Mesh::ARRAY_TANGENT] = PackedFloat32Array();
+		arrays[Mesh::ARRAY_COLOR] = PackedColorArray();
+		arrays[Mesh::ARRAY_TEX_UV] = PackedVector2Array();
+		arrays[Mesh::ARRAY_TEX_UV2] = PackedVector2Array();
+		arrays[Mesh::ARRAY_CUSTOM0] = PackedByteArray();
+		arrays[Mesh::ARRAY_CUSTOM1] = PackedByteArray();
+		arrays[Mesh::ARRAY_CUSTOM2] = PackedByteArray();
+		arrays[Mesh::ARRAY_CUSTOM3] = PackedByteArray();
+		arrays[Mesh::ARRAY_BONES] = PackedInt32Array();
+		arrays[Mesh::ARRAY_WEIGHTS] = PackedFloat32Array();
+
+		base_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	}
+	ERR_FAIL_COND_V_MSG(base_mesh.is_null() || base_mesh->get_surface_count() == 0, Ref<ArrayMesh>(), "Failed to get triangulated mesh.");
 
 	// Step 3: Intrinsic remeshing if enabled
 	if (use_intrinsic_remeshing) {

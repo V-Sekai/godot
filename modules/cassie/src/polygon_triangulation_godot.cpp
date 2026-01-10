@@ -97,6 +97,10 @@ Ref<PolygonTriangulationGodot> PolygonTriangulationGodot::create(const PackedVec
 	}
 
 	delete[] points;
+
+	// Disable dot output to prevent file I/O issues
+	wrapper->enable_dot_output(false);
+
 	return wrapper;
 }
 

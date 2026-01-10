@@ -230,6 +230,7 @@ bool PolygonTriangulation::start() {
 		print_line("NOTICE: No solution!");
 		return false;
 	}
+	statistics();
 	return true;
 }
 
@@ -259,7 +260,7 @@ void PolygonTriangulation::build_tiling(int eind, char side, int ti) {
 		if (ej == ei)
 			continue;
 		if (tinfo->optCost[ej] == FLT_MIN) {
-			cout << "Error in building Tiling! Tri:" << tind << " Edgei:" << ej << endl;
+			// cout << "Error in building Tiling! Tri:" << tind << " Edgei:" << ej << endl;
 			return;
 		}
 		newside = ej == 2 ? 1 : 0;
@@ -605,12 +606,13 @@ float PolygonTriangulation::get_size() {
 
 void PolygonTriangulation::statistics() {
 	timeTotal = timePreprocess + timeMWT + timeTetgen;
-	const bool DO_EXP = true;
+	const bool DO_EXP = false;
 	if (!DO_EXP) {
-		if (dot == 1)
+		if (dot == 1) {
 			cout << " [DOT1 PolygonTriangulation]" << endl;
-		else
+		} else {
 			cout << " [DOT2 PolygonTriangulation]" << endl;
+		}
 		cout << "---------------------------------" << endl;
 		cout << " File: \t\t" << filename << endl;
 		cout << " Vertex:\t" << numofpoints << endl;
@@ -619,7 +621,7 @@ void PolygonTriangulation::statistics() {
 		cout << " Weights: \t" << weightTri << "," << weightEdge << ","
 			 << weightBiTri << "," << weightTriBd << endl;
 		cout << "" << endl;
-		// cout<<" Read files:\t"<<timeReadIn<<endl;
+		cout<<" Read files:\t"<<timeReadIn<<endl;
 		cout << " (T) Call TetGen:\t" << timeTetgen << endl;
 		cout << " (T) Preprocess:\t" << timePreprocess << endl;
 		cout << " (T) MWT & Tiling:\t" << timeMWT << endl;
@@ -630,10 +632,11 @@ void PolygonTriangulation::statistics() {
 		cout << endl;
 		cout << " Intersection:\t" << intsTriInd[0] << "," << intsTriInd[1] << endl;
 	} else {
-		if (dot == 1)
+		if (dot == 1) {
 			cout << "DOT1+PolygonTriangulation==\t";
-		else
+		} else {
 			cout << "DOT2+PolygonTriangulation==\t";
+		}
 		cout << numofpoints << "\t" << numofedges << "\t" << numoftris << "\t"
 			 << "w" << weightTri << weightEdge << weightBiTri << weightTriBd << "\t"
 			 << timeTetgen << "\t" << timePreprocess << "\t" << timeMWT << "\t"
