@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PolygonTriangulationGodot" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Godot wrapper for 3D polygon triangulation using dynamic programming.
+	</brief_description>
+	<description>
+		PolygonTriangulationGodot provides a Godot-friendly interface to triangulate 3D polygons using the DMWT (Dynamic Programming Multi-Way Tiling) algorithm. This class converts boundary polygons into high-quality triangle meshes optimized for various cost metrics.
+		The triangulation algorithm uses Delaunay tetrahedralization followed by dynamic programming to find optimal triangulation based on configurable cost functions including triangle area, edge length, dihedral angles, and boundary alignment.
+		[b]Example:[/b]
+		[codeblock]
+		# Create boundary polygon points
+		var points = PackedVector3Array()
+		for i in range(10):
+			var angle = i * TAU / 10.0
+			points.push_back(Vector3(cos(angle), sin(angle), 0))
+
+		# Create triangulator
+		var triangulator = PolygonTriangulationGodot.create(points)
+
+		# Configure cost weights
+		triangulator.set_cost_weights(1.0, 0.5, 0.8, 0.3, 0.0)
+
+		# Execute triangulation
+		triangulator.preprocess()
+		triangulator.triangulate()
+
+		# Get result as mesh
+		var mesh = triangulator.get_mesh()
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="CASSIE: Curve and Surface Sketching in Immersive Environments">http://www-sop.inria.fr/reves/Basilic/2021/YASBS21</link>
+	</tutorials>
+	<methods>
+		<method name="clear_cache">
+			<return type="void" />
+			<description>
+				Clears cached triangulation results. Call this before re-running triangulation with different parameters.
+			</description>
+		</method>
+		<method name="create" qualifiers="static">
+			<return type="PolygonTriangulationGodot" />
+			<param index="0" name="points" type="PackedVector3Array" />
+			<param index="1" name="normals" type="PackedVector3Array" default="PackedVector3Array()" />
+			<description>
+				Creates a new triangulator instance from boundary polygon points. Optionally accepts per-vertex normals for boundary-aligned optimization.
+			</description>
+		</method>
+		<method name="create_planar" qualifiers="static">
+			<return type="PolygonTriangulationGodot" />
+			<param index="0" name="points" type="PackedVector3Array" />
+			<param index="1" name="degenerate_points" type="PackedVector3Array" />
+			<description>
+				Creates a triangulator for degenerate (planar) cases with explicit 2D projection points.
+			</description>
+		</method>
+		<method name="enable_dot_output">
+			<return type="void" />
+			<param index="0" name="enable" type="bool" />
+			<description>
+				Enables or disables DOT format debug output for visualization.
+			</description>
+		</method>
+		<method name="get_indices" qualifiers="const">
+			<return type="PackedInt32Array" />
+			<description>
+				Returns the triangle indices as a flat array. Every 3 consecutive indices form one triangle.
+			</description>
+		</method>
+		<method name="get_mesh" qualifiers="const">
+			<return type="ArrayMesh" />
+			<param index="0" name="smooth" type="bool" default="false" />
+			<param index="1" name="subdivisions" type="int" default="0" />
+			<param index="2" name="laplacian_iterations" type="int" default="0" />
+			<description>
+				Returns the triangulated result as an [ArrayMesh]. Optionally applies smoothing, subdivision, and Laplacian refinement.
+			</description>
+		</method>
+		<method name="get_normals" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>
+				Returns per-vertex normals for the triangulated mesh.
+			</description>
+		</method>
+		<method name="get_optimal_cost" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the optimal cost value found by the dynamic programming algorithm.
+			</description>
+		</method>
+		<method name="get_statistics" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns statistics about the triangulation including optimal cost, triangle count, and vertex count.
+			</description>
+		</method>
+		<method name="get_triangle_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of triangles in the result.
+			</description>
+		</method>
+		<method name="get_vertex_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of vertices in the result.
+			</description>
+		</method>
+		<method name="get_vertices" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>
+				Returns the vertex positions of the triangulated mesh.
+			</description>
+		</method>
+		<method name="preprocess">
+			<return type="bool" />
+			<description>
+				Preprocesses the polygon by generating triangle candidates using Delaunay tetrahedralization. Must be called before [method triangulate].
+			</description>
+		</method>
+		<method name="set_cost_weights">
+			<return type="void" />
+			<param index="0" name="triangle" type="float" />
+			<param index="1" name="edge" type="float" />
+			<param index="2" name="bi_triangle" type="float" />
+			<param index="3" name="triangle_boundary" type="float" />
+			<param index="4" name="worst_dihedral" type="float" />
+			<description>
+				Configures the weights for the cost function used in triangulation optimization:
+				- [param triangle]: Weight for triangle area
+				- [param edge]: Weight for edge length
+				- [param bi_triangle]: Weight for dihedral angle smoothness
+				- [param triangle_boundary]: Weight for boundary normal alignment
+				- [param worst_dihedral]: Weight for worst dihedral angle penalty
+			</description>
+		</method>
+		<method name="set_optimization_rounds">
+			<return type="void" />
+			<param index="0" name="rounds" type="int" />
+			<description>
+				Sets the number of optimization rounds for the dynamic programming algorithm.
+			</description>
+		</method>
+		<method name="set_point_limit">
+			<return type="void" />
+			<param index="0" name="limit" type="int" />
+			<description>
+				Sets the maximum number of points to process. Use to limit computation for large inputs.
+			</description>
+		</method>
+		<method name="triangulate">
+			<return type="bool" />
+			<description>
+				Executes the triangulation algorithm. Returns [code]true[/code] if successful. Must call [method preprocess] first.
+			</description>
+		</method>
+	</methods>
+</class>

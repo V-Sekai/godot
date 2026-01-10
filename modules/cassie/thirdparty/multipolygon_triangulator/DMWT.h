@@ -4,16 +4,10 @@
 #include "EdgeInfo.h"
 #include "TriangleInfo.h"
 
-#include "core/math/delaunay_3d.h"
+#include "core/math/delaunay_2d.h"
 #include "core/object/ref_counted.h"
 #include "core/templates/vector.h"
 #include "core/variant/variant.h"
-
-#include <stdio.h>
-#include <cmath>
-#include <fstream>
-#include <iostream>
-#include <string>
 
 /**
  * The PolygonTriangulation class is used for triangulating multiple polygons.
@@ -53,7 +47,7 @@ public:
 protected:
 	char *filename = nullptr;
 	Vector<Vector3> in;
-	Vector<Delaunay3D::OutputSimplex> out;
+	Vector<Delaunay2D::Triangle> out;
 	int round = 0;
 	int startEdge = 0;
 	bool withNormal = false;

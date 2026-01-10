@@ -11,4 +11,10 @@ def get_doc_path():
 
 
 def get_doc_classes():
-    return []
+    return [
+        "PolygonTriangulationGodot",
+        "CassiePath3D",
+        "IntrinsicTriangulation",
+        "CassieSurface",
+        'PolygonTriangulation',
+    ]

@@ -29,6 +29,11 @@
 /**************************************************************************/
 
 #include "register_types.h"
+
+#include "src/cassie_path_3d.h"
+#include "src/cassie_surface.h"
+#include "src/intrinsic_triangulation.h"
+#include "src/polygon_triangulation_godot.h"
 #include "thirdparty/multipolygon_triangulator/DMWT.h"
 
 void initialize_cassie_module(ModuleInitializationLevel p_level) {
@@ -36,6 +41,10 @@ void initialize_cassie_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 	GDREGISTER_CLASS(PolygonTriangulation);
+	GDREGISTER_CLASS(PolygonTriangulationGodot);
+	GDREGISTER_CLASS(CassiePath3D);
+	GDREGISTER_CLASS(IntrinsicTriangulation);
+	GDREGISTER_CLASS(CassieSurface);
 }
 
 void uninitialize_cassie_module(ModuleInitializationLevel p_level) {

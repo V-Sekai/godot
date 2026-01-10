@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CassiePath3D" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Represents a 3D curve path for sketch-based surface modeling.
+	</brief_description>
+	<description>
+		CassiePath3D stores and manipulates 3D curve data for sketch-based surface generation. It provides tools for curve beautification, resampling, and normal smoothing.
+		This class is designed for use in immersive sketching workflows where users draw 3D curves that define surface boundaries.
+		[b]Example:[/b]
+		[codeblock]
+		var path = CassiePath3D.new()
+
+		# Add sketch stroke points
+		path.add_point(Vector3(0, 0, 0), Vector3(0, 1, 0))
+		path.add_point(Vector3(1, 0.5, 0), Vector3(0, 1, 0))
+		path.add_point(Vector3(2, 0, 0), Vector3(0, 1, 0))
+
+		# Beautify the curve using Taubin smoothing
+		path.beautify_taubin(0.5, -0.53, 5)
+
+		# Resample to uniform spacing
+		path.resample_uniform(20)
+
+		# Get boundary polygon for triangulation
+		var boundary_points = path.get_points()
+		[/codeblock]
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_point">
+			<return type="void" />
+			<param index="0" name="position" type="Vector3" />
+			<param index="1" name="normal" type="Vector3" default="Vector3(0, 1, 0)" />
+			<description>
+				Adds a point to the end of the path with an optional normal vector.
+			</description>
+		</method>
+		<method name="beautify_laplacian">
+			<return type="void" />
+			<param index="0" name="lambda" type="float" default="0.5" />
+			<param index="1" name="iterations" type="int" default="5" />
+			<description>
+				Applies Laplacian smoothing to the curve. Higher [param lambda] values create more smoothing. Use [method beautify_taubin] to avoid shrinkage.
+			</description>
+		</method>
+		<method name="beautify_taubin">
+			<return type="void" />
+			<param index="0" name="lambda" type="float" default="0.5" />
+			<param index="1" name="mu" type="float" default="-0.53" />
+			<param index="2" name="iterations" type="int" default="5" />
+			<description>
+				Applies Taubin smoothing which alternates between smoothing and anti-shrinking steps. This preserves curve volume better than Laplacian smoothing.
+				[param mu] should typically be negative and close to [code]-lambda/(1 + lambda)[/code].
+			</description>
+		</method>
+		<method name="clear_points">
+			<return type="void" />
+			<description>
+				Removes all points from the path.
+			</description>
+		</method>
+		<method name="get_average_segment_length" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the average length of segments between consecutive points.
+			</description>
+		</method>
+		<method name="get_normals" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>
+				Returns all normal vectors along the path.
+			</description>
+		</method>
+		<method name="get_point_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of points in the path.
+			</description>
+		</method>
+		<method name="get_point_normal" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the normal vector at the specified point index.
+			</description>
+		</method>
+		<method name="get_point_position" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the position of the point at the specified index.
+			</description>
+		</method>
+		<method name="get_points" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>
+				Returns all point positions along the path.
+			</description>
+		</method>
+		<method name="get_sample_normals" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<param index="0" name="count" type="int" />
+			<description>
+				Returns a resampled array of normals with the specified count, interpolated along the path.
+			</description>
+		</method>
+		<method name="get_sample_points" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<param index="0" name="count" type="int" />
+			<description>
+				Returns a resampled array of points with the specified count, evenly distributed along the path.
+			</description>
+		</method>
+		<method name="get_total_length" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the total length of the path.
+			</description>
+		</method>
+		<method name="insert_point">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="position" type="Vector3" />
+			<param index="2" name="normal" type="Vector3" default="Vector3(0, 1, 0)" />
+			<description>
+				Inserts a point at the specified index.
+			</description>
+		</method>
+		<method name="remove_point">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Removes the point at the specified index.
+			</description>
+		</method>
+		<method name="resample_uniform">
+			<return type="void" />
+			<param index="0" name="target_count" type="int" />
+			<description>
+				Resamples the path to have the specified number of points, evenly spaced by arc length.
+			</description>
+		</method>
+		<method name="set_point_normal">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="normal" type="Vector3" />
+			<description>
+				Sets the normal vector at the specified point index.
+			</description>
+		</method>
+		<method name="set_point_position">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="position" type="Vector3" />
+			<description>
+				Sets the position of the point at the specified index.
+			</description>
+		</method>
+		<method name="smooth_normals">
+			<return type="void" />
+			<description>
+				Smooths the normal vectors by averaging with neighbors.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="closed" type="bool" setter="set_closed" getter="is_path_closed" default="false">
+			Whether the path forms a closed loop.
+		</member>
+	</members>
+</class>

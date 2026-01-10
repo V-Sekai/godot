@@ -1,5 +1,8 @@
 #include "DMWT.h"
 
+#include <iostream>
+#include <fstream>
+
 #define RIGHT 1 //[a,b]
 #define LEFT 0 //[-infinity,a)&(b,+infinity]
 #define triangle(t, i) tris[t * 3 + i]
@@ -74,15 +77,28 @@ PolygonTriangulation::~PolygonTriangulation() {
 	// tris and points will be destroyed by tetgen
 	// delete [] filename;
 	if (!EXPSTOP) {
-		delete[] tiling; // delete [] tris; //delete [] points;
-		if (withNormal)
+		if (tiling != nullptr)
+			delete[] tiling;
+		if (withNormal && normals != nullptr)
 			delete[] normals;
 		if (!isDeGen) {
-			for (int i = 0; i < numofedges; i++)
-				delete edgeInfoList[i];
-			for (int i = 0; i < numoftris; i++)
-				delete triangleInfoList[i];
+			if (edgeInfoList != nullptr) {
+				for (int i = 0; i < numofedges; i++)
+					if (edgeInfoList[i] != nullptr)
+						delete edgeInfoList[i];
+				delete[] edgeInfoList;
+			}
+			if (triangleInfoList != nullptr) {
+				for (int i = 0; i < numoftris; i++)
+					if (triangleInfoList[i] != nullptr)
+						delete triangleInfoList[i];
+				delete[] triangleInfoList;
+			}
 		}
+		if (points != nullptr)
+			delete[] points;
+		if (deGenPoints != nullptr)
+			delete[] deGenPoints;
 	}
 }
 
@@ -399,32 +415,25 @@ void PolygonTriangulation::build_list() {
 
 void PolygonTriangulation::gen_triangle_candidates() {
 	in.resize(numofpoints);
-	int new_num_of_points = in.size() / 3;
-	memcpy(in.ptrw(), points, new_num_of_points * sizeof(Vector3));
-	Vector<Vector3> points_array;
-	points_array.resize(new_num_of_points);
-
-	for (int i = 0; i < new_num_of_points; ++i) {
-		points_array.write[i] = Vector3(points[i * 3 + 0], points[i * 3 + 1], points[i * 3 + 2]);
+	
+	// Project 3D points to 2D for planar Delaunay triangulation
+	// Assume points lie in XY plane (Z = 0)
+	Vector<Vector2> points_2d;
+	points_2d.resize(numofpoints);
+	
+	for (int i = 0; i < numofpoints; ++i) {
+		points_2d.write[i] = Vector2(points[i * 3 + 0], points[i * 3 + 1]);
 	}
 
-	out = Delaunay3D::tetrahedralize(points_array);
+	// Use 2D Delaunay triangulation for planar polygons
+	out = Delaunay2D::triangulate(points_2d);
 	PackedInt32Array triangles;
 
+	// Convert Delaunay2D triangles to triangle array
 	for (int i = 0; i < out.size(); i++) {
-		static const int face_order[4][3] = {
-			{ 0, 1, 2 },
-			{ 0, 2, 3 },
-			{ 0, 1, 3 },
-			{ 1, 2, 3 }
-		};
-
-		for (int j = 0; j < 4; j++) {
-			// Add each triangle to the array
-			triangles.push_back(out[i].points[face_order[j][0]]);
-			triangles.push_back(out[i].points[face_order[j][1]]);
-			triangles.push_back(out[i].points[face_order[j][2]]);
-		}
+		triangles.push_back(out[i].points[0]);
+		triangles.push_back(out[i].points[1]);
+		triangles.push_back(out[i].points[2]);
 	}
 
 	numoftris = triangles.size() / 3;

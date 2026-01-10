@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CassieSurface" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		High-level orchestrator for CASSIE 3D surface generation pipeline.
+	</brief_description>
+	<description>
+		CassieSurface provides a unified interface for generating triangle mesh surfaces from 3D sketch curves. It automates the complete CASSIE pipeline: curve beautification, resampling, triangulation, and intrinsic remeshing.
+		This class is designed for immersive 3D sketching applications where users draw boundaries in 3D space and expect high-quality surface generation.
+		[b]Example:[/b]
+		[codeblock]
+		# Create surface generator
+		var surface = CassieSurface.new()
+
+		# Configure pipeline
+		surface.auto_beautify = true
+		surface.auto_resample = true
+		surface.use_intrinsic_remeshing = true
+		surface.target_boundary_points = 30
+
+		# Add boundary path from sketch stroke
+		var path = CassiePath3D.new()
+		for point in sketch_stroke_points:
+		    path.add_point(point)
+		surface.add_boundary_path(path)
+
+		# Generate surface mesh
+		var mesh = surface.generate_surface()
+
+		# Use the mesh
+		var mesh_instance = MeshInstance3D.new()
+		mesh_instance.mesh = mesh
+		add_child(mesh_instance)
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="CASSIE: Curve and Surface Sketching in Immersive Environments">http://www-sop.inria.fr/reves/Basilic/2021/YASBS21</link>
+	</tutorials>
+	<methods>
+		<method name="add_boundary_path">
+			<return type="void" />
+			<param index="0" name="path" type="CassiePath3D" />
+			<description>
+				Adds a boundary path to the surface. Multiple paths can define holes or separate regions.
+			</description>
+		</method>
+		<method name="clear_boundary_paths">
+			<return type="void" />
+			<description>
+				Removes all boundary paths.
+			</description>
+		</method>
+		<method name="clear_generated_mesh">
+			<return type="void" />
+			<description>
+				Clears the cached generated mesh, freeing memory.
+			</description>
+		</method>
+		<method name="generate_surface">
+			<return type="ArrayMesh" />
+			<description>
+				Executes the full CASSIE pipeline and returns the generated surface mesh.
+				Pipeline stages:
+				1. Curve beautification (if [member auto_beautify] is [code]true[/code])
+				2. Curve resampling (if [member auto_resample] is [code]true[/code])
+				3. Polygon triangulation via DMWT algorithm
+				4. Intrinsic Delaunay remeshing (if [member use_intrinsic_remeshing] is [code]true[/code])
+				Returns [code]null[/code] if the pipeline fails at any stage.
+			</description>
+		</method>
+		<method name="get_boundary_path" qualifiers="const">
+			<return type="CassiePath3D" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the boundary path at the specified index.
+			</description>
+		</method>
+		<method name="get_boundary_path_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of boundary paths added.
+			</description>
+		</method>
+		<method name="get_generated_mesh" qualifiers="const">
+			<return type="ArrayMesh" />
+			<description>
+				Returns the most recently generated mesh without re-running the pipeline.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="auto_beautify" type="bool" setter="set_auto_beautify" getter="get_auto_beautify" default="true">
+			If [code]true[/code], automatically applies Taubin smoothing to boundary curves before triangulation.
+		</member>
+		<member name="auto_resample" type="bool" setter="set_auto_resample" getter="get_auto_resample" default="true">
+			If [code]true[/code], automatically resamples boundary curves to uniform point spacing.
+		</member>
+		<member name="beautify_iterations" type="int" setter="set_beautify_iterations" getter="get_beautify_iterations" default="5">
+			Number of Taubin smoothing iterations for curve beautification.
+		</member>
+		<member name="beautify_lambda" type="float" setter="set_beautify_lambda" getter="get_beautify_lambda" default="0.5">
+			Lambda parameter for Taubin smoothing (smoothing strength).
+		</member>
+		<member name="beautify_mu" type="float" setter="set_beautify_mu" getter="get_beautify_mu" default="-0.53">
+			Mu parameter for Taubin smoothing (anti-shrinkage).
+		</member>
+		<member name="max_flip_iterations" type="int" setter="set_max_flip_iterations" getter="get_max_flip_iterations" default="100">
+			Maximum iterations for edge flipping to achieve Delaunay triangulation.
+		</member>
+		<member name="smooth_iterations" type="int" setter="set_smooth_iterations" getter="get_smooth_iterations" default="5">
+			Number of Laplacian smoothing iterations after remeshing.
+		</member>
+		<member name="target_boundary_points" type="int" setter="set_target_boundary_points" getter="get_target_boundary_points" default="30">
+			Target number of points for boundary curve resampling.
+		</member>
+		<member name="target_edge_length" type="float" setter="set_target_edge_length" getter="get_target_edge_length" default="-1.0">
+			Target edge length for mesh refinement. Negative values use average edge length.
+		</member>
+		<member name="use_intrinsic_remeshing" type="bool" setter="set_use_intrinsic_remeshing" getter="get_use_intrinsic_remeshing" default="true">
+			If [code]true[/code], applies intrinsic Delaunay remeshing for better triangle quality.
+		</member>
+	</members>
+</class>

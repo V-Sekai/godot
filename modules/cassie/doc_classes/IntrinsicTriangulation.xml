@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="IntrinsicTriangulation" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Intrinsic triangulation and remeshing for triangle meshes.
+	</brief_description>
+	<description>
+		IntrinsicTriangulation implements intrinsic Delaunay triangulation and mesh refinement. This technique improves mesh quality by flipping edges based on intrinsic edge lengths rather than embedded geometry, preserving the surface while optimizing triangle quality.
+		The intrinsic approach allows for robust triangulation even with poor-quality input meshes, and enables operations like edge flipping without changing vertex positions.
+		[b]Example:[/b]
+		[codeblock]
+		# Create from triangulated mesh
+		var intrinsic = IntrinsicTriangulation.new()
+		intrinsic.set_mesh(triangulated_mesh)
+
+		# Flip to Delaunay
+		intrinsic.flip_to_delaunay()
+
+		# Refine mesh quality
+		intrinsic.refine_intrinsic_triangulation(0.5)
+
+		# Smooth vertex positions
+		intrinsic.smooth_intrinsic_positions(5)
+
+		# Get refined result
+		var refined_mesh = intrinsic.get_mesh()
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Integer Coordinates for Intrinsic Geometry Processing">https://markjgillespie.com/Research/integer-coordinates/</link>
+	</tutorials>
+	<methods>
+		<method name="flip_to_delaunay">
+			<return type="bool" />
+			<description>
+				Flips edges to achieve Delaunay triangulation in intrinsic geometry. Returns [code]true[/code] if convergence was achieved within the maximum iteration limit.
+				A Delaunay triangulation maximizes the minimum angle, improving triangle quality.
+			</description>
+		</method>
+		<method name="get_edge_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of edges in the intrinsic triangulation.
+			</description>
+		</method>
+		<method name="get_indices" qualifiers="const">
+			<return type="PackedInt32Array" />
+			<description>
+				Returns triangle indices. Every 3 consecutive indices form one triangle.
+			</description>
+		</method>
+		<method name="get_mesh" qualifiers="const">
+			<return type="ArrayMesh" />
+			<description>
+				Returns the current state of the intrinsic triangulation as an [ArrayMesh].
+			</description>
+		</method>
+		<method name="get_normals" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>
+				Returns per-vertex normal vectors.
+			</description>
+		</method>
+		<method name="get_statistics" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns statistics about the intrinsic triangulation including vertex count, edge count, triangle count, and edge length statistics.
+			</description>
+		</method>
+		<method name="get_triangle_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of active triangles in the intrinsic triangulation.
+			</description>
+		</method>
+		<method name="get_vertex_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of vertices.
+			</description>
+		</method>
+		<method name="get_vertices" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>
+				Returns vertex positions.
+			</description>
+		</method>
+		<method name="refine_intrinsic_triangulation">
+			<return type="bool" />
+			<param index="0" name="target_edge_length" type="float" default="-1.0" />
+			<description>
+				Refines the intrinsic triangulation by splitting or collapsing edges to achieve more uniform edge lengths. If [param target_edge_length] is negative, uses the average edge length.
+				Returns [code]true[/code] if refinement was successful.
+			</description>
+		</method>
+		<method name="set_mesh">
+			<return type="void" />
+			<param index="0" name="mesh" type="ArrayMesh" />
+			<param index="1" name="surface" type="int" default="0" />
+			<description>
+				Initializes the intrinsic triangulation from an [ArrayMesh]. Extracts vertices, indices, and normals from the specified surface.
+			</description>
+		</method>
+		<method name="set_mesh_data">
+			<return type="void" />
+			<param index="0" name="vertices" type="PackedVector3Array" />
+			<param index="1" name="indices" type="PackedInt32Array" />
+			<param index="2" name="normals" type="PackedVector3Array" default="PackedVector3Array()" />
+			<description>
+				Initializes the intrinsic triangulation from raw mesh data. Triangulates must be provided as indices.
+			</description>
+		</method>
+		<method name="smooth_intrinsic_positions">
+			<return type="void" />
+			<param index="0" name="iterations" type="int" default="5" />
+			<description>
+				Applies Laplacian smoothing to vertex positions for the specified number of iterations. This can improve mesh quality after edge flipping operations.
+			</description>
+		</method>
+		<method name="use_delaunay_flips">
+			<return type="void" />
+			<param index="0" name="enable" type="bool" />
+			<description>
+				Enables or disables use of the Delaunay criterion for edge flipping. When enabled, edges are flipped to satisfy the Delaunay condition.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="angle_threshold" type="float" setter="set_angle_threshold" getter="get_angle_threshold" default="0.523599">
+			Angle threshold in radians (~30 degrees) used for edge flipping decisions.
+		</member>
+		<member name="max_flip_iterations" type="int" setter="set_max_flip_iterations" getter="get_max_flip_iterations" default="100">
+			Maximum number of iterations for edge flipping operations.
+		</member>
+	</members>
+</class>

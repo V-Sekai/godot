@@ -28,12 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef CASSIE_REGISTER_TYPES_H
-#define CASSIE_REGISTER_TYPES_H
+#pragma once
 
 #include "modules/register_module_types.h"
 
 void initialize_cassie_module(ModuleInitializationLevel p_level);
 void uninitialize_cassie_module(ModuleInitializationLevel p_level);
-
-#endif // CASSIE_REGISTER_TYPES_H
