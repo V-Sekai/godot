@@ -37,6 +37,7 @@
 #include "../src/intrinsic_triangulation.h"
 #include "../src/polygon_triangulation_godot.h"
 #include "../thirdparty/multipolygon_triangulator/DMWT.h"
+#include "scene/resources/3d/importer_mesh.h"
 
 namespace TestPolygonTriangulation {
 
@@ -75,18 +76,21 @@ TEST_CASE("[Modules][Cassie][PolygonTriangulationGodot] Simple square triangulat
 	bool triangulate_ok = tri->triangulate();
 	CHECK(triangulate_ok);
 
-	// Get mesh
-	Ref<ArrayMesh> mesh = tri->get_mesh();
-	CHECK(mesh.is_valid());
-	CHECK(mesh->get_surface_count() > 0);
+	// Get importer mesh (headless-safe)
+	Ref<ImporterMesh> importer = tri->get_importer_mesh();
+	CHECK(importer.is_valid());
+	CHECK(importer->get_surface_count() > 0);
 
-	// Check triangle count (square should produce 2 triangles)
-	int tri_count = tri->get_triangle_count();
-	CHECK(tri_count == 2);
+	Array surface = importer->get_surface_arrays(0);
+	CHECK(surface.size() == Mesh::ARRAY_MAX);
 
-	// Check vertex count
-	int vert_count = tri->get_vertex_count();
-	CHECK(vert_count == 4);
+	PackedVector3Array vertices = surface[Mesh::ARRAY_VERTEX];
+	PackedInt32Array indices = surface[Mesh::ARRAY_INDEX];
+	CHECK(vertices.size() == 4);
+	CHECK(indices.size() == 6);
+
+	// Derived counts from importer surface
+	CHECK(indices.size() / 3 == 2);
 }
 
 TEST_CASE("[Modules][Cassie][CassiePath3D] Add and retrieve points") {

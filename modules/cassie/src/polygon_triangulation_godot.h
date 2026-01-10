@@ -34,6 +34,8 @@
 #include "core/object/ref_counted.h"
 #include "scene/resources/mesh.h"
 
+class ImporterMesh;
+
 /// @brief Godot-friendly wrapper around C++ DMWT triangulation algorithm.
 ///
 /// PolygonTriangulationGodot provides low-level control over polygon triangulation
@@ -110,6 +112,7 @@ public:
 	PackedInt32Array get_indices() const;
 	PackedVector3Array get_normals() const;
 	Ref<ArrayMesh> get_mesh(bool p_smooth = false, int p_subdivisions = 0, int p_laplacian_iterations = 0) const;
+	Ref<ImporterMesh> get_importer_mesh(bool p_smooth = false, int p_subdivisions = 0, int p_laplacian_iterations = 0) const;
 
 	// Query information
 	int get_triangle_count() const;

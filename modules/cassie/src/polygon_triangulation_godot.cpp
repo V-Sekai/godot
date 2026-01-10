@@ -30,6 +30,8 @@
 
 #include "polygon_triangulation_godot.h"
 
+#include "scene/resources/3d/importer_mesh.h"
+
 void PolygonTriangulationGodot::_bind_methods() {
 	// Factory methods
 	ClassDB::bind_static_method("PolygonTriangulationGodot", D_METHOD("create", "points", "normals"), &PolygonTriangulationGodot::create, DEFVAL(PackedVector3Array()));
@@ -51,6 +53,7 @@ void PolygonTriangulationGodot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_indices"), &PolygonTriangulationGodot::get_indices);
 	ClassDB::bind_method(D_METHOD("get_normals"), &PolygonTriangulationGodot::get_normals);
 	ClassDB::bind_method(D_METHOD("get_mesh", "smooth", "subdivisions", "laplacian_iterations"), &PolygonTriangulationGodot::get_mesh, DEFVAL(false), DEFVAL(0), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("get_importer_mesh", "smooth", "subdivisions", "laplacian_iterations"), &PolygonTriangulationGodot::get_importer_mesh, DEFVAL(false), DEFVAL(0), DEFVAL(0));
 
 	// Query
 	ClassDB::bind_method(D_METHOD("get_triangle_count"), &PolygonTriangulationGodot::get_triangle_count);
@@ -258,12 +261,13 @@ Ref<ArrayMesh> PolygonTriangulationGodot::get_mesh(bool p_smooth, int p_subdivis
 	int out_pn = 0;
 
 	const_cast<PolygonTriangulation *>(triangulator.ptr())->get_result(&out_faces, &out_num, &out_points, &out_norms, &out_pn, p_smooth, p_subdivisions, p_laplacian_iterations);
-
-	print_line("get_mesh: out_num=", out_num, " out_pn=", out_pn);
-	print_line("get_mesh: out_faces=", (void *)out_faces, " out_points=", (void *)out_points);
-
 	Ref<ArrayMesh> mesh;
-	mesh.instantiate();
+
+	// If RenderingServer is unavailable (headless test), bail out gracefully.
+	if (!RenderingServer::get_singleton()) {
+		WARN_PRINT_ONCE("RenderingServer not available; returning empty mesh. Use get_importer_mesh() for headless access.");
+		return mesh;
+	}
 
 	Array arrays;
 	arrays.resize(Mesh::ARRAY_MAX);
@@ -275,25 +279,14 @@ Ref<ArrayMesh> PolygonTriangulationGodot::get_mesh(bool p_smooth, int p_subdivis
 	}
 	arrays[Mesh::ARRAY_VERTEX] = vertices;
 
-	// out_faces contains expanded triangle coordinates (9 doubles per triangle),
-	// not indices. We need to extract indices from the structure.
-	// Each triangle in out_faces has 9 values: [v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z]
-	// We need to find which vertex index each set of coordinates corresponds to.
 	PackedInt32Array indices;
 	indices.resize(out_num * 3);
-
-	print_line("get_mesh: Building indices for ", out_num, " triangles");
-
 	for (int tri_idx = 0; tri_idx < out_num; tri_idx++) {
 		for (int vert_idx = 0; vert_idx < 3; vert_idx++) {
-			// Get the coordinates from out_faces
 			double vx = out_faces[tri_idx * 9 + vert_idx * 3 + 0];
 			double vy = out_faces[tri_idx * 9 + vert_idx * 3 + 1];
 			double vz = out_faces[tri_idx * 9 + vert_idx * 3 + 2];
 
-			print_line("get_mesh: tri=", tri_idx, " vert=", vert_idx, " coords=(", vx, ",", vy, ",", vz, ")");
-
-			// Find which vertex in out_points matches these coordinates
 			int found_idx = -1;
 			for (int pt_idx = 0; pt_idx < out_pn; pt_idx++) {
 				if (Math::is_equal_approx(out_points[pt_idx * 3 + 0], vx) &&
@@ -304,19 +297,13 @@ Ref<ArrayMesh> PolygonTriangulationGodot::get_mesh(bool p_smooth, int p_subdivis
 				}
 			}
 
-			print_line("get_mesh: found_idx=", found_idx);
-
 			ERR_FAIL_COND_V_MSG(found_idx == -1, Ref<ArrayMesh>(),
 					vformat("Failed to find vertex index for triangle %d vertex %d", tri_idx, vert_idx));
 
 			indices.write[tri_idx * 3 + vert_idx] = found_idx;
 		}
 	}
-
-	print_line("get_mesh: Built ", indices.size(), " indices, adding to arrays");
 	arrays[Mesh::ARRAY_INDEX] = indices;
-
-	print_line("get_mesh: Checking normals, out_norms=", (void *)out_norms);
 
 	if (out_norms != nullptr) {
 		PackedVector3Array normals;
@@ -325,55 +312,104 @@ Ref<ArrayMesh> PolygonTriangulationGodot::get_mesh(bool p_smooth, int p_subdivis
 			normals.write[i] = Vector3(out_norms[i * 3], out_norms[i * 3 + 1], out_norms[i * 3 + 2]);
 		}
 		arrays[Mesh::ARRAY_NORMAL] = normals;
-		print_line("get_mesh: Added normals");
 	}
 
-	print_line("get_mesh: About to call add_surface_from_arrays");
-	print_line("get_mesh: arrays size=", arrays.size());
-	print_line("get_mesh: ARRAY_VERTEX type=", arrays[Mesh::ARRAY_VERTEX].get_type(), " size=", vertices.size());
-	print_line("get_mesh: ARRAY_INDEX type=", arrays[Mesh::ARRAY_INDEX].get_type(), " size=", indices.size());
-	print_line("get_mesh: Vertices: ", vertices);
-	print_line("get_mesh: Indices: ", indices);
+	// Cache results for count helpers.
+	const_cast<PolygonTriangulationGodot *>(this)->cached_vertices = vertices;
+	const_cast<PolygonTriangulationGodot *>(this)->cached_indices = indices;
+	const_cast<PolygonTriangulationGodot *>(this)->cached_normals = arrays[Mesh::ARRAY_NORMAL];
+	const_cast<PolygonTriangulationGodot *>(this)->has_cached_result = true;
 
-	// Clean up allocated memory before mesh creation
-	if (out_faces) {
-		delete[] out_faces;
-		out_faces = nullptr;
-	}
-	if (out_points) {
-		delete[] out_points;
-		out_points = nullptr;
-	}
-	if (out_norms) {
-		delete[] out_norms;
-		out_norms = nullptr;
-	}
-
-	print_line("get_mesh: Cleaned up memory, calling add_surface_from_arrays");
-
-	// Check if RenderingServer is available
-	if (!RenderingServer::get_singleton()) {
-		print_error("RenderingServer not available - cannot create mesh");
-		return Ref<ArrayMesh>();
-	}
-
+	mesh.instantiate();
 	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-	print_line("get_mesh: Successfully created mesh");
 	return mesh;
 }
 
-int PolygonTriangulationGodot::get_triangle_count() const {
-	if (cached_indices.size() > 0) {
-		return cached_indices.size() / 3;
+Ref<ImporterMesh> PolygonTriangulationGodot::get_importer_mesh(bool p_smooth, int p_subdivisions, int p_laplacian_iterations) const {
+	ERR_FAIL_COND_V_MSG(triangulator.is_null(), Ref<ImporterMesh>(), "Triangulator not initialized.");
+
+	double *out_faces = nullptr;
+	int out_num = 0;
+	double *out_points = nullptr;
+	float *out_norms = nullptr;
+	int out_pn = 0;
+
+	const_cast<PolygonTriangulation *>(triangulator.ptr())->get_result(&out_faces, &out_num, &out_points, &out_norms, &out_pn, p_smooth, p_subdivisions, p_laplacian_iterations);
+
+	Array arrays;
+	arrays.resize(Mesh::ARRAY_MAX);
+
+	PackedVector3Array vertices;
+	vertices.resize(out_pn);
+	for (int i = 0; i < out_pn; i++) {
+		vertices.write[i] = Vector3(out_points[i * 3], out_points[i * 3 + 1], out_points[i * 3 + 2]);
 	}
-	return 0;
+	arrays[Mesh::ARRAY_VERTEX] = vertices;
+
+	PackedInt32Array indices;
+	indices.resize(out_num * 3);
+	for (int tri_idx = 0; tri_idx < out_num; tri_idx++) {
+		for (int vert_idx = 0; vert_idx < 3; vert_idx++) {
+			double vx = out_faces[tri_idx * 9 + vert_idx * 3 + 0];
+			double vy = out_faces[tri_idx * 9 + vert_idx * 3 + 1];
+			double vz = out_faces[tri_idx * 9 + vert_idx * 3 + 2];
+
+			int found_idx = -1;
+			for (int pt_idx = 0; pt_idx < out_pn; pt_idx++) {
+				if (Math::is_equal_approx(out_points[pt_idx * 3 + 0], vx) &&
+						Math::is_equal_approx(out_points[pt_idx * 3 + 1], vy) &&
+						Math::is_equal_approx(out_points[pt_idx * 3 + 2], vz)) {
+					found_idx = pt_idx;
+					break;
+				}
+			}
+
+			if (found_idx == -1) {
+				print_line(vformat("[Cassie] get_importer_mesh: failed to find index for tri=%d vert=%d", tri_idx, vert_idx));
+				ERR_FAIL_COND_V_MSG(found_idx == -1, Ref<ImporterMesh>(),
+						vformat("Failed to find vertex index for triangle %d vertex %d", tri_idx, vert_idx));
+			}
+
+			indices.write[tri_idx * 3 + vert_idx] = found_idx;
+		}
+	}
+	arrays[Mesh::ARRAY_INDEX] = indices;
+
+	if (out_norms != nullptr) {
+		PackedVector3Array normals;
+		normals.resize(out_pn);
+		for (int i = 0; i < out_pn; i++) {
+			normals.write[i] = Vector3(out_norms[i * 3], out_norms[i * 3 + 1], out_norms[i * 3 + 2]);
+		}
+		arrays[Mesh::ARRAY_NORMAL] = normals;
+	}
+
+	Ref<ImporterMesh> importer_mesh;
+	importer_mesh.instantiate();
+	importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, arrays);
+
+	// Free the buffers allocated by get_result
+	delete[] out_faces;
+	delete[] out_points;
+	if (out_norms != nullptr) {
+		delete[] out_norms;
+	}
+
+	return importer_mesh;
+}
+
+int PolygonTriangulationGodot::get_triangle_count() const {
+	if (cached_indices.size() == 0 && triangulator.is_valid()) {
+		const_cast<PolygonTriangulationGodot *>(this)->get_indices();
+	}
+	return cached_indices.size() / 3;
 }
 
 int PolygonTriangulationGodot::get_vertex_count() const {
-	if (cached_vertices.size() > 0) {
-		return cached_vertices.size();
+	if (cached_vertices.size() == 0 && triangulator.is_valid()) {
+		const_cast<PolygonTriangulationGodot *>(this)->get_vertices();
 	}
-	return 0;
+	return cached_vertices.size();
 }
 
 Dictionary PolygonTriangulationGodot::get_statistics() const {

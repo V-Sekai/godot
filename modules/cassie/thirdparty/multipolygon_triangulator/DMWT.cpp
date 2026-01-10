@@ -825,11 +825,11 @@ bool PolygonTriangulation::tile_segment(int eind, char side, int ti, float &this
 }
 
 Ref<PolygonTriangulation> PolygonTriangulation::_create_with_degenerates(int ptn, double *pts, double *deGenPts, bool isdegen) {
-	return Ref<PolygonTriangulation>(new PolygonTriangulation(ptn, pts, deGenPts, isdegen));
+	return Ref<PolygonTriangulation>(memnew(PolygonTriangulation(ptn, pts, deGenPts, isdegen)));
 }
 
 Ref<PolygonTriangulation> PolygonTriangulation::_create_with_normals(int ptn, double *pts, double *deGenPts, float *norms, bool isdegen) {
-	return Ref<PolygonTriangulation>(new PolygonTriangulation(ptn, pts, deGenPts, norms, isdegen));
+	return Ref<PolygonTriangulation>(memnew(PolygonTriangulation(ptn, pts, deGenPts, norms, isdegen)));
 }
 
 void PolygonTriangulation::_bind_methods() {

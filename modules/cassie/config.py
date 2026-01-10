@@ -16,5 +16,5 @@ def get_doc_classes():
         "CassiePath3D",
         "IntrinsicTriangulation",
         "CassieSurface",
-        'PolygonTriangulation',
+        "PolygonTriangulation",
     ]
