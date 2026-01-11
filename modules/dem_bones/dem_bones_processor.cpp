@@ -193,9 +193,11 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	bones.num_bones = 10; // This could be parameterized
 
 	// Run DemBones computation
-	// Note: compute() is protected, we need to call it through the public interface
-	// For now, let's use a simplified approach
-	// bones.compute();
+	bones.init();
+	for (int iter = 0; iter < bones.nIters; iter++) {
+		bones.computeTranformations();
+		bones.computeWeights();
+	}
 
 	// Store results
 	bone_count = bones.num_bones;
@@ -226,14 +228,12 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 		Array frame_transforms;
 		for (int j = 0; j < bones.num_bones; j++) {
 			Transform3D transform;
-			// Note: Using placeholder transforms for now since DemBones computation is disabled
-			// Projection bone_mat = bones.bone_transform_mat.blk4(k, j);
-			// transform.basis = Basis(
-			//     Vector3(bone_mat.x.x, bone_mat.y.x, bone_mat.z.x),
-			//     Vector3(bone_mat.x.y, bone_mat.y.y, bone_mat.z.y),
-			//     Vector3(bone_mat.x.z, bone_mat.y.z, bone_mat.z.z));
-			// transform.origin = Vector3(bone_mat.x.w, bone_mat.y.w, bone_mat.z.w);
-			transform = Transform3D(); // Identity transform for now
+			Eigen::Block<Eigen::MatrixXd, 4, 4> bone_mat = bones.bone_transform_mat.block<4, 4>(4 * k, 4 * j);
+			transform.basis = Basis(
+				Vector3(bone_mat(0, 0), bone_mat(1, 0), bone_mat(2, 0)),
+				Vector3(bone_mat(0, 1), bone_mat(1, 1), bone_mat(2, 1)),
+				Vector3(bone_mat(0, 2), bone_mat(1, 2), bone_mat(2, 2)));
+			transform.origin = Vector3(bone_mat(0, 3), bone_mat(1, 3), bone_mat(2, 3));
 			frame_transforms.push_back(transform);
 		}
 		bone_transforms.push_back(frame_transforms);
