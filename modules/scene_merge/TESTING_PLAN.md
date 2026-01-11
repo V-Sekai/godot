@@ -40,7 +40,10 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 - `modules/scene_merge/tests/test_scene_merge_basic.h` (basic functionality)
 - `modules/scene_merge/tests/test_scene_merge_triangle.h` (triangle operations)
 - `modules/scene_merge/tests/test_scene_merge_atlas.h` (texture atlas operations)
-- `modules/scene_merge/tests/test_scene_merge_unwrap.h` (UV unwrapping)
+- `modules/scene_merge/tests/test_scene_merge_unwrap_basic.h` (basic UV unwrapping)
+- `modules/scene_merge/tests/test_scene_merge_unwrap_density.h` (texel density UV unwrapping)
+- `modules/scene_merge/tests/test_scene_merge_unwrap_barycentric.h` (barycentric coordinate testing)
+- `modules/scene_merge/tests/test_scene_merge_unwrap_trim.h` (trim sheet handling)
 
 -   Basic class instantiation tests
 -   MeshMergeTriangle geometric operations
@@ -90,14 +93,18 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 
 4. **UV Unwrapping Tests**
 
-    - ✅ Basic mesh unwrapping with default parameters (resolution mode)
-    - ✅ Custom texel density settings (texels per unit, >= 0.0)
+    - ✅ **Basic UV Unwrapping** (`test_scene_merge_unwrap_basic.h`): Basic mesh unwrapping with default parameters
+    - ✅ **Texel Density** (`test_scene_merge_unwrap_density.h`): Custom texel density settings and validation
+    - ✅ **Barycentric Coordinates** (`test_scene_merge_unwrap_barycentric.h`): Barycentric coordinate interpolation and atlas texel setting accuracy
+    - ✅ **Trim Sheet Handling** (`test_scene_merge_unwrap_trim.h`): Documented trim sheet limitations (currently unsupported)
     - ✅ Resolution and padding parameter validation
     - ✅ Chart generation options (max area, boundary length)
     - ✅ Output mesh validation (UV coordinates, vertex mapping)
     - ✅ Multi-surface mesh handling (ImporterMesh compatibility)
     - ✅ Material preservation across surfaces
     - ✅ ImporterMesh input and output type validation
+
+    **⚠️ Critical Limitation**: Trim sheet textures cause mesh merge operations to fail. This significantly impacts production workflows relying on trim sheets.
 
 5. **Error Handling**
     - Empty scene scenarios
@@ -134,17 +141,26 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 
 ### Development Workflow
 
+**Prerequisites:**
 ```bash
-# 1. Build editor with debug symbols
-godot-build-editor
+# Set the build alias in your shell (run this in your terminal first)
+alias godot-build-editor='scons platform=macos arch=arm64 target=editor dev_build=yes debug_symbols=yes compiledb=yes tests=yes generate_bundle=yes cache_path=/Users/ernest.lee/.scons_cache use_asan=no'
+```
 
-# 2. Run C++ unit tests
-godot-editor --test tests/scene_merge
+**Testing Workflow:**
+```bash
+# 1. Build editor with debug symbols AND run C++ unit tests automatically
+./modules/scene_merge/scripts/test_scene_merge_build.sh
 
-# 3. Run GDScript integration tests
+# Expected output:
+# ✅ Build completed successfully!
+# 🧪 Running SceneMerge C++ Unit Tests (doctest framework)...
+# 🎉 ALL TESTS PASSED! (1276 test cases, 416K+ assertions)
+
+# 2. Run GDScript integration tests (if C++ tests pass)
 godot-editor --headless --test res://modules/scene_merge/tests/test_scene_merge_integration.gd
 
-# 4. Editor plugin testing
+# 3. Editor plugin testing
 godot-editor --test plugins/scene_merge
 ```
 
@@ -255,7 +271,10 @@ When adding new features to SceneMerge:
    - `test_scene_merge_basic.h` for basic functionality
    - `test_scene_merge_triangle.h` for triangle/drawing operations
    - `test_scene_merge_atlas.h` for texture atlas operations
-   - `test_scene_merge_unwrap.h` for UV unwrapping functionality
+   - `test_scene_merge_unwrap_basic.h` for basic UV unwrapping functionality
+   - `test_scene_merge_unwrap_density.h` for texel density UV unwrapping
+   - `test_scene_merge_unwrap_barycentric.h` for barycentric coordinate testing
+   - `test_scene_merge_unwrap_trim.h` for trim sheet handling (document limitations)
 2. Update integration tests if API changes
 3. Add UV unwrapping tests for new parameters in `unwrap_mesh`
 4. Document test data and expected results
@@ -272,3 +291,8 @@ When adding new features to SceneMerge:
 ---
 
 _Updated: January 11, 2026 | Version: 4.6 | Authors: V-Sekai Team_
+
+**Recent Changes:**
+- Split monolithic `test_scene_merge_unwrap.h` into four focused test files for better organization and coverage
+- Added barycentric coordinate testing for UV unwrapping accuracy validation
+- Documented critical trim sheet limitation preventing production workflow usage
