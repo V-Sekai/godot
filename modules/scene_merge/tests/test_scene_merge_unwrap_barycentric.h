@@ -132,4 +132,10 @@ TEST_CASE("[Modules][SceneMerge] Atlas texel coordinate calculation") {
 	CHECK(pixel_63_63 == Color(1, 0, 0, 1));
 }
 
+TEST_CASE("[Modules][SceneMerge] Null pointer handling") {
+	// Test that merge_meshes handles null inputs gracefully
+	Node *result = MeshTextureAtlas::merge_meshes(nullptr);
+	REQUIRE(result == nullptr); // Should return the null input instead of crashing
+}
+
 } // namespace TestSceneMerge
