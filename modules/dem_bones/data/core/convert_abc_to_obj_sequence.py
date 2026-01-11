@@ -97,13 +97,82 @@ def main():
         bpy.ops.import_scene.fbx(filepath=geom_file)
         print("✓ FBX geometry imported")
 
-        # Import ABC animation
+        # Import ABC animation and extract timing metadata
         print("\nImporting ABC animation...")
         result = bpy.ops.wm.alembic_import(filepath=abc_file, as_background_job=False)
         if result != {'FINISHED'}:
             print("✗ ABC import failed!")
             exit(1)
         print("✓ ABC animation imported")
+
+        # Extract ABC timing information from imported objects and cache files
+        abc_frame_start = None
+        abc_frame_end = None
+        abc_fps = None
+
+        print("\nExtracting ABC timing metadata...")
+
+        # Check bpy.data.cache_files for ABC metadata
+        print(f"Global cache files: {len(bpy.data.cache_files)}")
+        for cache_file in bpy.data.cache_files:
+            print(f"  Cache file: {cache_file.name}")
+            print(f"    Path: {cache_file.filepath}")
+            print(f"    All properties: {[p for p in dir(cache_file) if not p.startswith('_')]}")
+
+            # Try to get Alembic-specific properties
+            try:
+                if hasattr(cache_file, 'is_sequence') and cache_file.is_sequence:
+                    print(f"    Is sequence: {cache_file.is_sequence}")
+
+                    # Try to access Alembic time sampling
+                    # Blender uses OpenALEMBIC internally
+                    import bpy  # Already imported
+
+                    # Check if we can get time range from the cache
+                    print("    Attempting to access Alembic time sampling...")
+                    # This might not work directly, but let's try
+
+            except Exception as e:
+                print(f"    Error accessing Alembic data: {e}")
+
+        # Also check the imported objects
+        print(f"Imported objects: {len(bpy.data.objects)}")
+        for obj in bpy.data.objects:
+            # Check for cache modifiers
+            for mod in obj.modifiers:
+                if mod.type == 'MESH_SEQUENCE_CACHE':
+                    cache_file = mod.cache_file
+                    if cache_file and hasattr(cache_file, 'filepath'):
+                        # Try to access Alembic metadata
+                        print(f"  Analyzing cache: {cache_file.name}")
+
+                        # Check cache file properties for timing info
+                        if hasattr(cache_file, 'frame_start'):
+                            abc_frame_start = cache_file.frame_start
+                            print(f"  Frame start: {abc_frame_start}")
+                        if hasattr(cache_file, 'frame_end'):
+                            abc_frame_end = cache_file.frame_end
+                            print(f"  Frame end: {abc_frame_end}")
+
+                        # Look for other timing properties
+                        for prop_name in dir(cache_file):
+                            if 'time' in prop_name.lower() or 'frame' in prop_name.lower():
+                                if prop_name.startswith('__') or prop_name in ['filepath', 'name', 'users']:
+                                    continue
+                                try:
+                                    value = getattr(cache_file, prop_name)
+                                    if isinstance(value, (int, float)):
+                                        print(f"  {prop_name}: {value}")
+                                except:
+                                    pass
+
+                        # Also check the modifier properties
+                        print(f"  Modifier properties available: {[p for p in dir(mod) if not p.startswith('_')]}")
+
+                        if hasattr(mod, 'frame_start'):
+                            print(f"  Modifier frame_start: {mod.frame_start}")
+                        if hasattr(mod, 'frame_end'):
+                            print(f"  Modifier frame_end: {mod.frame_end}")
 
         # Check ABC animation timing information
         print("\nAnalyzing ABC animation timing...")
@@ -184,67 +253,128 @@ def main():
         # Check if we can get timing info from the ABC cache or use better defaults
         frame_rate = 30  # Default assumption
 
-        # Try to get actual frame range from cache if available
-        # Alembic caches often start from frame 0 or 1001 (Maya-style)
-        # Try common animation starting frames
-        frame_ranges_to_try = [
-            (0, 29, "Frame 0-29 (0-based)"),
-            (1, 30, "Frame 1-30 (1-based)"),
-            (1001, 1030, "Frame 1001-1030 (Maya)"),
-            (9001, 9030, "Frame 9001-9030 (Houdini)")
+        # Determine actual ABC animation length by testing frame ranges
+        # ABC animations can be of variable length - find the real extent
+
+        # Try longer ranges to find actual animation length
+        extended_ranges = [
+            (0, 59, "Frame 0-59 (60 frames)"),
+            (1, 60, "Frame 1-60 (60 frames)"),
+            (1, 120, "Frame 1-120 (120 frames)"),
+            (1, 200, "Frame 1-200 (200 frames)"),
+            (0, 100, "Frame 0-100 (100 frames)"),
+            (1001, 1100, "Frame 1001-1100 (Maya range)"),
         ]
 
-        # Try each frame range and see if we get motion
+        print("Determining actual ABC animation length...")
         best_frame_range = None
         max_motion_detected = 0
+        animation_end_frame = None
 
-        print("Testing frame ranges to find animation keyframes...")
-        for frame_start, frame_end, description in frame_ranges_to_try:
+        # Test each range for motion to find where animation actually ends
+        for frame_start, frame_end, description in extended_ranges:
             print(f"  Testing {description}...")
 
-            frame_rate = 30
-            motion_score = 0
-
             try:
-                # Quick test by checking cache modifier at different frames
-                start_frame_pos = []
+                motion_samples = []
 
-                # Set to start frame and get base position (first vertex x coord)
-                bpy.context.scene.frame_set(frame_start)
-                bpy.context.view_layer.update()
-                depsgraph = bpy.context.evaluated_depsgraph_get()
-                eval_obj = obj.evaluated_get(depsgraph)
-                eval_mesh = eval_obj.to_mesh()
-                base_vert = eval_mesh.vertices[0].co.x if len(eval_mesh.vertices) > 0 else 0
-                eval_obj.to_mesh_clear()
+                # Sample motion at regular intervals across the range
+                sample_points = [frame_start + i * (frame_end - frame_start) // 4 for i in range(5)]
+                if len(sample_points) == 5 and sample_points[-1] < frame_end:
+                    sample_points.append(frame_end)
 
-                # Set to end frame and check displacement
-                bpy.context.scene.frame_set(frame_end)
-                bpy.context.view_layer.update()
-                depsgraph = bpy.context.evaluated_depsgraph_get()
-                eval_obj = obj.evaluated_get(depsgraph)
-                eval_mesh = eval_obj.to_mesh()
-                end_vert = eval_mesh.vertices[0].co.x if len(eval_mesh.vertices) > 0 else 0
-                eval_obj.to_mesh_clear()
+                base_vert = None
+                for frame in sample_points:
+                    if frame > 100:  # Skip very high ranges after testing basic ones
+                        continue
 
-                motion_score = abs(end_vert - base_vert)
-                print(f"    Motion score: {motion_score:.6f}")
+                    bpy.context.scene.frame_set(frame)
+                    bpy.context.view_layer.update()
 
-                if motion_score > max_motion_detected:
-                    max_motion_detected = motion_score
+                    depsgraph = bpy.context.evaluated_depsgraph_get()
+                    eval_obj = obj.evaluated_get(depsgraph)
+                    eval_mesh = eval_obj.to_mesh()
+
+                    if len(eval_mesh.vertices) > 0:
+                        curr_vert = eval_mesh.vertices[0].co.x
+                        if base_vert is None:
+                            base_vert = curr_vert
+                        else:
+                            motion_samples.append(abs(curr_vert - base_vert))
+
+                    eval_obj.to_mesh_clear()
+
+                range_motion = sum(motion_samples) if motion_samples else 0
+                print(f"    Total motion: {range_motion:.6f}")
+
+                if range_motion > max_motion_detected:
+                    max_motion_detected = range_motion
                     best_frame_range = (frame_start, frame_end, description)
 
+                # If this range has significant motion at the end, record it
+                if range_motion > 0.5:  # Threshold for considering animation active
+                    animation_end_frame = frame_end
+
             except Exception as e:
-                print(f"    Error testing range: {e}")
+                print(f"    Error: {e}")
                 continue
 
-        if best_frame_range:
+        # Also try to find the actual animation bounds by testing consecutive frames
+        print("  Testing consecutive frame motion...")
+
+        # Test frames 1-50 to find where motion stops
+        motion_over_time = []
+        for test_frame in range(1, 51, 5):  # Sample every 5 frames
+            try:
+                bpy.context.scene.frame_set(test_frame)
+                bpy.context.view_layer.update()
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                eval_obj = obj.evaluated_get(depsgraph)
+                eval_mesh = eval_obj.to_mesh()
+
+                if len(eval_mesh.vertices) > 0:
+                    curr_pos = (eval_mesh.vertices[0].co.x, eval_mesh.vertices[0].co.y, eval_mesh.vertices[0].co.z)
+                    motion_over_time.append(curr_pos)
+
+                eval_obj.to_mesh_clear()
+
+            except Exception as e:
+                print(f"    Error at frame {test_frame}: {e}")
+                continue
+
+        # Find where the animation stabilizes (motion stops)
+        stability_threshold = 0.001
+        stable_frame = None
+
+        for i in range(1, len(motion_over_time)):
+            if i < len(motion_over_time):
+                prev = motion_over_time[i-1]
+                curr = motion_over_time[i]
+                frame_diff = sum((a-b)**2 for a,b in zip(prev, curr))**0.5
+
+                if frame_diff < stability_threshold:
+                    stable_frame = (i-1) * 5 + 1
+                    break
+
+        if best_frame_range and animation_end_frame:
+            # Use the shorter of the two ranges to avoid oversampling
             frame_start, frame_end, description = best_frame_range
-            print(f"✓ Using best range: {description}")
-            print(f"  Motion detected: {max_motion_detected:.6f}")
+
+            if stable_frame and stable_frame < frame_end:
+                # We found where animation stabilizes - use that as the endpoint
+                if stable_frame > 1:  # Ensure at least some animation
+                    frame_end = min(frame_end, stable_frame + 5)  # Add small buffer
+                    description += f" (stabilized at ~frame {stable_frame})"
+
+            print(f"✓ Detected ABC animation: {description}")
+            print(f"  Actual range: {frame_start}-{frame_end} (motion score: {max_motion_detected:.6f})")
+
+            if stable_frame:
+                print(f"  Animation stable around frame: {stable_frame}")
+
         else:
-            print("❌ No motion detected in any range - using fallback")
-            frame_start, frame_end = 1, 30  # Fallback
+            print("❌ Could not determine animation length - using conservative range")
+            frame_start, frame_end = 1, 30
 
         print(f"Frame range: {frame_start}-{frame_end} (frame rate: {frame_rate} fps)")
         print(f"Time range: 0.000s to {(frame_end-frame_start)/frame_rate:.3f}s")
