@@ -260,7 +260,6 @@ static void remove_original_instances(const Vector<MeshTextureAtlas::MeshState> 
 }
 
 // Magic numbers refactored to named constants for better readability
-static constexpr int64_t DEFAULT_ATLAS_SIZE = 1024;
 static constexpr int64_t MINIMUM_MESH_COUNT = 2;
 
 Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
@@ -655,9 +654,14 @@ bool MeshTextureAtlas::MeshState::operator==(const MeshState &rhs) const {
 }
 
 Pair<int, int> MeshTextureAtlas::calculate_coordinates(const Vector2 &p_source_uv, int p_width, int p_height) {
-	int sx, sy;
-	sx = static_cast<int>(round(p_source_uv.x * p_width)) % p_width;
-	sy = static_cast<int>(round(p_source_uv.y * p_height)) % p_height;
+	// Clamp UV coordinates to [0, 1] range to handle any out-of-bounds values
+	float clamped_x = CLAMP(p_source_uv.x, 0.0f, 1.0f);
+	float clamped_y = CLAMP(p_source_uv.y, 0.0f, 1.0f);
+
+	// Convert to pixel coordinates, clamping to valid texture bounds
+	int sx = CLAMP(static_cast<int>(round(clamped_x * (p_width - 1))), 0, p_width - 1);
+	int sy = CLAMP(static_cast<int>(round(clamped_y * (p_height - 1))), 0, p_height - 1);
+
 	return Pair<int, int>(sx, sy);
 }
 
