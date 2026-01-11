@@ -60,6 +60,7 @@ TEST_CASE("[Modules][SceneMerge][Atlas][Barycentric] BarycentricAtlasTexel - Bas
 	args.source_uvs[1] = Vector2(1.0f, 0.0f); // Bottom-right (green)
 	args.source_uvs[2] = Vector2(0.0f, 1.0f); // Top-left (blue)
 
+	// Set up lookup table
 	MeshTextureAtlas::AtlasLookupTexel lookup;
 	args.atlas_lookup = &lookup;
 

@@ -56,8 +56,13 @@ TEST_CASE("[Modules][SceneMerge] Barycentric atlas texel setting") {
 	args.atlas_height = 64;
 	args.material_index = 1;
 
+	// Set up UV coordinates for triangle vertices (normalized [0,1])
+	// These define where in the source texture each vertex samples from
+	args.source_uvs[0] = Vector2(0.0f, 0.0f); // Bottom-left vertex samples from top-left
+	args.source_uvs[1] = Vector2(1.0f, 0.0f); // Bottom-right vertex samples from top-right
+	args.source_uvs[2] = Vector2(0.0f, 1.0f); // Top-left vertex samples from bottom-left
+
 	// Test barycentric coordinates for a triangle
-	// Triangle vertices at (0,0), (31,0), (0,31) in source texture
 	Vector3 bar(0.5f, 0.3f, 0.2f); // Barycentric coordinates summing to 1
 
 	// Set up lookup table
@@ -96,6 +101,16 @@ TEST_CASE("[Modules][SceneMerge] Atlas texel coordinate calculation") {
 
 	args.atlas_width = 64;
 	args.atlas_height = 64;
+
+	// Set up UV coordinates - top-left vertex samples from red texture
+	args.source_uvs[0] = Vector2(0.0f, 0.0f); // UV coordinate in normalized [0,1] space
+	args.source_uvs[1] = Vector2(1.0f, 0.0f);
+	args.source_uvs[2] = Vector2(0.0f, 1.0f);
+
+	// Set up lookup table to prevent crashes
+	Vector<MeshTextureAtlas::AtlasLookupTexel> lookup_table;
+	lookup_table.resize(64 * 64);
+	args.atlas_lookup = lookup_table.ptrw();
 
 	// Test edge coordinates to check for off-by-one errors
 	// UV coordinate at (0,0) should map to pixel (0,0)
