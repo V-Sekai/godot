@@ -98,7 +98,7 @@ static ImporterMeshInstance3D *find_merged_mesh_perf(Node *p_root) {
 }
 
 // Test: Performance scaling - test with varying mesh counts
-TEST_CASE("[Modules][SceneMerge] Performance scaling") {
+TEST_CASE("[SceneTree][Modules][SceneMerge] Performance scaling") {
 	LocalVector<int> mesh_counts;
 	mesh_counts.push_back(5);
 	mesh_counts.push_back(10);

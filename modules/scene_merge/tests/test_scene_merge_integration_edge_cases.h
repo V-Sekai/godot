@@ -79,7 +79,7 @@ static Ref<ImporterMesh> create_triangle_mesh_edge(const Color &p_color) {
 }
 
 // Test: Edge case handling - empty scene and single mesh
-TEST_CASE("[Modules][SceneMerge] Edge case handling") {
+TEST_CASE("[SceneTree][Modules][SceneMerge] Edge case handling") {
 	// Test 1: Empty scene
 	{
 		Node *test_root = memnew(Node);

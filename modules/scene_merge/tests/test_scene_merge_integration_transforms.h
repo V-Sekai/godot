@@ -96,7 +96,7 @@ static ImporterMeshInstance3D *find_merged_mesh_transform(Node *p_root) {
 }
 
 // Test: Scene transformation preservation
-TEST_CASE("[Modules][SceneMerge] Scene transformation preservation") {
+TEST_CASE("[SceneTree][Modules][SceneMerge] Scene transformation preservation") {
 	Node *test_root = memnew(Node);
 	test_root->set_name("TransformTest");
 

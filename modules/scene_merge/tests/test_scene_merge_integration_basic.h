@@ -36,7 +36,6 @@
 #include "core/math/vector3.h"
 #include "modules/scene_merge/scene_merge.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
-#include "scene/main/node.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/material.h"
 
@@ -97,7 +96,7 @@ static ImporterMeshInstance3D *find_merged_mesh(Node *p_root) {
 }
 
 // Test 1: Basic scene merge - merge 3 mesh instances
-TEST_CASE("[Modules][SceneMerge] Basic scene merge") {
+TEST_CASE("[SceneTree][Modules][SceneMerge] Basic scene merge") {
 	Node *test_root = memnew(Node);
 	test_root->set_name("BasicMergeTest");
 

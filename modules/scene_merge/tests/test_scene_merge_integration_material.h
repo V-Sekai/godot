@@ -96,7 +96,7 @@ static ImporterMeshInstance3D *find_merged_mesh_material(Node *p_root) {
 }
 
 // Test: Base color material merge - verify color averaging
-TEST_CASE("[Modules][SceneMerge] Base color material merge") {
+TEST_CASE("[SceneTree][Modules][SceneMerge] Base color material merge") {
 	Node *test_root = memnew(Node);
 	test_root->set_name("BaseColorTest");
 

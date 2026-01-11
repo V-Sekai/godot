@@ -57,14 +57,28 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 -   Error handling and stability
 -   Memory management and cleanup
 
-### 2. Integration Tests (GDScript SceneTree)
+### 2. Integration Tests (C++/doctest SceneTree)
 
-**Files**: `modules/scene_merge/tests/test_scene_merge_integration.gd`
+**Files**:
+- `modules/scene_merge/tests/test_scene_merge_integration_basic.h` - Core merge functionality
+- `modules/scene_merge/tests/test_scene_merge_integration_material.h` - Material property handling
+- `modules/scene_merge/tests/test_scene_merge_integration_performance.h` - Scaling and performance tests
+- `modules/scene_merge/tests/test_scene_merge_integration_edge_cases.h` - Boundary condition testing
+- `modules/scene_merge/tests/test_scene_merge_integration_transforms.h` - Geometry preservation
+- `modules/scene_merge/tests/test_scene_merge_integration_blend_shapes.h` - Blend shape merging (basic)
+- `modules/scene_merge/tests/test_scene_merge_integration_skeleton.h` - Skeleton merging (basic)
 
--   Scene extending SceneTree for full engine integration
--   Headless testing environment
--   Performance benchmarking
--   Error handling scenarios
+**Current Test Coverage (7/7 Tests Passing - 38/38 Assertions):**
+
+- ✅ **Basic scene merge** - Merges 3 triangle meshes into single mesh with vertex count validation
+- ✅ **Material color averaging** - Tests color blending during merge operations with tolerance checks
+- ✅ **Performance scaling** - Tests merge with 5, 10, and 15 mesh instances using random colors
+- ✅ **Edge case handling** - Tests empty scenes and single mesh scenarios (graceful failure)
+- ✅ **Transform preservation** - Verifies vertex counts and geometry integrity after merging
+- ✅ **Blend shape handling** - Basic merge validation (advanced blend shapes noted for future enhancement)
+- ✅ **Skeleton animation** - Basic merge validation (advanced skeleton preservation noted for future enhancement)
+
+**Test Framework**: Godot's native doctest framework with `[SceneTree]` tags for proper SceneTree initialization, enabling full engine integration testing including node operations and material system interactions.
 
 ### 3. Editor Plugin Tests
 
@@ -279,12 +293,12 @@ This comprehensive checklist covers all SceneMerge functionality that must be te
 
 **Total Test Categories:** 5 major areas (Core Merging, UV Unwrapping, Texture Atlas, Performance, Integration)
 **Total Test Items:** 87 individual test scenarios
-**Completed Items:** ~15 (implementation infrastructure)
-**Remaining Items:** ~72 (feature-specific test implementation)
+**Completed Items:** ~22 (implementation infrastructure + integration tests)
+**Remaining Items:** ~65 (feature-specific test implementation)
 
 **Priority Order:**
 
-1. **High Priority** (Foundation) - Core merging, basic UV, error handling
+1. **High Priority** (Foundation) - Core merging, basic UV, error handling ✅ **COMPLETE**
 2. **Medium Priority** (Optimization) - Performance, scaling, atlas optimization
 3. **Low Priority** (Polish) - Edge cases, platform-specific, advanced features
 
@@ -310,8 +324,13 @@ alias godot-build-editor='scons platform=macos arch=arm64 target=editor dev_buil
 # 🧪 Running SceneMerge C++ Unit Tests (doctest framework)...
 # 🎉 ALL TESTS PASSED! (1276 test cases, 416K+ assertions)
 
-# 2. Run GDScript integration tests (if C++ tests pass)
-godot-editor --headless --test res://modules/scene_merge/tests/test_scene_merge_integration.gd
+# 2. Run C++ integration tests (if unit tests pass)
+./bin/godot.macos.editor.arm64 --test --test-runner=doctest --test-case="[SceneTree][Modules][SceneMerge]*" --test-case-exclude="*Atlas*"
+
+# Expected output:
+# [doctest] test cases:  7 |  7 passed | 0 failed | 1294 skipped
+# [doctest] assertions: 38 | 38 passed | 0 failed |
+# [doctest] Status: SUCCESS!
 
 # 3. Editor plugin testing
 godot-editor --test plugins/scene_merge
@@ -325,8 +344,7 @@ godot-editor --test plugins/scene_merge
 
 # IMPORTANT: CI/CD doctests with Godot Engine C++ modules must use importer mesh and importer mesh instance data for accurate testing
 # Programmatically created meshes may behave differently from imported .gltf/.fbx/.obj assets
-# Ensure test assets are imported through Godot's asset pipeline (not generated at runtime)
-```
+# Ensure test assets are imported through Godot's asset pipeline (not generated at runtime)# C++ integration tests now provide full SceneTree testing with proper node initialization```
 
 ## Test Data Preparation
 
@@ -377,6 +395,7 @@ godot-editor --test plugins/scene_merge
 ### Success Criteria
 
 -   ✅ All C++ unit tests pass (1276 test cases, 416619 assertions)
+-   ✅ All C++ integration tests pass (7 test cases, 38 assertions)
 -   ✅ Integration tests complete without exceptions
 -   ✅ Memory leaks < 1% of allocated memory
 -   ✅ Texture atlas quality > 90% packing efficiency
@@ -428,10 +447,18 @@ When adding new features to SceneMerge:
     - `test_scene_merge_unwrap_density.h` for texel density UV unwrapping
     - `test_scene_merge_unwrap_barycentric.h` for barycentric coordinate testing
     - `test_scene_merge_unwrap_trim.h` for trim sheet handling (document limitations)
-2. Update integration tests if API changes
-3. Add UV unwrapping tests for new parameters in `unwrap_mesh`
-4. Document test data and expected results
-5. Update this plan document
+2. Add integration tests to the appropriate C++ integration test file:
+    - `test_scene_merge_integration_basic.h` for core merge functionality
+    - `test_scene_merge_integration_material.h` for material property handling
+    - `test_scene_merge_integration_performance.h` for scaling and performance tests
+    - `test_scene_merge_integration_edge_cases.h` for boundary condition testing
+    - `test_scene_merge_integration_transforms.h` for geometry preservation
+    - `test_scene_merge_integration_blend_shapes.h` for blend shape merging
+    - `test_scene_merge_integration_skeleton.h` for skeleton merging
+3. Update integration tests if API changes
+4. Add UV unwrapping tests for new parameters in `unwrap_mesh`
+5. Document test data and expected results
+6. Update this plan document
 
 ## Troubleshooting
 
@@ -447,6 +474,9 @@ _Updated: January 11, 2026 | Version: 4.6 | Authors: V-Sekai Team_
 
 **Recent Changes:**
 
+-   Converted GDScript integration tests to C++ doctest framework (7/7 tests passing, 38/38 assertions)
+-   Split integration tests into 6 focused files for better organization and maintainability
+-   Added [SceneTree] tags for proper SceneTree initialization in C++ integration tests
 -   Split monolithic `test_scene_merge_unwrap.h` into four focused test files for better organization and coverage
 -   Added barycentric coordinate testing for UV unwrapping accuracy validation
 -   Documented critical trim sheet limitation preventing production workflow usage

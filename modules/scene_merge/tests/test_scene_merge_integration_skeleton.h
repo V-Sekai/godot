@@ -38,12 +38,11 @@
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/main/node.h"
 #include "scene/resources/3d/importer_mesh.h"
-#include "scene/resources/material.h"
 
 namespace TestSceneMergeIntegration {
 
-// Helper function to create a simple triangle mesh with a material
-static Ref<ImporterMesh> create_triangle_mesh_skeleton(const Color &p_color) {
+// Helper function to create a simple triangle mesh
+static Ref<ImporterMesh> create_simple_triangle_skeleton(const Color &p_color) {
 	Ref<ImporterMesh> importer_mesh;
 	importer_mesh.instantiate();
 
@@ -95,16 +94,17 @@ static ImporterMeshInstance3D *find_merged_mesh_skeleton(Node *p_root) {
 	return nullptr;
 }
 
-// Test: Skeleton/Animation data handling (simplified test without glTF loading)
-TEST_CASE("[Modules][SceneMerge] Skeleton animation handling") {
+// Test: Skeleton/Animation data handling (basic test - SceneMerge currently doesn't preserve skeleton data)
+TEST_CASE("[SceneTree][Modules][SceneMerge] Skeleton animation handling") {
 	Node *test_root = memnew(Node);
 	test_root->set_name("SkeletonAnimationTest");
 
+	// Create 2 instances of meshes at different positions
 	for (int i = 0; i < 2; i++) {
 		ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
-		mesh_instance->set_name(vformat("SkeletonMesh%d", i));
+		mesh_instance->set_name(vformat("SkinInstance%d", i));
 		mesh_instance->set_position(Vector3(i * 3.0f, 0.0f, 0.0f));
-		mesh_instance->set_mesh(create_triangle_mesh_skeleton(Color(0.5f, 0.5f, 0.5f)));
+		mesh_instance->set_mesh(create_simple_triangle_skeleton(Color(0.5f, 0.5f, 0.5f)));
 		test_root->add_child(mesh_instance);
 	}
 
@@ -115,21 +115,19 @@ TEST_CASE("[Modules][SceneMerge] Skeleton animation handling") {
 	CHECK_EQ(merge_result, test_root);
 
 	ImporterMeshInstance3D *merged_instance = find_merged_mesh_skeleton(test_root);
-	CHECK_NE(merged_instance, nullptr);
+	REQUIRE(merged_instance != nullptr);
 
 	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
-	CHECK(merged_mesh.is_valid());
+	REQUIRE(merged_mesh.is_valid());
+	REQUIRE_GT(merged_mesh->get_surface_count(), 0);
 
-	int vertex_count = 0;
-	for (int i = 0; i < merged_mesh->get_surface_count(); i++) {
-		Array arrays = merged_mesh->get_surface_arrays(i);
-		if (!arrays.is_empty()) {
-			PackedVector3Array vertices = arrays[Mesh::ARRAY_VERTEX];
-			vertex_count += vertices.size();
-		}
-	}
+	// Verify vertex count matches original (3 vertices per triangle, 2 instances = 6 vertices)
+	Array surface_arrays = merged_mesh->get_surface_arrays(0);
+	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	CHECK_EQ(vertices.size(), 6); // 2 triangles * 3 vertices each
 
-	CHECK_GT(vertex_count, 0);
+	// Note: Full skeleton/skinning support would require more complex setup
+	// This test verifies basic merging works, skeleton preservation is a future enhancement
 
 	memdelete(test_root);
 }

@@ -38,12 +38,11 @@
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/main/node.h"
 #include "scene/resources/3d/importer_mesh.h"
-#include "scene/resources/material.h"
 
 namespace TestSceneMergeIntegration {
 
-// Helper function to create a simple triangle mesh with a material
-static Ref<ImporterMesh> create_triangle_mesh_blend(const Color &p_color) {
+// Helper function to create a simple triangle mesh
+static Ref<ImporterMesh> create_simple_triangle(const Color &p_color) {
 	Ref<ImporterMesh> importer_mesh;
 	importer_mesh.instantiate();
 
@@ -95,16 +94,17 @@ static ImporterMeshInstance3D *find_merged_mesh_blend(Node *p_root) {
 	return nullptr;
 }
 
-// Test: Blend shape preservation (simplified test without glTF loading)
-TEST_CASE("[Modules][SceneMerge] Blend shape handling") {
+// Test: Blend shape handling (basic test - SceneMerge currently doesn't preserve blend shapes)
+TEST_CASE("[SceneTree][Modules][SceneMerge] Blend shape handling") {
 	Node *test_root = memnew(Node);
 	test_root->set_name("BlendShapeTest");
 
-	for (int i = 0; i < 2; i++) {
+	// Create 3 mesh instances at different positions
+	for (int i = 0; i < 3; i++) {
 		ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
 		mesh_instance->set_name(vformat("BlendMesh%d", i));
-		mesh_instance->set_position(Vector3(i * 3.0f, 0.0f, 0.0f));
-		mesh_instance->set_mesh(create_triangle_mesh_blend(Color(0.5f, 0.5f, 0.5f)));
+		mesh_instance->set_position(Vector3(i * 2.0f, 0.0f, 0.0f));
+		mesh_instance->set_mesh(create_simple_triangle(Color(0.5f, 0.5f, 0.5f)));
 		test_root->add_child(mesh_instance);
 	}
 
@@ -115,11 +115,19 @@ TEST_CASE("[Modules][SceneMerge] Blend shape handling") {
 	CHECK_EQ(merge_result, test_root);
 
 	ImporterMeshInstance3D *merged_instance = find_merged_mesh_blend(test_root);
-	CHECK_NE(merged_instance, nullptr);
+	REQUIRE(merged_instance != nullptr);
 
 	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
-	CHECK(merged_mesh.is_valid());
-	CHECK_GT(merged_mesh->get_surface_count(), 0);
+	REQUIRE(merged_mesh.is_valid());
+	REQUIRE_GT(merged_mesh->get_surface_count(), 0);
+
+	// Verify vertex count matches original (3 vertices per triangle, 3 instances = 9 vertices)
+	Array surface_arrays = merged_mesh->get_surface_arrays(0);
+	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	CHECK_EQ(vertices.size(), 9); // 3 triangles * 3 vertices each
+
+	// Note: Full blend shape support would require more complex ImporterMesh setup
+	// This test verifies basic merging works, blend shape preservation is a future enhancement
 
 	memdelete(test_root);
 }
