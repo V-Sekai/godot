@@ -37,19 +37,25 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 
 **Files**:
 
--   `modules/scene_merge/tests/test_scene_merge.h` (main include file)
--   `modules/scene_merge/tests/test_scene_merge_basic.h` (basic functionality)
--   `modules/scene_merge/tests/test_scene_merge_triangle.h` (triangle operations)
--   `modules/scene_merge/tests/test_scene_merge_atlas.h` (texture atlas operations)
--   `modules/scene_merge/tests/test_scene_merge_unwrap_basic.h` (basic UV unwrapping)
--   `modules/scene_merge/tests/test_scene_merge_unwrap_density.h` (texel density UV unwrapping)
--   `modules/scene_merge/tests/test_scene_merge_unwrap_barycentric.h` (barycentric coordinate testing)
--   `modules/scene_merge/tests/test_scene_merge_unwrap_trim.h` (trim sheet handling)
+-   `modules/scene_merge/tests/test_scene_merge_unwrap_barycentric.h` (comprehensive core functionality tests)
 
--   Basic class instantiation tests
--   MeshMergeTriangle geometric operations
--   Texture atlas texel manipulation
--   Memory management validation
+**Current Test Coverage:**
+
+-   [x] Barycentric atlas texel setting accuracy
+-   [x] Atlas texel coordinate calculation off-by-one errors
+-   [x] Null pointer handling (graceful null input rejection)
+-   [x] Single mesh handling (rejects minimum threshold enforcement)
+-   [x] Vertex data merging (position integrity validation)
+-   [x] Index buffer optimization (triangle connectivity preservation)
+-   [x] Normal vector preservation (surface orientation accuracy)
+-   [x] Primitive type compatibility (Godot mesh format handling)
+-   [x] Invalid mesh data handling (corrupted geometry stability)
+-   [x] BaseMaterial3D compatibility (material property preservation)
+
+-   Geometric foundation validation
+-   Material system compatibility
+-   Error handling and stability
+-   Memory management and cleanup
 
 ### 2. Integration Tests (GDScript SceneTree)
 
