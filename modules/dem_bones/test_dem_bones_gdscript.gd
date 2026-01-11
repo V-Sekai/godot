@@ -97,12 +97,13 @@ func _init():
 		if i > 0:
 			skeleton.set_bone_parent(i, 0)  # All bones parented to root for simplicity
 
-	# Set bone poses from transforms
-	for i in range(bone_count):
-		var transform = bone_transforms[i]
-		skeleton.set_bone_pose_position(i, transform.origin)
-		skeleton.set_bone_pose_rotation(i, transform.basis.get_rotation_quaternion())
-		skeleton.set_bone_pose_scale(i, transform.basis.get_scale())
+	# Set bone poses from transforms (use first frame as rest pose)
+	if bone_transforms.size() > 0:
+		for i in range(bone_count):
+			var transform = bone_transforms[0][i] as Transform3D  # Access first frame, then bone index
+			skeleton.set_bone_pose_position(i, transform.origin)
+			skeleton.set_bone_pose_rotation(i, transform.basis.get_rotation_quaternion())
+			skeleton.set_bone_pose_scale(i, transform.basis.get_scale())
 
 	# Create new mesh with rest vertices
 	var original_mesh = mesh_instance.mesh
@@ -142,13 +143,64 @@ func _init():
 		for i in range(bone_count):
 			var bone_name = "Bone_" + str(i)
 			skin.set_bind_name(i, bone_name)
-			skin.set_bind_pose(i, bone_transforms[i])
+			skin.set_bind_pose(i, bone_transforms[0][i] as Transform3D)
 
-		# Set skinning weights
-		for vertex_weights in skinning_weights:
-			for weight_data in vertex_weights:
-				bone_indices.append(weight_data.bone_index)
-				weights.append(weight_data.weight)
+		# Set skinning weights - proper multi-bone skinning (up to 8 bones per vertex)
+		const MAX_BONES_PER_VERTEX = 8
+		const WEIGHT_THRESHOLD = 0.001
+
+		# For each vertex, collect bone influences
+		var vertex_bone_influences = []
+		vertex_bone_influences.resize(rest_vertices.size())
+
+		for vertex_idx in range(rest_vertices.size()):
+			var influences = []
+
+			# Collect all bone influences for this vertex above threshold
+			for bone_idx in range(bone_count):
+				var bone_weights = skinning_weights[bone_idx] as Array
+				if vertex_idx < bone_weights.size():
+					var bone_weight = bone_weights[vertex_idx] as float
+					if bone_weight > WEIGHT_THRESHOLD:
+						influences.append({"bone_idx": bone_idx, "weight": bone_weight})
+
+			# Sort by weight descending
+			influences.sort_custom(func(a, b): return a["weight"] > b["weight"])
+
+			# Take up to MAX_BONES_PER_VERTEX bones
+			if influences.size() > MAX_BONES_PER_VERTEX:
+				influences.resize(MAX_BONES_PER_VERTEX)
+
+			# Normalize weights
+			var total_weight = 0.0
+			for influence in influences:
+				total_weight += influence["weight"]
+			if total_weight > 0.0:
+				for influence in influences:
+					influence["weight"] /= total_weight
+
+			vertex_bone_influences[vertex_idx] = influences
+
+		# Build bone_indices and weights arrays (Godot format)
+		var max_influences = 0
+		for influences in vertex_bone_influences:
+			max_influences = max(max_influences, influences.size())
+
+		bone_indices = PackedInt32Array()
+		weights = PackedFloat32Array()
+
+		# Each vertex gets exactly max_influences bones (padding with 0, 0.0 for unused slots)
+		for vertex_influences in vertex_bone_influences:
+			var influences_count = vertex_influences.size()
+			for i in range(max_influences):
+				if i < influences_count:
+					bone_indices.append(vertex_influences[i]["bone_idx"])
+					weights.append(vertex_influences[i]["weight"])
+				else:
+					bone_indices.append(0)  # Padding
+					weights.append(0.0)    # Padding
+
+		print("Skinning setup: " + str(rest_vertices.size()) + " vertices with up to " + str(min(MAX_BONES_PER_VERTEX, max_influences)) + " bones per vertex")
 
 		mesh_instance_out.skin = skin
 		new_mesh.surface_set_skin(0, skin)

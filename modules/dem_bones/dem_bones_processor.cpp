@@ -130,14 +130,27 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	}
 
 	for (int blend_i = 0; blend_i < blend_shape_count; blend_i++) {
-		StringName blend_name = StringName(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
-		String track_path = String(mesh_path) + ":" + String(blend_name);
-		print_line("Blend shape " + itos(blend_i) + " name: '" + String(blend_name) + "', looking for track: '" + track_path + "'");
+		StringName blend_name = String(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
+		// Try different track path patterns to match the GLTF animation structure
+		String mesh_path_str = String(mesh_path);
+		String track_path1 = mesh_path_str + ":" + String(blend_name);  // "../Bone:MeshCache"
+		String track_path2 = String(blend_name);  // "MeshCache" - AnimationPlayer on same node as mesh
+		String track_path3;  // "Bone:MeshCache" - if mesh_path is "../Bone"
+		if (mesh_path_str.begins_with("../")) {
+			track_path3 = mesh_path_str.substr(3) + ":" + String(blend_name);
+		} else {
+			track_path3 = mesh_path_str + ":" + String(blend_name);
+		}
 
-		// Find the track index for this blend shape
+		print_line("Blend shape " + itos(blend_i) + " name: '" + String(blend_name) + "', trying paths: '" + track_path1 + "', '" + track_path2 + "', '" + track_path3 + "'");
+
+		// Find the track index for this blend shape - try all possible patterns
 		int track_index = -1;
 		for (int t = 0; t < animation->get_track_count(); t++) {
-			if (animation->track_get_path(t) == NodePath(track_path)) {
+			NodePath current_track_path = animation->track_get_path(t);
+			if (current_track_path == NodePath(track_path1) ||
+				current_track_path == NodePath(track_path2) ||
+				current_track_path == NodePath(track_path3)) {
 				track_index = t;
 				break;
 			}
