@@ -43,8 +43,22 @@
 class Vector3PositionComparator {
 public:
 	static bool sort(const Vector3 &a, const Vector3 &b) {
-		if (a.x != b.x) return a.x < b.x;
-		if (a.y != b.y) return a.y < b.y;
+		if (a.x != b.x) {
+			return a.x < b.x;
+		}
+		if (a.y != b.y) {
+			return a.y < b.y;
+		}
+		return a.z < b.z;
+	}
+
+	bool operator()(const Vector3 &a, const Vector3 &b) const {
+		if (a.x != b.x) {
+			return a.x < b.x;
+		}
+		if (a.y != b.y) {
+			return a.y < b.y;
+		}
 		return a.z < b.z;
 	}
 };
