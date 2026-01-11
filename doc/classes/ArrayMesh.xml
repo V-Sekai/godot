@@ -105,7 +105,6 @@
 			<return type="int" enum="Error" />
 			<param index="0" name="transform" type="Transform3D" />
 			<param index="1" name="texel_size" type="float" />
-			<param index="2" name="unwrap_mesh" type="bool" />
 			<description>
 				Performs a UV unwrap on the [ArrayMesh] to prepare the mesh for lightmapping.
 			</description>
