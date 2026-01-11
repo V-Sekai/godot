@@ -167,7 +167,7 @@ This comprehensive checklist covers all SceneMerge functionality that must be te
 ### 🛡️ Error Handling & Input Validation (Critical for Stability)
 
 -   [x] **Null Pointer Handling** - Graceful handling of null inputs (implemented: validate_merge_input() returns early + unit test added)
--   [ ] **Invalid Mesh Data** - Corrupted or malformed geometry
+-   [x] **Invalid Mesh Data** - Corrupted or malformed geometry (unit test implemented)
 -   [ ] **Memory Allocation Failures** - Low memory condition handling
 -   [ ] **File System Permission Issues** - Read/write access problems
 -   [ ] **Texture Loading Failures** - Missing or corrupted textures

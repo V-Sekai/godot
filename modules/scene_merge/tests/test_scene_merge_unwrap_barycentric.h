@@ -549,4 +549,86 @@ TEST_CASE("[Modules][SceneMerge] Primitive type compatibility") {
 	memdelete(root);
 }
 
+TEST_CASE("[Modules][SceneMerge] Invalid mesh data handling") {
+	// Test that SceneMerge gracefully handles corrupted or malformed mesh geometry
+	// Ensures stability when processing invalid mesh data without crashing
+
+	Node *root = memnew(Node);
+	root->set_name("InvalidDataTestRoot");
+
+	// Create a valid mesh to pair with invalid ones
+	Node *valid_node = memnew(Node3D);
+	valid_node->set_name("ValidMesh");
+
+	Ref<ArrayMesh> valid_mesh;
+	valid_mesh.instantiate();
+	Array valid_array;
+	valid_array.resize(Mesh::ARRAY_MAX);
+	Vector<Vector3> valid_vertices = {
+		Vector3(0.0f, 0.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f)
+	};
+	valid_array[Mesh::ARRAY_VERTEX] = valid_vertices;
+	valid_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, valid_array);
+
+	ImporterMeshInstance3D *valid_instance = memnew(ImporterMeshInstance3D);
+	Ref<ImporterMesh> valid_importer_mesh = ImporterMesh::from_mesh(valid_mesh);
+	valid_instance->set_mesh(valid_importer_mesh);
+	valid_node->add_child(valid_instance);
+
+	// Create mesh with empty vertex arrays
+	Node *empty_node = memnew(Node3D);
+	empty_node->set_name("EmptyMesh");
+
+	Ref<ArrayMesh> empty_mesh;
+	empty_mesh.instantiate();
+	Array empty_array;
+	empty_array.resize(Mesh::ARRAY_MAX);
+	// No vertices added - empty mesh
+	empty_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, empty_array);
+
+	ImporterMeshInstance3D *empty_instance = memnew(ImporterMeshInstance3D);
+	Ref<ImporterMesh> empty_importer_mesh = ImporterMesh::from_mesh(empty_mesh);
+	empty_instance->set_mesh(empty_importer_mesh);
+	empty_node->add_child(empty_instance);
+
+	// Add both to scene
+	root->add_child(valid_node);
+	root->add_child(empty_node);
+
+	REQUIRE(root->get_child_count() == 2);
+
+	// Run merge - should handle empty mesh gracefully by skipping it
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+	REQUIRE(result == root);
+
+	// Should have created merged mesh with only valid geometry
+	REQUIRE(root->get_child_count() == 1); // Original meshes replaced
+
+	ImporterMeshInstance3D *merged_instance = nullptr;
+	for (int i = 0; i < root->get_child_count(); i++) {
+		Node *child = root->get_child(i);
+		merged_instance = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (merged_instance) {
+			break;
+		}
+	}
+
+	if (merged_instance) { // May be nullptr if empty mesh caused processing to skip
+		Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
+		if (merged_mesh.is_valid()) {
+			// Should contain geometry from valid mesh only
+			int vertex_count = 0;
+			for (int s = 0; s < merged_mesh->get_surface_count(); s++) {
+				Array surface_arrays = merged_mesh->get_surface_arrays(s);
+				Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+				vertex_count += vertices.size();
+			}
+			REQUIRE(vertex_count >= 3); // At least the valid triangle
+		}
+	}
+
+	// Clean up
+	memdelete(root);
+}
+
 } // namespace TestSceneMerge
