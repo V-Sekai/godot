@@ -32,13 +32,15 @@
 
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/animation/animation_player.h"
+#include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/animation_library.h"
-#include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/surface_tool.h"
 
-#include "modules/dem_bones/dem_bones.h"
 #include "modules/dem_bones/dem_bones_processor.h"
+
+#include "modules/gltf/gltf_document.h"
+#include "modules/gltf/gltf_state.h"
 
 #include "tests/test_macros.h"
 
@@ -48,6 +50,14 @@ namespace TestDemBones {
 Ref<ImporterMesh> create_test_mesh_with_blend_shapes(int vertex_count = 4, int blend_shape_count = 2) {
 	Ref<SurfaceTool> st;
 	st.instantiate();
+
+	Ref<ImporterMesh> mesh;
+	mesh.instantiate();
+
+	// Add blend shapes first (must be done before adding surfaces)
+	for (int b = 0; b < blend_shape_count; b++) {
+		mesh->add_blend_shape(StringName(String("blend_shape_") + itos(b)));
+	}
 
 	// Create base mesh (simple quad)
 	st->begin(Mesh::PRIMITIVE_TRIANGLES);
@@ -62,8 +72,6 @@ Ref<ImporterMesh> create_test_mesh_with_blend_shapes(int vertex_count = 4, int b
 	st->add_index(3);
 	st->add_index(2);
 
-	Ref<ImporterMesh> mesh;
-	mesh.instantiate();
 	mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, st->commit_to_arrays());
 
 	// Add blend shapes
@@ -85,7 +93,6 @@ Ref<ImporterMesh> create_test_mesh_with_blend_shapes(int vertex_count = 4, int b
 		st->add_index(3);
 		st->add_index(2);
 
-		mesh->add_blend_shape(StringName(String("blend_shape_") + itos(b)));
 		Array blend_arrays;
 		blend_arrays.resize(Mesh::ARRAY_MAX);
 		blend_arrays[Mesh::ARRAY_VERTEX] = st->commit_to_arrays()[Mesh::ARRAY_VERTEX];
@@ -334,6 +341,82 @@ TEST_CASE("[DemBones] DemBonesProcessor data validation") {
 
 	memdelete(anim_player);
 	memdelete(mesh_instance);
+}
+
+TEST_CASE("[SceneTree][DemBones] Convert blend shape to skeletal animation from GLTF") {
+	Ref<GLTFDocument> gltf_document;
+	gltf_document.instantiate();
+	Ref<GLTFState> gltf_state;
+	gltf_state.instantiate();
+
+	// Load GLTF file with blend shapes
+	String gltf_path = "res://modules/dem_bones/data_gltf/Bone_Geom.glb";
+	Error err = gltf_document->append_from_file(gltf_path, gltf_state);
+	REQUIRE(err == OK);
+
+	// Generate scene
+	Node *scene_root = gltf_document->generate_scene(gltf_state);
+	REQUIRE(scene_root != nullptr);
+
+	// Find AnimationPlayer and MeshInstance in the scene
+	AnimationPlayer *anim_player = nullptr;
+	ImporterMeshInstance3D *mesh_instance = nullptr;
+
+	// Traverse the scene to find AnimationPlayer and ImporterMeshInstance3D
+	Vector<Node *> nodes_to_check;
+	nodes_to_check.push_back(scene_root);
+
+	while (!nodes_to_check.is_empty()) {
+		Node *current = nodes_to_check[0];
+		nodes_to_check.remove_at(0);
+
+		if (current->is_class("AnimationPlayer") && anim_player == nullptr) {
+			anim_player = Object::cast_to<AnimationPlayer>(current);
+		} else if (current->is_class("ImporterMeshInstance3D") && mesh_instance == nullptr) {
+			mesh_instance = Object::cast_to<ImporterMeshInstance3D>(current);
+		}
+
+		// Add children to check
+		for (int i = 0; i < current->get_child_count(); i++) {
+			nodes_to_check.push_back(current->get_child(i));
+		}
+	}
+
+	REQUIRE(anim_player != nullptr);
+	REQUIRE(mesh_instance != nullptr);
+
+	// Check that the mesh has blend shapes
+	Ref<ImporterMesh> mesh = mesh_instance->get_mesh();
+	REQUIRE(mesh.is_valid());
+	REQUIRE(mesh->get_blend_shape_count() > 0);
+
+	// Get available animations
+	List<StringName> animation_names;
+	anim_player->get_animation_list(&animation_names);
+	REQUIRE(!animation_names.is_empty());
+
+	// Process the first animation
+	StringName animation_name = animation_names.front()->get();
+	Ref<DemBonesProcessor> processor;
+	processor.instantiate();
+	err = processor->process_animation(anim_player, mesh_instance, animation_name);
+	CHECK(err == OK);
+
+	// Verify results
+	PackedVector3Array rest_vertices = processor->get_rest_vertices();
+	CHECK(rest_vertices.size() > 0);
+
+	Array skinning_weights = processor->get_skinning_weights();
+	CHECK(skinning_weights.size() > 0);
+
+	Array bone_transforms = processor->get_bone_transforms();
+	CHECK(bone_transforms.size() > 0);
+
+	int bone_count = processor->get_bone_count();
+	CHECK(bone_count > 0);
+
+	// Clean up
+	memdelete(scene_root);
 }
 
 } // namespace TestDemBones
