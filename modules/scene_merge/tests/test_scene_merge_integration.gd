@@ -214,93 +214,30 @@ func create_mesh_with_material(position: Vector3, color: Color, mesh_name: Strin
 	var material = StandardMaterial3D.new()
 	material.albedo_color = color
 
-	# Create a simple cube mesh using manually created surface arrays
+	# Create BoxMesh and convert to ImporterMesh properly using from_mesh()
+	var box_mesh = BoxMesh.new()
+	box_mesh.size = Vector3(0.5, 0.5, 0.5)
+	box_mesh.material = material
+
+	# Convert BoxMesh to ArrayMesh first, then to ImporterMesh
+	var array_mesh = box_mesh as ArrayMesh
+	if not array_mesh:
+		# If BoxMesh.cast_to(ArrayMesh) doesn't work, create ArrayMesh manually
+		array_mesh = ArrayMesh.new()
+		array_mesh = box_mesh.commit_to_mesh(array_mesh)
+
+	# Now convert ArrayMesh to ImporterMesh
 	var importer_mesh = ImporterMesh.new()
+	importer_mesh = ImporterMesh.from_mesh(array_mesh)
 
-	# Simple triangle mesh (single triangle)
-	var vertices = PackedVector3Array()
-	vertices.push_back(Vector3(-0.25, -0.25, 0))  # Bottom left
-	vertices.push_back(Vector3(0.25, -0.25, 0))   # Bottom right
-	vertices.push_back(Vector3(0.0, 0.25, 0))     # Top center
-
-	var normals = PackedVector3Array()
-	normals.push_back(Vector3(0, 0, 1))
-	normals.push_back(Vector3(0, 0, 1))
-	normals.push_back(Vector3(0, 0, 1))
-
-	var indices = PackedInt32Array()
-	indices.push_back(0)
-	indices.push_back(1)
-	indices.push_back(2)
-
-	# Create surface arrays
-	var arrays = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_INDEX] = indices
-
-	# Add the surface with our custom material
-	var format = Mesh.ARRAY_FORMAT_VERTEX | Mesh.ARRAY_FORMAT_NORMAL | Mesh.ARRAY_FORMAT_INDEX
-	importer_mesh.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], format, material)
-
+	# Materials are preserved during the conversion
 	mesh_instance.mesh = importer_mesh
 	_current_test_root.add_child(mesh_instance)
 
 func call_merge_function(root_node: Node) -> Node:
-	# Call the static C++ method MeshTextureAtlas.merge_meshes()
-	# For now, stub the call since MeshTextureAtlas isn't exposed to GDScript
-	# TODO: Expose MeshTextureAtlas API to GDScript for full integration testing
-	print("Simulating SceneMerge operation (MeshTextureAtlas not yet exposed to GDScript)")
-
-	# Simulate merging logic: remove old meshes, add merged one
-	var child_count = root_node.get_child_count()
-	if child_count >= 2:
-		# Create a merged mesh instance to simulate success
-		var merged_instance = ImporterMeshInstance3D.new()
-		merged_instance.name = "MergedMesh"
-
-		# Create a simple merged mesh manually
-		var merged_importer_mesh = ImporterMesh.new()
-
-		# Combined mesh using four triangles
-		var merged_vertices = PackedVector3Array()
-		merged_vertices.push_back(Vector3(-0.5, -0.5, 0))  # Bottom left
-		merged_vertices.push_back(Vector3(0.5, -0.5, 0))   # Bottom right
-		merged_vertices.push_back(Vector3(-0.5, 0.5, 0))   # Top left
-		merged_vertices.push_back(Vector3(0.5, 0.5, 0))    # Top right
-
-		var merged_normals = PackedVector3Array()
-		for i in range(4):
-			merged_normals.push_back(Vector3(0, 0, 1))
-
-		var merged_indices = PackedInt32Array()
-		merged_indices.push_back(0)
-		merged_indices.push_back(1)
-		merged_indices.push_back(3)
-		merged_indices.push_back(0)
-		merged_indices.push_back(3)
-		merged_indices.push_back(2)
-
-		var merged_arrays = []
-		merged_arrays.resize(Mesh.ARRAY_MAX)
-		merged_arrays[Mesh.ARRAY_VERTEX] = merged_vertices
-		merged_arrays[Mesh.ARRAY_NORMAL] = merged_normals
-		merged_arrays[Mesh.ARRAY_INDEX] = merged_indices
-
-		# Create merged material (simulating averaging from first 2 meshes)
-		var merged_material = StandardMaterial3D.new()
-		merged_material.albedo_color = Color(0.33, 0.33, 0.33)  # Approximate (1/3, 1/3, 1/3)
-
-		var merged_format = Mesh.ARRAY_FORMAT_VERTEX | Mesh.ARRAY_FORMAT_NORMAL | Mesh.ARRAY_FORMAT_INDEX
-		merged_importer_mesh.add_surface(Mesh.PRIMITIVE_TRIANGLES, merged_arrays, [], merged_format, merged_material)
-		merged_instance.mesh = merged_importer_mesh
-
-		root_node.add_child(merged_instance)
-
-		print("Simulated merge: created MergedMesh with averaged material color")
-
-	return root_node
+	# Use the proper SceneMerge RefCounted class API
+	var scene_merge = SceneMerge.new()
+	return scene_merge.merge(root_node)
 
 func find_merged_mesh() -> ImporterMeshInstance3D:
 	for child in _current_test_root.get_children():
