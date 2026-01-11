@@ -157,8 +157,8 @@ This comprehensive checklist covers all SceneMerge functionality that must be te
 
 ### 📐 Mesh Processing (Geometric Foundations)
 
--   [x] **Vertex Data Merging** - All vertex positions properly combined (unit test in-progress)
--   [ ] **Normal Vector Preservation** - Surface normals accurately maintained
+-   [x] **Vertex Data Merging** - All vertex positions properly combined (simplified unit test implemented)
+-   [x] **Normal Vector Preservation** - Surface normals accurately maintained (unit test implemented)
 -   [ ] **Index Buffer Optimization** - Triangle indices efficiently combined
 -   [ ] **Primitive Type Compatibility** - Handles triangles, quads, ngons correctly
 -   [ ] **Mesh Surface Preservation** - Multiple material surfaces maintained
