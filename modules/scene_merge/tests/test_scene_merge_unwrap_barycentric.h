@@ -32,10 +32,22 @@
 
 #include "tests/test_macros.h"
 
+#include <algorithm>
+
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/resources/surface_tool.h"
 
 #include "modules/scene_merge/merge.h"
+
+// Comparator for sorting Vector3 positions lexicographically
+class Vector3PositionComparator {
+public:
+	static bool sort(const Vector3 &a, const Vector3 &b) {
+		if (a.x != b.x) return a.x < b.x;
+		if (a.y != b.y) return a.y < b.y;
+		return a.z < b.z;
+	}
+};
 
 namespace TestSceneMerge {
 
@@ -187,6 +199,107 @@ TEST_CASE("[Modules][SceneMerge] Single mesh handling") {
 
 	// Clean up
 	memdelete(root); // Also deletes children
+}
+
+TEST_CASE("[Modules][SceneMerge] Vertex data merging validation") {
+	// Test that vertex positions from multiple meshes are properly combined
+	// This verifies the core geometric merging functionality
+
+	Node *root = memnew(Node);
+
+	// Create 3 meshes with distinct vertex positions
+	Vector<Vector3> expected_vertices;
+	const int MESH_COUNT = 3;
+
+	for (int mesh_idx = 0; mesh_idx < MESH_COUNT; mesh_idx++) {
+		ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
+
+		Ref<SurfaceTool> st;
+		st.instantiate();
+		st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+		// Create triangle vertices with predictable pattern: (mesh_idx * 10, y, z)
+		// Mesh 0: (0,1,0), (1,1,0), (0,2,0) - 3 vertices
+		// Mesh 1: (10,1,0), (11,1,0), (10,2,0) - 3 vertices
+		// Mesh 2: (20,1,0), (21,1,0), (20,2,0) - 3 vertices
+		float offset_x = mesh_idx * 10.0f;
+		Vector3 v1(offset_x, 1.0f, 0.0f);
+		Vector3 v2(offset_x + 1.0f, 1.0f, 0.0f);
+		Vector3 v3(offset_x, 2.0f, 0.0f);
+
+		st->add_vertex(v1);
+		st->add_vertex(v2);
+		st->add_vertex(v3);
+
+		st->add_index(0);
+		st->add_index(1);
+		st->add_index(2);
+
+		Ref<ArrayMesh> array_mesh;
+		array_mesh.instantiate();
+		st->commit(array_mesh);
+
+		Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(array_mesh);
+		mesh_instance->set_mesh(importer_mesh);
+
+		// Store expected vertices (no transform applied in this test)
+		expected_vertices.push_back(v1);
+		expected_vertices.push_back(v2);
+		expected_vertices.push_back(v3);
+
+		root->add_child(mesh_instance);
+	}
+
+	REQUIRE(root->get_child_count() == MESH_COUNT);
+
+	// Run merge operation
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+	REQUIRE(result == root);
+
+	// There should now be a merged mesh instance
+	REQUIRE(root->get_child_count() > 0);
+
+	// Find the merged mesh instance (likely the last child added)
+	ImporterMeshInstance3D *merged_instance = nullptr;
+	for (int i = 0; i < root->get_child_count(); i++) {
+		Node *child = root->get_child(i);
+		merged_instance = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (merged_instance) {
+			break;
+		}
+	}
+	REQUIRE(merged_instance != nullptr);
+
+	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
+	REQUIRE(merged_mesh.is_valid());
+
+	// Extract vertex data from merged mesh
+	const int surface_count = merged_mesh->get_surface_count();
+	REQUIRE(surface_count > 0);
+
+	Vector<Vector3> actual_vertices;
+	for (int surface_idx = 0; surface_idx < surface_count; surface_idx++) {
+		Array surface_arrays = merged_mesh->get_surface_arrays(surface_idx);
+		Vector<Vector3> surface_vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+		for (int v = 0; v < surface_vertices.size(); v++) {
+			actual_vertices.push_back(surface_vertices[v]);
+		}
+	}
+
+	// Validate that all expected vertices are present
+	REQUIRE(actual_vertices.size() == expected_vertices.size());
+
+	// Sort both arrays to ensure comparison works regardless of order
+	expected_vertices.sort_custom<Vector3PositionComparator>();
+	actual_vertices.sort_custom<Vector3PositionComparator>();
+
+	// Verify each vertex position matches expected values
+	for (int i = 0; i < expected_vertices.size(); i++) {
+		REQUIRE((actual_vertices[i] - expected_vertices[i]).length_squared() < 0.001f); // Allow small floating point tolerance
+	}
+
+	// Clean up
+	memdelete(root);
 }
 
 } // namespace TestSceneMerge
