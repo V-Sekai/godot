@@ -33,17 +33,21 @@
 #include "core/object/class_db.h"
 
 #include "merge.h"
+#include "scene_merge.h"
 
 #include "merge_plugin.h"
 
 void initialize_scene_merge_module(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		// Register SceneMerge for runtime usage in GDScript tests
+		ClassDB::register_class<SceneMerge>();
+	}
 
 #ifdef TOOLS_ENABLED
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
 		ClassDB::APIType prev_api = ClassDB::get_current_api();
 		ClassDB::set_current_api(ClassDB::API_EDITOR);
 
-		ClassDB::register_class<SceneMerge>();
 		EditorPlugins::add_by_type<SceneMergePlugin>();
 
 		ClassDB::set_current_api(prev_api);
