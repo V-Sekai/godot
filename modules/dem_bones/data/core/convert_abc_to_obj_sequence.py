@@ -105,8 +105,60 @@ def main():
             exit(1)
         print("✓ ABC animation imported")
 
-        # Find mesh object with cache modifiers
+        # Check ABC animation timing information
+        print("\nAnalyzing ABC animation timing...")
+        scene = bpy.context.scene
+
+        # Check if there are any animation curves or keyframes
+        anim_objects = [obj for obj in bpy.data.objects if obj.animation_data]
+        print(f"Objects with animation data: {len(anim_objects)}")
+
+        # Look for cache modifiers to understand timing
         mesh_objs = [obj for obj in bpy.data.objects if obj.type == 'MESH']
+        print(f"Mesh objects found: {len(mesh_objs)}")
+
+        for obj in mesh_objs:
+            cache_modifiers = [mod for mod in obj.modifiers if mod.type == 'MESH_SEQUENCE_CACHE']
+            if cache_modifiers:
+                print(f"  {obj.name} has {len(cache_modifiers)} cache modifier(s)")
+                for mod in cache_modifiers:
+                    print(f"    Cache: {mod.cache_file.name}")
+                    # Try to print cache timing info if available
+                    if hasattr(mod, 'cache_file'):
+                        print(f"    Path: {mod.cache_file.filepath}")
+
+                    # Try to access cache properties
+                    cache_props = dir(mod)
+                    print(f"    Cache properties available: {[p for p in cache_props if not p.startswith('_')]}")
+
+                    # Check for frame information
+                    if hasattr(mod, 'frame_start'):
+                        print(f"    Frame start: {mod.frame_start}")
+                    if hasattr(mod, 'frame_end'):
+                        print(f"    Frame end: {mod.frame_end}")
+                    if hasattr(mod, 'frame_offset'):
+                        print(f"    Frame offset: {mod.frame_offset}")
+
+                    # Check for time information
+                    if hasattr(mod, 'time_mode'):
+                        print(f"    Time mode: {mod.time_mode}")
+                    if hasattr(mod, 'factor'):
+                        print(f"    Time factor: {mod.factor}")
+
+                    # Check the underlying cache file
+                    cache_file = mod.cache_file
+                    if cache_file:
+                        print(f"    Cache file properties: {[p for p in dir(cache_file) if not p.startswith('_')]}")
+
+                        # Try to get Alembic time sampling info
+                        if hasattr(cache_file, 'frame_start'):
+                            print(f"    Alembic frame start: {cache_file.frame_start}")
+                        if hasattr(cache_file, 'frame_end'):
+                            print(f"    Alembic frame end: {cache_file.frame_end}")
+                        if hasattr(cache_file, 'frame_offset'):
+                            print(f"    Alembic frame offset: {cache_file.frame_offset}")
+
+        # Find mesh object with cache modifiers
         obj_with_cache = None
         for obj in mesh_objs:
             cache_mods = [mod for mod in obj.modifiers if mod.type == 'MESH_SEQUENCE_CACHE']
@@ -129,12 +181,73 @@ def main():
             bpy.ops.object.shape_key_add(from_mix=False)
 
         # Determine animation frame range
-        # Check if we can get timing info from the ABC cache
+        # Check if we can get timing info from the ABC cache or use better defaults
         frame_rate = 30  # Default assumption
-        frame_start = 1
-        frame_end = 30   # Default range
+
+        # Try to get actual frame range from cache if available
+        # Alembic caches often start from frame 0 or 1001 (Maya-style)
+        # Try common animation starting frames
+        frame_ranges_to_try = [
+            (0, 29, "Frame 0-29 (0-based)"),
+            (1, 30, "Frame 1-30 (1-based)"),
+            (1001, 1030, "Frame 1001-1030 (Maya)"),
+            (9001, 9030, "Frame 9001-9030 (Houdini)")
+        ]
+
+        # Try each frame range and see if we get motion
+        best_frame_range = None
+        max_motion_detected = 0
+
+        print("Testing frame ranges to find animation keyframes...")
+        for frame_start, frame_end, description in frame_ranges_to_try:
+            print(f"  Testing {description}...")
+
+            frame_rate = 30
+            motion_score = 0
+
+            try:
+                # Quick test by checking cache modifier at different frames
+                start_frame_pos = []
+
+                # Set to start frame and get base position (first vertex x coord)
+                bpy.context.scene.frame_set(frame_start)
+                bpy.context.view_layer.update()
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                eval_obj = obj.evaluated_get(depsgraph)
+                eval_mesh = eval_obj.to_mesh()
+                base_vert = eval_mesh.vertices[0].co.x if len(eval_mesh.vertices) > 0 else 0
+                eval_obj.to_mesh_clear()
+
+                # Set to end frame and check displacement
+                bpy.context.scene.frame_set(frame_end)
+                bpy.context.view_layer.update()
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                eval_obj = obj.evaluated_get(depsgraph)
+                eval_mesh = eval_obj.to_mesh()
+                end_vert = eval_mesh.vertices[0].co.x if len(eval_mesh.vertices) > 0 else 0
+                eval_obj.to_mesh_clear()
+
+                motion_score = abs(end_vert - base_vert)
+                print(f"    Motion score: {motion_score:.6f}")
+
+                if motion_score > max_motion_detected:
+                    max_motion_detected = motion_score
+                    best_frame_range = (frame_start, frame_end, description)
+
+            except Exception as e:
+                print(f"    Error testing range: {e}")
+                continue
+
+        if best_frame_range:
+            frame_start, frame_end, description = best_frame_range
+            print(f"✓ Using best range: {description}")
+            print(f"  Motion detected: {max_motion_detected:.6f}")
+        else:
+            print("❌ No motion detected in any range - using fallback")
+            frame_start, frame_end = 1, 30  # Fallback
 
         print(f"Frame range: {frame_start}-{frame_end} (frame rate: {frame_rate} fps)")
+        print(f"Time range: 0.000s to {(frame_end-frame_start)/frame_rate:.3f}s")
 
         # Create blend shapes for each frame
         shape_count = 0
