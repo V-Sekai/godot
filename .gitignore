@@ -35,6 +35,11 @@ bin
 compile_commands.json
 platform/windows/godot_res.res
 
+# DemBones converted files
+*.glb
+obj_sequence/
+****+++ REPLACE
+
 # Ninja build files
 *.ninja
 .ninja/

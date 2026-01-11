@@ -2,41 +2,57 @@ extends SceneTree
 
 func _init():
 	print("Starting DemBones test...")
-	var gltf_path = "res://modules/dem_bones/data_gltf/Bone_Geom.glb"
-	print("Loading GLTF from: ", gltf_path)
-	var gltf_document = GLTFDocument.new()
-	var gltf_state = GLTFState.new()
 
-	var err = gltf_document.append_from_file(gltf_path, gltf_state)
+	# Load geometry file (Bone_Geom.glb)
+	print("Loading geometry GLTF...")
+	var geom_gltf_path = "res://modules/dem_bones/data/Bone_Geom.glb"
+	var geom_gltf_doc = GLTFDocument.new()
+	var geom_gltf_state = GLTFState.new()
+	var err = geom_gltf_doc.append_from_file(geom_gltf_path, geom_gltf_state)
 	if err != OK:
-		print("Failed to load GLTF: ", err)
+		print("Failed to load geometry GLTF: ", err)
+		return
+	var geom_scene = geom_gltf_doc.generate_scene(geom_gltf_state)
+	if geom_scene == null:
+		print("Failed to generate geometry scene")
 		return
 
-	print("Generating scene...")
-	var scene_root = gltf_document.generate_scene(gltf_state)
-	if scene_root == null:
-		print("Failed to generate scene")
-		return
+	# Load animation file (Bone_Anim.glb) to get blend shapes
+	print("Loading animation GLTF...")
+	var anim_gltf_path = "res://modules/dem_bones/data/Bone_Anim.glb"
+	var anim_gltf_doc = GLTFDocument.new()
+	var anim_gltf_state = GLTFState.new()
+	err = anim_gltf_doc.append_from_file(anim_gltf_path, anim_gltf_state)
+	if err != OK:
+		print("Failed to load animation GLTF: ", err)
+		print("Trying experimental blend shape file...")
+		anim_gltf_path = "res://modules/dem_bones/data/Bone_Anim_Blender5.glb"
+		err = anim_gltf_doc.append_from_file(anim_gltf_path, anim_gltf_state)
+		if err != OK:
+			print("Failed to load experimental animation GLTF: ", err)
+			return
 
-	print("Finding AnimationPlayer and ImporterMeshInstance3D...")
-	# Find AnimationPlayer and ImporterMeshInstance3D
-	var anim_player = null
+	var anim_scene = anim_gltf_doc.generate_scene(anim_gltf_state)
+	if anim_scene == null:
+		print("Failed to generate animation scene - using geom_scene as root")
+		anim_scene = geom_scene
+
+	# Use geometry scene as the main scene
+	var scene_root = geom_scene
+	print("Using merged scene...")
+
+	print("Finding ImporterMeshInstance3D with blend shapes...")
 	var mesh_instance = null
 
+	# Find ImporterMeshInstance3D
 	var nodes_to_check = [scene_root]
 	while not nodes_to_check.is_empty():
 		var current = nodes_to_check.pop_front()
-		if current is AnimationPlayer and anim_player == null:
-			anim_player = current
-		elif current is ImporterMeshInstance3D and mesh_instance == null:
+		if current is ImporterMeshInstance3D and mesh_instance == null:
 			mesh_instance = current
 
 		for child in current.get_children():
 			nodes_to_check.append(child)
-
-	if anim_player == null:
-		print("No AnimationPlayer found")
-		return
 
 	if mesh_instance == null:
 		print("No ImporterMeshInstance3D found")
@@ -45,15 +61,68 @@ func _init():
 	print("Checking mesh blend shapes...")
 	var mesh = mesh_instance.mesh
 	if mesh == null or mesh.get_blend_shape_count() == 0:
-		print("Mesh has no blend shapes")
-		return
+		print("Mesh has no blend shapes - checking geom scene instead...")
+
+		# Try geometry scene instead
+		nodes_to_check = [geom_scene]
+		while not nodes_to_check.is_empty():
+			var current = nodes_to_check.pop_front()
+			if current is ImporterMeshInstance3D and mesh_instance == null:
+				mesh_instance = current
+
+			for child in current.get_children():
+				nodes_to_check.append(child)
+
+		if mesh_instance == null:
+			print("Still no ImporterMeshInstance3D found")
+			return
+
+		mesh = mesh_instance.mesh
+		if mesh == null or mesh.get_blend_shape_count() == 0:
+			print("No blend shapes found in any scene")
+			return
 
 	print("Found mesh with ", mesh.get_blend_shape_count(), " blend shapes")
 
-	print("Getting animation list...")
+	# Create synthetic AnimationPlayer with blend shape animations
+	print("Creating synthetic AnimationPlayer with blend shape animations...")
+	var anim_player = AnimationPlayer.new()
+	anim_player.name = "BlendShapeAnimPlayer"
+	mesh_instance.add_child(anim_player)
+
+	var animation = Animation.new()
+	animation.length = 10.0  # 10 seconds
+
+	# Create tracks for each blend shape
+	var blend_shape_count = mesh.get_blend_shape_count()
+	print("Creating " + str(blend_shape_count) + " blend shape animation tracks...")
+
+	for i in range(blend_shape_count):
+		var track_path = ".:blend_shapes/" + mesh.get_blend_shape_name(i)
+		var track_idx = animation.add_track(Animation.TYPE_BLEND_SHAPE)
+		animation.track_set_path(track_idx, track_path)
+
+		# Create keyframes - each blend shape activates briefly in sequence
+		var start_time = float(i) * (animation.length / float(blend_shape_count))
+		var peak_time = start_time + 0.5
+		var end_time = start_time + 1.0
+
+		# Start: 0
+		animation.track_insert_key(track_idx, start_time, 0.0)
+
+		# Peak: 1.0
+		animation.track_insert_key(track_idx, peak_time, 1.0)
+
+		# End: 0
+		animation.track_insert_key(track_idx, end_time, 0.0)
+
+		print("  Created track for: " + mesh.get_blend_shape_name(i))
+
+	anim_player.add_animation("blend_shapes", animation)
+
 	var animation_names = anim_player.get_animation_list()
 	if animation_names.is_empty():
-		print("No animations found")
+		print("Failed to create animation")
 		return
 
 	var animation_name = animation_names[0]
