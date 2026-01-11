@@ -304,7 +304,6 @@ TEST_CASE("[Modules][SceneMerge] Index buffer optimization") {
 		// Mesh 1: vertices at (10,0,z) through (13,0,z) - triangles (0,1,2) and (1,2,3)
 		float z_offset = mesh_idx * 1.0f;
 		const int VERTICES_PER_MESH = 4;
-		const int TRIANGLES_PER_MESH = 2;
 
 		// Add vertices
 		for (int vi = 0; vi < VERTICES_PER_MESH; vi++) {

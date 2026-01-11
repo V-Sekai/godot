@@ -229,10 +229,12 @@ static void process_mesh_geometry(const MeshTextureAtlas::MeshState &p_mesh_stat
 		if (!indices.is_empty()) {
 			// Indices come in groups of 3 (one triangle each)
 			// Each triangle is defined by 3 vertex indices
+			// CRITICAL FIX: Add vertex offset for multi-mesh merging (indices from second mesh need to account for vertices from first mesh)
+			int32_t vertex_offset = p_mesh_state.index_offset;
 			for (size_t triangle_start = 0; triangle_start < indices.size(); triangle_start += 3) {
-				p_surface_tool->add_index(indices[triangle_start]); // First vertex of triangle
-				p_surface_tool->add_index(indices[triangle_start + 1]); // Second vertex of triangle
-				p_surface_tool->add_index(indices[triangle_start + 2]); // Third vertex of triangle
+				p_surface_tool->add_index(indices[triangle_start] + vertex_offset); // First vertex of triangle
+				p_surface_tool->add_index(indices[triangle_start + 1] + vertex_offset); // Second vertex of triangle
+				p_surface_tool->add_index(indices[triangle_start + 2] + vertex_offset); // Third vertex of triangle
 			}
 		}
 	}
