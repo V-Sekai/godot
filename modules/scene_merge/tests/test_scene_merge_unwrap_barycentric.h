@@ -631,4 +631,123 @@ TEST_CASE("[Modules][SceneMerge] Invalid mesh data handling") {
 	memdelete(root);
 }
 
+TEST_CASE("[Modules][SceneMerge] BaseMaterial3D compatibility") {
+	// Test that SceneMerge properly handles different BaseMaterial3D-derived materials
+	// Validates material preservation and compatibility during mesh merging
+
+	Node *root = memnew(Node);
+	root->set_name("MaterialCompatibilityTest");
+
+	// Create two meshes with different BaseMaterial3D types
+	const int MESH_COUNT = 2;
+
+	for (int mesh_idx = 0; mesh_idx < MESH_COUNT; mesh_idx++) {
+		ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
+		mesh_instance->set_name(vformat("MaterialMesh%d", mesh_idx));
+
+		Ref<SurfaceTool> st;
+		st.instantiate();
+		st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+		// Create simple triangle mesh
+		float offset_x = mesh_idx * 2.0f;
+		st->add_vertex(Vector3(offset_x, 0.0f, 0.0f));
+		st->add_vertex(Vector3(offset_x + 1.0f, 0.0f, 0.0f));
+		st->add_vertex(Vector3(offset_x, 1.0f, 0.0f));
+
+		Ref<ArrayMesh> array_mesh;
+		array_mesh.instantiate();
+		st->commit(array_mesh);
+
+		Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(array_mesh);
+
+		// Assign different BaseMaterial3D types to test compatibility
+		Ref<BaseMaterial3D> material;
+		if (mesh_idx == 0) {
+			// First mesh: StandardMaterial3D with straight albedo
+			Ref<StandardMaterial3D> standard_mat;
+			standard_mat.instantiate();
+			standard_mat->set_albedo(Color(1.0f, 0.0f, 0.0f, 1.0f)); // Red
+			standard_mat->set_metallic(0.5f);
+			standard_mat->set_roughness(0.3f);
+			material = standard_mat;
+		} else {
+			// Second mesh: StandardMaterial3D with different properties
+			Ref<StandardMaterial3D> standard_mat;
+			standard_mat.instantiate();
+			standard_mat->set_albedo(Color(0.0f, 1.0f, 0.0f, 1.0f)); // Green
+			standard_mat->set_metallic(0.2f);
+			standard_mat->set_roughness(0.7f);
+			material = standard_mat;
+		}
+
+		Ref<SurfaceTool> surface_tool;
+		surface_tool.instantiate();
+		surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+		surface_tool->set_material(material);
+		surface_tool->add_vertex(Vector3(offset_x, 0.0f, 0.0f));
+		surface_tool->add_vertex(Vector3(offset_x + 1.0f, 0.0f, 0.0f));
+		surface_tool->add_vertex(Vector3(offset_x, 1.0f, 0.0f));
+
+		Ref<ArrayMesh> final_mesh;
+		final_mesh.instantiate();
+		surface_tool->commit(final_mesh);
+
+		Ref<ImporterMesh> final_importer_mesh = ImporterMesh::from_mesh(final_mesh);
+		mesh_instance->set_mesh(final_importer_mesh);
+
+		root->add_child(mesh_instance);
+	}
+
+	REQUIRE(root->get_child_count() == MESH_COUNT);
+
+	// Run merge operation
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+	REQUIRE(result == root);
+
+	// Verify merged mesh was created
+	ImporterMeshInstance3D *merged_instance = nullptr;
+	for (int i = 0; i < root->get_child_count(); i++) {
+		Node *child = root->get_child(i);
+		merged_instance = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (merged_instance) {
+			break;
+		}
+	}
+	REQUIRE(merged_instance != nullptr);
+
+	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
+	REQUIRE(merged_mesh.is_valid());
+	REQUIRE(merged_mesh->get_surface_count() > 0);
+
+	// Verify that the merged mesh has surfaces with the expected materials
+	int surface_count = merged_mesh->get_surface_count();
+	REQUIRE(surface_count > 0);
+
+	// Check that materials are preserved (count should match input meshes)
+	bool has_red_material = false;
+	bool has_green_material = false;
+
+	for (int s = 0; s < surface_count; s++) {
+		Ref<Material> surface_material = merged_mesh->get_surface_material(s);
+		if (surface_material.is_valid()) {
+			Ref<BaseMaterial3D> base_mat = surface_material;
+			if (base_mat.is_valid()) {
+				Color albedo = base_mat->get_albedo();
+				if (albedo.r > 0.9f && albedo.g < 0.1f && albedo.b < 0.1f) {
+					has_red_material = true;
+				} else if (albedo.r < 0.1f && albedo.g > 0.9f && albedo.b < 0.1f) {
+					has_green_material = true;
+				}
+			}
+		}
+	}
+
+	REQUIRE(has_red_material);
+	REQUIRE(has_green_material);
+
+	// Clean up
+	memdelete(root);
+}
+
 } // namespace TestSceneMerge
