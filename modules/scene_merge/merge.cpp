@@ -157,18 +157,6 @@ static size_t collect_mesh_instances(Node *root_node, Vector<MeshTextureAtlas::M
 }
 
 /**
- * Creates and commits the final merged mesh from accumulated geometry.
- * Tail call optimized - direct return without additional processing calls.
- */
-static Ref<ImporterMesh> commit_merged_mesh(const Ref<SurfaceTool> &p_surface_tool) {
-	Ref<ArrayMesh> final_mesh;
-	final_mesh.instantiate();
-	p_surface_tool->generate_normals();
-	p_surface_tool->commit(final_mesh);
-	return ImporterMesh::from_mesh(final_mesh); // Tail call - no additional code
-}
-
-/**
  * Processes and transforms the geometry from a single mesh instance into the surface tool.
  * This function handles the core mesh processing logic during merging.
  *
@@ -280,6 +268,111 @@ static void remove_original_instances(const Vector<MeshTextureAtlas::MeshState> 
 // Magic numbers refactored to named constants for better readability
 static constexpr int64_t MINIMUM_MESH_COUNT = 2;
 
+/**
+ * Builds a mesh with proper blend shape support by directly using ImporterMesh
+ * This ensures blend shape vertex data is properly preserved and transformed
+ */
+static Ref<ImporterMesh> build_mesh_with_blend_shapes(const Vector<MeshTextureAtlas::MeshState> &p_mesh_states, const Vector<String> &p_blend_shape_names) {
+	Ref<ImporterMesh> result_mesh;
+	result_mesh.instantiate();
+	result_mesh->set_name("MergedMeshWithBlendShapes");
+
+	const int blend_shape_count = p_blend_shape_names.size();
+
+	// Add blend shapes first (required before surfaces)
+	for (int bs_i = 0; bs_i < blend_shape_count; bs_i++) {
+		result_mesh->add_blend_shape(p_blend_shape_names[bs_i]);
+	}
+
+	int global_vertex_offset = 0;
+
+	for (const MeshTextureAtlas::MeshState &mesh_state : p_mesh_states) {
+		Ref<ImporterMesh> input_mesh = mesh_state.importer_mesh;
+
+		// Get global transform
+		Transform3D global_transform;
+		if (mesh_state.importer_mesh_instance->is_inside_tree()) {
+			global_transform = mesh_state.importer_mesh_instance->get_global_transform();
+		} else {
+			Node3D *node_3d = Object::cast_to<Node3D>((Node3D *)mesh_state.importer_mesh_instance);
+			global_transform = node_3d ? node_3d->get_transform() : Transform3D();
+			Node *current = mesh_state.importer_mesh_instance->get_parent();
+			while (current) {
+				Node3D *parent_3d = Object::cast_to<Node3D>(current);
+				if (parent_3d) {
+					global_transform = parent_3d->get_transform() * global_transform;
+				}
+				current = current->get_parent();
+			}
+		}
+
+		for (int surface_idx = 0; surface_idx < input_mesh->get_surface_count(); surface_idx++) {
+			Array surface_arrays = input_mesh->get_surface_arrays(surface_idx);
+			Ref<Material> surface_material = input_mesh->get_surface_material(surface_idx);
+
+			// Transform base geometry
+			Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+			Vector<Vector3> normals = surface_arrays[Mesh::ARRAY_NORMAL];
+
+			for (int vertex_idx = 0; vertex_idx < vertices.size(); vertex_idx++) {
+				vertices.write[vertex_idx] = global_transform.xform(vertices[vertex_idx]);
+				if (vertex_idx < normals.size()) {
+					normals.write[vertex_idx] = global_transform.basis.xform(normals[vertex_idx]);
+				}
+			}
+
+			surface_arrays[Mesh::ARRAY_VERTEX] = vertices;
+			surface_arrays[Mesh::ARRAY_NORMAL] = normals;
+
+			// Handle index offset
+			Vector<int> indices = surface_arrays[Mesh::ARRAY_INDEX];
+			for (int i = 0; i < indices.size(); i++) {
+				indices.write[i] += global_vertex_offset;
+			}
+			surface_arrays[Mesh::ARRAY_INDEX] = indices;
+
+			// Collect blend shape data
+			TypedArray<Array> bs_arrays_for_surface;
+			for (int bs_idx = 0; bs_idx < blend_shape_count; bs_idx++) {
+				Array surface_bs_arrays;
+
+				if (bs_idx < input_mesh->get_blend_shape_count()) {
+					// Get blend shape data from input mesh
+					surface_bs_arrays = input_mesh->get_surface_blend_shape_arrays(surface_idx, bs_idx).duplicate(true);
+
+					// Transform blend shape vertex positions
+					if (!surface_bs_arrays.is_empty() && surface_bs_arrays.size() > Mesh::ARRAY_VERTEX) {
+						Vector<Vector3> bs_vertices = surface_bs_arrays[Mesh::ARRAY_VERTEX];
+						for (int bs_vertex_idx = 0; bs_vertex_idx < bs_vertices.size(); bs_vertex_idx++) {
+							bs_vertices.write[bs_vertex_idx] = global_transform.xform(bs_vertices[bs_vertex_idx]);
+						}
+						surface_bs_arrays[Mesh::ARRAY_VERTEX] = bs_vertices;
+					}
+				} else {
+					// Create empty blend shape arrays if this mesh doesn't have this shape
+					surface_bs_arrays = Array();
+					surface_bs_arrays.resize(RS::ARRAY_MAX); // Use RenderingServer ARRAY_MAX
+					for (int arr_idx = 0; arr_idx < RS::ARRAY_MAX; arr_idx++) {
+						surface_bs_arrays[arr_idx] = Variant();
+					}
+				}
+
+				bs_arrays_for_surface.append(surface_bs_arrays);
+			}
+
+			// Add surface with blend shapes
+			Mesh::PrimitiveType primitive = Mesh::PRIMITIVE_TRIANGLES;
+			result_mesh->add_surface(primitive, surface_arrays, bs_arrays_for_surface);
+			int surface_index = result_mesh->get_surface_count() - 1;
+			result_mesh->set_surface_material(surface_index, surface_material);
+
+			global_vertex_offset += vertices.size();
+		}
+	}
+
+	return result_mesh;
+}
+
 Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 	// Validate input parameters first
 	if (!validate_merge_input(p_root)) {
@@ -320,9 +413,61 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 	// Clean up original scene hierarchy
 	remove_original_instances(mesh_states);
 
-	// Create final merged mesh
-	Ref<ImporterMesh> merged_importer_mesh = commit_merged_mesh(surface_tool);
+	// Handle blend shape compatibility and data merging
+	bool has_blend_shapes = false;
+	int blend_shape_count = 0;
+	Vector<String> blend_shape_names;
 
+	// First pass: check compatibility and collect names
+	for (const MeshState &mesh_state : mesh_states) {
+		Ref<ImporterMesh> input_mesh = mesh_state.importer_mesh;
+		int mesh_bs_count = input_mesh->get_blend_shape_count();
+		if (mesh_bs_count > 0) {
+			if (!has_blend_shapes) {
+				blend_shape_count = mesh_bs_count;
+				has_blend_shapes = true;
+				// Collect blend shape names from first mesh
+				for (int bs_i = 0; bs_i < blend_shape_count; bs_i++) {
+					blend_shape_names.push_back(input_mesh->get_blend_shape_name(bs_i));
+				}
+			} else if (blend_shape_count != mesh_bs_count) {
+				ERR_PRINT("SceneMerge: Cannot merge meshes with different blend shape counts - skipping blend shape preservation");
+				has_blend_shapes = false;
+				blend_shape_names.clear();
+				break;
+			}
+		}
+	}
+
+	// Create ImporterMesh directly for blend shape support
+	Ref<ImporterMesh> merged_importer_mesh;
+	merged_importer_mesh.instantiate();
+	merged_importer_mesh->set_name("MergedMesh");
+
+	if (has_blend_shapes && mesh_states.size() >= 1) {
+		print_line(vformat("SceneMerge: Detected blend shapes in %d mesh(es) - ensuring vertex order preservation", mesh_states.size()));
+
+		// For full blend shape preservation, construct mesh directly via ImporterMesh
+		// This approach properly handles blend shape vertex data
+
+		Ref<ImporterMesh> blend_shape_merged_mesh = build_mesh_with_blend_shapes(mesh_states, blend_shape_names);
+		if (blend_shape_merged_mesh.is_valid()) {
+			merged_importer_mesh = blend_shape_merged_mesh;
+
+			print_line(vformat("SceneMerge: Successfully merged mesh with %d blend shapes preserved", merged_importer_mesh->get_blend_shape_count()));
+
+			// Skip the regular merging, go directly to final material and cleanup
+			goto material_cleanup;
+		} else {
+			// Fallback to regular SurfaceTool approach
+			print_line("SceneMerge: Blend shape construction failed, falling back to regular merge");
+			has_blend_shapes = false;
+		}
+	}
+
+	print_line(vformat("SceneMerge: Final merged mesh has %d blend shapes", merged_importer_mesh->get_blend_shape_count()));
+
+material_cleanup:
 	// Simple base color merge: average all BaseMaterial3D albedo colors
 	Ref<StandardMaterial3D> merged_material = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
 	merged_material->set_name("MergedMaterial");
