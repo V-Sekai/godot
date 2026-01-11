@@ -135,109 +135,185 @@ void MeshTextureAtlas::_bind_methods() {
 	ClassDB::bind_static_method("MeshTextureAtlas", D_METHOD("merge", "root"), &MeshTextureAtlas::merge_meshes);
 }
 
+/**
+ * Validates input parameters and returns early if invalid.
+ * Following Elixir Credo: keep validation logic separate and explicit.
+ */
+static bool validate_merge_input(Node *root_node) {
+	if (root_node == nullptr) {
+		ERR_PRINT("SceneMerge: Cannot merge meshes with null root node");
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Collects all valid mesh instances from the scene hierarchy.
+ * Returns the count of meshes found.
+ */
+static size_t collect_mesh_instances(Node *root_node, Vector<MeshTextureAtlas::MeshMerge> &mesh_merges) {
+	MeshTextureAtlas::find_all_mesh_instances(mesh_merges, root_node, nullptr);
+	return mesh_merges[0].meshes.size();
+}
+
+/**
+ * Creates and commits the final merged mesh from accumulated geometry.
+ * Tail call optimized - direct return without additional processing calls.
+ */
+static Ref<ImporterMesh> commit_merged_mesh(const Ref<SurfaceTool> &p_surface_tool) {
+	Ref<ArrayMesh> final_mesh;
+	final_mesh.instantiate();
+	p_surface_tool->generate_normals();
+	p_surface_tool->commit(final_mesh);
+	return ImporterMesh::from_mesh(final_mesh); // Tail call - no additional code
+}
+
+/**
+ * Processes and transforms the geometry from a single mesh instance into the surface tool.
+ * This function handles the core mesh processing logic during merging.
+ *
+ * Processing steps:
+ * 1. Extract vertex, normal, and index data from each mesh surface
+ * 2. Apply the mesh instance's global transform to all vertices and normals
+ * 3. Set up surface materials in the surface tool
+ * 4. Add transformed vertices and normals to the surface tool
+ * 5. Handle indexed geometry by adding triangle indices in groups of 3
+ */
+static void process_mesh_geometry(const MeshTextureAtlas::MeshState &p_mesh_state, const Ref<SurfaceTool> &p_surface_tool) {
+	const Ref<ImporterMesh> mesh = p_mesh_state.importer_mesh;
+	const ImporterMeshInstance3D *mesh_instance = p_mesh_state.importer_mesh_instance;
+
+	// Early return for invalid inputs - tail call optimization
+	if (mesh.is_null() || mesh_instance == nullptr) {
+		return; // Tail call
+	}
+
+	// Get the complete transformation from this mesh instance's position in the scene
+	const Transform3D global_transform = mesh_instance->get_global_transform();
+
+	// Process each material surface in the mesh (meshes can have multiple materials)
+	for (int surface_index = 0; surface_index < mesh->get_surface_count(); surface_index++) {
+		// Get the raw geometry data for this surface
+		const Array surface_arrays = mesh->get_surface_arrays(surface_index);
+		const Ref<Material> surface_material = mesh->get_surface_material(surface_index);
+
+		// Extract vertex and normal arrays from the surface data
+		Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+		Vector<Vector3> normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		const Vector<int> indices = surface_arrays[Mesh::ARRAY_INDEX];
+
+		// Apply the global transformation to place this mesh correctly in world space
+		for (int vertex_index = 0; vertex_index < vertices.size(); vertex_index++) {
+			// Transform vertex position (translation + rotation + scale)
+			vertices.write[vertex_index] = global_transform.xform(vertices[vertex_index]);
+
+			// Transform normal vectors (rotation only - normals don't translate)
+			if (vertex_index < normals.size()) {
+				normals.write[vertex_index] = global_transform.basis.xform(normals[vertex_index]);
+			}
+		}
+
+		// Set up the surface tool for this material group
+		p_surface_tool->set_material(surface_material);
+
+		// Add all vertices and their corresponding normals to the surface tool
+		for (int vertex_index = 0; vertex_index < vertices.size(); vertex_index++) {
+			// Set normal first, then vertex (SurfaceTool expects this order)
+			if (vertex_index < normals.size()) {
+				p_surface_tool->set_normal(normals[vertex_index]);
+			}
+			p_surface_tool->add_vertex(vertices[vertex_index]);
+		}
+
+		// Handle triangle indices if this is an indexed mesh
+		if (!indices.is_empty()) {
+			// Indices come in groups of 3 (one triangle each)
+			// Each triangle is defined by 3 vertex indices
+			for (size_t triangle_start = 0; triangle_start < indices.size(); triangle_start += 3) {
+				p_surface_tool->add_index(indices[triangle_start]); // First vertex of triangle
+				p_surface_tool->add_index(indices[triangle_start + 1]); // Second vertex of triangle
+				p_surface_tool->add_index(indices[triangle_start + 2]); // Third vertex of triangle
+			}
+		}
+	}
+}
+
+/**
+ * Removes original mesh instances from the scene hierarchy.
+ * Tail call optimized with direct returns for invalid cases.
+ */
+static void remove_original_instances(const Vector<MeshTextureAtlas::MeshState> &p_mesh_states) {
+	for (const MeshTextureAtlas::MeshState &mesh_state : p_mesh_states) {
+		ImporterMeshInstance3D *mesh_instance = mesh_state.importer_mesh_instance;
+		if (mesh_instance == nullptr) {
+			continue; // Tail call - continue loop
+		}
+
+		Node *parent = mesh_instance->get_parent();
+		if (parent == nullptr) {
+			continue; // Tail call - continue loop
+		}
+
+		parent->remove_child(mesh_instance);
+		mesh_instance->queue_free();
+	}
+}
+
+// Magic numbers refactored to named constants for better readability
+static constexpr int64_t DEFAULT_ATLAS_SIZE = 1024;
+static constexpr int64_t MINIMUM_MESH_COUNT = 2;
+
 Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
-	// Simple MVP: Merge all ImporterMeshInstance3D nodes into a single mesh
-	// without texture atlas generation
+	// Validate input parameters first
+	if (!validate_merge_input(p_root)) {
+		return p_root; // Early return for invalid input
+	}
 
-	ERR_FAIL_NULL_V_MSG(p_root, p_root, "Cannot merge meshes with null root node");
-
+	// Collect all valid mesh instances from the scene
 	Vector<MeshMerge> mesh_merges;
 	MeshMerge mesh_merge;
 	mesh_merges.push_back(mesh_merge);
 
-	// Find all ImporterMeshInstance3D nodes in the scene
-	_find_all_mesh_instances(mesh_merges, p_root, nullptr);
+	size_t mesh_count = collect_mesh_instances(p_root, mesh_merges);
 
-	size_t mesh_count = mesh_merges[0].meshes.size();
-
-	// Handle empty scenes gracefully - return root unchanged
+	// Handle edge cases gracefully
 	if (mesh_count == 0) {
 		print_line("SceneMerge: No mesh instances found in scene, nothing to merge");
 		return p_root;
 	}
 
-	// Handle single mesh scenes - nothing to merge
-	if (mesh_count <= 1) {
+	if (mesh_count < MINIMUM_MESH_COUNT) {
 		print_line("SceneMerge: Only one mesh instance found, nothing to merge");
 		return p_root;
 	}
 
 	print_line(vformat("SceneMerge: Found %d mesh instances, proceeding with merge", (int64_t)mesh_count));
 
-	// Create a surface tool to build the merged mesh
-	Ref<SurfaceTool> st;
-	st.instantiate();
-	st->begin(Mesh::PRIMITIVE_TRIANGLES);
+	// Initialize surface tool for mesh construction
+	Ref<SurfaceTool> surface_tool;
+	surface_tool.instantiate();
+	surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 
-	// Process each mesh state
-	for (const MeshState &mesh_state : mesh_merges[0].meshes) {
-		Ref<ImporterMesh> mesh = mesh_state.importer_mesh;
-		ImporterMeshInstance3D *mi = mesh_state.importer_mesh_instance;
-		if (mesh.is_null()) {
-			continue;
-		}
-
-		Transform3D transform = mi->get_global_transform();
-
-		// Add each surface of the mesh
-		for (int surface_i = 0; surface_i < mesh->get_surface_count(); surface_i++) {
-			Array surface_arrays = mesh->get_surface_arrays(surface_i);
-			Ref<Material> material = mesh->get_surface_material(surface_i);
-
-			// Get vertex data
-			Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
-			Vector<Vector3> normals = surface_arrays[Mesh::ARRAY_NORMAL];
-			Vector<int> indices = surface_arrays[Mesh::ARRAY_INDEX];
-
-			// Transform vertices and normals
-			for (int i = 0; i < vertices.size(); i++) {
-				vertices.write[i] = transform.xform(vertices[i]);
-				if (i < normals.size()) {
-					normals.write[i] = transform.basis.xform(normals[i]);
-				}
-			}
-
-			// Add to surface tool
-			st->set_material(material);
-			for (int i = 0; i < vertices.size(); i++) {
-				if (i < normals.size()) {
-					st->set_normal(normals[i]);
-				}
-				st->add_vertex(vertices[i]);
-			}
-
-			// Add indices if present
-			if (!indices.is_empty()) {
-				for (int i = 0; i < indices.size(); i += 3) {
-					st->add_index(indices[i]);
-					st->add_index(indices[i + 1]);
-					st->add_index(indices[i + 2]);
-				}
-			}
-		}
-
-		// Remove the original mesh instance
-		Node *parent = mi->get_parent();
-		if (parent) {
-			parent->remove_child(mi);
-			mi->queue_free();
-		}
+	// Process all mesh geometry
+	const Vector<MeshTextureAtlas::MeshState> &mesh_states = mesh_merges[0].meshes;
+	for (const MeshState &mesh_state : mesh_states) {
+		process_mesh_geometry(mesh_state, surface_tool);
 	}
 
-	// Create the merged mesh
-	Ref<ArrayMesh> merged_mesh;
-	merged_mesh.instantiate();
-	st->generate_normals();
-	st->commit(merged_mesh);
+	// Clean up original scene hierarchy
+	remove_original_instances(mesh_states);
 
-	// Create a new ImporterMeshInstance3D with the merged mesh
+	// Create final merged mesh
+	Ref<ImporterMesh> merged_importer_mesh = commit_merged_mesh(surface_tool);
+
+	// Add merged mesh instance to scene
 	ImporterMeshInstance3D *merged_instance = memnew(ImporterMeshInstance3D);
-	Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(merged_mesh);
-	merged_instance->set_mesh(importer_mesh);
+	merged_instance->set_mesh(merged_importer_mesh);
 	merged_instance->set_name("MergedMesh");
 
-	// Add it to the scene (attach to root or first found parent)
-	p_root->add_child(merged_instance);
+	if (p_root != nullptr) {
+		p_root->add_child(merged_instance);
+	}
 
 	return p_root;
 }
