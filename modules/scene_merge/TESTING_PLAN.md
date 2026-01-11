@@ -38,6 +38,7 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 **Files**:
 
 -   `modules/scene_merge/tests/test_scene_merge_unwrap_barycentric.h` (comprehensive core functionality tests)
+-   `modules/scene_merge/tests/test_scene_merge_integration_primitives.h` (primitive mesh compatibility tests)
 
 **Current Test Coverage:**
 
@@ -48,6 +49,9 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 -   [x] Vertex data merging (position integrity validation)
 -   [x] Index buffer optimization (triangle connectivity preservation)
 -   [x] Normal vector preservation (surface orientation accuracy)
+-   [x] **Primitive Mesh Compatibility** (Box, Sphere, Cylinder, Plane meshes)
+-   [x] **Material Handling** (with/without materials, mixed scenarios)
+-   [x] **Mesh Conversion** (ArrayMesh → ImporterMesh transformation)
 -   [x] Primitive type compatibility (Godot mesh format handling)
 -   [x] Invalid mesh data handling (corrupted geometry stability)
 -   [x] BaseMaterial3D compatibility (material property preservation)
@@ -79,6 +83,24 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 - ✅ **Skeleton animation** - Basic merge validation (advanced skeleton preservation noted for future enhancement)
 
 **Test Framework**: Godot's native doctest framework with `[SceneTree]` tags for proper SceneTree initialization, enabling full engine integration testing including node operations and material system interactions.
+
+### 2. Primitive Mesh Compatibility Tests
+
+**Test Results Summary:**
+
+- ✅ **Primitive Mesh Support**: BoxMesh, SphereMesh, CylinderMesh, PlaneMesh successfully convert and merge
+- ✅ **Material Preservation**: Materials correctly transferred from primitive meshes to merged result
+- ✅ **Material-less Meshes**: Primitive meshes without materials merge correctly (no material assigned)
+- ✅ **Mixed Scenarios**: Scenes with mix of material and non-material primitives handled properly
+- ✅ **Conversion Utility**: `convert_array_mesh_to_importer_mesh()` successfully transforms Godot primitives to ImporterMesh format
+- ✅ **SceneMerge Behavior**: All primitive instances correctly merged into single optimized surface (expected behavior)
+
+**Key Findings:**
+
+1. **SceneMerge Design**: Merges multiple mesh instances into single surface for optimization (not preserving individual surfaces)
+2. **Material Handling**: Colors averaged when multiple materials present, null materials handled gracefully
+3. **Primitive Compatibility**: All tested Godot primitive meshes (Box, Sphere, Cylinder, Plane) work with conversion utilities
+4. **Conversion Process**: ArrayMesh → ImporterMesh transformation preserves geometry and materials correctly
 
 ### 3. Editor Plugin Tests
 

@@ -36,11 +36,131 @@
 #include "core/math/vector3.h"
 #include "modules/scene_merge/scene_merge.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
-#include "scene/3d/node_3d.h"
+#include "scene/3d/mesh_instance_3d.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/material.h"
 
 namespace TestSceneMergeIntegration {
+
+// Helper function to convert ArrayMesh to ImporterMesh
+static Ref<ImporterMesh> convert_array_mesh_to_importer_mesh(const Ref<Mesh> &p_mesh) {
+	if (!p_mesh.is_valid()) {
+		return Ref<ImporterMesh>();
+	}
+
+	Ref<ImporterMesh> importer_mesh;
+	importer_mesh.instantiate();
+
+	// Copy all surfaces from the original mesh to the importer mesh
+	for (int surface_idx = 0; surface_idx < p_mesh->get_surface_count(); surface_idx++) {
+		Array surface_arrays = p_mesh->surface_get_arrays(surface_idx);
+		Ref<Material> surface_material = p_mesh->surface_get_material(surface_idx);
+
+		// Get the primitive type (usually triangles for most meshes)
+		Mesh::PrimitiveType primitive_type = Mesh::PRIMITIVE_TRIANGLES;
+
+		// Create blend shape arrays (empty for now, but structure preserved)
+		TypedArray<Array> blend_shapes;
+
+		// Create skeleton information (empty for now)
+		Dictionary skeleton_info;
+
+		// Add the surface to the importer mesh
+		String surface_name = vformat("Surface_%d", surface_idx);
+		importer_mesh->add_surface(primitive_type, surface_arrays, blend_shapes, skeleton_info, surface_material, surface_name);
+	}
+
+	return importer_mesh;
+}
+
+// Helper function to convert MeshInstance3D to ImporterMeshInstance3D
+static ImporterMeshInstance3D *convert_mesh_instance_to_importer(const MeshInstance3D *p_mesh_instance) {
+	if (!p_mesh_instance) {
+		return nullptr;
+	}
+
+	Ref<Mesh> original_mesh = p_mesh_instance->get_mesh();
+	if (!original_mesh.is_valid()) {
+		return nullptr;
+	}
+
+	// Convert the mesh
+	Ref<ImporterMesh> importer_mesh = convert_array_mesh_to_importer_mesh(original_mesh);
+	if (!importer_mesh.is_valid()) {
+		return nullptr;
+	}
+
+	// Create new importer mesh instance
+	ImporterMeshInstance3D *importer_instance = memnew(ImporterMeshInstance3D);
+	importer_instance->set_name(p_mesh_instance->get_name());
+	importer_instance->set_mesh(importer_mesh);
+
+	// Copy transform
+	importer_instance->set_transform(p_mesh_instance->get_transform());
+
+	// Copy visibility and other properties
+	importer_instance->set_visible(p_mesh_instance->is_visible());
+	importer_instance->set_layer_mask(p_mesh_instance->get_layer_mask());
+	importer_instance->set_cast_shadows_setting(p_mesh_instance->get_cast_shadows_setting());
+
+	return importer_instance;
+}
+
+// Helper function to recursively convert all MeshInstance3D nodes in a scene to ImporterMeshInstance3D
+static void convert_scene_meshes_to_importer_format(Node *p_root) {
+	if (!p_root) {
+		return;
+	}
+
+	// Check if this node is a MeshInstance3D
+	MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_root);
+	if (mesh_instance && mesh_instance->get_mesh().is_valid()) {
+		// Convert to ImporterMeshInstance3D
+		ImporterMeshInstance3D *importer_instance = convert_mesh_instance_to_importer(mesh_instance);
+
+		if (importer_instance) {
+			// Get parent and position in hierarchy
+			Node *parent = mesh_instance->get_parent();
+			int index = mesh_instance->get_index();
+
+			// Replace the node
+			parent->remove_child(mesh_instance);
+			parent->add_child(importer_instance);
+			parent->move_child(importer_instance, index);
+
+			// Set the owner so the node gets properly saved/serialized
+			importer_instance->set_owner(mesh_instance->get_owner());
+
+			// Delete the original mesh instance
+			memdelete(mesh_instance);
+
+			// Continue processing with the new importer instance
+			p_root = importer_instance;
+		}
+	}
+
+	// Recursively process children
+	for (int i = 0; i < p_root->get_child_count(); i++) {
+		convert_scene_meshes_to_importer_format(p_root->get_child(i));
+	}
+}
+
+// Helper function to find merged mesh instance
+static ImporterMeshInstance3D *find_merged_mesh_hierarchy(Node *p_root) {
+	if (!p_root) {
+		return nullptr;
+	}
+
+	for (int i = 0; i < p_root->get_child_count(); i++) {
+		Node *child = p_root->get_child(i);
+		ImporterMeshInstance3D *mi = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (mi && mi->get_name() == StringName("MergedMesh")) {
+			return mi;
+		}
+	}
+
+	return nullptr;
+}
 
 // Helper function to create a simple triangle mesh with a material
 static Ref<ImporterMesh> create_triangle_mesh_hierarchy(const Color &p_color) {
@@ -77,23 +197,6 @@ static Ref<ImporterMesh> create_triangle_mesh_hierarchy(const Color &p_color) {
 	importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, surface_arrays, TypedArray<Array>(), Dictionary(), material, "Surface");
 
 	return importer_mesh;
-}
-
-// Helper function to find merged mesh instance
-static ImporterMeshInstance3D *find_merged_mesh_hierarchy(Node *p_root) {
-	if (!p_root) {
-		return nullptr;
-	}
-
-	for (int i = 0; i < p_root->get_child_count(); i++) {
-		Node *child = p_root->get_child(i);
-		ImporterMeshInstance3D *mi = Object::cast_to<ImporterMeshInstance3D>(child);
-		if (mi && mi->get_name() == StringName("MergedMesh")) {
-			return mi;
-		}
-	}
-
-	return nullptr;
 }
 
 // Test: Hierarchy preservation - verify scene structure is maintained after merging
