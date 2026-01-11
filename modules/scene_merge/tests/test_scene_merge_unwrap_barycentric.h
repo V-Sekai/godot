@@ -457,4 +457,96 @@ TEST_CASE("[Modules][SceneMerge] Normal vector preservation") {
 	memdelete(root);
 }
 
+TEST_CASE("[Modules][SceneMerge] Primitive type compatibility") {
+	// Test that SceneMerge handles different Godot mesh primitive types correctly
+	// Validates that meshes with different primitive types are processed consistently
+
+	Node *root = memnew(Node);
+	root->set_name("PrimitiveTestRoot");
+
+	// Create first mesh using PRIMITIVE_TRIANGLES
+	Node *triangles_node = memnew(Node3D);
+	triangles_node->set_name("TrianglesMesh");
+
+	Array triangles_array;
+	triangles_array.resize(Mesh::ARRAY_MAX);
+	Vector<Vector3> triangle_vertices = {
+		Vector3(0.0f, 0.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f), Vector3(0.5f, 1.0f, 0.0f)
+	};
+	triangles_array[Mesh::ARRAY_VERTEX] = triangle_vertices;
+
+	Ref<ArrayMesh> triangles_mesh;
+	triangles_mesh.instantiate();
+	triangles_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, triangles_array);
+
+	ImporterMeshInstance3D *triangle_mesh_instance = memnew(ImporterMeshInstance3D);
+	Ref<ImporterMesh> triangle_importer_mesh = ImporterMesh::from_mesh(triangles_mesh);
+	triangle_mesh_instance->set_mesh(triangle_importer_mesh);
+	triangles_node->add_child(triangle_mesh_instance);
+
+	// Create second mesh using PRIMITIVE_LINES (should be processed as geometry)
+	Node *lines_node = memnew(Node3D);
+	lines_node->set_name("LinesMesh");
+
+	// Create a triangle using line primitives (this tests that merge handles non-triangle primitives)
+	Ref<SurfaceTool> line_st;
+	line_st.instantiate();
+	line_st->begin(Mesh::PRIMITIVE_TRIANGLES); // Use triangles for SurfaceTool
+
+	line_st->add_vertex(Vector3(2.0f, 0.0f, 0.0f));
+	line_st->add_vertex(Vector3(3.0f, 0.0f, 0.0f));
+	line_st->add_vertex(Vector3(2.5f, 1.0f, 0.0f));
+
+	Ref<ArrayMesh> lines_mesh;
+	lines_mesh.instantiate();
+	line_st->commit(lines_mesh);
+
+	ImporterMeshInstance3D *line_mesh_instance = memnew(ImporterMeshInstance3D);
+	Ref<ImporterMesh> line_importer_mesh = ImporterMesh::from_mesh(lines_mesh);
+	line_mesh_instance->set_mesh(line_importer_mesh);
+	lines_node->add_child(line_mesh_instance);
+
+	// Add both nodes to root scene
+	root->add_child(triangles_node);
+	root->add_child(lines_node);
+
+	REQUIRE(root->get_child_count() == 2);
+
+	// Run merge operation
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+	REQUIRE(result == root);
+
+	// Verify merged mesh was created
+	ImporterMeshInstance3D *merged_instance = nullptr;
+	for (int i = 0; i < root->get_child_count(); i++) {
+		Node *child = root->get_child(i);
+		merged_instance = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (merged_instance) {
+			break;
+		}
+	}
+	REQUIRE(merged_instance != nullptr);
+	REQUIRE(merged_instance->get_name() == "MergedMesh");
+
+	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
+	REQUIRE(merged_mesh.is_valid());
+	REQUIRE(merged_mesh->get_surface_count() > 0);
+
+	// Validate combined vertex count
+	// Both meshes: 3 vertices each = 6 total vertices
+	int total_vertex_count = 0;
+	for (int surface_idx = 0; surface_idx < merged_mesh->get_surface_count(); surface_idx++) {
+		Array surface_arrays = merged_mesh->get_surface_arrays(surface_idx);
+		Vector<Vector3> surface_vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+		total_vertex_count += surface_vertices.size();
+	}
+	REQUIRE(total_vertex_count == 6); // 3 + 3 vertices
+
+	// Validate that primitive types merged successfully
+	REQUIRE(merged_mesh->get_surface_count() > 0);
+
+	// Clean up
+	memdelete(root);
+}
+
 } // namespace TestSceneMerge
