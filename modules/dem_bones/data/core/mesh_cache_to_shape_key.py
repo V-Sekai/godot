@@ -21,13 +21,57 @@
 # This code ONLY applies to a mesh and simulations with the same vertex number.
 
 import bpy
+import os
 
-# Convert ABC vertex cache frames directly to blend shapes
-import bpy
+def get_data_path():
+    """Get path to dem bones data directory"""
+    script_path = bpy.data.filepath if bpy.data.filepath else __file__
+    script_dir = os.path.dirname(os.path.abspath(script_path))
+
+    # Script should be in modules/dem_bones/data/core/
+    if 'modules/dem_bones/data/core' in script_dir:
+        # Go up one directory to get to data
+        data_dir = os.path.dirname(script_dir)
+        return data_dir
+
+    # Try to find dem bones relative to current working directory
+    if os.path.exists('modules/dem_bones/data'):
+        return 'modules/dem_bones/data'
+
+    # Default fallback
+    return '.'
 
 print("Converting ABC vertex cache frames to blend shapes...")
 
-# Get all mesh objects
+data_dir = get_data_path()
+print(f"Using data directory: {data_dir}")
+
+# Import ABC if no mesh objects with cache modifiers exist
+mesh_objects = [obj for obj in bpy.data.objects if obj.type == 'MESH']
+has_cache_modifiers = any(
+    mod for obj in mesh_objects
+    for mod in obj.modifiers
+    if mod.type == 'MESH_SEQUENCE_CACHE'
+)
+
+if not mesh_objects or not has_cache_modifiers:
+    print("No mesh objects with cache modifiers found. Importing ABC file...")
+
+    # Clear scene
+    bpy.ops.wm.read_homefile(use_empty=True)
+
+    abc_file = os.path.join(data_dir, 'Bone_Anim.abc')
+    if os.path.exists(abc_file):
+        print(f"Importing {abc_file}...")
+        result = bpy.ops.wm.alembic_import(filepath=abc_file)
+        if result != {'FINISHED'}:
+            print("✗ ABC import failed!")
+        else:
+            print("✓ ABC imported successfully")
+    else:
+        print(f"✗ ABC file not found: {abc_file}")
+
+# Get all mesh objects again after potential import
 mesh_objects = [obj for obj in bpy.data.objects if obj.type == 'MESH']
 
 if not mesh_objects:
@@ -90,10 +134,43 @@ for obj in mesh_objects:
     print(f"  Created {shape_count} blend shapes from ABC cache frames")
     print(f"  Blender shapes: {successful_frames}")
 
-    # Blend shape animations optional - the static shapes are what's important for DemBones
-    # Skip animation keying for now to ensure GLTF export works
+    # Create animation for blend shapes
     if shape_count > 0:
-        print("  Blend shapes ready for DemBones (animations optional for export)")
+        print("  Creating animation keyframes for blend shapes...")
+
+        # Clear existing animation data
+        if obj.animation_data:
+            obj.animation_data_clear()
+
+        # Create animation data
+        if not obj.animation_data:
+            obj.animation_data_create()
+
+        # Set animation length
+        bpy.context.scene.frame_start = 1
+        bpy.context.scene.frame_end = shape_count
+
+        # Create keyframes for each shape key over time
+        for frame_idx, shape_key in enumerate(obj.data.shape_keys.key_blocks[1:], 1):  # Skip basis
+            target_frame = frame_idx
+
+            # Turn on the shape key for this frame
+            for sk in obj.data.shape_keys.key_blocks:
+                sk.value = 1.0 if sk.name == shape_key.name else 0.0
+
+            # Keyframe all shape keys at this frame
+            bpy.context.scene.frame_set(target_frame)
+            for sk in obj.data.shape_keys.key_blocks:
+                sk.keyframe_insert("value", frame=target_frame)
+
+        # Reset all shape keys to 0
+        for sk in obj.data.shape_keys.key_blocks:
+            sk.value = 0.0
+
+        print("  Animation keyframes created")
+
+    if shape_count > 0:
+        print("  Blend shapes and animations ready for DemBones and GLTF export")
         print(f"  {shape_count} blend shapes contain ABC vertex deformation data")
 
 print(f"ABC cache to blend shapes conversion complete!")

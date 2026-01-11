@@ -150,6 +150,51 @@ def main():
 
         print(f"\n✓ Created {shape_count} blend shapes from ABC cache")
 
+        # Create animation for blend shapes
+        print(f"\nCreating animation for {shape_count} blend shapes...")
+
+        # Set animation length
+        bpy.context.scene.frame_start = 1
+        bpy.context.scene.frame_end = shape_count
+
+        # Create animation for blend shapes - create a simple stepwise animation
+        # Instead of complex keyframes, create a basic animation that cycles through shapes
+        print("Creating basic blend shape animation...")
+
+        # Create an AnimationPlayer-type animation by keyframing each shape key to be 1.0 at its frame
+        # Reset all keyframes first
+        if obj.animation_data:
+            obj.animation_data_clear()
+
+        # Create animation data
+        if not obj.animation_data:
+            obj.animation_data_create()
+
+        # For a simple animation, animate all shape keys over time with basic on/off
+        for frame in range(1, shape_count + 1):
+            bpy.context.scene.frame_set(frame)
+
+            # Turn on the shape key for this frame
+            shape_name = str(frame)
+            if shape_name in obj.data.shape_keys.key_blocks:
+                for sk in obj.data.shape_keys.key_blocks:
+                    sk.value = 1.0 if sk.name == shape_name else 0.0
+
+                # Keyframe all shape keys at this frame
+                for sk in obj.data.shape_keys.key_blocks:
+                    sk.keyframe_insert("value", frame=frame)
+
+        # Reset to frame 1
+        bpy.context.scene.frame_set(1)
+        for sk in obj.data.shape_keys.key_blocks:
+            sk.value = 0.0
+
+        # Reset shape key values to 0 (so morph doesn't show at rest pose)
+        for shape_key in obj.data.shape_keys.key_blocks[1:]:
+            shape_key.value = 0.0
+
+        print(f"✓ Animation created with {shape_count} keyframes")
+
         # Export OBJ sequence for validation
         print(f"\nExporting OBJ sequence to: {obj_sequence_dir}")
         os.makedirs(obj_sequence_dir, exist_ok=True)
