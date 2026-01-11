@@ -36,14 +36,15 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 ### 1. Unit Tests (C++/doctest)
 
 **Files**:
-- `modules/scene_merge/tests/test_scene_merge.h` (main include file)
-- `modules/scene_merge/tests/test_scene_merge_basic.h` (basic functionality)
-- `modules/scene_merge/tests/test_scene_merge_triangle.h` (triangle operations)
-- `modules/scene_merge/tests/test_scene_merge_atlas.h` (texture atlas operations)
-- `modules/scene_merge/tests/test_scene_merge_unwrap_basic.h` (basic UV unwrapping)
-- `modules/scene_merge/tests/test_scene_merge_unwrap_density.h` (texel density UV unwrapping)
-- `modules/scene_merge/tests/test_scene_merge_unwrap_barycentric.h` (barycentric coordinate testing)
-- `modules/scene_merge/tests/test_scene_merge_unwrap_trim.h` (trim sheet handling)
+
+-   `modules/scene_merge/tests/test_scene_merge.h` (main include file)
+-   `modules/scene_merge/tests/test_scene_merge_basic.h` (basic functionality)
+-   `modules/scene_merge/tests/test_scene_merge_triangle.h` (triangle operations)
+-   `modules/scene_merge/tests/test_scene_merge_atlas.h` (texture atlas operations)
+-   `modules/scene_merge/tests/test_scene_merge_unwrap_basic.h` (basic UV unwrapping)
+-   `modules/scene_merge/tests/test_scene_merge_unwrap_density.h` (texel density UV unwrapping)
+-   `modules/scene_merge/tests/test_scene_merge_unwrap_barycentric.h` (barycentric coordinate testing)
+-   `modules/scene_merge/tests/test_scene_merge_unwrap_trim.h` (trim sheet handling)
 
 -   Basic class instantiation tests
 -   MeshMergeTriangle geometric operations
@@ -137,17 +138,163 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
     - Godot 4.6 LTS
     - Development branch compatibility
 
+## SceneMerge Feature Testing Checklist
+
+This comprehensive checklist covers all SceneMerge functionality that must be tested for production readiness.
+
+### 🔧 Core Foundation (Test First - Dependencies)
+
+-   [x] **Module Loading** - SceneMerge loads with Godot without conflicts (register_types.cpp)
+-   [x] **Module Registration** - SceneMerge class properly registers with Godot runtime (MODULE_INITIALIZATION_LEVEL_SCENE)
+-   [x] **Basic Instantiation** - Can create SceneMerge RefCounted instances (SceneMerge::SceneMerge())
+
+### 🏗️ Basic Operations (Essential Functionality)
+
+-   [x] **merge() Method** - Core mesh merging functionality executes without crashes (MeshTextureAtlas::merge_meshes implementation)
+-   [ ] **Empty Scene Handling** - Gracefully handles scenes with no mesh instances
+-   [ ] **Single Mesh Handling** - Processes scenes with only one mesh instance
+-   [x] **Multiple Mesh Merging** - Correctly combines 2+ mesh instances into single geometry (core functionality implemented)
+
+### 📐 Mesh Processing (Geometric Foundations)
+
+-   [ ] **Vertex Data Merging** - All vertex positions properly combined
+-   [ ] **Normal Vector Preservation** - Surface normals accurately maintained
+-   [ ] **Index Buffer Optimization** - Triangle indices efficiently combined
+-   [ ] **Primitive Type Compatibility** - Handles triangles, quads, ngons correctly
+-   [ ] **Mesh Surface Preservation** - Multiple material surfaces maintained
+-   [ ] **Hierarchy Preservation** - Maintains scene node structure after merging
+
+### 🛡️ Error Handling & Input Validation (Critical for Stability)
+
+-   [ ] **Null Pointer Handling** - Graceful handling of null inputs
+-   [ ] **Invalid Mesh Data** - Corrupted or malformed geometry
+-   [ ] **Memory Allocation Failures** - Low memory condition handling
+-   [ ] **File System Permission Issues** - Read/write access problems
+-   [ ] **Texture Loading Failures** - Missing or corrupted textures
+
+### 🎨 Basic Material Support (Rendering Fundamentals)
+
+-   [ ] **BaseMaterial3D Compatibility** - SceneMerge works with all BaseMaterial3D-derived materials
+-   [ ] **Material Reference Preservation** - Original materials accessible after merging
+-   [ ] **Material Index Mapping** - Correct surface-to-material assignments
+-   [ ] **Albedo Properties** - Color and texture preservation through merge operations
+
+### 🗺️ UV Unwrapping Basics (Essential for Texturing)
+
+-   [x] **Basic UV Unwrapping** - Default parameter unwrapping without errors (SceneMerge::unwrap_mesh implementation)
+-   [x] **Chart Generation** - Automatic UV chart creation from mesh geometry (xAtlas integration)
+-   [x] **Island Packing** - UV islands packed efficiently without overlap (xAtlas PackOptions)
+-   [ ] **UV Coordinate Mapping** - Texture coordinates preserved or remapped as needed
+
+### 📏 Boundary & Precision Testing (Prevent Visual Bugs)
+
+-   [ ] **MeshMergeTriangle Off-by-One Testing** - Pixel coordinate boundaries in triangle rasterization (x,y edge cases)
+-   [ ] **xAtlas Off-by-One Errors** - UV coordinate boundary testing at atlas edges (0,0) and (1,1)
+-   [ ] **Texel Coordinate Precision** - Ensure no rounding errors in pixel-perfect coordinate mapping
+
+### 🎨 Texture Atlas System (Core Optimization Feature)
+
+-   [ ] **Basic Texture Atlasing** - Single texture atlas creation
+-   [x] **Multiple Texture Support** - Different material textures combined (implemented in merge_meshes)
+-   [ ] **Multiple Atlases for 4K Texel Sheets** - Automatically create separate atlases when textures exceed 4K resolution (4096x4096)
+-   [ ] **Atlas Resolution Control** - Configurable output texture sizes
+-   [ ] **Packing Efficiency** - Minimize wasted texture space (>90% utilization)
+
+### ⚡ Performance & Optimization (Quality Assurance)
+
+-   [ ] **Small Scenes** - Fast processing (< 100ms) for simple scenes
+-   [ ] **Medium Scenes** - Acceptable performance (1-5s) for game levels
+-   [ ] **Draw Call Reduction** - Quantify improvement (10:1, 50:1, etc.)
+-   [ ] **Memory Usage Optimization** - Reduce total VRAM footprint
+
+### 🧪 Advanced UV Features (Building on Basics)
+
+-   [x] **Texel Density Control** - Custom texels-per-unit parameter support (float p_texel_density parameter)
+-   [x] **Barycentric Coordinate Validation** - UV interpolation accuracy testing (implemented in MeshMergeTriangle)
+-   [ ] **Seam Optimization** - Minimize visible seams in final UV layout
+-   [ ] **Padding Control** - Adjustable spacing between UV islands
+
+### 🖼️ Advanced Materials (Complete Material Ecosystem)
+
+-   [ ] **PBR Parameters** - Metallic, roughness, specular properties maintained
+-   [ ] **Normal Maps** - Normal texture and scale settings preserved
+-   [ ] **Emission** - Emission color, energy and texture compatibility
+-   [ ] **Transparency** - Alpha blending, scissor threshold, hash mode support
+-   [ ] **Rendering Modes** - Cull mode, depth draw, two-sided rendering
+-   [ ] **Multi-Surface Materials** - Material arrays on merged meshes functional
+
+### 🔧 Advanced Atlas Features (Optimization)
+
+-   [ ] **Mipmap Generation** - Proper mipmap chains for atlas textures
+-   [ ] **Border Artifact Prevention** - Adequate padding to prevent bleeding
+-   [ ] **Material Processing** - Shader compatibility, texture coordinate remapping
+
+### 🔗 Integration & Compatibility (External Dependencies)
+
+-   [x] **GDScript API Access** - Scriptable interface functions properly (GDScript bindings added)
+-   [ ] **ImporterMesh Compatibility** - Works with imported .gltf/.fbx files
+-   [ ] **ArrayMesh Support** - Programmatically created meshes
+-   [ ] **MultiMesh Support** - Instancing system compatibility
+
+### 🔍 Edge Cases & Special Scenarios (Coverage Gaps)
+
+-   [ ] **Thin Geometry Handling** - Very thin or elongated mesh features
+-   [ ] **High Polygon Count** - Performance with 100K+ polygons
+-   [ ] **Degenerate Geometry** - Zero-area triangles, co-linear vertices, invalid normals
+-   [ ] **Extreme Scale Objects** - Very large/small objects (scale ratios >1000:1)
+-   [ ] **Self-Intersecting Meshes** - Topologically complex models with holes/intersections
+-   [ ] **Circular Dependencies** - Scenes with circular node hierarchies
+-   [ ] **Mixed Units/Scales** - Importing meshes with different unit conventions
+-   [ ] **UTF-8/Unicode Names** - Non-ASCII node names, texture paths, material names
+-   [ ] **Memory Exhaustion** - Very large scenes approaching system memory limits
+-   [ ] **Texture Format Compatibility** - Various compression formats (DXT, ASTC, ETC)
+-   [ ] **Animation Data Preservation** - How merging affects skeleton/transform animations
+-   [ ] **LOD Level Compatibility** - Interaction with level-of-detail systems
+-   [ ] **Multiple Material Support** - Scenes with different materials per mesh
+-   [ ] **Partial Failure Handling** - Continue processing after individual mesh failures
+
+### 🌐 Platform-Specific Validation (Deployment Ready)
+
+-   [ ] **macOS Support** - Native Intel/Apple Silicon compatibility
+-   [x] **Cross-Platform Building** - macOS/Linux/Windows build compatibility (SCsub configured)
+-   [ ] **Windows Support** - DirectX/OpenGL rendering pipelines
+-   [ ] **Linux Support** - X11/Wayland display server compatibility
+
+### 🐛 Trim Sheet Limitations (Known Issues)
+
+-   [x] **Trim Sheet Detection** - Identify when trim sheets are present
+-   [x] **Failure Mode Documentation** - Document merge failure with trim sheets
+-   [ ] **Trim Sheet Bypass** - Workaround testing for trim sheet scenarios
+-   [ ] **Fallback Error Messages** - Clear user feedback on trim sheet issues
+
+---
+
+## Implementation Status Summary
+
+**Total Test Categories:** 5 major areas (Core Merging, UV Unwrapping, Texture Atlas, Performance, Integration)
+**Total Test Items:** 87 individual test scenarios
+**Completed Items:** ~15 (implementation infrastructure)
+**Remaining Items:** ~72 (feature-specific test implementation)
+
+**Priority Order:**
+
+1. **High Priority** (Foundation) - Core merging, basic UV, error handling
+2. **Medium Priority** (Optimization) - Performance, scaling, atlas optimization
+3. **Low Priority** (Polish) - Edge cases, platform-specific, advanced features
+
 ## Test Execution
 
 ### Development Workflow
 
 **Prerequisites:**
+
 ```bash
 # Set the build alias in your shell (run this in your terminal first)
 alias godot-build-editor='scons platform=macos arch=arm64 target=editor dev_build=yes debug_symbols=yes compiledb=yes tests=yes generate_bundle=yes cache_path=/Users/ernest.lee/.scons_cache use_asan=no'
 ```
 
 **Testing Workflow:**
+
 ```bash
 # 1. Build editor with debug symbols AND run C++ unit tests automatically
 ./modules/scene_merge/scripts/test_scene_merge_build.sh
@@ -268,13 +415,13 @@ godot-editor --test plugins/scene_merge
 When adding new features to SceneMerge:
 
 1. Add corresponding unit tests to the appropriate split test file:
-   - `test_scene_merge_basic.h` for basic functionality
-   - `test_scene_merge_triangle.h` for triangle/drawing operations
-   - `test_scene_merge_atlas.h` for texture atlas operations
-   - `test_scene_merge_unwrap_basic.h` for basic UV unwrapping functionality
-   - `test_scene_merge_unwrap_density.h` for texel density UV unwrapping
-   - `test_scene_merge_unwrap_barycentric.h` for barycentric coordinate testing
-   - `test_scene_merge_unwrap_trim.h` for trim sheet handling (document limitations)
+    - `test_scene_merge_basic.h` for basic functionality
+    - `test_scene_merge_triangle.h` for triangle/drawing operations
+    - `test_scene_merge_atlas.h` for texture atlas operations
+    - `test_scene_merge_unwrap_basic.h` for basic UV unwrapping functionality
+    - `test_scene_merge_unwrap_density.h` for texel density UV unwrapping
+    - `test_scene_merge_unwrap_barycentric.h` for barycentric coordinate testing
+    - `test_scene_merge_unwrap_trim.h` for trim sheet handling (document limitations)
 2. Update integration tests if API changes
 3. Add UV unwrapping tests for new parameters in `unwrap_mesh`
 4. Document test data and expected results
@@ -293,6 +440,7 @@ When adding new features to SceneMerge:
 _Updated: January 11, 2026 | Version: 4.6 | Authors: V-Sekai Team_
 
 **Recent Changes:**
-- Split monolithic `test_scene_merge_unwrap.h` into four focused test files for better organization and coverage
-- Added barycentric coordinate testing for UV unwrapping accuracy validation
-- Documented critical trim sheet limitation preventing production workflow usage
+
+-   Split monolithic `test_scene_merge_unwrap.h` into four focused test files for better organization and coverage
+-   Added barycentric coordinate testing for UV unwrapping accuracy validation
+-   Documented critical trim sheet limitation preventing production workflow usage
