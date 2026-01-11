@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MERGE_H
-#define MERGE_H
+#pragma once
 /*
 xatlas
 https://github.com/jpcy/xatlas
@@ -140,5 +139,3 @@ private:
 protected:
 	static void _bind_methods();
 };
-
-#endif // MERGE_H

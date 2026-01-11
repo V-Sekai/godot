@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MERGE_PLUGIN_H
-#define MERGE_PLUGIN_H
+#pragma once
 
 #ifdef TOOLS_ENABLED
 
@@ -54,7 +53,5 @@ public:
 	SceneMergePlugin();
 	~SceneMergePlugin();
 };
-
-#endif // MERGE_PLUGIN_H
 
 #endif // MERGE_PLUGIN_H

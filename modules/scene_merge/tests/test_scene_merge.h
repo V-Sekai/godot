@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TEST_SCENE_MERGE_H
-#define TEST_SCENE_MERGE_H
+#pragma once
 
 #include "tests/test_macros.h"
 
@@ -79,5 +78,3 @@ TEST_CASE("[Modules][SceneMerge] MeshMergeMeshInstanceWithMaterialAtlasTest") {
 	CHECK(result);
 }
 } // namespace TestSceneMerge
-
-#endif // TEST_SCENE_MERGE_H

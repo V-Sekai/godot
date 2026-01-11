@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SCENE_MERGE_H
-#define SCENE_MERGE_H
+#pragma once
 /*
 xatlas
 https://github.com/jpcy/xatlas
@@ -58,5 +57,3 @@ private:
 public:
 	Node *merge(Node *p_root_node);
 };
-
-#endif // SCENE_MERGE_H

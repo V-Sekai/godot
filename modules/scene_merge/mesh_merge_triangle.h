@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MESH_MERGE_TRIANGLE_H
-#define MESH_MERGE_TRIANGLE_H
+#pragma once
 
 #include "core/math/vector2.h"
 #include "core/math/vector3.h"
@@ -73,5 +72,3 @@ private:
 	float m_area;
 	Vector2 m_centroid;
 };
-
-#endif // MESH_MERGE_TRIANGLE_H
