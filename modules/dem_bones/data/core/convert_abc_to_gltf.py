@@ -45,11 +45,15 @@ def export_mesh_obj(verts, faces, filepath, mesh_name="Mesh"):
                 normal = [0, 0, 1]  # Up direction as simple approximation
                 f.write(f"vn {normal[0]} {normal[1]} {normal[2]}\n")
 
-            # Write faces
+            # Write faces (handle polygons of any size)
             for face in faces:
-                if len(face) == 3:
-                    fi0, fi1, fi2 = face[0] + 1, face[1] + 1, face[2] + 1  # OBJ uses 1-based indexing
-                    f.write(f"f {fi0}//{fi0} {fi1}//{fi1} {fi2}//{fi2}\n")
+                if len(face) >= 3:
+                    # General polygon (supports triangles, quads, ngons)
+                    face_indices = []
+                    for vertex_idx in face:
+                        vertex_idx_1_based = vertex_idx + 1  # OBJ uses 1-based indexing
+                        face_indices.append(f"{vertex_idx_1_based}//{vertex_idx_1_based}")
+                    f.write(f"f {' '.join(face_indices)}\n")
 
         return True
     except Exception as e:
@@ -223,6 +227,7 @@ def main():
                 # Collect vertices and faces from current deformation
                 verts = [(v.co.x, v.co.y, v.co.z) for v in eval_mesh.vertices]
                 faces = [tuple(f.vertices) for f in eval_mesh.polygons]
+
 
                 # Export manually
                 success = export_mesh_obj(verts, faces, obj_path, f"frame_{frame:03d}")
