@@ -62,7 +62,7 @@ func _init():
 	print("Creating DemBonesProcessor...")
 	var processor = DemBonesProcessor.new()
 	print("Starting process_animation...")
-	err = processor.process_animation(anim_player, mesh_instance, animation_name)
+	err = processor.process_animation(anim_player, mesh_instance, animation_name, -1)
 	if err != OK:
 		print("Failed to process animation: ", err)
 		return

@@ -31,6 +31,7 @@
 #pragma once
 
 #include "core/io/resource.h"
+#include "core/variant/typed_array.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/animation/animation_player.h"
 
@@ -41,11 +42,11 @@ protected:
 	static void _bind_methods();
 
 public:
-	Error process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name);
+	Error process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name, int max_blend_shapes = 0);
 
 	PackedVector3Array get_rest_vertices() const;
 	Array get_skinning_weights() const;
-	Array get_bone_transforms() const;
+	TypedArray<Transform3D> get_bone_transforms() const;
 	int get_bone_count() const;
 
 	DemBonesProcessor();
@@ -53,6 +54,7 @@ public:
 private:
 	PackedVector3Array rest_vertices;
 	Array skinning_weights;
-	Array bone_transforms;
+	TypedArray<Transform3D> bone_transforms;
 	int bone_count = 0;
+	int frame_count = 0; // Store for transform reconstruction
 };

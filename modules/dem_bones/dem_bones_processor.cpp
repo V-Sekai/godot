@@ -37,23 +37,28 @@
 #include "scene/animation/animation_player.h"
 
 void DemBonesProcessor::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("process_animation", "animation_player", "node", "animation_name"), &DemBonesProcessor::process_animation);
+	ClassDB::bind_method(D_METHOD("process_animation", "animation_player", "node", "animation_name", "max_blend_shapes"), &DemBonesProcessor::process_animation, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("get_rest_vertices"), &DemBonesProcessor::get_rest_vertices);
 	ClassDB::bind_method(D_METHOD("get_skinning_weights"), &DemBonesProcessor::get_skinning_weights);
 	ClassDB::bind_method(D_METHOD("get_bone_transforms"), &DemBonesProcessor::get_bone_transforms);
 	ClassDB::bind_method(D_METHOD("get_bone_count"), &DemBonesProcessor::get_bone_count);
 }
 
-Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name) {
+Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name, int max_blend_shapes) {
 	ERR_FAIL_NULL_V(p_animation_player, ERR_INVALID_PARAMETER);
 	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
 
 	print_line("process_animation: starting");
+	print_line("p_animation_player valid: ", p_animation_player != nullptr);
+	print_line("p_node valid: ", p_node != nullptr);
+	print_line("animation_name: ", String(p_animation_name));
 
 	Ref<Animation> animation = p_animation_player->get_animation(p_animation_name);
+	print_line("Got animation: ", animation.is_null() ? "NULL" : "VALID");
 	ERR_FAIL_COND_V(animation.is_null(), ERR_INVALID_PARAMETER);
 
 	Ref<Resource> mesh_resource;
+	print_line("Getting mesh resource from node...");
 	if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node)) {
 		mesh_resource = mesh_instance->get_mesh();
 	} else if (ImporterMeshInstance3D *importer_mesh_instance = Object::cast_to<ImporterMeshInstance3D>(p_node)) {
@@ -61,11 +66,16 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	} else {
 		ERR_FAIL_V_MSG(ERR_INVALID_PARAMETER, "Node must be MeshInstance3D or ImporterMeshInstance3D");
 	}
+	print_line("Got mesh resource: ", mesh_resource.is_null() ? "NULL" : "VALID");
 	ERR_FAIL_COND_V(mesh_resource.is_null(), ERR_INVALID_PARAMETER);
 
+	print_line("Checking mesh type...");
 	Mesh *mesh = Object::cast_to<Mesh>(mesh_resource.ptr());
 	ImporterMesh *importer_mesh = Object::cast_to<ImporterMesh>(mesh_resource.ptr());
+	print_line("Mesh cast result: ", mesh ? "Mesh" : "NULL");
+	print_line("ImporterMesh cast result: ", importer_mesh ? "ImporterMesh" : "NULL");
 	ERR_FAIL_COND_V(!mesh && !importer_mesh, ERR_INVALID_PARAMETER);
+	print_line("Mesh type check passed");
 
 	int blend_shape_count = mesh ? mesh->get_blend_shape_count() : importer_mesh->get_blend_shape_count();
 	ERR_FAIL_COND_V(blend_shape_count == 0, ERR_INVALID_DATA);
@@ -129,7 +139,10 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 		print_line("Track " + itos(t) + ": " + String(animation->track_get_path(t)));
 	}
 
-	for (int blend_i = 0; blend_i < blend_shape_count; blend_i++) {
+	int max_bs = (max_blend_shapes > 0) ? MIN(max_blend_shapes, blend_shape_count) : blend_shape_count;
+	print_line("Will process " + itos(max_bs) + " out of " + itos(blend_shape_count) + " blend shapes");
+
+	for (int blend_i = 0; blend_i < max_bs; blend_i++) {
 		StringName blend_name = String(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
 		// Try different track path patterns to match the GLTF animation structure
 		String mesh_path_str = String(mesh_path);
@@ -260,6 +273,8 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 
 	// Store results
 	bone_count = bones.num_bones;
+	this->bone_count = bone_count;
+	this->frame_count = frame_count;
 
 	// Convert results to Godot format
 	rest_vertices.resize(bones.num_vertices);
@@ -281,21 +296,21 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 		skinning_weights.push_back(bone_weights);
 	}
 
-	// Convert bone transforms
+	// Convert bone transforms to TypedArray<Transform3D> (simple and clean!)
 	bone_transforms.clear();
+	bone_transforms.resize(frame_count * bones.num_bones);
+
 	for (int k = 0; k < frame_count; k++) {
-		Array frame_transforms;
 		for (int j = 0; j < bones.num_bones; j++) {
-			Transform3D transform;
 			Eigen::Block<Eigen::MatrixXd, 4, 4> bone_mat = bones.bone_transform_mat.block<4, 4>(4 * k, 4 * j);
+			Transform3D transform;
 			transform.basis = Basis(
 					Vector3(bone_mat(0, 0), bone_mat(1, 0), bone_mat(2, 0)),
 					Vector3(bone_mat(0, 1), bone_mat(1, 1), bone_mat(2, 1)),
 					Vector3(bone_mat(0, 2), bone_mat(1, 2), bone_mat(2, 2)));
 			transform.origin = Vector3(bone_mat(0, 3), bone_mat(1, 3), bone_mat(2, 3));
-			frame_transforms.push_back(transform);
+			bone_transforms[k * bones.num_bones + j] = transform;
 		}
-		bone_transforms.push_back(frame_transforms);
 	}
 
 	return OK;
@@ -309,7 +324,7 @@ Array DemBonesProcessor::get_skinning_weights() const {
 	return skinning_weights;
 }
 
-Array DemBonesProcessor::get_bone_transforms() const {
+TypedArray<Transform3D> DemBonesProcessor::get_bone_transforms() const {
 	return bone_transforms;
 }
 
