@@ -114,8 +114,8 @@ void MeshTextureAtlas::_find_all_mesh_instances(Vector<MeshMerge> &r_items, Node
 			}
 			MeshMerge &mesh = r_items.write[r_items.size() - 1];
 
-			mesh.vertex_count += PackedVector3Array(array[Mesh::ARRAY_VERTEX]).size();
 			mesh_state.index_offset = mesh.vertex_count;
+			mesh.vertex_count += PackedVector3Array(array[Mesh::ARRAY_VERTEX]).size();
 
 			if (mesh_state.is_valid()) {
 				mesh.meshes.push_back(mesh_state);
@@ -189,7 +189,23 @@ static void process_mesh_geometry(const MeshTextureAtlas::MeshState &p_mesh_stat
 	}
 
 	// Get the complete transformation from this mesh instance's position in the scene
-	const Transform3D global_transform = mesh_instance->get_global_transform();
+	// In headless/testing environments, the node may not be marked as inside_tree yet
+	Transform3D global_transform;
+	if (mesh_instance->is_inside_tree()) {
+		global_transform = mesh_instance->get_global_transform();
+	} else {
+		// Calculate global transform manually by walking up the tree
+		Node3D *node_3d = Object::cast_to<Node3D>((Node3D *)mesh_instance);
+		global_transform = node_3d ? node_3d->get_transform() : Transform3D();
+		Node *current = mesh_instance->get_parent();
+		while (current) {
+			Node3D *parent_3d = Object::cast_to<Node3D>(current);
+			if (parent_3d) {
+				global_transform = parent_3d->get_transform() * global_transform;
+			}
+			current = current->get_parent();
+		}
+	}
 
 	// Process each material surface in the mesh (meshes can have multiple materials)
 	for (int surface_index = 0; surface_index < mesh->get_surface_count(); surface_index++) {
@@ -358,6 +374,10 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 
 	if (p_root != nullptr) {
 		p_root->add_child(merged_instance);
+		// Set owner to match scene ownership
+		if (p_root->get_owner()) {
+			merged_instance->set_owner(p_root->get_owner());
+		}
 	}
 
 	return p_root;
