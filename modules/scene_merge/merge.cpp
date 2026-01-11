@@ -53,8 +53,10 @@ Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 #include "core/templates/local_vector.h"
 #include "editor/editor_node.h"
 #include "modules/scene_merge/mesh_merge_triangle.h"
+#include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
+#include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "scene/resources/surface_tool.h"
@@ -90,30 +92,29 @@ void MeshTextureAtlas::_find_all_mesh_instances(Vector<MeshMerge> &r_items, Node
 		return;
 	}
 
-	MeshInstance3D *mi = BaseMaterial3D::cast_to<MeshInstance3D>(p_current_node);
-	if (mi && mi->is_visible() && mi->get_mesh().is_valid()) {
-		Ref<Mesh> array_mesh = mi->get_mesh();
-		for (int32_t surface_i = 0; surface_i < array_mesh->get_surface_count(); surface_i++) {
-			Ref<BaseMaterial3D> active_material = mi->get_active_material(surface_i);
-			if (!active_material.is_valid()) {
-				continue;
+	ImporterMeshInstance3D *mi = Object::cast_to<ImporterMeshInstance3D>(p_current_node);
+	if (mi && mi->get_mesh().is_valid()) {
+		Ref<ImporterMesh> importer_mesh = mi->get_mesh();
+		for (int32_t surface_i = 0; surface_i < importer_mesh->get_surface_count(); surface_i++) {
+			Ref<Material> surface_material = mi->get_surface_material(surface_i);
+			if (!surface_material.is_valid()) {
+				surface_material = importer_mesh->get_surface_material(surface_i);
 			}
 
-			array_mesh->surface_set_material(surface_i, active_material);
-			Array array = array_mesh->surface_get_arrays(surface_i).duplicate(true);
+			Array array = importer_mesh->get_surface_arrays(surface_i).duplicate(true);
 			MeshState mesh_state;
-			mesh_state.mesh = array_mesh;
+			mesh_state.importer_mesh = importer_mesh;
 			if (mi->is_inside_tree()) {
 				mesh_state.path = mi->get_path();
 			}
-			mesh_state.mesh_instance = mi;
+			mesh_state.importer_mesh_instance = mi;
 
 			if (r_items.is_empty()) {
 				return;
 			}
 			MeshMerge &mesh = r_items.write[r_items.size() - 1];
 
-			mesh.vertex_count += PackedVector3Array(array[ArrayMesh::ARRAY_VERTEX]).size();
+			mesh.vertex_count += PackedVector3Array(array[Mesh::ARRAY_VERTEX]).size();
 			mesh_state.index_offset = mesh.vertex_count;
 
 			if (mesh_state.is_valid()) {
@@ -135,8 +136,96 @@ void MeshTextureAtlas::_bind_methods() {
 }
 
 Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
-	// TODO: Implement full mesh merging with atlas generation
-	// For now, return the root unchanged
+	// Simple MVP: Merge all ImporterMeshInstance3D nodes into a single mesh
+	// without texture atlas generation
+
+	Vector<MeshMerge> mesh_merges;
+	MeshMerge mesh_merge;
+	mesh_merges.push_back(mesh_merge);
+
+	// Find all ImporterMeshInstance3D nodes in the scene
+	_find_all_mesh_instances(mesh_merges, p_root, nullptr);
+
+	if (mesh_merges[0].meshes.size() <= 1) {
+		// Nothing to merge
+		return p_root;
+	}
+
+	// Create a surface tool to build the merged mesh
+	Ref<SurfaceTool> st;
+	st.instantiate();
+	st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+	// Process each mesh state
+	for (const MeshState &mesh_state : mesh_merges[0].meshes) {
+		Ref<ImporterMesh> mesh = mesh_state.importer_mesh;
+		ImporterMeshInstance3D *mi = mesh_state.importer_mesh_instance;
+		if (mesh.is_null()) {
+			continue;
+		}
+
+		Transform3D transform = mi->get_global_transform();
+
+		// Add each surface of the mesh
+		for (int surface_i = 0; surface_i < mesh->get_surface_count(); surface_i++) {
+			Array surface_arrays = mesh->get_surface_arrays(surface_i);
+			Ref<Material> material = mesh->get_surface_material(surface_i);
+
+			// Get vertex data
+			Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+			Vector<Vector3> normals = surface_arrays[Mesh::ARRAY_NORMAL];
+			Vector<int> indices = surface_arrays[Mesh::ARRAY_INDEX];
+
+			// Transform vertices and normals
+			for (int i = 0; i < vertices.size(); i++) {
+				vertices.write[i] = transform.xform(vertices[i]);
+				if (i < normals.size()) {
+					normals.write[i] = transform.basis.xform(normals[i]);
+				}
+			}
+
+			// Add to surface tool
+			st->set_material(material);
+			for (int i = 0; i < vertices.size(); i++) {
+				if (i < normals.size()) {
+					st->set_normal(normals[i]);
+				}
+				st->add_vertex(vertices[i]);
+			}
+
+			// Add indices if present
+			if (!indices.is_empty()) {
+				for (int i = 0; i < indices.size(); i += 3) {
+					st->add_index(indices[i]);
+					st->add_index(indices[i + 1]);
+					st->add_index(indices[i + 2]);
+				}
+			}
+		}
+
+		// Remove the original mesh instance
+		Node *parent = mi->get_parent();
+		if (parent) {
+			parent->remove_child(mi);
+			mi->queue_free();
+		}
+	}
+
+	// Create the merged mesh
+	Ref<ArrayMesh> merged_mesh;
+	merged_mesh.instantiate();
+	st->generate_normals();
+	st->commit(merged_mesh);
+
+	// Create a new ImporterMeshInstance3D with the merged mesh
+	ImporterMeshInstance3D *merged_instance = memnew(ImporterMeshInstance3D);
+	Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(merged_mesh);
+	merged_instance->set_mesh(importer_mesh);
+	merged_instance->set_name("MergedMesh");
+
+	// Add it to the scene (attach to root or first found parent)
+	p_root->add_child(merged_instance);
+
 	return p_root;
 }
 
@@ -245,24 +334,24 @@ Error MeshTextureAtlas::_generate_atlas(const int32_t p_num_meshes, Vector<Vecto
 void MeshTextureAtlas::write_uvs(const Vector<MeshState> &p_mesh_items, Vector<Vector<Vector2> > &uv_groups, Array &r_mesh_to_index_to_material, Vector<Vector<ModelVertex> > &r_model_vertices) {
 	int32_t total_surface_count = 0;
 	for (int32_t mesh_i = 0; mesh_i < p_mesh_items.size(); mesh_i++) {
-		total_surface_count += p_mesh_items[mesh_i].mesh->get_surface_count();
+		total_surface_count += p_mesh_items[mesh_i].importer_mesh->get_surface_count();
 	}
 	r_model_vertices.resize(total_surface_count);
 	uv_groups.resize(total_surface_count);
 
 	int32_t mesh_count = 0;
 	for (int32_t mesh_i = 0; mesh_i < p_mesh_items.size(); mesh_i++) {
-		for (int32_t surface_i = 0; surface_i < p_mesh_items[mesh_i].mesh->get_surface_count(); surface_i++) {
-			Ref<ArrayMesh> array_mesh = p_mesh_items[mesh_i].mesh;
-			Array mesh = array_mesh->surface_get_arrays(surface_i);
+		for (int32_t surface_i = 0; surface_i < p_mesh_items[mesh_i].importer_mesh->get_surface_count(); surface_i++) {
+			Ref<ImporterMesh> importer_mesh = p_mesh_items[mesh_i].importer_mesh;
+			Array mesh = importer_mesh->get_surface_arrays(surface_i);
 			Vector<ModelVertex> model_vertices;
 			Vector<Vector3> vertex_arr = mesh[Mesh::ARRAY_VERTEX];
 			Vector<Vector3> normal_arr = mesh[Mesh::ARRAY_NORMAL];
 			Vector<Vector2> uv_arr = mesh[Mesh::ARRAY_TEX_UV];
 			Vector<int32_t> index_arr = mesh[Mesh::ARRAY_INDEX];
 			Vector<Plane> tangent_arr = mesh[Mesh::ARRAY_TANGENT];
-			Transform3D transform = p_mesh_items[mesh_i].mesh_instance->get_transform();
-			Node3D *parent_node = Node3D::cast_to<Node3D>(p_mesh_items[mesh_i].mesh_instance->get_parent());
+			Transform3D transform = p_mesh_items[mesh_i].importer_mesh_instance->get_transform();
+			Node3D *parent_node = Node3D::cast_to<Node3D>(p_mesh_items[mesh_i].importer_mesh_instance->get_parent());
 			for (; parent_node != nullptr; parent_node = Node3D::cast_to<Node3D>(parent_node->get_parent())) {
 				transform = parent_node->get_transform() * transform;
 			}
@@ -344,13 +433,17 @@ Ref<Image> MeshTextureAtlas::dilate_image(Ref<Image> source_image) {
 void MeshTextureAtlas::map_mesh_to_index_to_material(const Vector<MeshState> &p_mesh_items, Array &r_mesh_to_index_to_material, Vector<Ref<Material> > &r_material_cache) {
 	float largest_dimension = 0;
 	for (int32_t mesh_i = 0; mesh_i < p_mesh_items.size(); mesh_i++) {
-		Ref<ArrayMesh> array_mesh = p_mesh_items[mesh_i].mesh;
-		for (int32_t j = 0; j < array_mesh->get_surface_count(); j++) {
-			Ref<BaseMaterial3D> mat = array_mesh->surface_get_material(j);
+		Ref<ImporterMesh> importer_mesh = p_mesh_items[mesh_i].importer_mesh;
+		for (int32_t j = 0; j < importer_mesh->get_surface_count(); j++) {
+			Ref<Material> mat = importer_mesh->get_surface_material(j);
 			if (mat.is_null()) {
 				continue;
 			}
-			Ref<Texture2D> texture = mat->get_texture(BaseMaterial3D::TEXTURE_ALBEDO);
+			Ref<BaseMaterial3D> base_mat = mat;
+			if (base_mat.is_null()) {
+				continue;
+			}
+			Ref<Texture2D> texture = base_mat->get_texture(BaseMaterial3D::TEXTURE_ALBEDO);
 			if (texture.is_null()) {
 				continue;
 			}
@@ -358,22 +451,27 @@ void MeshTextureAtlas::map_mesh_to_index_to_material(const Vector<MeshState> &p_
 		}
 	}
 	for (int32_t mesh_i = 0; mesh_i < p_mesh_items.size(); mesh_i++) {
-		Ref<ArrayMesh> array_mesh = p_mesh_items[mesh_i].mesh;
-		// array_mesh->mesh_unwrap(Transform3D(), TEXEL_SIZE); // Temporarily disabled
+		Ref<ImporterMesh> importer_mesh = p_mesh_items[mesh_i].importer_mesh;
+		// importer_mesh->mesh_unwrap(Transform3D(), TEXEL_SIZE); // Temporarily disabled
 
-		for (int32_t j = 0; j < array_mesh->get_surface_count(); j++) {
-			Array mesh = array_mesh->surface_get_arrays(j);
-			Vector<Vector3> indices = mesh[ArrayMesh::ARRAY_INDEX];
-			Ref<BaseMaterial3D> material = p_mesh_items[mesh_i].mesh->surface_get_material(j);
+		for (int32_t j = 0; j < importer_mesh->get_surface_count(); j++) {
+			Array mesh = importer_mesh->get_surface_arrays(j);
+			Vector<Vector3> indices = mesh[Mesh::ARRAY_INDEX];
+			Ref<Material> material = importer_mesh->get_surface_material(j);
 			if (material.is_null()) {
 				continue;
 			}
-			if (material->get_texture(BaseMaterial3D::TEXTURE_ALBEDO).is_null()) {
+			Ref<BaseMaterial3D> base_material = material;
+			if (base_material.is_null() || base_material->get_texture(BaseMaterial3D::TEXTURE_ALBEDO).is_null()) {
 				Ref<Image> img = Image::create_empty(largest_dimension, largest_dimension, true, Image::FORMAT_RGBA8);
-				img->fill(material->get_albedo());
-				material->set_albedo(Color(1.0f, 1.0f, 1.0f));
+				img->fill(base_material.is_null() ? Color(1.0f, 1.0f, 1.0f) : base_material->get_albedo());
+				if (base_material.is_valid()) {
+					base_material->set_albedo(Color(1.0f, 1.0f, 1.0f));
+				}
 				Ref<ImageTexture> tex = ImageTexture::create_from_image(img);
-				material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, tex);
+				if (base_material.is_valid()) {
+					base_material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, tex);
+				}
 			}
 			if (r_material_cache.find(material) == -1) {
 				r_material_cache.push_back(material);
@@ -395,12 +493,12 @@ Node *MeshTextureAtlas::_output_mesh_atlas(MergeState &state, int p_count) {
 	print_line(vformat("Atlas size: (%d, %d)", state.atlas->width, state.atlas->height));
 	MeshTextureAtlas::TextureData texture_data;
 	for (int32_t mesh_i = 0; mesh_i < state.r_mesh_items.size(); mesh_i++) {
-		if (state.r_mesh_items[mesh_i].mesh_instance->get_parent()) {
+		if (state.r_mesh_items[mesh_i].importer_mesh_instance->get_parent()) {
 			Node3D *node_3d = memnew(Node3D);
-			Transform3D transform = state.r_mesh_items[mesh_i].mesh_instance->get_transform();
+			Transform3D transform = state.r_mesh_items[mesh_i].importer_mesh_instance->get_transform();
 			node_3d->set_transform(transform);
-			node_3d->set_name(state.r_mesh_items[mesh_i].mesh_instance->get_name());
-			state.r_mesh_items[mesh_i].mesh_instance->replace_by(node_3d);
+			node_3d->set_name(state.r_mesh_items[mesh_i].importer_mesh_instance->get_name());
+			state.r_mesh_items[mesh_i].importer_mesh_instance->replace_by(node_3d);
 		}
 	}
 	Ref<SurfaceTool> surface_tool_all;
@@ -450,18 +548,18 @@ Node *MeshTextureAtlas::_output_mesh_atlas(MergeState &state, int p_count) {
 		material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, tex);
 	}
 	material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
-	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
+	ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
 	Ref<ArrayMesh> array_mesh = surface_tool_all->commit();
-	mesh_instance->set_mesh(array_mesh);
+	Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(array_mesh);
+	mesh_instance->set_mesh(importer_mesh);
 	mesh_instance->set_name(state.p_name);
 	Transform3D root_transform;
 	mesh_instance->set_transform(root_transform.affine_inverse());
-	array_mesh->surface_set_material(0, material);
 	return mesh_instance;
 }
 
 bool MeshTextureAtlas::MeshState::operator==(const MeshState &rhs) const {
-	if (rhs.mesh == mesh && rhs.path == path && rhs.mesh_instance == mesh_instance) {
+	if (rhs.importer_mesh == importer_mesh && rhs.path == path && rhs.importer_mesh_instance == importer_mesh_instance) {
 		return true;
 	}
 	return false;
@@ -491,15 +589,16 @@ int MeshTextureAtlas::godot_xatlas_print(const char *p_print_string, ...) {
 }
 
 bool MeshTextureAtlas::MeshState::is_valid() const {
-	bool is_mesh_valid = mesh.is_valid();
-	if (!is_mesh_valid || mesh_instance == nullptr) {
+	bool is_mesh_valid = importer_mesh.is_valid();
+	if (!is_mesh_valid || importer_mesh_instance == nullptr) {
 		return false;
 	}
-	int num_surfaces = mesh->get_surface_count();
+	int num_surfaces = importer_mesh->get_surface_count();
 	for (int i = 0; i < num_surfaces; ++i) {
-		int num_vertices = mesh->surface_get_array_len(i);
-		int num_indices = mesh->surface_get_array_index_len(i);
-		if (num_vertices == 0 || num_indices == 0) {
+		Array arrays = importer_mesh->get_surface_arrays(i);
+		Vector<Vector3> vertices = arrays[Mesh::ARRAY_VERTEX];
+		Vector<int> indices = arrays[Mesh::ARRAY_INDEX];
+		if (vertices.size() == 0 || indices.size() == 0) {
 			return false;
 		}
 	}
@@ -507,5 +606,5 @@ bool MeshTextureAtlas::MeshState::is_valid() const {
 }
 
 MeshTextureAtlas::MeshTextureAtlas() {
-	// xatlas::SetPrint(&godot_xatlas_print, true); // Temporarily disabled
+	xatlas::SetPrint(&godot_xatlas_print, true);
 }

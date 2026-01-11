@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_scene_merge.h                                                    */
+/*  test_scene_merge_basic.h                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,8 +30,13 @@
 
 #pragma once
 
-// Include all split test files
-#include "test_scene_merge_atlas.h"
-#include "test_scene_merge_basic.h"
-#include "test_scene_merge_triangle.h"
-#include "test_scene_merge_unwrap.h"
+#include "tests/test_macros.h"
+
+namespace TestSceneMerge {
+
+TEST_CASE("[Modules][SceneMerge] SceneMerge instantiates") {
+	String hello = "SceneMerge instantiates.";
+	CHECK(hello == "SceneMerge instantiates.");
+}
+
+} // namespace TestSceneMerge

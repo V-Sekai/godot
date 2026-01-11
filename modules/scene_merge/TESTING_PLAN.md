@@ -35,7 +35,12 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
 
 ### 1. Unit Tests (C++/doctest)
 
-**Files**: `modules/scene_merge/tests/test_scene_merge.h`
+**Files**:
+- `modules/scene_merge/tests/test_scene_merge.h` (main include file)
+- `modules/scene_merge/tests/test_scene_merge_basic.h` (basic functionality)
+- `modules/scene_merge/tests/test_scene_merge_triangle.h` (triangle operations)
+- `modules/scene_merge/tests/test_scene_merge_atlas.h` (texture atlas operations)
+- `modules/scene_merge/tests/test_scene_merge_unwrap.h` (UV unwrapping)
 
 -   Basic class instantiation tests
 -   MeshMergeTriangle geometric operations
@@ -94,7 +99,7 @@ alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build
     - ✅ Material preservation across surfaces
     - ✅ ImporterMesh input and output type validation
 
-4. **Error Handling**
+5. **Error Handling**
     - Empty scene scenarios
     - Invalid mesh data
     - Memory allocation failures
@@ -176,6 +181,7 @@ godot-editor --test plugins/scene_merge
     - Validates: Large-scale merging, material atlas complexity, hierarchy preservation
 
 3. **Game Environment Scene (Optimization Test)**
+
     - Terrain chunks, buildings, vegetation instances
     - Environmental objects with varied scale and orientation
     - Performance-critical scene (target 60fps)
@@ -183,6 +189,7 @@ godot-editor --test plugins/scene_merge
     - Validates: Real-world optimization impact, batching efficiency
 
 4. **Edge Case Scenes**
+
     - **Empty scene**: No meshes (error handling)
     - **Single mesh only**: Cannot test merging (baseline reference)
     - **Identical transform meshes**: Overlapping geometry edge case
@@ -236,7 +243,7 @@ godot-editor --test plugins/scene_merge
     - Remote texture loading
     - Asynchronous processing validation
 
-3. **Physics Integration Testing**
+4. **Physics Integration Testing**
     - Collision shape generation from merged meshes
     - Physics performance comparison
 
@@ -244,7 +251,11 @@ godot-editor --test plugins/scene_merge
 
 When adding new features to SceneMerge:
 
-1. Add corresponding unit tests to `test_scene_merge.h`
+1. Add corresponding unit tests to the appropriate split test file:
+   - `test_scene_merge_basic.h` for basic functionality
+   - `test_scene_merge_triangle.h` for triangle/drawing operations
+   - `test_scene_merge_atlas.h` for texture atlas operations
+   - `test_scene_merge_unwrap.h` for UV unwrapping functionality
 2. Update integration tests if API changes
 3. Add UV unwrapping tests for new parameters in `unwrap_mesh`
 4. Document test data and expected results
@@ -256,6 +267,7 @@ When adding new features to SceneMerge:
 -   **Test failures**: Verify Godot module registration in `SCSub`
 -   **Performance issues**: Profile with `--profiler` flag
 -   **Memory issues**: Use `--asan` build for debugging
+-   **Trim Sheet Issues**: ⚠️ **CRITICAL LIMITATION** - Texture atlas generation with trim sheets causes mesh merge operations to fail. Trim sheets are currently not supported and must be disabled for successful merging. This significantly limits the module's usefulness for production workflows that rely on trim sheet textures.
 
 ---
 

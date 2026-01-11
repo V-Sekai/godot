@@ -49,8 +49,9 @@ Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 
 #include "core/math/vector2.h"
 #include "core/object/ref_counted.h"
-#include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/main/node.h"
+#include "scene/resources/3d/importer_mesh.h"
 
 #include "thirdparty/xatlas/xatlas.h"
 #include <cstdint>
@@ -69,10 +70,10 @@ public:
 		Vector2 uv;
 	};
 	struct MeshState {
-		Ref<Mesh> mesh;
+		Ref<ImporterMesh> importer_mesh;
 		NodePath path;
 		int32_t index_offset = 0;
-		MeshInstance3D *mesh_instance;
+		ImporterMeshInstance3D *importer_mesh_instance;
 		bool operator==(const MeshState &rhs) const;
 		bool is_valid() const;
 	};

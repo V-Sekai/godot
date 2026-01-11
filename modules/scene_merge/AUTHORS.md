@@ -107,7 +107,7 @@ name is available.
     Leon Krause (eska014)
     Lucien Menassol (Kanabenki)
     m4nu3lf
-    Marcel Admiraal (madmiraal)
+    Marcel Admiral (madmiraal)
     Marcelo Fernandez (marcelofg55)
     Marc Gilleron (Zylann)
     Marcin Zawiejski (dragmz)
