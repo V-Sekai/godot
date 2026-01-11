@@ -159,7 +159,7 @@ This comprehensive checklist covers all SceneMerge functionality that must be te
 
 -   [x] **Vertex Data Merging** - All vertex positions properly combined (simplified unit test implemented)
 -   [x] **Normal Vector Preservation** - Surface normals accurately maintained (unit test implemented)
--   [x] **Index Buffer Optimization** - Triangle indices efficiently combined (unit test in-progress)
+-   [x] **Index Buffer Optimization** - Triangle indices efficiently combined (unit test implemented)
 -   [ ] **Primitive Type Compatibility** - Handles triangles, quads, ngons correctly
 -   [ ] **Mesh Surface Preservation** - Multiple material surfaces maintained
 -   [ ] **Hierarchy Preservation** - Maintains scene node structure after merging
