@@ -307,6 +307,50 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 	// Create final merged mesh
 	Ref<ImporterMesh> merged_importer_mesh = commit_merged_mesh(surface_tool);
 
+	// Simple base color merge: average all BaseMaterial3D albedo colors
+	Ref<StandardMaterial3D> merged_material = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
+	merged_material->set_name("MergedMaterial");
+
+	// Collect and average base colors from all materials
+	Vector<Color> base_colors;
+	for (const MeshState &mesh_state : mesh_states) {
+		Ref<ImporterMesh> importer_mesh = mesh_state.importer_mesh;
+		for (int surface_i = 0; surface_i < importer_mesh->get_surface_count(); surface_i++) {
+			Ref<Material> surface_material = importer_mesh->get_surface_material(surface_i);
+			if (surface_material.is_null()) {
+				continue;
+			}
+
+			Ref<BaseMaterial3D> base_material = surface_material;
+			if (base_material.is_valid()) {
+				Color albedo = base_material->get_albedo();
+				base_colors.push_back(albedo);
+			}
+		}
+	}
+
+	// Average the colors (simple merge)
+	if (!base_colors.is_empty()) {
+		Color averaged_color = Color(0, 0, 0, 1);
+		for (const Color &color : base_colors) {
+			averaged_color += color;
+		}
+		averaged_color /= (float)base_colors.size();
+		merged_material->set_albedo(averaged_color);
+
+		print_line(vformat("SceneMerge: Merged %d base colors into averaged color: #%s",
+				base_colors.size(), averaged_color.to_html(false)));
+	} else {
+		// Default to white if no valid materials found
+		merged_material->set_albedo(Color(1, 1, 1, 1));
+		print_line("SceneMerge: No valid BaseMaterial3D colors found, using default white");
+	}
+
+	// Apply merged material to all surfaces of the merged mesh
+	for (int surface_i = 0; surface_i < merged_importer_mesh->get_surface_count(); surface_i++) {
+		merged_importer_mesh->set_surface_material(surface_i, merged_material);
+	}
+
 	// Add merged mesh instance to scene
 	ImporterMeshInstance3D *merged_instance = memnew(ImporterMeshInstance3D);
 	merged_instance->set_mesh(merged_importer_mesh);
