@@ -32,6 +32,9 @@
 
 #include "tests/test_macros.h"
 
+#include "scene/3d/importer_mesh_instance_3d.h"
+#include "scene/resources/surface_tool.h"
+
 #include "modules/scene_merge/merge.h"
 
 namespace TestSceneMerge {
@@ -136,6 +139,54 @@ TEST_CASE("[Modules][SceneMerge] Null pointer handling") {
 	// Test that merge_meshes handles null inputs gracefully
 	Node *result = MeshTextureAtlas::merge_meshes(nullptr);
 	REQUIRE(result == nullptr); // Should return the null input instead of crashing
+}
+
+TEST_CASE("[Modules][SceneMerge] Single mesh handling") {
+	// Test that scenes with only one mesh are handled gracefully
+	// SceneMerge requires at least 2 meshes to perform merging
+
+	Node *root = memnew(Node);
+	ImporterMeshInstance3D *single_mesh = memnew(ImporterMeshInstance3D);
+
+	Ref<ImporterMesh> test_mesh;
+	test_mesh.instantiate();
+
+	// Create a simple triangle mesh
+	Ref<SurfaceTool> st;
+	st.instantiate();
+	st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+	st->add_vertex(Vector3(-1, -1, 0));
+	st->add_vertex(Vector3(1, -1, 0));
+	st->add_vertex(Vector3(0, 1, 0));
+
+	st->add_index(0);
+	st->add_index(1);
+	st->add_index(2);
+
+	Ref<ArrayMesh> array_mesh;
+	array_mesh.instantiate();
+	st->commit(array_mesh);
+
+	test_mesh = ImporterMesh::from_mesh(array_mesh);
+	single_mesh->set_mesh(test_mesh);
+	root->add_child(single_mesh);
+
+	// Verify scene setup
+	REQUIRE(root->get_child_count() == 1);
+
+	// merge_meshes should return root unchanged when only 1 mesh exists
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+
+	// Should return the same root node unmodified
+	REQUIRE(result == root);
+	// Should still have only 1 child (the original mesh)
+	REQUIRE(root->get_child_count() == 1);
+	// Original mesh should still be present
+	REQUIRE(root->get_child(0) == single_mesh);
+
+	// Clean up
+	memdelete(root); // Also deletes children
 }
 
 } // namespace TestSceneMerge

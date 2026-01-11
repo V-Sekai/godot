@@ -152,7 +152,7 @@ This comprehensive checklist covers all SceneMerge functionality that must be te
 
 -   [x] **merge() Method** - Core mesh merging functionality executes without crashes (MeshTextureAtlas::merge_meshes implementation)
 -   [x] **Empty Scene Handling** - Gracefully handles scenes with no mesh instances (returns root unchanged with logging)
--   [ ] **Single Mesh Handling** - Processes scenes with only one mesh instance
+-   [x] **Single Mesh Handling** - Processes scenes with only one mesh instance (rejects gracefully, returns unchanged + unit test added)
 -   [x] **Multiple Mesh Merging** - Correctly combines 2+ mesh instances into single geometry (core functionality implemented)
 
 ### 📐 Mesh Processing (Geometric Foundations)
