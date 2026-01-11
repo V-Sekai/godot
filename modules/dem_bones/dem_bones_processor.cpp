@@ -48,6 +48,8 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	ERR_FAIL_NULL_V(p_animation_player, ERR_INVALID_PARAMETER);
 	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
 
+	print_line("process_animation: starting");
+
 	Ref<Animation> animation = p_animation_player->get_animation(p_animation_name);
 	ERR_FAIL_COND_V(animation.is_null(), ERR_INVALID_PARAMETER);
 
@@ -71,6 +73,7 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	// Extract blend shape data from animation
 	HashMap<NodePath, Vector<Vector3>> blend_shapes;
 	NodePath mesh_path = p_animation_player->get_path_to(p_node);
+	print_line("Mesh path from AnimationPlayer: " + String(mesh_path));
 
 	// Get animation length and frame rate
 	float length = animation->get_length();
@@ -81,9 +84,21 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	Dem::DemBonesExt<double, float> bones;
 	bones.num_subjects = 1;
 	bones.num_total_frames = frame_count;
-	Array surface_arrays = mesh ? mesh->surface_get_arrays(0) : importer_mesh->get_surface_arrays(0);
-	PackedVector3Array vertex_array = surface_arrays[ArrayMesh::ARRAY_VERTEX];
-	bones.num_vertices = vertex_array.size();
+
+	// Collect vertices from all surfaces
+	int surface_count = mesh ? mesh->get_surface_count() : importer_mesh->get_surface_count();
+	PackedVector3Array all_vertices;
+	Vector<int> surface_vertex_offsets;
+	surface_vertex_offsets.push_back(0);
+	for (int s = 0; s < surface_count; s++) {
+		Array surface_data = mesh ? mesh->surface_get_arrays(s) : importer_mesh->get_surface_arrays(s);
+		PackedVector3Array surface_vertices = surface_data[ArrayMesh::ARRAY_VERTEX];
+		all_vertices.append_array(surface_vertices);
+		if (s < surface_count - 1) {
+			surface_vertex_offsets.push_back(all_vertices.size());
+		}
+	}
+	bones.num_vertices = all_vertices.size();
 	ERR_FAIL_COND_V(bones.num_vertices == 0, ERR_INVALID_DATA);
 
 	// Set up frame data
@@ -98,18 +113,67 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 
 	// Set rest pose geometry
 	bones.rest_pose_geometry.resize(3, bones.num_vertices);
-	PackedVector3Array rest_vertices = surface_arrays[ArrayMesh::ARRAY_VERTEX];
 	for (int i = 0; i < bones.num_vertices; i++) {
-		bones.rest_pose_geometry(0, i) = rest_vertices[i].x;
-		bones.rest_pose_geometry(1, i) = rest_vertices[i].y;
-		bones.rest_pose_geometry(2, i) = rest_vertices[i].z;
+		bones.rest_pose_geometry(0, i) = all_vertices[i].x;
+		bones.rest_pose_geometry(1, i) = all_vertices[i].y;
+		bones.rest_pose_geometry(2, i) = all_vertices[i].z;
 	}
+
+	// Pre-cache blend shape data to avoid repeated lookups
+	HashMap<int, int> blend_track_indices; // blend_index -> track_index
+	HashMap<int, PackedVector3Array> blend_vertex_arrays; // blend_index -> vertices
+
+	// Build track index cache and load blend shape arrays
+	print_line("Animation has " + itos(animation->get_track_count()) + " tracks");
+	for (int t = 0; t < animation->get_track_count(); t++) {
+		print_line("Track " + itos(t) + ": " + String(animation->track_get_path(t)));
+	}
+
+	for (int blend_i = 0; blend_i < blend_shape_count; blend_i++) {
+		StringName blend_name = StringName(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
+		String track_path = String(mesh_path) + ":" + String(blend_name);
+		print_line("Blend shape " + itos(blend_i) + " name: '" + String(blend_name) + "', looking for track: '" + track_path + "'");
+
+		// Find the track index for this blend shape
+		int track_index = -1;
+		for (int t = 0; t < animation->get_track_count(); t++) {
+			if (animation->track_get_path(t) == NodePath(track_path)) {
+				track_index = t;
+				break;
+			}
+		}
+
+		if (track_index != -1) {
+			blend_track_indices[blend_i] = track_index;
+
+			// Pre-load blend shape vertex array
+			Array blend_array;
+			if (mesh) {
+				Array blend_arrays = mesh->surface_get_blend_shape_arrays(0);
+				if (blend_i < blend_arrays.size()) {
+					blend_array = blend_arrays[blend_i];
+				}
+			} else {
+				blend_array = importer_mesh->get_surface_blend_shape_arrays(0, blend_i);
+			}
+
+			if (blend_array.size() > ArrayMesh::ARRAY_VERTEX) {
+				blend_vertex_arrays[blend_i] = blend_array[ArrayMesh::ARRAY_VERTEX];
+			}
+		}
+	}
+
+	print_line("Pre-cached " + itos(blend_track_indices.size()) + " animated blend shapes");
 
 	// Set animated mesh data
 	bones.vertex.resize(3 * frame_count, bones.num_vertices);
 
 	float time_step = 1.0f / fps;
+	print_line("Starting frame sampling loop: " + itos(frame_count) + " frames, " + itos(blend_track_indices.size()) + " animated blend shapes");
 	for (int frame = 0; frame < frame_count; frame++) {
+		if (frame % 5 == 0) {
+			print_line("Processing frame " + itos(frame) + "/" + itos(frame_count - 1));
+		}
 		float time = frame * time_step;
 		if (time > length) {
 			time = length;
@@ -118,23 +182,14 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 		// Sample animation at this time
 		p_animation_player->seek(time, true);
 
-		// Get deformed vertices
-		for (int blend_i = 0; blend_i < blend_shape_count; blend_i++) {
-			StringName blend_name = StringName(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
-			String track_path = String(mesh_path) + ":" + String(blend_name);
+		// Reset vertices for this frame
+		PackedVector3Array frame_vertices = all_vertices; // Copy all base vertices
 
-			// Find the track index for this blend shape
-			int track_index = -1;
-			for (int t = 0; t < animation->get_track_count(); t++) {
-				if (animation->track_get_path(t) == NodePath(track_path)) {
-					track_index = t;
-					break;
-				}
-			}
-
-			if (track_index == -1) {
-				continue;
-			}
+		// Apply blend shapes that have animation tracks (only affect surface 0)
+		int surface0_size = surface_vertex_offsets.size() > 1 ? surface_vertex_offsets[1] : all_vertices.size();
+		for (const auto &pair : blend_track_indices) {
+			int blend_i = pair.key;
+			int track_index = pair.value;
 
 			float weight = animation->blend_shape_track_interpolate(track_index, time);
 
@@ -142,45 +197,30 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 				continue;
 			}
 
-			Array blend_array;
-			if (mesh) {
-				Array blend_arrays = mesh->surface_get_blend_shape_arrays(0);
-				if (blend_i >= blend_arrays.size()) {
-					continue;
-				}
-				blend_array = blend_arrays[blend_i];
-			} else {
-				blend_array = importer_mesh->get_surface_blend_shape_arrays(0, blend_i);
-			}
-			if (blend_array.size() <= ArrayMesh::ARRAY_VERTEX) {
+			const PackedVector3Array *blend_vertices = blend_vertex_arrays.getptr(blend_i);
+			if (!blend_vertices) {
 				continue;
 			}
 
-			PackedVector3Array blend_vertices = blend_array[ArrayMesh::ARRAY_VERTEX];
-			for (int v = 0; v < bones.num_vertices && v < blend_vertices.size(); v++) {
-				rest_vertices.write[v] += blend_vertices[v] * weight;
+			for (int v = 0; v < surface0_size && v < blend_vertices->size(); v++) {
+				frame_vertices.write[v] += (*blend_vertices)[v] * weight;
 			}
 		}
 
 		// Store frame data
 		for (int v = 0; v < bones.num_vertices; v++) {
-			bones.vertex(3 * frame + 0, v) = rest_vertices[v].x;
-			bones.vertex(3 * frame + 1, v) = rest_vertices[v].y;
-			bones.vertex(3 * frame + 2, v) = rest_vertices[v].z;
+			bones.vertex(3 * frame + 0, v) = frame_vertices[v].x;
+			bones.vertex(3 * frame + 1, v) = frame_vertices[v].y;
+			bones.vertex(3 * frame + 2, v) = frame_vertices[v].z;
 		}
 	}
 
-	// Set mesh topology (simplified - assume triangles)
-	int surface_count = mesh->get_surface_count();
+	// Set mesh topology (simplified - assume triangles, use only surface 0 to match vertices)
 	bones.fv.clear();
-	for (int s = 0; s < surface_count; s++) {
-		Array surface_data = mesh ? mesh->surface_get_arrays(s) : importer_mesh->get_surface_arrays(s);
-		if (surface_data.size() <= ArrayMesh::ARRAY_INDEX) {
-			continue;
-		}
-
+	Array surface_data = mesh ? mesh->surface_get_arrays(0) : importer_mesh->get_surface_arrays(0);
+	if (surface_data.size() > ArrayMesh::ARRAY_INDEX) {
 		PackedInt32Array indices = surface_data[ArrayMesh::ARRAY_INDEX];
-		for (int i = 0; i < indices.size(); i += 3) {
+		for (int i = 0; i + 2 < indices.size(); i += 3) {
 			std::vector<int> triangle;
 			triangle.push_back(indices[i]);
 			triangle.push_back(indices[i + 1]);
@@ -193,11 +233,17 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	bones.num_bones = 10; // This could be parameterized
 
 	// Run DemBones computation
+	print_line("Starting DemBones computation with " + itos(bones.nIters) + " iterations");
 	bones.init();
+	print_line("DemBones init completed");
 	for (int iter = 0; iter < bones.nIters; iter++) {
+		print_line("Iteration " + itos(iter + 1) + "/" + itos(bones.nIters));
 		bones.computeTranformations();
+		print_line("  computeTranformations done");
 		bones.computeWeights();
+		print_line("  computeWeights done");
 	}
+	print_line("DemBones computation completed");
 
 	// Store results
 	bone_count = bones.num_bones;
@@ -230,9 +276,9 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 			Transform3D transform;
 			Eigen::Block<Eigen::MatrixXd, 4, 4> bone_mat = bones.bone_transform_mat.block<4, 4>(4 * k, 4 * j);
 			transform.basis = Basis(
-				Vector3(bone_mat(0, 0), bone_mat(1, 0), bone_mat(2, 0)),
-				Vector3(bone_mat(0, 1), bone_mat(1, 1), bone_mat(2, 1)),
-				Vector3(bone_mat(0, 2), bone_mat(1, 2), bone_mat(2, 2)));
+					Vector3(bone_mat(0, 0), bone_mat(1, 0), bone_mat(2, 0)),
+					Vector3(bone_mat(0, 1), bone_mat(1, 1), bone_mat(2, 1)),
+					Vector3(bone_mat(0, 2), bone_mat(1, 2), bone_mat(2, 2)));
 			transform.origin = Vector3(bone_mat(0, 3), bone_mat(1, 3), bone_mat(2, 3));
 			frame_transforms.push_back(transform);
 		}
