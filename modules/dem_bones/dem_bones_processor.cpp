@@ -44,18 +44,17 @@ void DemBonesProcessor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_count"), &DemBonesProcessor::get_bone_count);
 }
 
-Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name, int max_blend_shapes) {
+Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name, DemBonesMode mode, int max_blend_shapes) {
 	ERR_FAIL_NULL_V(p_animation_player, ERR_INVALID_PARAMETER);
 	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
 
-	print_line("process_animation: starting");
+	print_line("process_animation: starting in mode ", static_cast<int>(mode));
 	print_line("p_animation_player valid: ", p_animation_player != nullptr);
 	print_line("p_node valid: ", p_node != nullptr);
 	print_line("animation_name: ", String(p_animation_name));
 
 	Ref<Animation> animation = p_animation_player->get_animation(p_animation_name);
 	print_line("Got animation: ", animation.is_null() ? "NULL" : "VALID");
-	ERR_FAIL_COND_V(animation.is_null(), ERR_INVALID_PARAMETER);
 
 	Ref<Resource> mesh_resource;
 	print_line("Getting mesh resource from node...");
@@ -68,6 +67,14 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	}
 	print_line("Got mesh resource: ", mesh_resource.is_null() ? "NULL" : "VALID");
 	ERR_FAIL_COND_V(mesh_resource.is_null(), ERR_INVALID_PARAMETER);
+
+	// If no animation tracks but we have mesh blend shapes, this might be Bone_Geom with external animation
+	// In this case, skip the animation validation for now - the blend shapes represent vertex animation
+	if (animation.is_null() && check_blend_shapes_available(mesh_resource)) {
+		print_line("No animation tracks found, but mesh has blend shapes - continuing with blend shape analysis");
+	} else {
+		ERR_FAIL_COND_V(animation.is_null(), ERR_INVALID_PARAMETER);
+	}
 
 	print_line("Checking mesh type...");
 	Mesh *mesh = Object::cast_to<Mesh>(mesh_resource.ptr());
@@ -146,9 +153,9 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 		StringName blend_name = String(mesh ? String(mesh->get_blend_shape_name(blend_i)) : importer_mesh->get_blend_shape_name(blend_i));
 		// Try different track path patterns to match the GLTF animation structure
 		String mesh_path_str = String(mesh_path);
-		String track_path1 = mesh_path_str + ":" + String(blend_name);  // "../Bone:MeshCache"
-		String track_path2 = String(blend_name);  // "MeshCache" - AnimationPlayer on same node as mesh
-		String track_path3;  // "Bone:MeshCache" - if mesh_path is "../Bone"
+		String track_path1 = mesh_path_str + ":" + String(blend_name); // "../Bone:MeshCache"
+		String track_path2 = String(blend_name); // "MeshCache" - AnimationPlayer on same node as mesh
+		String track_path3; // "Bone:MeshCache" - if mesh_path is "../Bone"
 		if (mesh_path_str.begins_with("../")) {
 			track_path3 = mesh_path_str.substr(3) + ":" + String(blend_name);
 		} else {
@@ -162,8 +169,8 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 		for (int t = 0; t < animation->get_track_count(); t++) {
 			NodePath current_track_path = animation->track_get_path(t);
 			if (current_track_path == NodePath(track_path1) ||
-				current_track_path == NodePath(track_path2) ||
-				current_track_path == NodePath(track_path3)) {
+					current_track_path == NodePath(track_path2) ||
+					current_track_path == NodePath(track_path3)) {
 				track_index = t;
 				break;
 			}
@@ -314,6 +321,18 @@ Error DemBonesProcessor::process_animation(AnimationPlayer *p_animation_player, 
 	}
 
 	return OK;
+}
+
+bool DemBonesProcessor::check_blend_shapes_available(Ref<Resource> mesh_resource) {
+	Mesh *mesh = Object::cast_to<Mesh>(mesh_resource.ptr());
+	ImporterMesh *importer_mesh = Object::cast_to<ImporterMesh>(mesh_resource.ptr());
+
+	if (mesh) {
+		return mesh->get_blend_shape_count() > 0;
+	} else if (importer_mesh) {
+		return importer_mesh->get_blend_shape_count() > 0;
+	}
+	return false;
 }
 
 PackedVector3Array DemBonesProcessor::get_rest_vertices() const {

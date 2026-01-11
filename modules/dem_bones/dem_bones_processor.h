@@ -36,13 +36,22 @@
 #include "scene/animation/animation_player.h"
 
 class DemBonesProcessor : public Resource {
+public:
+	enum class DemBonesMode {
+		CREATION, // Extract bones + weights from blend shapes (default)
+		TUNING, // Optimize existing skinning weights using blend shapes
+		TEMPORAL, // Time-varying skinning clusters
+		CONSTRAINED // Use user-provided bone correspondences
+	};
+
+private:
 	GDCLASS(DemBonesProcessor, Resource);
 
 protected:
 	static void _bind_methods();
 
 public:
-	Error process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name, int max_blend_shapes = 0);
+	Error process_animation(AnimationPlayer *p_animation_player, Node3D *p_node, const StringName &p_animation_name, DemBonesMode mode = DemBonesMode::CREATION, int max_blend_shapes = -1);
 
 	PackedVector3Array get_rest_vertices() const;
 	Array get_skinning_weights() const;
@@ -52,6 +61,8 @@ public:
 	DemBonesProcessor();
 
 private:
+	bool check_blend_shapes_available(Ref<Resource> mesh_resource);
+
 	PackedVector3Array rest_vertices;
 	Array skinning_weights;
 	TypedArray<Transform3D> bone_transforms;

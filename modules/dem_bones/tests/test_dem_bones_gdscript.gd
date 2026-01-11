@@ -2,7 +2,7 @@ extends SceneTree
 
 func _init():
 	print("Starting DemBones test...")
-	var gltf_path = "res://modules/dem_bones/data_gltf/Bone_Anim.glb"
+	var gltf_path = "res://modules/dem_bones/data_gltf/Bone_Geom.glb"
 	print("Loading GLTF from: ", gltf_path)
 	var gltf_document = GLTFDocument.new()
 	var gltf_state = GLTFState.new()
