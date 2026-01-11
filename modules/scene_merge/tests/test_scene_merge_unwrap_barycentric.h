@@ -32,26 +32,10 @@
 
 #include "tests/test_macros.h"
 
-#include <algorithm>
-
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/resources/surface_tool.h"
 
 #include "modules/scene_merge/merge.h"
-
-// Comparator for sorting Vector3 positions lexicographically
-class Vector3PositionComparator {
-public:
-	bool operator()(const Vector3 &a, const Vector3 &b) const {
-		if (a.x != b.x) {
-			return a.x < b.x;
-		}
-		if (a.y != b.y) {
-			return a.y < b.y;
-		}
-		return a.z < b.z;
-	}
-};
 
 namespace TestSceneMerge {
 
