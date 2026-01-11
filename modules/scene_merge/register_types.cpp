@@ -35,7 +35,9 @@
 #include "merge.h"
 #include "scene_merge.h"
 
+#ifdef TOOLS_ENABLED
 #include "merge_plugin.h"
+#endif
 
 void initialize_scene_merge_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {

@@ -6,7 +6,8 @@ exclude: |
     .*thirdparty/.*|
     .*-(dll|dylib|so)_wrap\.[ch]|
     platform/android/java/editor/src/main/java/com/android/.*|
-    platform/android/java/lib/src/main/java/com/google/.*
+    platform/android/java/lib/src/main/java/com/google/.*|
+    AUTHORS\.md$
   )$
 
 repos:

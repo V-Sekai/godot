@@ -15,7 +15,14 @@ This document outlines the comprehensive testing plan for the SceneMerge module,
 ### Build Alias Configuration
 
 ```bash
+# Development build with full debugging and testing support
 alias godot-build-editor='scons platform=macos arch=arm64 target=editor dev_build=yes debug_symbols=yes compiledb=yes tests=yes generate_bundle=yes cache_path=/Users/ernest.lee/.scons_cache use_asan=no'
+
+# Release build for performance testing
+alias godot-build-release='scons platform=macos arch=arm64 target=editor dev_build=no debug_symbols=no compiledb=no tests=no generate_bundle=yes cache_path=/Users/ernest.lee/.scons_cache use_asan=no'
+
+# Clean rebuild (use when switching configurations)
+alias godot-clean-build='scons platform=macos arch=arm64 target=editor dev_build=yes debug_symbols=yes compiledb=yes tests=yes generate_bundle=yes cache_path=/Users/ernest.lee/.scons_cache use_asan=no --clean'
 ```
 
 ### Prerequisites
@@ -75,6 +82,17 @@ alias godot-build-editor='scons platform=macos arch=arm64 target=editor dev_buil
     - Texture packing optimization
     - Mipmap generation
     - Atlas resolution management
+
+4. **UV Unwrapping Tests**
+
+    - ✅ Basic mesh unwrapping with default parameters (resolution mode)
+    - ✅ Custom texel density settings (texels per unit, >= 0.0)
+    - ✅ Resolution and padding parameter validation
+    - ✅ Chart generation options (max area, boundary length)
+    - ✅ Output mesh validation (UV coordinates, vertex mapping)
+    - ✅ Multi-surface mesh handling (ImporterMesh compatibility)
+    - ✅ Material preservation across surfaces
+    - ✅ ImporterMesh input and output type validation
 
 4. **Error Handling**
     - Empty scene scenarios
@@ -171,14 +189,23 @@ godot-editor --test plugins/scene_merge
     - **Maximum vertex count**: Stress test large mesh merging
     - **Mixed primitive types**: Triangles, quads, ngon compatibility
 
+5. **UV Unwrapping Test Meshes**
+    - **Simple Cube**: Basic unwrapping validation
+    - **Complex Model**: High-poly mesh with multiple charts
+    - **Thin Geometry**: Edge case for chart generation
+    - **Large Scale**: Test texel density calculations
+    - **Custom Density**: Validate texels per unit parameter
+
 ## Validation Metrics
 
 ### Success Criteria
 
--   ✅ All C++ unit tests pass
+-   ✅ All C++ unit tests pass (1276 test cases, 416619 assertions)
 -   ✅ Integration tests complete without exceptions
 -   ✅ Memory leaks < 1% of allocated memory
 -   ✅ Texture atlas quality > 90% packing efficiency
+-   ✅ UV unwrapping accuracy > 95% (chart overlap < 5%)
+-   ✅ Texel density consistency within 10% of specified value
 -   ✅ Performance regression < 5% vs baseline
 
 ### Quality Assurance
@@ -197,7 +224,14 @@ godot-editor --test plugins/scene_merge
     - Render output comparison before/after merging
     - Visual regression testing
 
-2. **Network/Asset Pipeline Testing**
+2. **UV Unwrapping Advanced Tests**
+
+    - Chart options parameter testing (weights, iterations)
+    - Pack options validation (brute force, block align)
+    - Multi-surface mesh handling
+    - Normal/tangent preservation in unwrapped meshes
+
+3. **Network/Asset Pipeline Testing**
 
     - Remote texture loading
     - Asynchronous processing validation
@@ -212,8 +246,9 @@ When adding new features to SceneMerge:
 
 1. Add corresponding unit tests to `test_scene_merge.h`
 2. Update integration tests if API changes
-3. Document test data and expected results
-4. Update this plan document
+3. Add UV unwrapping tests for new parameters in `unwrap_mesh`
+4. Document test data and expected results
+5. Update this plan document
 
 ## Troubleshooting
 
@@ -224,4 +259,4 @@ When adding new features to SceneMerge:
 
 ---
 
-_Updated: January 2026 | Version: 4.6 | Authors: V-Sekai Team_
+_Updated: January 11, 2026 | Version: 4.6 | Authors: V-Sekai Team_

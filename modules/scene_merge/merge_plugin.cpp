@@ -28,11 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "merge_plugin.h"
+#ifdef TOOLS_ENABLED
 
-SceneMergePlugin::~SceneMergePlugin() {
-	EditorNode::get_singleton()->remove_tool_menu_item("Merge Scene");
-}
+#include "merge_plugin.h"
 
 void SceneMergePlugin::_action() {
 	Node *root_node = EditorNode::get_singleton()->get_tree()->get_edited_scene_root();
@@ -40,9 +38,22 @@ void SceneMergePlugin::_action() {
 		EditorNode::get_singleton()->show_accept(TTR("This operation can't be done without a scene."), TTR("OK"));
 		return;
 	}
-	scene_optimize->merge(root_node);
+	Ref<SceneMerge> scene_merge;
+	scene_merge.instantiate();
+	Node *result = scene_merge->merge(root_node);
+	if (result) {
+		EditorNode::get_singleton()->show_accept(TTR("Scene merged successfully!"), TTR("OK"));
+	} else {
+		EditorNode::get_singleton()->show_accept(TTR("Scene merge failed."), TTR("OK"));
+	}
 }
 
 SceneMergePlugin::SceneMergePlugin() {
 	EditorNode::get_singleton()->add_tool_menu_item("Merge Scene", callable_mp(this, &SceneMergePlugin::_action));
 }
+
+SceneMergePlugin::~SceneMergePlugin() {
+	EditorNode::get_singleton()->remove_tool_menu_item("Merge Scene");
+}
+
+#endif // TOOLS_ENABLED

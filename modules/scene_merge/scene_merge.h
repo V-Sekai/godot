@@ -47,8 +47,8 @@ Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 
 #include "core/object/ref_counted.h"
 
-#include "core/object/ref_counted.h"
 #include "scene/main/node.h"
+#include "scene/resources/3d/importer_mesh.h"
 
 class SceneMerge : public RefCounted {
 private:
@@ -56,4 +56,7 @@ private:
 
 public:
 	Node *merge(Node *p_root_node);
+	Ref<ImporterMesh> unwrap_mesh(Ref<ImporterMesh> p_mesh, float p_texel_density = -1.0f, int p_resolution = 512, int p_padding = 1);
+
+	static void _bind_methods();
 };
