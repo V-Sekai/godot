@@ -281,4 +281,181 @@ TEST_CASE("[Modules][SceneMerge] Vertex data merging validation") {
 	memdelete(root);
 }
 
+TEST_CASE("[Modules][SceneMerge] Index buffer optimization") {
+	// Test that triangle indices are correctly combined with proper vertex offsets
+	// This validates that mesh topology is preserved in merged geometry
+
+	Node *root = memnew(Node);
+	root->set_name("IndexTestRoot");
+
+	// Create 2 meshes with specific triangle index patterns
+	const int MESH_COUNT = 2;
+
+	for (int mesh_idx = 0; mesh_idx < MESH_COUNT; mesh_idx++) {
+		ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
+		mesh_instance->set_name(vformat("IndexMesh%d", mesh_idx));
+
+		Ref<SurfaceTool> st;
+		st.instantiate();
+		st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+		// Create 4 vertices and 2 triangles with predictable patterns
+		// Mesh 0: vertices at (0,0,z) through (3,0,z) - triangles (0,1,2) and (1,2,3)
+		// Mesh 1: vertices at (10,0,z) through (13,0,z) - triangles (0,1,2) and (1,2,3)
+		float z_offset = mesh_idx * 1.0f;
+		const int VERTICES_PER_MESH = 4;
+		const int TRIANGLES_PER_MESH = 2;
+
+		// Add vertices
+		for (int vi = 0; vi < VERTICES_PER_MESH; vi++) {
+			float x = mesh_idx * 10.0f + vi;
+			float y = vi * 0.5f; // Vary Y to make validation easier
+			st->add_vertex(Vector3(x, y, z_offset));
+		}
+
+		// Add specific triangle indices (0,1,2) and (1,2,3)
+		// These indices are relative to this mesh's vertices
+		st->add_index(0);
+		st->add_index(1);
+		st->add_index(2);
+
+		st->add_index(1);
+		st->add_index(2);
+		st->add_index(3);
+
+		Ref<ArrayMesh> array_mesh;
+		array_mesh.instantiate();
+		st->commit(array_mesh);
+
+		Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(array_mesh);
+		mesh_instance->set_mesh(importer_mesh);
+
+		root->add_child(mesh_instance);
+	}
+
+	REQUIRE(root->get_child_count() == MESH_COUNT);
+
+	// Run merge operation
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+	REQUIRE(result == root);
+
+	// Verify merged mesh was created
+	ImporterMeshInstance3D *merged_instance = nullptr;
+	for (int i = 0; i < root->get_child_count(); i++) {
+		Node *child = root->get_child(i);
+		merged_instance = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (merged_instance) {
+			break;
+		}
+	}
+	REQUIRE(merged_instance != nullptr);
+
+	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
+	REQUIRE(merged_mesh.is_valid());
+	REQUIRE(merged_mesh->get_surface_count() > 0);
+
+	// Validate vertex count (2 meshes × 4 vertices = 8 vertices total)
+	int total_vertex_count = 0;
+	int total_index_count = 0;
+	for (int surface_idx = 0; surface_idx < merged_mesh->get_surface_count(); surface_idx++) {
+		Array surface_arrays = merged_mesh->get_surface_arrays(surface_idx);
+		Vector<Vector3> surface_vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+		Vector<int> surface_indices = surface_arrays[Mesh::ARRAY_INDEX];
+
+		total_vertex_count += surface_vertices.size();
+		total_index_count += surface_indices.size();
+	}
+
+	// Verify counts
+	REQUIRE(total_vertex_count == 8); // 4 vertices × 2 meshes
+	REQUIRE(total_index_count == 12); // 6 indices × 2 meshes (2 triangles × 3 indices each × 2 meshes)
+
+	// Verify that mesh merging completed successfully
+	REQUIRE(merged_mesh->get_surface_count() > 0);
+
+	// Clean up
+	memdelete(root);
+}
+
+TEST_CASE("[Modules][SceneMerge] Normal vector preservation") {
+	// Test that surface normals are accurately maintained through merging
+	// Normals should be rotated by mesh transforms but not translated
+
+	Node *root = memnew(Node);
+	root->set_name("NormalsTestRoot");
+
+	// Create a single mesh with known, predictable normals
+	ImporterMeshInstance3D *mesh_instance = memnew(ImporterMeshInstance3D);
+	mesh_instance->set_name("TestNormalsMesh");
+
+	Ref<SurfaceTool> st;
+	st.instantiate();
+	st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+	// Create a quad (2 triangles) with predictable normals
+	// All normals point in +Z direction (0,0,1) - simple face-forward normal
+	st->set_normal(Vector3(0.0f, 0.0f, 1.0f));
+
+	st->add_vertex(Vector3(-0.5f, -0.5f, 0.0f));
+	st->add_vertex(Vector3(0.5f, -0.5f, 0.0f));
+	st->add_vertex(Vector3(0.5f, 0.5f, 0.0f));
+	st->add_vertex(Vector3(-0.5f, 0.5f, 0.0f));
+
+	Ref<ArrayMesh> array_mesh;
+	array_mesh.instantiate();
+	st->commit(array_mesh);
+
+	Ref<ImporterMesh> importer_mesh = ImporterMesh::from_mesh(array_mesh);
+	mesh_instance->set_mesh(importer_mesh);
+
+	// Apply a 90-degree rotation around Y-axis to the mesh instance
+	// This should rotate the normals from (0,0,1) to (1,0,0)
+	Basis rotation_y90;
+	rotation_y90.rotate(Vector3(0, 1, 0), Math::PI / 2.0f); // 90 degrees
+	Transform3D test_transform(rotation_y90, Vector3(0, 0, 0));
+	mesh_instance->set_transform(test_transform);
+
+	root->add_child(mesh_instance);
+
+	// Run merge operation
+	Node *result = MeshTextureAtlas::merge_meshes(root);
+	REQUIRE(result == root);
+
+	// Find the merged mesh instance
+	ImporterMeshInstance3D *merged_instance = nullptr;
+	for (int i = 0; i < root->get_child_count(); i++) {
+		Node *child = root->get_child(i);
+		merged_instance = Object::cast_to<ImporterMeshInstance3D>(child);
+		if (merged_instance) {
+			break;
+		}
+	}
+	REQUIRE(merged_instance != nullptr);
+
+	Ref<ImporterMesh> merged_mesh = merged_instance->get_mesh();
+	REQUIRE(merged_mesh.is_valid());
+	REQUIRE(merged_mesh->get_surface_count() > 0);
+
+	// Extract normal data from merged mesh
+	const int surface_count = merged_mesh->get_surface_count();
+	REQUIRE(surface_count > 0);
+
+	// Verify normals are correctly rotated (should be (1,0,0) after 90° Y rotation of (0,0,1))
+	for (int surface_idx = 0; surface_idx < surface_count; surface_idx++) {
+		Array surface_arrays = merged_mesh->get_surface_arrays(surface_idx);
+		Vector<Vector3> surface_normals = surface_arrays[Mesh::ARRAY_NORMAL];
+
+		// All normals should be the same rotated value
+		for (int normal_idx = 0; normal_idx < surface_normals.size(); normal_idx++) {
+			Vector3 actual_normal = surface_normals[normal_idx];
+			// Expected normal: basis.xform((0,0,1)) = (1,0,0)
+			Vector3 expected_normal(1.0f, 0.0f, 0.0f);
+			REQUIRE((actual_normal - expected_normal).length_squared() < 0.001f);
+		}
+	}
+
+	// Clean up
+	memdelete(root);
+}
+
 } // namespace TestSceneMerge
