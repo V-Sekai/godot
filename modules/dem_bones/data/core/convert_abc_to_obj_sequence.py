@@ -159,7 +159,12 @@ def main():
 
         # Create OBJ sequence with timing information
         print(f"\nGenerating OBJ sequence to: {obj_sequence_dir}")
-        os.makedirs(obj_sequence_dir, exist_ok=True)
+        try:
+            os.makedirs(obj_sequence_dir, exist_ok=True)
+            print(f"✓ Created output directory: {obj_sequence_dir}")
+        except Exception as e:
+            print(f"✗ Failed to create output directory: {e}")
+            exit(1)
 
         obj_count = 0
         for frame in range(frame_start, frame_end + 1):
@@ -175,26 +180,40 @@ def main():
                 sk.value = 1.0 if sk.name == shape_name else 0.0
             bpy.context.view_layer.update()
 
-            # Get the deformed mesh
-            depsgraph = bpy.context.evaluated_depsgraph_get()
-            eval_obj = obj.evaluated_get(depsgraph)
-            eval_mesh = eval_obj.to_mesh()
+            try:
+                # Get the deformed mesh
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                eval_obj = obj.evaluated_get(depsgraph)
+                eval_mesh = eval_obj.to_mesh()
 
-            # Collect geometry
-            verts = [(v.co.x, v.co.y, v.co.z) for v in eval_mesh.vertices]
-            faces = [tuple(f.vertices) for f in eval_mesh.polygons]
+                # Collect geometry
+                verts = [(v.co.x, v.co.y, v.co.z) for v in eval_mesh.vertices]
+                faces = [tuple(f.vertices) for f in eval_mesh.polygons]
 
-            # Export OBJ with frame and time data in filename
-            obj_filename = f"frame_{frame:03d}_time_{frame_time:.3f}.obj"
-            obj_path = os.path.join(obj_sequence_dir, obj_filename)
+                print(f"    Frame {frame}: {len(verts)} verts, {len(faces)} faces")
 
-            success = export_mesh_obj(verts, faces, obj_path, f"Bone_Anim_Frame_{frame}")
-            if success:
-                obj_count += 1
-                print(f"  Exported {obj_filename} ✓")
+                # Export OBJ with frame and time data in filename
+                obj_filename = f"frame_{frame:03d}_time_{frame_time:.3f}.obj"
+                obj_path = os.path.join(obj_sequence_dir, obj_filename)
 
-            # Clean up
-            eval_obj.to_mesh_clear()
+                success = export_mesh_obj(verts, faces, obj_path, f"Bone_Anim_Frame_{frame}")
+                if success:
+                    obj_count += 1
+                    print(f"  Exported {obj_filename} ✓")
+                    # Verify file was actually created
+                    if os.path.exists(obj_path):
+                        file_size = os.path.getsize(obj_path)
+                        print(f"    ✓ File saved: {file_size} bytes")
+                    else:
+                        print(f"    ✗ File NOT saved: {obj_path}")
+                else:
+                    print(f"  ✗ Export failed for {obj_filename}")
+
+                # Clean up
+                eval_obj.to_mesh_clear()
+
+            except Exception as e:
+                print(f"  ✗ Error processing frame {frame}: {e}")
 
         print(f"\n✓ Conversion complete!")
         print(f"  Generated {obj_count} OBJ files with timing data")
