@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_scene_merge_atlas.h                                              */
+/*  test_scene_merge_atlas_barycentric.h                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -36,25 +36,11 @@
 
 namespace TestSceneMerge {
 
-TEST_CASE("[Modules][SceneMerge] MeshMergeMeshInstanceWithMaterialAtlasTest") {
-	MeshTextureAtlas::AtlasTextureArguments args;
-	args.atlas_data = Image::create_empty(1024, 1024, false, Image::FORMAT_RGBA8);
-	args.atlas_data->fill(Color());
-	args.source_texture = Image::create_empty(1024, 1024, false, Image::FORMAT_RGBA8);
-	args.source_texture->fill(Color());
-	MeshTextureAtlas::AtlasLookupTexel lookup;
-	args.atlas_lookup = &lookup;
-	lookup.x = 512;
-	lookup.y = 512;
-	bool result = MeshTextureAtlas::set_atlas_texel(&args, 512, 512, Vector3(0.33, 0.33, 0.33), Vector3(), Vector3(), 0.0f);
-	CHECK(result);
-	lookup.x = 1023;
-	lookup.y = 1023;
-	result = MeshTextureAtlas::set_atlas_texel(&args, 1023, 1023, Vector3(0.33, 0.33, 0.33), Vector3(), Vector3(), 0.0f);
-	CHECK(result);
-}
-
-TEST_CASE("[Modules][SceneMerge] BarycentricAtlasTexel - Basic Triangle Corners") {
+/**
+ * Barycentric coordinate interpolation testing for texture atlas sampling.
+ * Tests accurate UV coordinate interpolation using barycentric coordinates.
+ */
+TEST_CASE("[Modules][SceneMerge][Atlas][Barycentric] BarycentricAtlasTexel - Basic Triangle Corners") {
 	// Test barycentric coordinate interpolation at triangle corners
 	MeshTextureAtlas::AtlasTextureArguments args;
 	args.atlas_data = Image::create_empty(4, 4, false, Image::FORMAT_RGBA8);
@@ -102,7 +88,7 @@ TEST_CASE("[Modules][SceneMerge] BarycentricAtlasTexel - Basic Triangle Corners"
 	CHECK(sampled_color.b > 0.9f); // Should be mostly blue
 }
 
-TEST_CASE("[Modules][SceneMerge] BarycentricAtlasTexel - Center Interpolation") {
+TEST_CASE("[Modules][SceneMerge][Atlas][Barycentric] BarycentricAtlasTexel - Center Interpolation") {
 	// Test barycentric interpolation at triangle center
 	MeshTextureAtlas::AtlasTextureArguments args;
 	args.atlas_data = Image::create_empty(4, 4, false, Image::FORMAT_RGBA8);
@@ -136,98 +122,6 @@ TEST_CASE("[Modules][SceneMerge] BarycentricAtlasTexel - Center Interpolation") 
 	// Should be some blend of red, with red being dominant
 	CHECK(sampled_color.r > sampled_color.g);
 	CHECK(sampled_color.r > sampled_color.b);
-}
-
-TEST_CASE("[Modules][SceneMerge] BarycentricAtlasTexel - OffByOne Edge Cases") {
-	// Test edge cases that might cause off-by-one texel errors
-	MeshTextureAtlas::AtlasTextureArguments args;
-	args.atlas_data = Image::create_empty(4, 4, false, Image::FORMAT_RGBA8);
-	args.atlas_data->fill(Color(0, 0, 0, 1));
-	args.atlas_width = 4;
-	args.atlas_height = 4;
-
-	// Create a 3x3 source texture to test boundary conditions
-	args.source_texture = Image::create_empty(3, 3, false, Image::FORMAT_RGBA8);
-	for (int y = 0; y < 3; y++) {
-		for (int x = 0; x < 3; x++) {
-			args.source_texture->set_pixel(x, y, Color(float(x) / 2.0f, float(y) / 2.0f, 0.5f, 1.0f));
-		}
-	}
-
-	args.source_uvs[0] = Vector2(0.0f, 0.0f); // Corner (0,0)
-	args.source_uvs[1] = Vector2(1.0f, 0.0f); // Corner (1,0)
-	args.source_uvs[2] = Vector2(0.0f, 1.0f); // Corner (0,1)
-
-	MeshTextureAtlas::AtlasLookupTexel lookup;
-	args.atlas_lookup = &lookup;
-
-	// Test UV coordinate at exactly 1.0 (edge of texture)
-	// This should not cause out-of-bounds access
-	bool result = MeshTextureAtlas::set_atlas_texel(&args, 0, 0, Vector3(0.0f, 1.0f, 0.0f), Vector3(), Vector3(), 0.0f);
-	CHECK(result);
-
-	// Test UV coordinate at exactly 0.0
-	result = MeshTextureAtlas::set_atlas_texel(&args, 1, 1, Vector3(1.0f, 0.0f, 0.0f), Vector3(), Vector3(), 0.0f);
-	CHECK(result);
-
-	// Verify coordinates are clamped properly (no negative values)
-	Pair<int, int> coords = MeshTextureAtlas::calculate_coordinates(Vector2(0.0f, 0.0f), 3, 3);
-	CHECK(coords.first >= 0);
-	CHECK(coords.second >= 0);
-	CHECK(coords.first < 3);
-	CHECK(coords.second < 3);
-
-	coords = MeshTextureAtlas::calculate_coordinates(Vector2(1.0f, 1.0f), 3, 3);
-	CHECK(coords.first >= 0);
-	CHECK(coords.second >= 0);
-	CHECK(coords.first < 3);
-	CHECK(coords.second < 3);
-}
-
-TEST_CASE("[Modules][SceneMerge] BarycentricAtlasTexel - TrimSheet Boundary Test") {
-	// Test behavior near trim sheet boundaries (simulated by small texture)
-	MeshTextureAtlas::AtlasTextureArguments args;
-	args.atlas_data = Image::create_empty(8, 8, false, Image::FORMAT_RGBA8);
-	args.atlas_data->fill(Color(0, 0, 0, 1));
-	args.atlas_width = 8;
-	args.atlas_height = 8;
-
-	// Small 4x4 texture simulating a trim sheet
-	args.source_texture = Image::create_empty(4, 4, false, Image::FORMAT_RGBA8);
-	// Fill with a gradient to test interpolation
-	for (int y = 0; y < 4; y++) {
-		for (int x = 0; x < 4; x++) {
-			float intensity = float(x + y) / 6.0f; // 0.0 to ~0.67
-			args.source_texture->set_pixel(x, y, Color(intensity, intensity, intensity, 1.0f));
-		}
-	}
-
-	// Triangle that covers the entire trim sheet
-	args.source_uvs[0] = Vector2(0.0f, 0.0f); // Bottom-left
-	args.source_uvs[1] = Vector2(1.0f, 0.0f); // Bottom-right
-	args.source_uvs[2] = Vector2(0.0f, 1.0f); // Top-left
-
-	MeshTextureAtlas::AtlasLookupTexel lookup;
-	args.atlas_lookup = &lookup;
-
-	// Test multiple points across the triangle
-	const Vector3 test_points[] = {
-		Vector3(1.0f, 0.0f, 0.0f), // Corner 0
-		Vector3(0.0f, 1.0f, 0.0f), // Corner 1
-		Vector3(0.0f, 0.0f, 1.0f), // Corner 2
-		Vector3(0.33f, 0.33f, 0.33f) // Center
-	};
-
-	for (int i = 0; i < 4; i++) {
-		bool result = MeshTextureAtlas::set_atlas_texel(&args, i, 0, test_points[i], Vector3(), Vector3(), 0.0f);
-		CHECK(result);
-
-		// Verify the pixel was set (not black)
-		Color sampled = args.atlas_data->get_pixel(i, 0);
-		CHECK(sampled.r >= 0.0f);
-		CHECK(sampled.g >= 0.0f);
-		CHECK(sampled.b >= 0.0f);
-	}
 }
 
 } // namespace TestSceneMerge

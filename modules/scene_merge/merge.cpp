@@ -139,6 +139,8 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 	// Simple MVP: Merge all ImporterMeshInstance3D nodes into a single mesh
 	// without texture atlas generation
 
+	ERR_FAIL_NULL_V_MSG(p_root, p_root, "Cannot merge meshes with null root node");
+
 	Vector<MeshMerge> mesh_merges;
 	MeshMerge mesh_merge;
 	mesh_merges.push_back(mesh_merge);
@@ -146,10 +148,21 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 	// Find all ImporterMeshInstance3D nodes in the scene
 	_find_all_mesh_instances(mesh_merges, p_root, nullptr);
 
-	if (mesh_merges[0].meshes.size() <= 1) {
-		// Nothing to merge
+	size_t mesh_count = mesh_merges[0].meshes.size();
+
+	// Handle empty scenes gracefully - return root unchanged
+	if (mesh_count == 0) {
+		print_line("SceneMerge: No mesh instances found in scene, nothing to merge");
 		return p_root;
 	}
+
+	// Handle single mesh scenes - nothing to merge
+	if (mesh_count <= 1) {
+		print_line("SceneMerge: Only one mesh instance found, nothing to merge");
+		return p_root;
+	}
+
+	print_line(vformat("SceneMerge: Found %d mesh instances, proceeding with merge", (int64_t)mesh_count));
 
 	// Create a surface tool to build the merged mesh
 	Ref<SurfaceTool> st;
