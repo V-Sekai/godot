@@ -62,10 +62,6 @@ func test_basic_scene_merge():
 	var end_time = Time.get_ticks_msec()
 	_performance_times.append(end_time - start_time)
 
-	# Export merged result to GLB for demonstration
-	print("🔄 Starting GLB export...")
-	export_merged_to_glb(merged_instance, "/tmp/scene_merge_test.glb")
-
 	_test_results["BasicSceneMerge"] = true
 	_log_success("Basic scene merge test passed")
 
@@ -189,7 +185,7 @@ func test_scene_transformation_preservation():
 	var vertex_count = 0
 	for i in range(merged_mesh.get_surface_count()):
 		var arrays = merged_mesh.get_surface_arrays(i)
-		var vertices = arrays[Mesh::ARRAY_VERTEX]
+		var vertices = arrays[Mesh.ARRAY_VERTEX]
 		vertex_count += vertices.size()
 
 	assert(vertex_count >= 6, "Merged mesh should contain geometry from both meshes") # 3 verts * 2 meshes
@@ -303,91 +299,11 @@ func find_merged_mesh() -> ImporterMeshInstance3D:
 
 
 
-func export_merged_to_glb(merged_instance: ImporterMeshInstance3D, glb_path: String):
-	print("📤 Exporting GLB for merged instance:", merged_instance.name)
-	print("💾 Target path:", glb_path)
-
-	# Convert ImporterMesh to proper MeshInstance3D for GLB export
-	var export_root = Node3D.new()
-	export_root.name = "GLBExportRoot"
-	print("🏗️ Created export root node")
-
-	# Create a MeshInstance3D with the merged mesh data instead of ImporterMeshInstance3D
-	var mesh_instance_3d = MeshInstance3D.new()
-	mesh_instance_3d.name = "ExportedMesh"
-
-	# Convert ImporterMesh to ArrayMesh for runtime mesh instance
-	var importer_mesh = merged_instance.mesh as ImporterMesh
-	var array_mesh = null
-	if importer_mesh:
-		# Create ArrayMesh from ImporterMesh data
-		array_mesh = ArrayMesh.new()
-		print("🔍 ImporterMesh has " + str(importer_mesh.get_surface_count()) + " surfaces")
-		for i in range(importer_mesh.get_surface_count()):
-			var arrays = importer_mesh.get_surface_arrays(i)
-			print("🔍 Surface " + str(i) + " vertex count: " + str(arrays[Mesh.ARRAY_VERTEX].size() if arrays[Mesh.ARRAY_VERTEX] else 0))
-			if arrays[Mesh.ARRAY_VERTEX] and arrays[Mesh.ARRAY_VERTEX].size() > 0:
-				array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-				print("✅ Added surface " + str(i) + " with " + str(arrays[Mesh.ARRAY_VERTEX].size()) + " vertices")
-			else:
-				print("❌ Surface " + str(i) + " has no vertex data - skipping")
-
-		mesh_instance_3d.mesh = array_mesh
-		print("🎨 Final ArrayMesh has " + str(array_mesh.get_surface_count()) + " surfaces")
-
-	export_root.add_child(mesh_instance_3d)
-	mesh_instance_3d.set_owner(export_root)
-	print("📦 Added MeshInstance3D with converted mesh data")
-
-	# Create GLTF document for export
-	var gltf_document = GLTFDocument.new()
-	var state = GLTFState.new()
-
-	print("🔧 Using .glb extension to enable binary GLB export mode")
-
-	# Set material on the ArrayMesh surface for export
-	var merged_importer_mesh = merged_instance.mesh as ImporterMesh
-	if merged_importer_mesh:
-		var merged_material = merged_importer_mesh.get_surface_material(0)
-		if merged_material:
-			array_mesh.surface_set_material(0, merged_material)
-			print("🎨 Applied merged material to export ArrayMesh")
-
-	# Debug: Check mesh data before export
-	var debug_mesh = array_mesh as ArrayMesh
-	if debug_mesh:
-		print("🔍 DEBUG: ArrayMesh has " + str(debug_mesh.get_surface_count()) + " surfaces")
-		print("🔍 DEBUG: Surface 0 format: " + str(debug_mesh.surface_get_format(0)))
-		print("🔍 DEBUG: Surface 0 vertex count: " + str(debug_mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size()))
-		print("🔍 DEBUG: Surface 0 material: " + str(debug_mesh.surface_get_material(0)))
-
-	# Generate GLB/GLTF data
-	print("⚙️ Generating GLTF data from scene...")
-	var result = gltf_document.append_from_scene(export_root, state)
-	print("📋 Append result:", result)
-	if result == OK:
-		# Save as GLB (binary format)
-		print("💾 Saving GLB file to filesystem...")
-		result = gltf_document.write_to_filesystem(state, glb_path)
-		print("📋 Write result:", result)
-		if result == OK:
-			print("✅ GLB exported successfully to: " + glb_path)
-			print("   - Binary GLB file: " + glb_path + " (contains embedded glTF JSON + buffers)")
-		else:
-			print("❌ Failed to save GLB: " + str(result))
-	else:
-		print("❌ Failed to append scene to GLTF: " + str(result))
-
-	# Clean up temporary export scene
-	print("🧹 Cleaning up export scene")
-	export_root.queue_free()
-	print("🏁 GLB export function completed")
-
 func _log_success(message: String):
 	print("✅ " + message)
 
 func print_test_results():
-	print("\n📋 Test Results Summary:")
+	print("\n� Test Results Summary:")
 	for test_name in _test_results.keys():
 		var result = _test_results[test_name]
 		if result:
@@ -401,7 +317,7 @@ func print_test_results():
 			pass_count += 1
 
 	print("
-📊 Overall Results: " + str(pass_count) + "/" + str(_test_results.size()) + " tests passed")
+� Overall Results: " + str(pass_count) + "/" + str(_test_results.size()) + " tests passed")
 
 	if pass_count == _test_results.size():
 		print("🎉 All SceneMerge integration tests PASSED!")

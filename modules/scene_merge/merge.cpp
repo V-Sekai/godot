@@ -465,6 +465,24 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 		}
 	}
 
+	// CRITICAL FIX: Commit the SurfaceTool data to the merged ImporterMesh
+	// The surface_tool has been populated with all vertex/normal/index data from process_mesh_geometry()
+	// We must convert it to ArrayMesh and then to ImporterMesh before applying materials
+	if (!has_blend_shapes || merged_importer_mesh->get_surface_count() == 0) {
+		// Commit the surface tool to create an ArrayMesh with all the merged geometry
+		Ref<ArrayMesh> committed_array_mesh = surface_tool->commit();
+
+		if (committed_array_mesh.is_valid()) {
+			// Convert the ArrayMesh to ImporterMesh using the static helper method
+			merged_importer_mesh = ImporterMesh::from_mesh(committed_array_mesh);
+			merged_importer_mesh->set_name("MergedMesh");
+
+			print_line(vformat("SceneMerge: Committed surface tool to merged mesh with %d surface(s)", merged_importer_mesh->get_surface_count()));
+		} else {
+			ERR_PRINT("SceneMerge: Failed to commit surface tool - merged mesh may be empty");
+		}
+	}
+
 	print_line(vformat("SceneMerge: Final merged mesh has %d blend shapes", merged_importer_mesh->get_blend_shape_count()));
 
 material_cleanup:
