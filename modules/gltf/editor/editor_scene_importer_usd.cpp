@@ -285,18 +285,18 @@ Variant EditorSceneFormatImporterUSD::get_option_visibility(const String &p_path
 	String extension = p_path.get_extension().to_lower();
 	bool is_usd_file = (extension == "usd" || extension == "usda" || extension == "usdc" || extension == "usdz");
 
+	if (p_option.begins_with("usd/")) {
+		// Show USD-specific options only for USD files
+		return is_usd_file;
+	}
+
 	if (!is_usd_file) {
-		// For non-USD files, use default visibility
-		return true;
+		// For non-USD files, hide all options from this importer
+		return false;
 	}
 
 	// For USD files, only show USD-specific options and animation options
 	// Hide general scene import options that don't apply to USD imports via Blender
-	if (p_option.begins_with("usd/")) {
-		// Show all USD-specific options
-		return true;
-	}
-
 	if (p_option.begins_with("animation/")) {
 		// Show animation options (shared with glTF)
 		return true;
