@@ -175,9 +175,11 @@ void ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, ChainIK3D *p_
 					Ref<JointLimitation3D> lim = it_ik->get_joint_limitation(i, prev_joint);
 					if (lim.is_valid() && prev_bone >= 0) {
 						// Limitation space should bind parent bone rest.
+						int bone_index = -1;
 						int parent = p_skeleton->get_bone_parent(prev_bone);
 						Ref<SurfaceTool> limitation_surface_tool = parent >= 0 ? surface_tool : surface_tool_without_skin;
 						if (parent >= 0) {
+							bone_index = parent;
 							bones.write[0] = parent;
 							limitation_surface_tool->set_bones(bones);
 							limitation_surface_tool->set_weights(weights);
@@ -185,7 +187,7 @@ void ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, ChainIK3D *p_
 						Transform3D tr = anc_global_pose;
 						tr.basis *= it_ik->get_joint_limitation_space(i, prev_joint, bone_vector.normalized());
 						float sl = MIN(current_length, prev_length);
-						lim->draw_shape(limitation_surface_tool, tr, sl, bone_color);
+						lim->draw_shape(limitation_surface_tool, tr, sl, bone_color, bone_index);
 						sl *= 0.1;
 						Vector3 x_axis = tr.basis.get_column(Vector3::AXIS_X).normalized() * sl;
 						Vector3 z_axis = tr.basis.get_column(Vector3::AXIS_Z).normalized() * sl;
@@ -217,9 +219,11 @@ void ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, ChainIK3D *p_
 					Ref<JointLimitation3D> lim = it_ik->get_joint_limitation(i, j);
 					if (lim.is_valid() && current_bone >= 0) {
 						// Limitation space should bind parent bone rest.
+						int bone_index = -1;
 						int parent = p_skeleton->get_bone_parent(current_bone);
 						Ref<SurfaceTool> limitation_surface_tool = parent >= 0 ? surface_tool : surface_tool_without_skin;
 						if (parent >= 0) {
+							bone_index = parent;
 							bones.write[0] = parent;
 							limitation_surface_tool->set_bones(bones);
 							limitation_surface_tool->set_weights(weights);
@@ -227,7 +231,7 @@ void ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, ChainIK3D *p_
 						Transform3D tr = anc_global_pose;
 						tr.basis *= it_ik->get_joint_limitation_space(i, j, bone_vector.normalized());
 						float sl = MIN(current_length, prev_length);
-						lim->draw_shape(limitation_surface_tool, tr, sl, bone_color);
+						lim->draw_shape(limitation_surface_tool, tr, sl, bone_color, bone_index);
 						sl *= 0.1;
 						Vector3 x_axis = tr.basis.get_column(Vector3::AXIS_X).normalized() * sl;
 						Vector3 z_axis = tr.basis.get_column(Vector3::AXIS_Z).normalized() * sl;
