@@ -249,6 +249,7 @@
 #include "scene/3d/node_3d.h"
 #include "scene/3d/occluder_instance_3d.h"
 #include "scene/3d/path_3d.h"
+#include "scene/3d/qcp_ik_3d.h"
 #include "scene/3d/reflection_probe.h"
 #include "scene/3d/remote_transform_3d.h"
 #include "scene/3d/retarget_modifier_3d.h"
@@ -683,6 +684,7 @@ void register_scene_types() {
 	GDREGISTER_ABSTRACT_CLASS(IterateIK3D);
 	GDREGISTER_CLASS(FABRIK3D);
 	GDREGISTER_CLASS(CCDIK3D);
+	GDREGISTER_CLASS(QCP_IK3D);
 	GDREGISTER_CLASS(JacobianIK3D);
 	GDREGISTER_CLASS(LimitAngularVelocityModifier3D);
 	GDREGISTER_CLASS(BoneTwistDisperser3D);
