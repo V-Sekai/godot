@@ -39,15 +39,15 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	// Build and sort effector groups using Eron's decomposition algorithm
 	// Collect effectors from all settings
 	Vector<Effector> all_effectors;
-	for (auto setting : settings) {
-		auto iter_setting = static_cast<IterateIK3DSetting *>(setting);
+	for (int setting_idx = 0; setting_idx < settings.size(); setting_idx++) {
+		auto iter_setting = static_cast<IterateIK3DSetting *>(settings[setting_idx]);
 		int last_idx = iter_setting->joints.size() - 1;
 		if (last_idx >= 0) {
 			Effector eff;
 			eff.effector_bone = iter_setting->joints[last_idx].bone;
 			eff.target_position = iter_setting->chain[last_idx];
 			eff.weight = 1.0f;
-			eff.opacity = 1.0f; // TODO: Make configurable
+			eff.opacity = get_effector_opacity(setting_idx);
 			all_effectors.push_back(eff);
 		}
 	}
@@ -366,27 +366,36 @@ void EWBIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effect
 	}
 
 	// Step 2: Find identical runs and consolidate into effector-groups
-	HashMap<Vector<int>, Vector<Effector>> group_map;
+	HashMap<String, EffectorGroup> group_map;
 	for (int i = 0; i < p_all_effectors.size(); i++) {
 		const Vector<int> &bones = effector_bone_lists[i];
-		group_map[bones].push_back(p_all_effectors[i]);
+		String key;
+		for (int j = 0; j < bones.size(); j++) {
+			if (j > 0) {
+				key += "-";
+			}
+			key += itos(bones[j]);
+		}
+		if (!group_map.has(key)) {
+			EffectorGroup group;
+			group.bones = bones;
+			// Calculate root distance: depth of the rootmost bone (bones[0])
+			int rootmost_bone = bones[0];
+			int depth = 0;
+			int current = rootmost_bone;
+			while (current >= 0) {
+				depth++;
+				current = p_skeleton->get_bone_parent(current);
+			}
+			group.root_distance = depth;
+			group_map[key] = group;
+		}
+		group_map[key].effectors.push_back(p_all_effectors[i]);
 	}
 
 	// Create groups from the map
-	for (const KeyValue<Vector<int>, Vector<Effector>> &kv : group_map) {
-		EffectorGroup group;
-		group.bones = kv.key;
-		group.effectors = kv.value;
-		// Calculate root distance: depth of the rootmost bone (bones[0])
-		int rootmost_bone = group.bones[0];
-		int depth = 0;
-		int current = rootmost_bone;
-		while (current >= 0) {
-			depth++;
-			current = p_skeleton->get_bone_parent(current);
-		}
-		group.root_distance = depth;
-		r_groups.push_back(group);
+	for (const KeyValue<String, EffectorGroup> &kv : group_map) {
+		r_groups.push_back(kv.value);
 	}
 }
 
@@ -399,4 +408,26 @@ void EWBIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &
 		r_joints[i].bone = bone_idx;
 		r_joints[i].name = p_skeleton->get_bone_name(bone_idx);
 	}
+}
+
+void EWBIK3D::set_effector_opacity(int p_index, float p_opacity) {
+	if (p_index < 0) {
+		return;
+	}
+	if (p_index >= effector_opacities.size()) {
+		effector_opacities.resize(p_index + 1);
+	}
+	effector_opacities.set(p_index, p_opacity);
+}
+
+float EWBIK3D::get_effector_opacity(int p_index) const {
+	if (p_index < 0 || p_index >= effector_opacities.size()) {
+		return 1.0f; // Default opacity
+	}
+	return effector_opacities[p_index];
+}
+
+void EWBIK3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_effector_opacity", "index", "opacity"), &EWBIK3D::set_effector_opacity);
+	ClassDB::bind_method(D_METHOD("get_effector_opacity", "index"), &EWBIK3D::get_effector_opacity);
 }

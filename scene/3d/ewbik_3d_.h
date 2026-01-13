@@ -65,6 +65,8 @@ protected:
 	// Chain building for arbitrary root-to-effector support
 	virtual void _update_joints(int p_index) override;
 
+	static void _bind_methods();
+
 	// Eron's decomposition algorithm
 	void _build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const;
 
@@ -76,4 +78,11 @@ protected:
 	void _create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, int p_bone_idx, const Vector3 &p_destination, const Transform3D &p_target_transform,
 			PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights);
 	OptimalTransform _calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights, bool p_calculate_translation = false);
+
+public:
+	void set_effector_opacity(int p_index, float p_opacity);
+	float get_effector_opacity(int p_index) const;
+
+private:
+	Vector<float> effector_opacities;
 };
