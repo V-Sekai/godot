@@ -288,16 +288,19 @@ bool EWBIK3D::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int
 
 	// Find common ancestor
 	int common_ancestor = -1;
+	bool found = false;
 	for (int root_ancestor : root_to_root_path) {
 		for (int end_ancestor : end_to_root_path) {
 			if (root_ancestor == end_ancestor) {
 				common_ancestor = root_ancestor;
-				goto found_common;
+				found = true;
+				break;
 			}
 		}
+		if (found) {
+			break;
+		}
 	}
-
-found_common:
 	if (common_ancestor == -1) {
 		return false; // No common ancestor - impossible to connect
 	}
