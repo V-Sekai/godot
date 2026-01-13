@@ -36,6 +36,11 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	int joint_size = (int)p_setting->joints.size();
 	int chain_size = (int)p_setting->chain.size();
 
+	// Build and sort effector groups using Eron's decomposition algorithm
+	Vector<EffectorGroup> effector_groups;
+	_build_effector_groups(p_skeleton, p_setting, effector_groups);
+	effector_groups.sort_custom<EffectorGroupComparator>();
+
 	// Get the target transform for directional constraints
 	Transform3D target_transform;
 	Node3D *target = Object::cast_to<Node3D>(get_node_or_null(p_setting->target_node));
@@ -289,6 +294,27 @@ found_common:
 	}
 
 	return true;
+}
+
+void EWBIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, Vector<EffectorGroup> &r_groups) const {
+	r_groups.clear();
+
+	// Basic implementation for single effector
+	int last_idx = p_setting->joints.size() - 1;
+	Effector eff;
+	eff.effector_bone = p_setting->joints[last_idx].bone;
+	eff.target_position = p_setting->chain[last_idx]; // Use chain position as approximation
+	eff.weight = 1.0f;
+
+	EffectorGroup group;
+	group.bones.resize(p_setting->joints.size());
+	for (int i = 0; i < p_setting->joints.size(); i++) {
+		group.bones.write[i] = p_setting->joints[i].bone;
+	}
+	group.effectors.push_back(eff);
+	group.root_distance = 0; // TODO: Calculate actual distance from root
+
+	r_groups.push_back(group);
 }
 
 void EWBIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const {

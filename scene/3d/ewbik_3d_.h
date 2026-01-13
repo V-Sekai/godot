@@ -32,6 +32,24 @@
 
 #include "scene/3d/iterate_ik_3d.h"
 
+struct Effector {
+	int effector_bone = -1;
+	Vector3 target_position;
+	float weight = 1.0f;
+};
+
+struct EffectorGroup {
+	Vector<int> bones;
+	Vector<Effector> effectors;
+	int root_distance;
+};
+
+struct EffectorGroupComparator {
+	bool operator()(const EffectorGroup &a, const EffectorGroup &b) const {
+		return a.root_distance > b.root_distance;
+	}
+};
+
 struct OptimalTransform {
 	Quaternion rotation;
 	Vector3 translation;
@@ -45,6 +63,9 @@ protected:
 
 	// Chain building for arbitrary root-to-effector support
 	virtual void _update_joints(int p_index) override;
+
+	// Eron's decomposition algorithm
+	void _build_effector_groups(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, Vector<EffectorGroup> &r_groups) const;
 
 	// Pathfinding helper methods
 	bool _find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const;
