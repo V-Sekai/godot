@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerDomain" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		The [PlannerDomain] in which goals are to be achieved.
+	</brief_description>
+	<description>
+		The [PlannerDomain] represents the environment or context of a [PlannerPlan] in which multiple commands, goals, [PlannerMultigoal]s, and tasks need to be achieved.
+		Commands and methods are typically defined as functions (e.g., in GDScript, or C++ static/member functions exposed as [Callable]s) and then registered with the domain. Their preconditions are usually implemented as conditional logic within these functions.
+
+		The domain is defined using three main constructs:
+
+		[b]A. Commands (Primitive Tasks):[/b]
+		Atomic plan operators that attempt to transition the state.
+		- Non-deterministic Execution: Commands can fail during execution or planning.
+		- Signature: [code](state, args...) -&gt; new_state | false | Variant()[/code]
+		- Behavior: Returns [code]new_state[/code] on success, [code]false[/code]/[code]nil[/code] on failure. Failed operators are blacklisted in replanning.
+
+		[b]B. Compound Tasks:[/b]
+		High-level objectives that must be decomposed (e.g., [code]perform_heist[/code]).
+
+		[b]C. Methods:[/b]
+		Strategies to decompose a Compound Task into Subtasks.
+		- Signature: [code](state, args...) -&gt; [subtask1, subtask2...] | false[/code]
+		- Ordering: Prioritized based on a VSIDS-like scoring heuristic.
+
+		The functions wrapped by these [Callable]s should adhere to the following conventions:
+		- [b]Command functions[/b]: Their arguments representing the current state and command parameters should be treated as read-only (e.g., by not modifying input Dictionaries directly but working on copies if changes are needed). They must return false if the command is not applicable, or a new [Dictionary] representing the state after the command is applied.
+		- [b]Method functions[/b] (unigoal, task, multigoal): Their arguments should also be treated as read-only. They must return false if the method is not applicable, or an [Array] of sub-tasks/sub-goals to indicate success. An empty [Array] can signify that the method/goal/task was achieved with no further steps.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_command">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="command" type="Callable" />
+			<description>
+			</description>
+		</method>
+		<method name="add_multigoal_methods">
+			<return type="void" />
+			<param index="0" name="methods" type="Callable[]" />
+			<description>
+				Adds a list of [Callable]s representing methods for achieving multigoals. Each [Callable] should refer to a function whose arguments are treated as read-only (e.g., current state [Dictionary], the [PlannerMultigoal]) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals (todo list) if it is.
+			</description>
+		</method>
+		<method name="add_task_methods">
+			<return type="void" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Callable[]" />
+			<description>
+				Adds a list of [Callable]s representing methods for a specific task_name. Each [Callable] should refer to a function whose arguments are treated as read-only (the first usually being the current state [Dictionary], followed by task-specific arguments) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals (todo list) if it is.
+			</description>
+		</method>
+		<method name="add_unigoal_methods">
+			<return type="void" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Callable[]" />
+			<description>
+				Adds a list of [Callable]s representing methods for achieving a specific unigoal (identified by task_name, which is often the state variable the unigoal targets). Each [Callable] should refer to a function whose arguments are treated as read-only (e.g., current state [Dictionary], goal-specific arguments) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals (todo list) if it is applicable.
+			</description>
+		</method>
+		<method name="method_verify_goal" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="method" type="String" />
+			<param index="2" name="state_var" type="String" />
+			<param index="3" name="arguments" type="String" />
+			<param index="4" name="desired_values" type="Variant" />
+			<param index="5" name="depth" type="int" />
+			<param index="6" name="verbose" type="int" />
+			<description>
+				A static helper method to verify if a specific unigoal condition (state_var, arguments, desired_values) is met in the given state after a method was applied. Returns an empty [Array] if the goal is achieved, or false otherwise. Used for debugging and plan verification, potentially logging information based on verbose level.
+			</description>
+		</method>
+	</methods>
+</class>
