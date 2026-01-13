@@ -37,9 +37,32 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	int chain_size = (int)p_setting->chain.size();
 
 	// Build and sort effector groups using Eron's decomposition algorithm
+	// Collect effectors from all settings
+	Vector<Effector> all_effectors;
+	for (auto setting : settings) {
+		auto iter_setting = static_cast<IterateIK3DSetting *>(setting);
+		int last_idx = iter_setting->joints.size() - 1;
+		if (last_idx >= 0) {
+			Effector eff;
+			eff.effector_bone = iter_setting->joints[last_idx].bone;
+			eff.target_position = iter_setting->chain[last_idx];
+			eff.weight = 1.0f;
+			eff.opacity = 1.0f; // TODO: Make configurable
+			all_effectors.push_back(eff);
+		}
+	}
+
 	Vector<EffectorGroup> effector_groups;
-	_build_effector_groups(p_skeleton, p_setting, effector_groups);
+	_build_effector_groups(p_skeleton, all_effectors, effector_groups);
 	effector_groups.sort_custom<EffectorGroupComparator>();
+
+	// Create solve_order by traversing effector groups
+	Vector<int> solve_order;
+	for (const EffectorGroup &group : effector_groups) {
+		for (int bone : group.bones) {
+			solve_order.push_back(bone);
+		}
+	}
 
 	// Get the target transform for directional constraints
 	Transform3D target_transform;
@@ -48,56 +71,64 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 		target_transform = cached_space.affine_inverse() * target->get_global_transform_interpolated();
 	}
 
-	// Backwards.
-	for (int ancestor = joint_size - 1; ancestor >= 0; ancestor--) {
-		// Forwards.
-		for (int i = ancestor; i < joint_size; i++) {
-			IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
-			if (!solver_info || Math::is_zero_approx(solver_info->length)) {
-				continue;
+	// Create local solve_order for the current setting
+	Vector<int> local_solve_order;
+	for (int bone : solve_order) {
+		for (int j = 0; j < joint_size; j++) {
+			if (p_setting->joints[j].bone == bone) {
+				local_solve_order.push_back(j);
+				break;
 			}
+		}
+	}
 
-			int HEAD = i;
-			int TAIL = i + 1;
+	// Solve using the optimized order
+	for (int i : local_solve_order) {
+		IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
+		if (!solver_info || Math::is_zero_approx(solver_info->length)) {
+			continue;
+		}
 
-			Vector3 current_head = p_setting->chain[HEAD];
-			Vector3 current_effector = p_setting->chain[chain_size - 1];
-			Vector3 head_to_effector = current_effector - current_head;
-			Vector3 head_to_destination = p_destination - current_head;
+		int HEAD = i;
+		int TAIL = i + 1;
 
-			if (Math::is_zero_approx(head_to_destination.length_squared() * head_to_effector.length_squared())) {
-				continue;
-			}
+		Vector3 current_head = p_setting->chain[HEAD];
+		Vector3 current_effector = p_setting->chain[chain_size - 1];
+		Vector3 head_to_effector = current_effector - current_head;
+		Vector3 head_to_destination = p_destination - current_head;
 
-			// Create point correspondences for QCP solving
-			PackedVector3Array target_headings;
-			PackedVector3Array tip_headings;
-			Vector<double> weights;
+		if (Math::is_zero_approx(head_to_destination.length_squared() * head_to_effector.length_squared())) {
+			continue;
+		}
 
-			_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights);
+		// Create point correspondences for QCP solving
+		PackedVector3Array target_headings;
+		PackedVector3Array tip_headings;
+		Vector<double> weights;
 
-			// Calculate optimal rotation and translation using QCP
-			OptimalTransform opt = _calculate_optimal_rotation(target_headings, tip_headings, weights, true);
-			Quaternion to_rot = opt.rotation;
-			Vector3 translation = opt.translation;
+		_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights);
 
-			// Only apply translation for root motion (first bone in chain)
-			if (i != 0) {
-				translation = Vector3();
-			}
+		// Calculate optimal rotation and translation using QCP
+		OptimalTransform opt = _calculate_optimal_rotation(target_headings, tip_headings, weights, true);
+		Quaternion to_rot = opt.rotation;
+		Vector3 translation = opt.translation;
 
-			Vector3 new_head = current_head + translation;
-			Vector3 to_tail = p_setting->chain[TAIL] - current_head;
+		// Only apply translation for root motion (first bone in chain)
+		if (i != 0) {
+			translation = Vector3();
+		}
 
-			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, new_head + to_rot.xform(to_tail));
-			p_setting->chain[HEAD] = new_head;
+		Vector3 new_head = current_head + translation;
+		Vector3 to_tail = p_setting->chain[TAIL] - current_head;
 
-			if (p_setting->joint_settings[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_projected_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD]));
-			}
-			if (p_setting->joint_settings[HEAD]->limitation.is_valid()) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_limited_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD], solver_info->forward_vector));
-			}
+		p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, new_head + to_rot.xform(to_tail));
+		p_setting->chain[HEAD] = new_head;
+
+		if (p_setting->joint_settings[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_projected_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD]));
+		}
+		if (p_setting->joint_settings[HEAD]->limitation.is_valid()) {
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_limited_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD], solver_info->forward_vector));
 		}
 	}
 }
@@ -296,25 +327,67 @@ found_common:
 	return true;
 }
 
-void EWBIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, Vector<EffectorGroup> &r_groups) const {
+void EWBIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const {
 	r_groups.clear();
 
-	// Basic implementation for single effector
-	int last_idx = p_setting->joints.size() - 1;
-	Effector eff;
-	eff.effector_bone = p_setting->joints[last_idx].bone;
-	eff.target_position = p_setting->chain[last_idx]; // Use chain position as approximation
-	eff.weight = 1.0f;
+	// Collect bones_encountered for each effector
+	Vector<Vector<int>> effector_bone_lists;
+	for (const Effector &eff : p_all_effectors) {
+		Vector<int> bones_encountered;
+		float current_weight = 1.0f;
+		int current_bone = eff.effector_bone;
 
-	EffectorGroup group;
-	group.bones.resize(p_setting->joints.size());
-	for (int i = 0; i < p_setting->joints.size(); i++) {
-		group.bones.write[i] = p_setting->joints[i].bone;
+		while (current_bone >= 0 && current_weight > 0.0f) {
+			// Check if current_bone is another effector
+			for (const Effector &other_eff : p_all_effectors) {
+				if (other_eff.effector_bone == current_bone && &other_eff != &eff) {
+					// Multiply current_weight by 1 - effector_opacity
+					current_weight *= (1.0f - other_eff.opacity);
+					if (current_weight <= 0.0f) {
+						break;
+					}
+				}
+			}
+
+			if (current_weight <= 0.0f) {
+				break;
+			}
+
+			// Add bone to encountered list
+			bones_encountered.push_back(current_bone);
+
+			// Move to parent
+			current_bone = p_skeleton->get_bone_parent(current_bone);
+		}
+
+		// Reverse to get from root to effector
+		bones_encountered.reverse();
+		effector_bone_lists.push_back(bones_encountered);
 	}
-	group.effectors.push_back(eff);
-	group.root_distance = 0; // TODO: Calculate actual distance from root
 
-	r_groups.push_back(group);
+	// Step 2: Find identical runs and consolidate into effector-groups
+	HashMap<Vector<int>, Vector<Effector>> group_map;
+	for (int i = 0; i < p_all_effectors.size(); i++) {
+		const Vector<int> &bones = effector_bone_lists[i];
+		group_map[bones].push_back(p_all_effectors[i]);
+	}
+
+	// Create groups from the map
+	for (const KeyValue<Vector<int>, Vector<Effector>> &kv : group_map) {
+		EffectorGroup group;
+		group.bones = kv.key;
+		group.effectors = kv.value;
+		// Calculate root distance: depth of the rootmost bone (bones[0])
+		int rootmost_bone = group.bones[0];
+		int depth = 0;
+		int current = rootmost_bone;
+		while (current >= 0) {
+			depth++;
+			current = p_skeleton->get_bone_parent(current);
+		}
+		group.root_distance = depth;
+		r_groups.push_back(group);
+	}
 }
 
 void EWBIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const {

@@ -36,6 +36,7 @@ struct Effector {
 	int effector_bone = -1;
 	Vector3 target_position;
 	float weight = 1.0f;
+	float opacity = 1.0f;
 };
 
 struct EffectorGroup {
@@ -65,7 +66,7 @@ protected:
 	virtual void _update_joints(int p_index) override;
 
 	// Eron's decomposition algorithm
-	void _build_effector_groups(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, Vector<EffectorGroup> &r_groups) const;
+	void _build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const;
 
 	// Pathfinding helper methods
 	bool _find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const;
