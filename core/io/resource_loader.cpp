@@ -177,6 +177,19 @@ Ref<Resource> ResourceFormatLoader::load(const String &p_path, const String &p_o
 	return Ref<Resource>();
 }
 
+Ref<Resource> ResourceFormatLoader::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	// Default implementation: validate path against whitelist, then call regular load()
+	// Most loaders don't have nested dependencies, so this simple pattern works for them
+	// Loaders with recursive dependencies (Binary, Text) should override this method
+	if (!ResourceLoader::_is_path_whitelisted(p_path, p_external_path_whitelist)) {
+		if (r_error) {
+			*r_error = ERR_FILE_MISSING_DEPENDENCIES;
+		}
+		return Ref<Resource>();
+	}
+	return load(p_path, p_original_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
+}
+
 void ResourceFormatLoader::get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types) {
 	PackedStringArray deps;
 	if (GDVIRTUAL_CALL(_get_dependencies, p_path, p_add_types, deps)) {
@@ -286,7 +299,7 @@ ResourceLoader::LoadToken::~LoadToken() {
 	clear();
 }
 
-Ref<Resource> ResourceLoader::_load(const String &p_path, const String &p_original_path, const String &p_type_hint, ResourceFormatLoader::CacheMode p_cache_mode, Error *r_error, bool p_use_sub_threads, float *r_progress) {
+Ref<Resource> ResourceLoader::_load(const String &p_path, const String &p_original_path, const String &p_type_hint, ResourceFormatLoader::CacheMode p_cache_mode, bool p_using_whitelist, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, Error *r_error, bool p_use_sub_threads, float *r_progress) {
 	const String &original_path = p_original_path.is_empty() ? p_path : p_original_path;
 	load_nesting++;
 	if (load_paths_stack.size()) {
@@ -311,7 +324,11 @@ Ref<Resource> ResourceLoader::_load(const String &p_path, const String &p_origin
 			continue;
 		}
 		found = true;
-		res = loader[i]->load(p_path, original_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
+		if (p_using_whitelist) {
+			res = loader[i]->load_whitelisted(p_path, p_external_path_whitelist, p_type_whitelist, !p_original_path.is_empty() ? p_original_path : p_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
+		} else {
+			res = loader[i]->load(p_path, !p_original_path.is_empty() ? p_original_path : p_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
+		}
 		if (res.is_valid()) {
 			break;
 		}
@@ -393,7 +410,17 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 	const String &remapped_path = _path_remap(load_task.local_path, &xl_remapped);
 
 	Error load_err = OK;
-	Ref<Resource> res = _load(remapped_path, remapped_path != load_task.local_path ? load_task.local_path : String(), load_task.type_hint, load_task.cache_mode, &load_err, load_task.use_sub_threads, &load_task.progress);
+	Ref<Resource> res = _load(remapped_path,
+			remapped_path != load_task.local_path ? load_task.local_path : String(),
+			load_task.type_hint,
+			load_task.cache_mode,
+			load_task.using_whitelist,
+			load_task.external_path_whitelist,
+			load_task.type_whitelist,
+			&load_err,
+			load_task.use_sub_threads,
+			&load_task.progress);
+
 	if (MessageQueue::get_singleton() != MessageQueue::get_main_singleton()) {
 		MessageQueue::get_singleton()->flush();
 	}
@@ -447,6 +474,15 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 			}
 			if (pending_unlock) {
 				ResourceCache::lock.unlock();
+			}
+
+			// Store whitelist context for resources loaded with whitelist
+			// This allows PackedScene::instantiate() to respect whitelist even when called later
+			if (load_task.using_whitelist) {
+				MutexLock whitelist_lock(thread_load_mutex);
+				WhitelistContext &ctx = resource_whitelist_context[load_task.local_path];
+				ctx.external_path_whitelist = load_task.external_path_whitelist;
+				ctx.type_whitelist = load_task.type_whitelist;
 			}
 		} else {
 			load_task.resource->set_path_cache(load_task.local_path);
@@ -514,7 +550,12 @@ String ResourceLoader::_validate_local_path(const String &p_path) {
 }
 
 Error ResourceLoader::load_threaded_request(const String &p_path, const String &p_type_hint, bool p_use_sub_threads, ResourceFormatLoader::CacheMode p_cache_mode) {
-	Ref<ResourceLoader::LoadToken> token = _load_start(p_path, p_type_hint, p_use_sub_threads ? LOAD_THREAD_DISTRIBUTE : LOAD_THREAD_SPAWN_SINGLE, p_cache_mode, true);
+	Ref<ResourceLoader::LoadToken> token = _load_start(p_path, p_type_hint, p_use_sub_threads ? LOAD_THREAD_DISTRIBUTE : LOAD_THREAD_SPAWN_SINGLE, p_cache_mode, true, false, EMPTY_DICTIONARY, EMPTY_DICTIONARY);
+	return token.is_valid() ? OK : FAILED;
+}
+
+Error ResourceLoader::load_threaded_request_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_type_hint, bool p_use_sub_threads, ResourceFormatLoader::CacheMode p_cache_mode) {
+	Ref<ResourceLoader::LoadToken> token = _load_start(p_path, p_type_hint, p_use_sub_threads ? LOAD_THREAD_DISTRIBUTE : LOAD_THREAD_SPAWN_SINGLE, p_cache_mode, true, true, p_external_path_whitelist, p_type_whitelist);
 	return token.is_valid() ? OK : FAILED;
 }
 
@@ -543,6 +584,70 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		*r_error = OK;
 	}
 
+	// Check if we're in a load context with active whitelist
+	// This allows PackedScene::instantiate() and other code to automatically
+	// respect whitelist without requiring explicit whitelist parameters
+	// First check curr_load_task (for loads happening during active load tasks)
+	if (curr_load_task && curr_load_task->using_whitelist) {
+		return load_whitelisted(p_path, curr_load_task->external_path_whitelist, curr_load_task->type_whitelist, p_type_hint, p_cache_mode, r_error);
+	}
+
+	// Also check if there's an active load in thread_load_tasks with whitelist
+	// This handles cases where we're loading nested resources during an active whitelisted load
+	if (!load_paths_stack.is_empty()) {
+		MutexLock thread_load_lock(thread_load_mutex);
+		const String &parent_path = load_paths_stack.get(load_paths_stack.size() - 1);
+		HashMap<String, ThreadLoadTask>::Iterator E = thread_load_tasks.find(parent_path);
+		if (E && E->value.using_whitelist) {
+			return load_whitelisted(p_path, E->value.external_path_whitelist, E->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
+		}
+		// Note: We don't check resource_whitelist_context here because that's for resources
+		// that were previously loaded with whitelist and are now in cache. When loading
+		// dependencies of cached resources, we should use the regular load path unless
+		// we're actively in a whitelisted load context (checked above).
+	}
+
+	// Check if the resource being loaded is already in cache
+	// Only return cached resource if cache mode allows it (CACHE_MODE_REUSE)
+	// For CACHE_MODE_REPLACE or CACHE_MODE_IGNORE, we need to reload/ignore cache
+	{
+		MutexLock thread_load_lock(thread_load_mutex);
+		if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE && ResourceCache::has(p_path)) {
+			Ref<Resource> cached_res = ResourceCache::get_ref(p_path);
+			if (cached_res.is_valid()) {
+				// Resource is in cache and cache mode allows reuse, return it directly
+				if (r_error) {
+					*r_error = OK;
+				}
+				return cached_res;
+			}
+		}
+
+		// Clean up whitelist context for resources no longer in cache
+		// Do this lazily to avoid expensive ResourceCache::has() checks on every load
+		// Only perform cleanup if ProjectSettings is initialized (safety check for early initialization)
+		static uint32_t cleanup_counter = 0;
+		if ((++cleanup_counter % 100) == 0 && ProjectSettings::get_singleton() != nullptr) { // Clean up every 100 loads
+			LocalVector<String> to_remove;
+			// Make a copy of keys to avoid iterator invalidation during iteration
+			LocalVector<String> keys_to_check;
+			keys_to_check.reserve(resource_whitelist_context.size());
+			for (const KeyValue<String, WhitelistContext> &E : resource_whitelist_context) {
+				keys_to_check.push_back(E.key);
+			}
+			// Now check each key safely
+			for (const String &key : keys_to_check) {
+				// Only check if the key still exists in the map (it might have been removed by another thread)
+				if (resource_whitelist_context.has(key) && !ResourceCache::has(key)) {
+					to_remove.push_back(key);
+				}
+			}
+			for (const String &key : to_remove) {
+				resource_whitelist_context.erase(key);
+			}
+		}
+	}
+
 	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
 	if (WorkerThreadPool::get_singleton()->get_caller_task_id() != WorkerThreadPool::INVALID_TASK_ID) {
 		// If user is initiating a single-threaded load from a WorkerThreadPool task,
@@ -551,7 +656,7 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		// cyclic load detection and awaiting.
 		thread_mode = LOAD_THREAD_SPAWN_SINGLE;
 	}
-	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode);
+	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode, false, false, EMPTY_DICTIONARY, EMPTY_DICTIONARY);
 	if (load_token.is_null()) {
 		if (r_error) {
 			*r_error = FAILED;
@@ -563,7 +668,45 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 	return res;
 }
 
-Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path, const String &p_type_hint, LoadThreadMode p_thread_mode, ResourceFormatLoader::CacheMode p_cache_mode, bool p_for_user) {
+Ref<Resource> ResourceLoader::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_type_hint, ResourceFormatLoader::CacheMode p_cache_mode, Error *r_error) {
+	if (r_error) {
+		*r_error = OK;
+	}
+
+	// Validate main resource path against whitelist
+	// Empty whitelist means "deny all resources (main resource + external dependencies)"
+	// Non-empty whitelist means "only allow main resource if it's in the whitelist"
+	// Normalize the path the same way _load_start will normalize it (using _validate_local_path)
+	// to ensure consistent matching with whitelist keys
+	String local_path = _validate_local_path(p_path);
+	if (!_is_path_whitelisted(local_path, p_external_path_whitelist)) {
+		if (r_error) {
+			*r_error = ERR_FILE_MISSING_DEPENDENCIES;
+		}
+		return Ref<Resource>();
+	}
+
+	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
+	if (WorkerThreadPool::get_singleton()->get_caller_task_id() != WorkerThreadPool::INVALID_TASK_ID) {
+		// If user is initiating a single-threaded load from a WorkerThreadPool task,
+		// we instead spawn a new task so there's a precondition that a load in a pool task
+		// is always initiated by the engine. That makes certain aspects simpler, such as
+		// cyclic load detection and awaiting.
+		thread_mode = LOAD_THREAD_SPAWN_SINGLE;
+	}
+	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode, false, true, p_external_path_whitelist, p_type_whitelist);
+	if (load_token.is_null()) {
+		if (r_error) {
+			*r_error = FAILED;
+		}
+		return Ref<Resource>();
+	}
+
+	Ref<Resource> res = _load_complete(*load_token.ptr(), r_error);
+	return res;
+}
+
+Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path, const String &p_type_hint, LoadThreadMode p_thread_mode, ResourceFormatLoader::CacheMode p_cache_mode, bool p_for_user, bool p_use_whitelist, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist) {
 	String local_path = _validate_local_path(p_path);
 	ERR_FAIL_COND_V(local_path.is_empty(), Ref<ResourceLoader::LoadToken>());
 
@@ -613,6 +756,9 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 			load_task.type_hint = p_type_hint;
 			load_task.cache_mode = p_cache_mode;
 			load_task.use_sub_threads = p_thread_mode == LOAD_THREAD_DISTRIBUTE;
+			load_task.using_whitelist = p_use_whitelist;
+			load_task.external_path_whitelist = p_external_path_whitelist;
+			load_task.type_whitelist = p_type_whitelist;
 			if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE) {
 				Ref<Resource> existing = ResourceCache::get_ref(local_path);
 				if (existing.is_valid()) {
@@ -902,6 +1048,16 @@ Ref<Resource> ResourceLoader::_load_complete_inner(LoadToken &p_load_token, Erro
 		}
 
 		load_task_ptr = &load_task;
+	}
+
+	// If there was an error during loading, don't return the resource even if it's valid
+	// This prevents returning resources in invalid states (e.g., PackedScene with missing dependencies)
+	// Check error before temp_unlock() to avoid mutex state issues
+	if (load_task_ptr->error != OK) {
+		if (r_error) {
+			*r_error = load_task_ptr->error;
+		}
+		return Ref<Resource>();
 	}
 
 	p_thread_load_lock.temp_unlock();
@@ -1232,6 +1388,45 @@ bool ResourceLoader::should_create_uid_file(const String &p_path) {
 			return !loader[i]->has_custom_uid_support();
 		}
 	}
+	return false;
+}
+
+bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary &p_whitelist) {
+	if (p_whitelist.is_empty()) {
+		return false;
+	}
+
+	// Security: Validate input path doesn't contain null bytes (defense in depth)
+	// Null bytes can be used in path traversal attacks (e.g., "../../etc/passwd%00.png")
+	// Even though Godot's String class handles null bytes, we explicitly reject them for security
+	if (p_path.find_char('\0') >= 0) {
+		return false;
+	}
+
+	// Normalize the input path - use simplify_path for consistent normalization with whitelist keys
+	// Note: We use simplify_path() here (not _validate_local_path) because:
+	// 1. Whitelist keys are normalized the same way, ensuring consistent matching
+	// 2. We want to preserve absolute paths for test files outside the project
+	// 3. simplify_path() handles path normalization (.., ., double slashes) without changing path format
+	String normalized_path = p_path.simplify_path();
+
+	// Check for exact match by iterating through whitelist keys
+	// Normalize each key and compare with normalized input path
+	Array keys = p_whitelist.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		// Only allow string keys in whitelist dictionary (security validation)
+		if (key.get_type() != Variant::STRING) {
+			return false; // Invalid whitelist structure
+		}
+
+		String whitelist_key = key;
+		String normalized_key = whitelist_key.simplify_path();
+		if (normalized_path == normalized_key) {
+			return true;
+		}
+	}
+
 	return false;
 }
 
@@ -1583,6 +1778,8 @@ HashMap<String, ResourceLoader::ThreadLoadTask> ResourceLoader::thread_load_task
 bool ResourceLoader::cleaning_tasks = false;
 
 HashMap<String, ResourceLoader::LoadToken *> ResourceLoader::user_load_tokens;
+HashMap<String, ResourceLoader::WhitelistContext> ResourceLoader::resource_whitelist_context;
+const Dictionary ResourceLoader::EMPTY_DICTIONARY = Dictionary();
 
 SelfList<Resource>::List ResourceLoader::remapped_list;
 HashMap<String, Vector<String>> ResourceLoader::translation_remaps;
