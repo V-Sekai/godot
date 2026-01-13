@@ -2305,7 +2305,7 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		// Our first camera is used by default
 		render_data.cam_transform = p_camera_data->main_transform;
 		render_data.inv_cam_transform = render_data.cam_transform.affine_inverse();
-		render_data.cam_projection = p_camera_data->main_projection;
+		render_data.cam_projection = p_camera_data->view_projection[0];
 		render_data.cam_orthogonal = p_camera_data->is_orthogonal;
 		render_data.cam_frustum = p_camera_data->is_frustum;
 		render_data.camera_visible_layers = p_camera_data->visible_layers;
