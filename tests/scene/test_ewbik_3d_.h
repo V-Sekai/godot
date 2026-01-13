@@ -338,11 +338,16 @@ TEST_CASE("[SceneTree][EWBIK3D] IK solving with target position") {
 	ik->set_end_bone_name(0, "LeftHand");
 	ik->set_target_node(0, NodePath("../../Target")); // Relative path from IK to target
 
+	// Get initial position
+	Vector3 initial_pos = skeleton->get_bone_global_pose(7).origin; // LeftHand initial position
+
 	// Solve IK
 	ik->process_modification(0.016); // Simulate one frame
 
+	// Update skeleton transforms after IK
+	skeleton->force_update_all_bone_transforms();
+
 	// Verify effector moved towards target
-	Vector3 initial_pos = skeleton->get_bone_global_pose(7).origin; // LeftHand initial position
 	Vector3 final_pos = skeleton->get_bone_global_pose(7).origin; // LeftHand after solving
 	Vector3 target_pos = target->get_global_position();
 
@@ -396,6 +401,9 @@ TEST_CASE("[SceneTree][EWBIK3D] IK solving convergence") {
 		ik->process_modification(0.016);
 	}
 
+	// Update skeleton transforms after IK
+	skeleton->force_update_all_bone_transforms();
+
 	// Verify convergence
 	Vector3 final_pos = skeleton->get_bone_global_pose(7).origin;
 	float initial_distance = initial_pos.distance_to(target_pos);
@@ -448,6 +456,9 @@ TEST_CASE("[SceneTree][EWBIK3D] IK solving with joint limitations") {
 	for (int i = 0; i < 15; i++) {
 		ik->process_modification(0.016);
 	}
+
+	// Update skeleton transforms after IK
+	skeleton->force_update_all_bone_transforms();
 
 	// Verify effector is reasonably close but respects joint limits
 	Vector3 final_pos = skeleton->get_bone_global_pose(7).origin;

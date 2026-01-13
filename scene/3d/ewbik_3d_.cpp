@@ -69,6 +69,8 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	Node3D *target = Object::cast_to<Node3D>(get_node_or_null(p_setting->target_node));
 	if (target) {
 		target_transform = cached_space.affine_inverse() * target->get_global_transform_interpolated();
+	} else {
+		return; // Not reached target
 	}
 
 	// Create local solve_order for the current setting
