@@ -783,7 +783,7 @@ TEST_CASE("[SceneTree][EWBIK3D] Bone lengths preservation and pinning behavior")
 	// First effector: shoulder (will be pinned in first scenario)
 	ik->set_root_bone_name(0, "LeftShoulder");
 	ik->set_end_bone_name(0, "LeftShoulder"); // Single bone effector
-	ik->set_effector_opacity(0, 1.0f);
+	ik->set_effector_opacity(0, 0.5f);
 
 	// Second effector: hand
 	ik->set_root_bone_name(1, "LeftShoulder");
@@ -839,32 +839,23 @@ TEST_CASE("[SceneTree][EWBIK3D] Bone lengths preservation and pinning behavior")
 	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand, 0.001f), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand));
 
 	// Scenario 2: Pin hand, move shoulder (dragging root)
-	// Reset skeleton to initial pose
-	for (int i = 0; i < skeleton->get_bone_count(); ++i) {
-		skeleton->set_bone_global_pose(i, skeleton->get_bone_rest(i));
-	}
-	skeleton->force_update_all_bone_transforms();
-
-	// Swap effector order to pin hand first
+	// Keep skeleton at solved position from scenario 1
+	// Change effector settings
 	ik->set_setting_count(2);
 
 	// First effector: hand (pin)
 	ik->set_root_bone_name(0, "LeftShoulder");
 	ik->set_end_bone_name(0, "LeftHand");
-	ik->set_effector_opacity(0, 1.0f);
+	ik->set_effector_opacity(0, 0.5f);
 
 	// Second effector: shoulder (move)
 	ik->set_root_bone_name(1, "LeftShoulder");
 	ik->set_end_bone_name(1, "LeftShoulder");
 	ik->set_effector_opacity(1, 1.0f);
 
-	// Reset targets to initial positions
-	shoulder_target->set_global_position(shoulder_pos);
-	hand_target->set_global_position(hand_pos);
-
-	// Set target nodes (same paths)
-	ik->set_target_node(0, NodePath("../../HandTarget"));
-	ik->set_target_node(1, NodePath("../../ShoulderTarget"));
+	// Set targets to current positions
+	shoulder_target->set_global_position(final_shoulder_pos);
+	hand_target->set_global_position(final_hand_pos);
 
 	// Move shoulder target
 	shoulder_target->set_global_position(Vector3(0.1, 1.2, 0.0)); // Move shoulder target
@@ -876,26 +867,26 @@ TEST_CASE("[SceneTree][EWBIK3D] Bone lengths preservation and pinning behavior")
 	skeleton->force_update_all_bone_transforms();
 
 	// Check that hand stayed pinned
-	final_hand_pos = skeleton->get_bone_global_pose(7).origin;
-	float hand_movement2 = hand_pos.distance_to(final_hand_pos);
+	Vector3 final_hand_pos2 = skeleton->get_bone_global_pose(7).origin;
+	float hand_movement2 = final_hand_pos.distance_to(final_hand_pos2);
 	CHECK_MESSAGE(hand_movement2 < 0.01, vformat("Hand should stay pinned. Movement: %f", hand_movement2));
 
 	// Check that shoulder moved
-	final_shoulder_pos = skeleton->get_bone_global_pose(4).origin;
-	float shoulder_movement2 = shoulder_pos.distance_to(final_shoulder_pos);
+	Vector3 final_shoulder_pos2 = skeleton->get_bone_global_pose(4).origin;
+	float shoulder_movement2 = final_shoulder_pos.distance_to(final_shoulder_pos2);
 	CHECK_MESSAGE(shoulder_movement2 > 0.1, vformat("Shoulder should have moved. Movement: %f", shoulder_movement2));
 
 	// Check bone lengths preserved again
-	final_upper_pos = skeleton->get_bone_global_pose(5).origin;
-	final_lower_pos = skeleton->get_bone_global_pose(6).origin;
+	Vector3 final_upper_pos2 = skeleton->get_bone_global_pose(5).origin;
+	Vector3 final_lower_pos2 = skeleton->get_bone_global_pose(6).origin;
 
-	final_shoulder_to_upper = final_shoulder_pos.distance_to(final_upper_pos);
-	final_upper_to_lower = final_upper_pos.distance_to(final_lower_pos);
-	final_lower_to_hand = final_lower_pos.distance_to(final_hand_pos);
+	float final_shoulder_to_upper2 = final_shoulder_pos2.distance_to(final_upper_pos2);
+	float final_upper_to_lower2 = final_upper_pos2.distance_to(final_lower_pos2);
+	float final_lower_to_hand2 = final_lower_pos2.distance_to(final_hand_pos2);
 
-	CHECK_MESSAGE(Math::is_equal_approx(initial_shoulder_to_upper, final_shoulder_to_upper, 0.001f), vformat("Shoulder to upper arm length should be preserved. Initial: %f, Final: %f", initial_shoulder_to_upper, final_shoulder_to_upper));
-	CHECK_MESSAGE(Math::is_equal_approx(initial_upper_to_lower, final_upper_to_lower, 0.001f), vformat("Upper to lower arm length should be preserved. Initial: %f, Final: %f", initial_upper_to_lower, final_upper_to_lower));
-	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand, 0.001f), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_shoulder_to_upper, final_shoulder_to_upper2, 0.001f), vformat("Shoulder to upper arm length should be preserved. Initial: %f, Final: %f", initial_shoulder_to_upper, final_shoulder_to_upper2));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_upper_to_lower, final_upper_to_lower2, 0.001f), vformat("Upper to lower arm length should be preserved. Initial: %f, Final: %f", initial_upper_to_lower, final_upper_to_lower2));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand2, 0.001f), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand2));
 
 	// Cleanup
 	root->remove_child(shoulder_target);
