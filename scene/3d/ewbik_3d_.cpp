@@ -42,7 +42,7 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	for (int setting_idx = 0; setting_idx < iterate_settings.size(); setting_idx++) {
 		IterateIK3D::IterateIK3DSetting *iter_setting = iterate_settings[setting_idx];
 		int last_idx = iter_setting->joints.size() - 1;
-		if (last_idx >= 0) {
+		if (last_idx >= 0 && last_idx < (int)iter_setting->chain.size()) {
 			Effector eff;
 			eff.effector_bone = iter_setting->joints[last_idx].bone;
 			eff.target_position = iter_setting->chain[last_idx];
