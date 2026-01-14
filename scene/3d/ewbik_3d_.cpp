@@ -374,6 +374,9 @@ void EWBIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effect
 	HashMap<String, EffectorGroup> group_map;
 	for (int i = 0; i < p_all_effectors.size(); i++) {
 		const Vector<int> &bones = effector_bone_lists[i];
+		if (bones.is_empty()) {
+			continue; // Skip effectors with no bone chain
+		}
 		String key;
 		for (int j = 0; j < bones.size(); j++) {
 			if (j > 0) {
