@@ -73,6 +73,64 @@ Skeleton3D *create_humanoid_arm_skeleton() {
 	return skeleton;
 }
 
+// Helper function to create a full humanoid skeleton with both arms
+Skeleton3D *create_humanoid_skeleton() {
+	Skeleton3D *skeleton = memnew(Skeleton3D);
+
+	// Create bones: Hips -> Spine -> Chest -> UpperChest -> Shoulders -> Arms -> Hands
+	// Based on Godot's SkeletonProfileHumanoid reference poses
+	skeleton->add_bone("Hips");
+	skeleton->add_bone("Spine");
+	skeleton->add_bone("Chest");
+	skeleton->add_bone("UpperChest");
+	skeleton->add_bone("LeftShoulder");
+	skeleton->add_bone("LeftUpperArm");
+	skeleton->add_bone("LeftLowerArm");
+	skeleton->add_bone("LeftHand");
+	skeleton->add_bone("RightShoulder");
+	skeleton->add_bone("RightUpperArm");
+	skeleton->add_bone("RightLowerArm");
+	skeleton->add_bone("RightHand");
+
+	// Set hierarchy
+	skeleton->set_bone_parent(1, 0); // Spine -> Hips
+	skeleton->set_bone_parent(2, 1); // Chest -> Spine
+	skeleton->set_bone_parent(3, 2); // UpperChest -> Chest
+	skeleton->set_bone_parent(4, 3); // LeftShoulder -> UpperChest
+	skeleton->set_bone_parent(5, 4); // LeftUpperArm -> LeftShoulder
+	skeleton->set_bone_parent(6, 5); // LeftLowerArm -> LeftUpperArm
+	skeleton->set_bone_parent(7, 6); // LeftHand -> LeftLowerArm
+	skeleton->set_bone_parent(8, 3); // RightShoulder -> UpperChest
+	skeleton->set_bone_parent(9, 8); // RightUpperArm -> RightShoulder
+	skeleton->set_bone_parent(10, 9); // RightLowerArm -> RightUpperArm
+	skeleton->set_bone_parent(11, 10); // RightHand -> RightLowerArm
+
+	// Set rest poses based on Godot SkeletonProfileHumanoid reference poses
+	// Bone lengths and positions match the standard humanoid profile
+	skeleton->set_bone_rest(0, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.75, 0))); // Hips (at y=0.75)
+	skeleton->set_bone_rest(1, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.1, 0))); // Spine (0.1 units up from hips)
+	skeleton->set_bone_rest(2, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.1, 0))); // Chest (0.1 units up from spine)
+	skeleton->set_bone_rest(3, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.1, 0))); // UpperChest (0.1 units up from chest)
+
+	// Left arm - T-pose with proper bone lengths from humanoid profile
+	skeleton->set_bone_rest(4, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0.05, 0.1, 0))); // LeftShoulder (0.05 right, 0.1 up from upper chest)
+	skeleton->set_bone_rest(5, Transform3D(Basis::from_euler(Vector3(0, 0, -1.571)), Vector3(0, 0.05, 0))); // LeftUpperArm (0.05 down from shoulder, 90° outward rotation)
+	skeleton->set_bone_rest(6, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.25, 0))); // LeftLowerArm (0.25 down from upper arm)
+	skeleton->set_bone_rest(7, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.25, 0))); // LeftHand (0.25 down from lower arm)
+
+	// Right arm - symmetric to left arm
+	skeleton->set_bone_rest(8, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(-0.05, 0.1, 0))); // RightShoulder (-0.05 left, 0.1 up from upper chest)
+	skeleton->set_bone_rest(9, Transform3D(Basis::from_euler(Vector3(0, 0, 1.571)), Vector3(0, 0.05, 0))); // RightUpperArm (0.05 down from shoulder, -90° outward rotation)
+	skeleton->set_bone_rest(10, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.25, 0))); // RightLowerArm (0.25 down from upper arm)
+	skeleton->set_bone_rest(11, Transform3D(Basis::from_euler(Vector3(0, 0, 0)), Vector3(0, 0.25, 0))); // RightHand (0.25 down from lower arm)
+
+	for (int i = 0; i < skeleton->get_bone_count(); ++i) {
+		skeleton->set_bone_global_pose(i, skeleton->get_bone_rest(i));
+	}
+
+	return skeleton;
+}
+
 // Helper function to create a humanoid leg skeleton with contracted/muscle-contracted rest poses
 Skeleton3D *create_humanoid_leg_skeleton() {
 	Skeleton3D *skeleton = memnew(Skeleton3D);
