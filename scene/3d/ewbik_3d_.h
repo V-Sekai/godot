@@ -34,6 +34,7 @@
 
 struct Effector {
 	int effector_bone = -1;
+	int root_bone = -1;
 	Vector3 target_position;
 	float weight = 1.0f;
 	float opacity = 1.0f;

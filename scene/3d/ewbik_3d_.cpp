@@ -31,6 +31,7 @@
 #include "ewbik_3d_.h"
 
 #include "core/math/qcp.h"
+#include "core/templates/hash_set.h"
 
 void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
 	int joint_size = (int)p_setting->joints.size();
@@ -38,7 +39,7 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 
 	// Find the setting index
 	int setting_idx = -1;
-	for (int i = 0; i < iterate_settings.size(); i++) {
+	for (int i = 0; i < (int)iterate_settings.size(); i++) {
 		if (iterate_settings[i] == p_setting) {
 			setting_idx = i;
 			break;
@@ -52,12 +53,13 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	// Build and sort effector groups using Eron's decomposition algorithm
 	// Collect effectors from all settings
 	Vector<Effector> all_effectors;
-	for (size_t setting_idx = 0; setting_idx < iterate_settings.size(); setting_idx++) {
+	for (int setting_idx = 0; setting_idx < (int)iterate_settings.size(); setting_idx++) {
 		IterateIK3D::IterateIK3DSetting *iter_setting = iterate_settings[setting_idx];
 		int last_idx = iter_setting->joints.size() - 1;
 		if (last_idx >= 0 && last_idx < (int)iter_setting->chain.size()) {
 			Effector eff;
 			eff.effector_bone = iter_setting->joints[last_idx].bone;
+			eff.root_bone = iter_setting->joints[0].bone;
 			eff.target_position = iter_setting->chain[last_idx];
 			eff.weight = get_effector_weight(setting_idx);
 			eff.opacity = get_effector_opacity(setting_idx);
@@ -349,70 +351,60 @@ bool EWBIK3D::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int
 void EWBIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const {
 	r_groups.clear();
 
-	// Collect bones_encountered for each effector
-	Vector<Vector<int>> effector_bone_lists;
-	for (const Effector &eff : p_all_effectors) {
-		Vector<int> bones_encountered;
-		float current_weight = 1.0f;
-		int current_bone = eff.effector_bone;
-
-		while (current_bone >= 0 && current_weight > 0.0f) {
-			// Check if current_bone is another effector
-			for (const Effector &other_eff : p_all_effectors) {
-				if (other_eff.effector_bone == current_bone && &other_eff != &eff) {
-					// Multiply current_weight by 1 - effector_opacity
-					current_weight *= (1.0f - other_eff.opacity);
-					if (current_weight <= 0.0f) {
-						break;
-					}
-				}
-			}
-
-			if (current_weight <= 0.0f) {
-				break;
-			}
-
-			// Add bone to encountered list
-			bones_encountered.push_back(current_bone);
-
-			// Move to parent
-			current_bone = p_skeleton->get_bone_parent(current_bone);
+	// Sort effectors by opacity descending for priority
+	struct EffectorOpacityComparator {
+		bool operator()(const Effector &a, const Effector &b) const {
+			return a.opacity > b.opacity;
 		}
+	};
 
-		// Reverse to get from root to effector
-		bones_encountered.reverse();
-		effector_bone_lists.push_back(bones_encountered);
-	}
+	Vector<Effector> sorted_effectors = p_all_effectors;
+	sorted_effectors.sort_custom<EffectorOpacityComparator>();
 
-	// Step 2: Find identical runs and consolidate into effector-groups
 	HashMap<String, EffectorGroup> group_map;
-	for (int i = 0; i < p_all_effectors.size(); i++) {
-		const Vector<int> &bones = effector_bone_lists[i];
-		if (bones.is_empty()) {
-			continue; // Skip effectors with no bone chain
-		}
-		String key;
-		for (int j = 0; j < bones.size(); j++) {
-			if (j > 0) {
-				key += "-";
+	HashSet<int> assigned_bones;
+
+	for (const Effector &eff : sorted_effectors) {
+		Vector<int> bones;
+		int current = eff.effector_bone;
+		while (current >= 0 && current != eff.root_bone) {
+			if (!assigned_bones.has(current)) {
+				bones.push_back(current);
 			}
-			key += itos(bones[j]);
+			current = p_skeleton->get_bone_parent(current);
 		}
-		if (!group_map.has(key)) {
-			EffectorGroup group;
-			group.bones = bones;
-			// Calculate root distance: depth of the rootmost bone (bones[0])
-			int rootmost_bone = bones[0];
-			int depth = 0;
-			int current = rootmost_bone;
-			while (current >= 0) {
-				depth++;
-				current = p_skeleton->get_bone_parent(current);
+		if (current == eff.root_bone && !assigned_bones.has(current)) {
+			bones.push_back(current);
+		}
+		bones.reverse();
+
+		if (!bones.is_empty()) {
+			String key;
+			for (int i = 0; i < bones.size(); i++) {
+				if (i > 0) {
+					key += "-";
+				}
+				key += itos(bones[i]);
 			}
-			group.root_distance = depth;
-			group_map[key] = group;
+			if (!group_map.has(key)) {
+				EffectorGroup group;
+				group.bones = bones;
+				// Calculate root distance
+				int rootmost_bone = bones[0];
+				int depth = 0;
+				int c = rootmost_bone;
+				while (c >= 0) {
+					depth++;
+					c = p_skeleton->get_bone_parent(c);
+				}
+				group.root_distance = depth;
+				group_map[key] = group;
+			}
+			group_map[key].effectors.push_back(eff);
+			for (int b : bones) {
+				assigned_bones.insert(b);
+			}
 		}
-		group_map[key].effectors.push_back(p_all_effectors[i]);
 	}
 
 	// Create groups from the map

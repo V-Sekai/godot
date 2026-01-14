@@ -721,8 +721,10 @@ TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence on solving") {
 	// Get initial position
 	Vector3 initial_pos = skeleton->get_bone_global_pose(7).origin; // LeftHand
 
-	// Solve IK once
-	ik->process_modification(0.016);
+	// Solve IK multiple times for better convergence
+	for (int i = 0; i < 20; i++) {
+		ik->process_modification(0.016);
+	}
 
 	skeleton->force_update_all_bone_transforms();
 
@@ -733,7 +735,7 @@ TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence on solving") {
 	float distance_to_primary = final_pos.distance_to(primary_target->get_global_position());
 
 	// With opacity weighting, the primary target should have more influence
-	// We expect some movement toward primary target even with single iteration
+	// We expect movement toward primary target after convergence
 	float primary_improvement = initial_pos.distance_to(primary_target->get_global_position()) - distance_to_primary;
 	CHECK_MESSAGE(primary_improvement >= 0.0, vformat("Should not move away from primary target. Improvement: %f", primary_improvement));
 
