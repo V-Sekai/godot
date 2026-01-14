@@ -32,26 +32,6 @@
 
 #include "scene/3d/iterate_ik_3d.h"
 
-struct Effector {
-	int effector_bone = -1;
-	int root_bone = -1;
-	Vector3 target_position;
-	float weight = 1.0f;
-	float opacity = 1.0f;
-};
-
-struct EffectorGroup {
-	Vector<int> bones;
-	Vector<Effector> effectors;
-	int root_distance;
-};
-
-struct EffectorGroupComparator {
-	bool operator()(const EffectorGroup &a, const EffectorGroup &b) const {
-		return a.root_distance > b.root_distance;
-	}
-};
-
 struct OptimalTransform {
 	Quaternion rotation;
 	Vector3 translation;
@@ -66,22 +46,8 @@ protected:
 	// Chain building for arbitrary root-to-effector support
 	virtual void _update_joints(int p_index) override;
 
-	static void _bind_methods();
-
-	// Eron's decomposition algorithm
-	void _build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const;
-
-	// Pathfinding helper methods
-	bool _find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const;
-	void _build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const;
-
 	// QCP solver helper methods
 	void _create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, int p_bone_idx, const Vector3 &p_destination, const Transform3D &p_target_transform,
 			PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights, float p_effector_weight = 1.0f);
 	OptimalTransform _calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights, bool p_calculate_translation = false);
-
-public:
-
-private:
-
 };

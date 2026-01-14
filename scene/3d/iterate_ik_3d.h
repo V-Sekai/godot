@@ -249,6 +249,26 @@ public:
 		}
 	};
 
+	struct Effector {
+		int effector_bone = -1;
+		int root_bone = -1;
+		Vector3 target_position;
+		float weight = 1.0f;
+		float opacity = 1.0f;
+	};
+
+	struct EffectorGroup {
+		Vector<int> bones;
+		Vector<Effector> effectors;
+		int root_distance;
+	};
+
+	struct EffectorGroupComparator {
+		bool operator()(const EffectorGroup &a, const EffectorGroup &b) const {
+			return a.root_distance > b.root_distance;
+		}
+	};
+
 protected:
 	LocalVector<IterateIK3DSetting *> iterate_settings; // For caching.
 
@@ -284,6 +304,10 @@ protected:
 	void _unbind_joint_limitation(int p_index, int p_joint);
 	void _bind_joint_limitations(int p_index);
 	void _unbind_joint_limitations(int p_index);
+
+	void _build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const;
+	bool _find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const;
+	void _build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const;
 
 public:
 	virtual PackedStringArray get_configuration_warnings() const override;

@@ -534,17 +534,64 @@ void IterateIK3D::_update_bone_axis(Skeleton3D *p_skeleton, int p_index) {
 }
 
 void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
-	min_distance_squared = min_distance * min_distance;
-	for (uint32_t i = 0; i < settings.size(); i++) {
-		_init_joints(p_skeleton, i);
-		Node3D *target = Object::cast_to<Node3D>(get_node_or_null(iterate_settings[i]->target_node));
-		if (!target || iterate_settings[i]->chain.is_empty()) {
-			continue; // Abort.
-		}
-		iterate_settings[i]->cache_current_joint_rotations(p_skeleton); // Iterate over first to detect parent (outside of the chain) bone pose changes.
+	if (iterate_settings.size() == 1) {
+		min_distance_squared = min_distance * min_distance;
+		for (uint32_t i = 0; i < settings.size(); i++) {
+			_init_joints(p_skeleton, i);
+			Node3D *target = Object::cast_to<Node3D>(get_node_or_null(iterate_settings[i]->target_node));
+			if (!target || iterate_settings[i]->chain.is_empty()) {
+				continue; // Abort.
+			}
+			iterate_settings[i]->cache_current_joint_rotations(p_skeleton); // Iterate over first to detect parent (outside of the chain) bone pose changes.
 
-		Vector3 destination = cached_space.affine_inverse().xform(target->get_global_transform_interpolated().origin);
-		_process_joints(p_delta, p_skeleton, iterate_settings[i], destination);
+			Vector3 destination = cached_space.affine_inverse().xform(target->get_global_transform_interpolated().origin);
+			_process_joints(p_delta, p_skeleton, iterate_settings[i], destination);
+		}
+	} else {
+		// Multi-effector logic
+		min_distance_squared = min_distance * min_distance;
+		Vector<Vector3> target_destinations;
+		for (uint32_t i = 0; i < iterate_settings.size(); i++) {
+			_init_joints(p_skeleton, i);
+			Node3D *target = Object::cast_to<Node3D>(get_node_or_null(iterate_settings[i]->target_node));
+			if (!target || iterate_settings[i]->chain.is_empty()) {
+				continue; // Abort.
+			}
+			iterate_settings[i]->cache_current_joint_rotations(p_skeleton); // Iterate over first to detect parent (outside of the chain) bone pose changes.
+			target_destinations.push_back(cached_space.affine_inverse().xform(target->get_global_transform_interpolated().origin));
+		}
+		// Collect effectors
+		Vector<Effector> all_effectors;
+		for (uint32_t i = 0; i < iterate_settings.size(); i++) {
+			IterateIK3DSetting *setting = iterate_settings[i];
+			int last_idx = setting->joints.size() - 1;
+			if (last_idx >= 0 && last_idx < (int)setting->chain.size()) {
+				Effector eff;
+				eff.effector_bone = setting->joints[last_idx].bone;
+				eff.root_bone = setting->joints[0].bone;
+				eff.target_position = target_destinations[i];
+				eff.weight = get_effector_weight(i);
+				eff.opacity = get_effector_opacity(i);
+				all_effectors.push_back(eff);
+			}
+		}
+		Vector<EffectorGroup> groups;
+		_build_effector_groups(p_skeleton, all_effectors, groups);
+		groups.sort_custom<EffectorGroupComparator>();
+		// Solve in group order
+		for (const EffectorGroup &group : groups) {
+			for (const Effector &eff : group.effectors) {
+				// Find the setting
+				for (uint32_t i = 0; i < iterate_settings.size(); i++) {
+					IterateIK3DSetting *setting = iterate_settings[i];
+					int last_idx = setting->joints.size() - 1;
+					if (last_idx >= 0 && setting->joints[last_idx].bone == eff.effector_bone) {
+						_process_joints(p_delta, p_skeleton, setting, target_destinations[i]);
+						break;
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -650,6 +697,158 @@ Vector3 IterateIK3D::get_bone_vector(int p_index, int p_joint) const {
 	return solver_info_list[p_joint]->forward_vector * solver_info_list[p_joint]->length;
 }
 #endif // TOOLS_ENABLED
+
+bool IterateIK3D::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const {
+	r_chain.clear();
+
+	// If root and end are the same, just return that bone
+	if (p_root_bone == p_end_bone) {
+		r_chain.push_back(p_root_bone);
+		return true;
+	}
+
+	// Build path from end bone up to find common ancestor with root
+	Vector<int> end_to_root_path;
+	int current = p_end_bone;
+	while (current >= 0) {
+		end_to_root_path.push_back(current);
+		if (current == p_root_bone) {
+			// Root is an ancestor of end bone - use hierarchical path
+			r_chain = end_to_root_path;
+			r_chain.reverse();
+			return true;
+		}
+		current = p_skeleton->get_bone_parent(current);
+	}
+
+	// If we get here, root is not an ancestor. Find common ancestor.
+	// Build path from root up to root
+	Vector<int> root_to_root_path;
+	current = p_root_bone;
+	while (current >= 0) {
+		root_to_root_path.push_back(current);
+		current = p_skeleton->get_bone_parent(current);
+	}
+
+	// Find common ancestor
+	int common_ancestor = -1;
+	bool found = false;
+	for (int root_ancestor : root_to_root_path) {
+		for (int end_ancestor : end_to_root_path) {
+			if (root_ancestor == end_ancestor) {
+				common_ancestor = root_ancestor;
+				found = true;
+				break;
+			}
+		}
+		if (found) {
+			break;
+		}
+	}
+	if (common_ancestor == -1) {
+		return false; // No common ancestor - impossible to connect
+	}
+
+	// Build the path: root -> common_ancestor -> end
+	r_chain.clear();
+
+	// Add path from root to common ancestor
+	for (int bone : root_to_root_path) {
+		r_chain.push_back(bone);
+		if (bone == common_ancestor) {
+			break;
+		}
+	}
+
+	// Add path from common ancestor to end (excluding common ancestor since it's already added)
+	bool found_common_in_end_path = false;
+	for (int i = end_to_root_path.size() - 1; i >= 0; i--) {
+		int bone = end_to_root_path[i];
+		if (found_common_in_end_path) {
+			r_chain.push_back(bone);
+		} else if (bone == common_ancestor) {
+			found_common_in_end_path = true;
+		}
+	}
+
+	return true;
+}
+
+void IterateIK3D::_build_effector_groups(Skeleton3D *p_skeleton, const Vector<Effector> &p_all_effectors, Vector<EffectorGroup> &r_groups) const {
+	r_groups.clear();
+
+	// Sort effectors by opacity descending for priority
+	struct EffectorOpacityComparator {
+		bool operator()(const Effector &a, const Effector &b) const {
+			return a.opacity > b.opacity;
+		}
+	};
+
+	Vector<Effector> sorted_effectors = p_all_effectors;
+	sorted_effectors.sort_custom<EffectorOpacityComparator>();
+
+	HashMap<String, EffectorGroup> group_map;
+	HashSet<int> assigned_bones;
+
+	for (const Effector &eff : sorted_effectors) {
+		Vector<int> bones;
+		int current = eff.effector_bone;
+		while (current >= 0 && current != eff.root_bone) {
+			if (!assigned_bones.has(current)) {
+				bones.push_back(current);
+			}
+			current = p_skeleton->get_bone_parent(current);
+		}
+		if (current == eff.root_bone && !assigned_bones.has(current)) {
+			bones.push_back(current);
+		}
+		bones.reverse();
+
+		if (!bones.is_empty()) {
+			String key;
+			for (int i = 0; i < bones.size(); i++) {
+				if (i > 0) {
+					key += "-";
+				}
+				key += itos(bones[i]);
+			}
+			if (!group_map.has(key)) {
+				EffectorGroup group;
+				group.bones = bones;
+				// Calculate root distance
+				int rootmost_bone = bones[0];
+				int depth = 0;
+				int c = rootmost_bone;
+				while (c >= 0) {
+					depth++;
+					c = p_skeleton->get_bone_parent(c);
+				}
+				group.root_distance = depth;
+				group_map[key] = group;
+			}
+			group_map[key].effectors.push_back(eff);
+			for (int b : bones) {
+				assigned_bones.insert(b);
+			}
+		}
+	}
+
+	// Create groups from the map
+	for (const KeyValue<String, EffectorGroup> &kv : group_map) {
+		r_groups.push_back(kv.value);
+	}
+}
+
+void IterateIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const {
+	r_joints.clear();
+	r_joints.resize(p_path.size());
+
+	for (int i = 0; i < p_path.size(); i++) {
+		int bone_idx = p_path[i];
+		r_joints[i].bone = bone_idx;
+		r_joints[i].name = p_skeleton->get_bone_name(bone_idx);
+	}
+}
 
 IterateIK3D::~IterateIK3D() {
 	for (uint32_t i = 0; i < iterate_settings.size(); i++) {
