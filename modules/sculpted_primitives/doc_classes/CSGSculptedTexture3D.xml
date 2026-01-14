@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="CSGSculptedTexture3D" inherits="CSGSculptedPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="CSGSculptedTexture3D" inherits="CSGPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		A texture-based sculpted primitive for highly variable organic shapes.
 	</brief_description>
@@ -21,7 +21,6 @@
 		<member name="mirror" type="bool" setter="set_mirror" getter="get_mirror" default="false">
 			If [code]true[/code], mirrors the X coordinate, flipping the shape along the X axis.
 		</member>
-		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" overrides="CSGSculptedPrimitive3D" default="0" />
 		<member name="sculpt_texture" type="Texture2D" setter="set_sculpt_texture" getter="get_sculpt_texture">
 			The texture used for sculpting. RGB values encode XYZ coordinates:
 			- Red (R) = X coordinate

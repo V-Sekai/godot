@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="CSGSculptedTube3D" inherits="CSGSculptedPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="CSGSculptedTube3D" inherits="CSGPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		A sculpted tube primitive with advanced sculpting parameters.
 	</brief_description>
@@ -20,6 +20,5 @@
 		<member name="outer_radius" type="float" setter="set_outer_radius" getter="get_outer_radius" default="0.5">
 			The outer radius of the tube.
 		</member>
-		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" overrides="CSGSculptedPrimitive3D" default="0" />
 	</members>
 </class>
