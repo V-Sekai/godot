@@ -48,8 +48,6 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	if (setting_idx == -1) {
 		return; // Should not happen
 	}
-	float effector_weight = get_effector_weight(setting_idx);
-
 	// Build and sort effector groups using Eron's decomposition algorithm
 	// Collect effectors from all settings
 	Vector<Effector> all_effectors;
@@ -61,7 +59,6 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 			eff.effector_bone = iter_setting->joints[last_idx].bone;
 			eff.root_bone = iter_setting->joints[0].bone;
 			eff.target_position = iter_setting->chain[last_idx];
-			eff.weight = get_effector_weight(setting_idx);
 			eff.opacity = get_effector_opacity(setting_idx);
 			all_effectors.push_back(eff);
 		}
@@ -123,7 +120,7 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 		PackedVector3Array tip_headings;
 		Vector<double> weights;
 
-		_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights, effector_weight);
+		_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights);
 
 		// Calculate optimal rotation and translation using QCP
 		OptimalTransform opt = _calculate_optimal_rotation(target_headings, tip_headings, weights, true);
@@ -151,7 +148,7 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 }
 
 void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, int p_bone_idx, const Vector3 &p_destination, const Transform3D &p_target_transform,
-		PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights, float p_effector_weight) {
+		PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights) {
 	int chain_size = (int)p_setting->chain.size();
 	if (chain_size < 2 || p_bone_idx < 0 || p_bone_idx >= (int)p_setting->joints.size()) {
 		return;
@@ -176,14 +173,10 @@ void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const Iterat
 	Transform3D current_bone_transform = p_skeleton->get_bone_global_pose(p_setting->joints[p_bone_idx].bone);
 	Basis current_bone_basis = current_bone_transform.basis;
 
-	// Weight based on distance from this bone to end effector
-	float distance_to_effector = bone_origin.distance_to(current_effector);
-	float weight = 1.0f / (1.0f + distance_to_effector); // Closer bones have higher weight
-
 	// Add origin correspondence
 	r_target_headings.push_back(head_to_destination);
 	r_tip_headings.push_back(head_to_effector);
-	r_weights.push_back(weight * p_effector_weight);
+	r_weights.push_back(1.0f);
 
 	// Scale for basis vectors as per design: distance >=1 and >= magnitude of origin
 	float distance_to_target = head_to_destination.length();
@@ -200,12 +193,10 @@ void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const Iterat
 		// Positive direction: emanating basis vector
 		r_target_headings.push_back(head_to_destination + target_axis * scale);
 		r_tip_headings.push_back(head_to_effector + current_axis * scale);
-		r_weights.push_back(weight * 0.3f * p_effector_weight); // Medium weight for directional constraints
 
 		// Negative direction: opposite basis vector
 		r_target_headings.push_back(head_to_destination - target_axis * scale);
 		r_tip_headings.push_back(head_to_effector - current_axis * scale);
-		r_weights.push_back(weight * 0.3f * p_effector_weight); // Medium weight for directional constraints
 	}
 }
 

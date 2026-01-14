@@ -42,8 +42,6 @@ bool IterateIK3D::_set(const StringName &p_path, const Variant &p_value) {
 			set_target_node(which, p_value);
 		} else if (what == "effector_opacity") {
 			set_effector_opacity(which, p_value);
-		} else if (what == "effector_weight") {
-			set_effector_weight(which, p_value);
 		} else if (what == "joints") {
 			int idx = path.get_slicec('/', 3).to_int();
 			String prop = path.get_slicec('/', 4);
@@ -86,8 +84,6 @@ bool IterateIK3D::_get(const StringName &p_path, Variant &r_ret) const {
 			r_ret = get_target_node(which);
 		} else if (what == "effector_opacity") {
 			r_ret = get_effector_opacity(which);
-		} else if (what == "effector_weight") {
-			r_ret = get_effector_weight(which);
 		} else if (what == "joints") {
 			int idx = path.get_slicec('/', 3).to_int();
 			String prop = path.get_slicec('/', 4);
@@ -124,7 +120,6 @@ void IterateIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 		String path = "settings/" + itos(i) + "/";
 		p_list->push_back(PropertyInfo(Variant::NODE_PATH, path + "target_node"));
 		p_list->push_back(PropertyInfo(Variant::FLOAT, path + "effector_opacity", PROPERTY_HINT_RANGE, "0,1,0.01"));
-		p_list->push_back(PropertyInfo(Variant::FLOAT, path + "effector_weight", PROPERTY_HINT_RANGE, "0,10,0.01"));
 		for (uint32_t j = 0; j < iterate_settings[i]->joints.size(); j++) {
 			String joint_path = path + "joints/" + itos(j) + "/";
 			props.push_back(PropertyInfo(Variant::INT, joint_path + "rotation_axis", PROPERTY_HINT_ENUM, SkeletonModifier3D::get_hint_rotation_axis()));
@@ -229,16 +224,6 @@ void IterateIK3D::set_effector_opacity(int p_index, float p_opacity) {
 float IterateIK3D::get_effector_opacity(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, (int)iterate_settings.size(), 1.0f);
 	return iterate_settings[p_index]->effector_opacity;
-}
-
-void IterateIK3D::set_effector_weight(int p_index, float p_weight) {
-	ERR_FAIL_INDEX(p_index, (int)iterate_settings.size());
-	iterate_settings[p_index]->effector_weight = MAX(p_weight, 0.0f);
-}
-
-float IterateIK3D::get_effector_weight(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, (int)iterate_settings.size(), 1.0f);
-	return iterate_settings[p_index]->effector_weight;
 }
 
 // Individual joints.
@@ -591,7 +576,6 @@ void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
 					eff.effector_bone = setting->joints[last_idx].bone;
 					eff.root_bone = setting->joints[0].bone;
 					eff.target_position = target_destinations[i];
-					eff.weight = get_effector_weight(i);
 					eff.opacity = opacity;
 					all_effectors.push_back(eff);
 				}

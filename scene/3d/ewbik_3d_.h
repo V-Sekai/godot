@@ -48,6 +48,6 @@ protected:
 
 	// QCP solver helper methods
 	void _create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, int p_bone_idx, const Vector3 &p_destination, const Transform3D &p_target_transform,
-			PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights, float p_effector_weight = 1.0f);
+			PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights);
 	OptimalTransform _calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights, bool p_calculate_translation = false);
 };
