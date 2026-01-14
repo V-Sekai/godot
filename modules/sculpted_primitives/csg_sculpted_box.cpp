@@ -125,16 +125,15 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
-			indices.push_back(base1 + i);
+			// Triangle 1: (base2+next_i, base1+next_i, base1+i) - swapped winding
+			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
-			indices.push_back(base2 + next_i);
-
-			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
-			// Shares edge (base1+i, base2+next_i) in opposite order
-			indices.push_back(base2 + next_i);
-			indices.push_back(base2 + i);
 			indices.push_back(base1 + i);
+
+			// Triangle 2: (base1+i, base2+i, base2+next_i) - swapped winding
+			indices.push_back(base1 + i);
+			indices.push_back(base2 + i);
+			indices.push_back(base2 + next_i);
 		}
 
 		// Hollow faces if applicable
