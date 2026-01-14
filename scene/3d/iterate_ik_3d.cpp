@@ -560,19 +560,43 @@ void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
 			iterate_settings[i]->cache_current_joint_rotations(p_skeleton); // Iterate over first to detect parent (outside of the chain) bone pose changes.
 			target_destinations.push_back(cached_space.affine_inverse().xform(target->get_global_transform_interpolated().origin));
 		}
-		// Collect effectors
+		// Handle pinning by translating roots for high-opacity effectors
+		for (uint32_t i = 0; i < iterate_settings.size(); i++) {
+			IterateIK3DSetting *setting = iterate_settings[i];
+			int last_idx = setting->joints.size() - 1;
+			if (last_idx >= 0 && last_idx < (int)setting->chain.size()) {
+				float opacity = get_effector_opacity(i);
+				if (opacity >= 0.999f) {
+					Vector3 effector_global = p_skeleton->get_bone_global_pose(setting->joints[last_idx].bone).origin;
+					Vector3 effector_local = cached_space.affine_inverse().xform(effector_global);
+					Vector3 translation_local = target_destinations[i] - effector_local;
+					Vector3 translation_global = cached_space.xform(translation_local);
+					Transform3D root_pose = p_skeleton->get_bone_global_pose(setting->joints[0].bone);
+					root_pose.origin += translation_global;
+					p_skeleton->set_bone_global_pose(setting->joints[0].bone, root_pose);
+					// Update chain
+					for (uint32_t j = 0; j < setting->joints.size(); j++) {
+						setting->chain[j] = p_skeleton->get_bone_global_pose(setting->joints[j].bone).origin;
+					}
+				}
+			}
+		}
+		// Collect effectors (exclude pinned ones)
 		Vector<Effector> all_effectors;
 		for (uint32_t i = 0; i < iterate_settings.size(); i++) {
 			IterateIK3DSetting *setting = iterate_settings[i];
 			int last_idx = setting->joints.size() - 1;
 			if (last_idx >= 0 && last_idx < (int)setting->chain.size()) {
-				Effector eff;
-				eff.effector_bone = setting->joints[last_idx].bone;
-				eff.root_bone = setting->joints[0].bone;
-				eff.target_position = target_destinations[i];
-				eff.weight = get_effector_weight(i);
-				eff.opacity = get_effector_opacity(i);
-				all_effectors.push_back(eff);
+				float opacity = get_effector_opacity(i);
+				if (opacity < 0.999f) {
+					Effector eff;
+					eff.effector_bone = setting->joints[last_idx].bone;
+					eff.root_bone = setting->joints[0].bone;
+					eff.target_position = target_destinations[i];
+					eff.weight = get_effector_weight(i);
+					eff.opacity = opacity;
+					all_effectors.push_back(eff);
+				}
 			}
 		}
 		Vector<EffectorGroup> groups;
