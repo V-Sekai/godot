@@ -207,6 +207,7 @@ OptimalTransform EWBIK3D::_calculate_optimal_rotation(const PackedVector3Array &
 	Array result = QuaternionCharacteristicPolynomial::weighted_superpose(p_tip_headings, p_target_headings, p_weights, p_calculate_translation);
 	OptimalTransform opt;
 	opt.rotation = result[0];
+	opt.rotation = opt.rotation.inverse();
 	if (p_calculate_translation && result.size() > 1) {
 		opt.translation = result[1];
 	} else {
