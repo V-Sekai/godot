@@ -72,7 +72,7 @@ real_t CSGSculptedTorus3D::get_outer_radius() const {
 
 CSGBrush *CSGSculptedTorus3D::_build_brush() {
 	// Torus uses circular profile swept along circular path with inner/outer radius
-	CSGBrush *brush = memnew(CSGBrush);
+	CSGBrush *_brush = memnew(CSGBrush);
 
 	Vector<Vector2> profile;
 	Vector<Vector2> hollow_profile;
@@ -233,6 +233,6 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 		}
 	}
 
-	brush->build_from_faces(faces, face_uvs, smooth, materials, invert_faces);
-	return brush;
+	_brush->build_from_faces(faces, face_uvs, smooth, materials, invert_faces);
+	return _brush;
 }

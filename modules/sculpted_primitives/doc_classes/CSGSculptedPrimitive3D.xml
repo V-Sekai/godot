@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSGSculptedPrimitive3D" inherits="CSGPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="hollow" type="float" setter="set_hollow" getter="get_hollow" default="0.0">
+		</member>
+		<member name="hollow_shape" type="int" setter="set_hollow_shape" getter="get_hollow_shape" default="0">
+		</member>
+		<member name="material" type="Material" setter="set_material" getter="get_material">
+		</member>
+		<member name="path_begin" type="float" setter="set_path_begin" getter="get_path_begin" default="0.0">
+		</member>
+		<member name="path_curve" type="int" setter="set_path_curve" getter="get_path_curve" default="0">
+		</member>
+		<member name="path_end" type="float" setter="set_path_end" getter="get_path_end" default="1.0">
+		</member>
+		<member name="profile_begin" type="float" setter="set_profile_begin" getter="get_profile_begin" default="0.0">
+		</member>
+		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" default="1">
+		</member>
+		<member name="profile_end" type="float" setter="set_profile_end" getter="get_profile_end" default="1.0">
+		</member>
+		<member name="profile_scale" type="Vector2" setter="set_profile_scale" getter="get_profile_scale" default="Vector2(1, 1)">
+		</member>
+		<member name="radius_offset" type="float" setter="set_radius_offset" getter="get_radius_offset" default="0.0">
+		</member>
+		<member name="revolutions" type="float" setter="set_revolutions" getter="get_revolutions" default="1.0">
+		</member>
+		<member name="shear" type="Vector2" setter="set_shear" getter="get_shear" default="Vector2(0, 0)">
+		</member>
+		<member name="skew" type="float" setter="set_skew" getter="get_skew" default="0.0">
+		</member>
+		<member name="taper" type="Vector2" setter="set_taper" getter="get_taper" default="Vector2(0, 0)">
+		</member>
+		<member name="twist_begin" type="float" setter="set_twist_begin" getter="get_twist_begin" default="0.0">
+		</member>
+		<member name="twist_end" type="float" setter="set_twist_end" getter="get_twist_end" default="0.0">
+		</member>
+	</members>
+	<constants>
+		<constant name="PROFILE_CURVE_CIRCLE" value="0" enum="ProfileCurve">
+		</constant>
+		<constant name="PROFILE_CURVE_SQUARE" value="1" enum="ProfileCurve">
+		</constant>
+		<constant name="PROFILE_CURVE_ISOTRI" value="2" enum="ProfileCurve">
+		</constant>
+		<constant name="PROFILE_CURVE_EQUALTRI" value="3" enum="ProfileCurve">
+		</constant>
+		<constant name="PROFILE_CURVE_RIGHTTRI" value="4" enum="ProfileCurve">
+		</constant>
+		<constant name="PROFILE_CURVE_CIRCLE_HALF" value="5" enum="ProfileCurve">
+		</constant>
+		<constant name="PATH_CURVE_LINE" value="0" enum="PathCurve">
+		</constant>
+		<constant name="PATH_CURVE_CIRCLE" value="1" enum="PathCurve">
+		</constant>
+		<constant name="PATH_CURVE_CIRCLE_33" value="2" enum="PathCurve">
+		</constant>
+		<constant name="PATH_CURVE_CIRCLE2" value="3" enum="PathCurve">
+		</constant>
+		<constant name="HOLLOW_SAME" value="0" enum="HollowShape">
+		</constant>
+		<constant name="HOLLOW_CIRCLE" value="1" enum="HollowShape">
+		</constant>
+		<constant name="HOLLOW_SQUARE" value="2" enum="HollowShape">
+		</constant>
+		<constant name="HOLLOW_TRIANGLE" value="3" enum="HollowShape">
+		</constant>
+	</constants>
+</class>

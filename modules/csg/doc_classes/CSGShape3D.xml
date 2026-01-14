@@ -50,21 +50,6 @@
 				[b]Note:[/b] CSG mesh data updates are deferred, which means they are updated with a delay of one rendered frame. To avoid getting an empty shape or outdated mesh data, make sure to call [code]await get_tree().process_frame[/code] before using [method get_meshes] in [method Node._ready] or after changing properties on the [CSGShape3D].
 			</description>
 		</method>
-		<method name="validate_manifold_mesh" qualifiers="static">
-			<return type="Dictionary" />
-			<param index="0" name="vertices" type="PackedVector3Array" />
-			<param index="1" name="indices" type="PackedInt32Array" />
-			<description>
-				Validates that a mesh meets Godot's manifold geometry requirements for CSG operations. A manifold shape is closed, does not self-intersect, does not contain internal faces and has no edges that connect to more than two faces. Triangles must use clockwise vertex ordering when viewed from outside.
-				This performs comprehensive checks and returns a dictionary with detailed validation results including:
-				- [code]"valid"[/code]: Boolean indicating if the mesh passed validation
-				- [code]"report"[/code]: String with detailed mesh statistics and analysis
-				- [code]"errors"[/code]: Array of error messages (empty if valid)
-				- [code]"warnings"[/code]: Array of warning messages
-				The report includes mesh statistics (vertex count, triangle count, edge connectivity), invalid vertex indices, degenerate triangles, zero-area triangles, edge sharing analysis, and vertex usage statistics.
-				[b]Note:[/b] This is a preliminary validation that catches common mesh issues early. The full manifold validation is performed by the CSG system during boolean operations.
-			</description>
-		</method>
 		<method name="is_root_shape" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -85,6 +70,20 @@
 			<param index="1" name="value" type="bool" />
 			<description>
 				Based on [param value], enables or disables the specified layer in the [member collision_mask], given a [param layer_number] between 1 and 32.
+			</description>
+		</method>
+		<method name="validate_manifold_mesh" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="mesh" type="Mesh" />
+			<description>
+				Validates that a mesh meets Godot's manifold geometry requirements for CSG operations. A manifold shape is closed, does not self-intersect, does not contain internal faces and has no edges that connect to more than two faces. Triangles must use clockwise vertex ordering when viewed from outside.
+				This performs comprehensive checks and returns a dictionary with detailed validation results including:
+				- [code]"valid"[/code]: Boolean indicating if the mesh passed validation
+				- [code]"report"[/code]: String with detailed mesh statistics and analysis
+				- [code]"errors"[/code]: Array of error messages (empty if valid)
+				- [code]"warnings"[/code]: Array of warning messages
+				The report includes mesh statistics (vertex count, triangle count, edge connectivity), invalid vertex indices, degenerate triangles, zero-area triangles, edge sharing analysis, and vertex usage statistics.
+				[b]Note:[/b] This is a preliminary validation that catches common mesh issues early. The full manifold validation is performed by the CSG system during boolean operations.
 			</description>
 		</method>
 	</methods>

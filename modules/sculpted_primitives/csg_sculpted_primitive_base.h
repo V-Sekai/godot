@@ -90,6 +90,8 @@ protected:
 
 	Ref<Material> material;
 
+	void cap_open_ends(Vector<int> &r_indices, int p_total_profile, int p_effective_profile_count, int p_effective_hollow_count, int p_path_segments, real_t p_hollow, bool p_needs_caps);
+
 	static void _bind_methods();
 
 public:

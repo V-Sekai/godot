@@ -173,6 +173,57 @@ Vector3 apply_path_transform(const Vector2 &p_profile_point, real_t p_path_pos, 
 	return result;
 }
 
+// cap_open_ends implementation
+void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_profile, int p_effective_profile_count, int p_effective_hollow_count, int p_path_segments, real_t p_hollow, bool p_needs_caps) {
+	if (!p_needs_caps) {
+		return;
+	}
+
+	// Bottom cap (at path_begin = 0)
+	int bottom_base = 0;
+	if (p_effective_profile_count >= 3) {
+		// Fan triangulation from first vertex (counter-clockwise viewed from outside)
+		for (int i = 1; i < p_effective_profile_count - 1; i++) {
+			r_indices.push_back(bottom_base);
+			r_indices.push_back(bottom_base + i);
+			r_indices.push_back(bottom_base + i + 1);
+		}
+	}
+
+	// Top cap (at path_end)
+	int top_base = p_path_segments * p_total_profile;
+	if (p_effective_profile_count >= 3) {
+		// Fan triangulation, reversed winding for counter-clockwise from outside (above)
+		for (int i = 1; i < p_effective_profile_count - 1; i++) {
+			r_indices.push_back(top_base);
+			r_indices.push_back(top_base + i + 1);
+			r_indices.push_back(top_base + i);
+		}
+	}
+
+	// Hollow bottom cap (inner hole cap)
+	if (p_hollow > 0.0 && p_effective_hollow_count >= 3) {
+		int hollow_bottom_base = p_effective_profile_count;
+		for (int i = 0; i < p_effective_hollow_count; i++) {
+			int next_i = (i + 1) % p_effective_hollow_count;
+			r_indices.push_back(hollow_bottom_base);
+			r_indices.push_back(hollow_bottom_base + i);
+			r_indices.push_back(hollow_bottom_base + next_i);
+		}
+	}
+
+	// Hollow top cap
+	if (p_hollow > 0.0 && p_effective_hollow_count >= 3) {
+		int hollow_top_base = p_path_segments * p_total_profile + p_effective_profile_count;
+		for (int i = 0; i < p_effective_hollow_count; i++) {
+			int next_i = (i + 1) % p_effective_hollow_count;
+			r_indices.push_back(hollow_top_base);
+			r_indices.push_back(hollow_top_base + next_i);
+			r_indices.push_back(hollow_top_base + i);
+		}
+	}
+}
+
 void CSGSculptedPrimitive3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_profile_curve", "curve"), &CSGSculptedPrimitive3D::set_profile_curve);
 	ClassDB::bind_method(D_METHOD("get_profile_curve"), &CSGSculptedPrimitive3D::get_profile_curve);

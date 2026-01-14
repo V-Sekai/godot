@@ -85,7 +85,7 @@ real_t CSGSculptedTube3D::get_height() const {
 
 CSGBrush *CSGSculptedTube3D::_build_brush() {
 	// Tube is a hollow cylinder - similar to cylinder but with explicit inner/outer radius
-	CSGBrush *brush = memnew(CSGBrush);
+	CSGBrush *_brush = memnew(CSGBrush);
 
 	Vector<Vector2> profile;
 	Vector<Vector2> hollow_profile;
@@ -187,57 +187,9 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 	}
 
 	// Add end caps for linear paths to ensure manifold geometry
-	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
-		// Bottom cap (at path_begin) - outer profile
-		int bottom_base = 0;
-		if (effective_profile_count >= 3) {
-			// Triangulate the bottom face
-			for (int i = 1; i < effective_profile_count - 1; i++) {
-				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
-				indices.push_back(bottom_base + i);
-			}
-		}
-
-		// Top cap (at path_end) - outer profile
-		int top_base = path_segments * total_profile;
-		if (effective_profile_count >= 3) {
-			// Triangulate the top face (reverse winding for opposite side)
-			for (int i = 1; i < effective_profile_count - 1; i++) {
-				indices.push_back(top_base);
-				indices.push_back(top_base + i);
-				indices.push_back(top_base + i + 1);
-			}
-		}
-
-		// Bottom cap - inner profile (hollow)
-		if (effective_hollow_count > 0) {
-			int hollow_bottom_base = effective_profile_count;
-			if (effective_hollow_count >= 3) {
-				// Triangulate polygon with center vertex - create fan of triangles
-				for (int i = 0; i < effective_hollow_count; i++) {
-					int next_i = (i + 1) % effective_hollow_count;
-					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i);
-					indices.push_back(hollow_bottom_base + next_i);
-				}
-			}
-		}
-
-		// Top cap - inner profile (hollow)
-		if (effective_hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + effective_profile_count;
-			if (effective_hollow_count >= 3) {
-				// Triangulate polygon with center vertex - create fan of triangles
-				for (int i = 0; i < effective_hollow_count; i++) {
-					int next_i = (i + 1) % effective_hollow_count;
-					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + next_i);
-					indices.push_back(hollow_top_base + i);
-				}
-			}
-		}
-	}
+	bool path_closed = false; // Tube uses linear path
+	bool needs_caps = !path_closed;
+	cap_open_ends(indices, total_profile, effective_profile_count, effective_hollow_count, path_segments, hollow, needs_caps);
 
 	// Convert to CSGBrush format
 	Vector<Vector3> faces;
@@ -284,7 +236,7 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		}
 	}
 
-	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	_brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
 
 	// Debug output for testing
 	print_verbose("CSGSculptedTube3D::_build_brush() debug:");
@@ -294,13 +246,13 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
 	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
 	print_verbose(vformat("  Faces array size: %d", faces.size()));
-	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
-	if (brush->faces.size() > 0) {
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", _brush->faces.size()));
+	if (_brush->faces.size() > 0) {
 		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
-				brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
-				brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
-				brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+				_brush->faces[0].vertices[0].x, _brush->faces[0].vertices[0].y, _brush->faces[0].vertices[0].z,
+				_brush->faces[0].vertices[1].x, _brush->faces[0].vertices[1].y, _brush->faces[0].vertices[1].z,
+				_brush->faces[0].vertices[2].x, _brush->faces[0].vertices[2].y, _brush->faces[0].vertices[2].z));
 	}
 
-	return brush;
+	return _brush;
 }

@@ -159,76 +159,9 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	}
 
 	// Add end caps for linear paths to ensure manifold geometry
-	// For square profiles (4 vertices), we triangulate using corner vertices: (0,1,2) and (0,2,3)
-	// For circular profiles (many vertices), we use vertex 0 as center: (0,i,i+1) for each i
-	if (enable_end_caps && path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
-		// Bottom cap (at path_begin) - match CSGCylinder3D pattern exactly
-		// Side faces create edges (base1+i, base1+next_i) = (i, next_i)
-		// End cap must create reversed edges (next_i, i) to pair correctly
-		// CSGCylinder3D uses: (next_i, i, center) which creates edge (next_i, i) ✓
-		// For correct outward-facing normals, reverse to (i, 0, next_i) which creates edge (i, next_i) then (next_i, i) via center
-		// Actually, to maintain edge (next_i, i) with correct normals, use (i, next_i, 0) then reverse the whole triangle
-		// Wait, let's just reverse the order: (i, 0, next_i) creates edges (i, 0), (0, next_i), (next_i, i) - perimeter edge (next_i, i) ✓
-		int bottom_base = 0;
-		if (effective_profile_count >= 3) {
-			// Use (0, next_i, i) to create reversed edge (next_i, i) for edge pairing
-			// and correct counter-clockwise winding when viewed from below (outside)
-			for (int i = 0; i < effective_profile_count; i++) {
-				int next_i = (i + 1) % effective_profile_count;
-				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + next_i);
-				indices.push_back(bottom_base + i);
-			}
-		}
-
-		// Top cap (at path_end) - match CSGCylinder3D pattern exactly
-		// Side face triangle 2 creates edge (base2+next_i, base2+i) at top
-		// End cap must create reversed edge (base2+i, base2+next_i) to pair correctly
-		// Use (0, i, next_i) to create edge (i, next_i) which reverses (next_i, i)
-		// and correct counter-clockwise winding when viewed from above (outside)
-		int top_base = path_segments * total_profile;
-		if (effective_profile_count >= 3) {
-			// Use (0, i, next_i) for correct outward normals and edge pairing
-			for (int i = 0; i < effective_profile_count; i++) {
-				int next_i = (i + 1) % effective_profile_count;
-				indices.push_back(top_base);
-				indices.push_back(top_base + i);
-				indices.push_back(top_base + next_i);
-			}
-		}
-
-		// Hollow bottom cap
-		// Counter-clockwise when viewed from outside (below) - same as outer bottom
-		if (hollow > 0.0 && effective_hollow_count > 0) {
-			int hollow_bottom_base = effective_profile_count;
-			if (effective_hollow_count >= 3) {
-				// Triangulate polygon with center vertex - create fan of triangles
-				for (int i = 0; i < effective_hollow_count; i++) {
-					int next_i = (i + 1) % effective_hollow_count;
-					// Counter-clockwise: (center, i, next_i)
-					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i);
-					indices.push_back(hollow_bottom_base + next_i);
-				}
-			}
-		}
-
-		// Hollow top cap
-		// Counter-clockwise when viewed from outside (above) - same as outer top
-		if (hollow > 0.0 && effective_hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + effective_profile_count;
-			if (effective_hollow_count >= 3) {
-				// Triangulate polygon with center vertex - create fan of triangles
-				for (int i = 0; i < effective_hollow_count; i++) {
-					int next_i = (i + 1) % effective_hollow_count;
-					// Counter-clockwise from above: (center, next_i, i) - reversed for correct winding
-					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + next_i);
-					indices.push_back(hollow_top_base + i);
-				}
-			}
-		}
-	}
+	bool path_closed = false; // Box uses linear path
+	bool needs_caps = !path_closed;
+	cap_open_ends(indices, total_profile, effective_profile_count, effective_hollow_count, path_segments, hollow, needs_caps);
 
 	// Convert to CSGBrush format
 	Vector<Vector3> faces;
