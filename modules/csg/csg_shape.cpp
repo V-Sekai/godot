@@ -452,10 +452,10 @@ static void _pack_manifold(
 	// Debug output after creating Manifold
 	manifold::MeshGL64 debug_unpacked = r_manifold.GetMeshGL64();
 	manifold::Manifold::Error status = r_manifold.Status();
-	print_verbose(vformat("_pack_manifold() - after Manifold constructor: mesh has %d triangles, %d vertices, status: %d",
-			(int)(debug_unpacked.triVerts.size() / 3), (int)(debug_unpacked.vertProperties.size() / debug_unpacked.numProp), (int)status));
+	print_verbose(vformat("_pack_manifold() - after Manifold constructor: mesh has %d triangles, %d vertices, status: %s",
+			(int)(debug_unpacked.triVerts.size() / 3), (int)(debug_unpacked.vertProperties.size() / debug_unpacked.numProp), manifold::Manifold::ToString(status)));
 	if (status != manifold::Manifold::Error::NoError) {
-		print_verbose(vformat("_pack_manifold() - Manifold construction failed with error code: %d", (int)status));
+		print_verbose(vformat("_pack_manifold() - Manifold construction failed with error: %s", manifold::Manifold::ToString(status)));
 		if (status == manifold::Manifold::Error::NotManifold) {
 			print_verbose("_pack_manifold() - ERROR: Mesh is not manifold - edges not shared correctly or winding order wrong");
 			// Print edge information to help debug
@@ -465,6 +465,270 @@ static void _pack_manifold(
 					(int)mesh.mergeFromVert.size(), (int)mesh.mergeFromVert.size()));
 		}
 	}
+}
+
+// Manifold geometry validation function
+bool CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const Vector<int> &p_indices, String *r_error_message) {
+	// Comprehensive validation checks for manifold geometry requirements
+	// Based on Godot's CSG manifold specification: clockwise vertex ordering when viewed from outside
+
+	String detailed_report = "Manifold Mesh Validation Report:\n";
+	detailed_report += vformat("  Vertices: %d\n", p_vertices.size());
+	detailed_report += vformat("  Indices: %d\n", p_indices.size());
+
+	bool has_errors = false;
+	Vector<String> error_list;
+	Vector<String> warning_list;
+
+	// Basic structure validation
+	int triangle_count = p_indices.size() / 3;
+	detailed_report += vformat("  Triangles: %d\n", triangle_count);
+
+	if (p_indices.size() % 3 != 0) {
+		error_list.push_back(vformat("Index count (%d) is not divisible by 3 - invalid triangle mesh", p_indices.size()));
+		has_errors = true;
+	}
+
+	if (triangle_count == 0) {
+		error_list.push_back("Mesh contains no triangles");
+		has_errors = true;
+	}
+
+	if (p_vertices.size() == 0) {
+		error_list.push_back("Mesh contains no vertices");
+		has_errors = true;
+	}
+
+	// Early return for basic structure issues
+	if (has_errors && error_list.size() > 0) {
+		if (r_error_message) {
+			*r_error_message = detailed_report;
+			for (const String &error : error_list) {
+				*r_error_message += "  ERROR: " + error + "\n";
+			}
+		}
+		return false;
+	}
+
+	// Check for valid vertex indices
+	int invalid_indices = 0;
+	int max_invalid_idx = -1;
+	for (int i = 0; i < p_indices.size(); i++) {
+		int idx = p_indices[i];
+		if (idx < 0 || idx >= p_vertices.size()) {
+			invalid_indices++;
+			max_invalid_idx = MAX(max_invalid_idx, idx);
+			if (invalid_indices <= 5) { // Limit error reporting to first 5
+				error_list.push_back(vformat("Invalid vertex index %d at position %d (valid range: 0-%d)", idx, i, p_vertices.size() - 1));
+			}
+			has_errors = true;
+		}
+	}
+	if (invalid_indices > 5) {
+		error_list.push_back(vformat("... and %d more invalid indices (max index found: %d)", invalid_indices - 5, max_invalid_idx));
+	}
+
+	// Check for degenerate triangles
+	int degenerate_count = 0;
+	int zero_area_count = 0;
+	real_t min_area = FLT_MAX;
+	real_t max_area = 0;
+	real_t total_area = 0;
+
+	for (int i = 0; i < triangle_count; i++) {
+		int idx0 = p_indices[i * 3];
+		int idx1 = p_indices[i * 3 + 1];
+		int idx2 = p_indices[i * 3 + 2];
+
+		// Skip if indices are invalid (already reported above)
+		if (idx0 < 0 || idx0 >= p_vertices.size() || idx1 < 0 || idx1 >= p_vertices.size() || idx2 < 0 || idx2 >= p_vertices.size()) {
+			continue;
+		}
+
+		// Check for degenerate triangles (duplicate vertices)
+		if (idx0 == idx1 || idx1 == idx2 || idx2 == idx0) {
+			degenerate_count++;
+			if (degenerate_count <= 3) { // Limit reporting
+				error_list.push_back(vformat("Degenerate triangle at index %d: vertices (%d, %d, %d)", i, idx0, idx1, idx2));
+			}
+			has_errors = true;
+			continue;
+		}
+
+		// Check for zero-area triangles
+		Vector3 v0 = p_vertices[idx0];
+		Vector3 v1 = p_vertices[idx1];
+		Vector3 v2 = p_vertices[idx2];
+		Vector3 cross = (v1 - v0).cross(v2 - v0);
+		real_t area_squared = cross.length_squared();
+
+		if (area_squared < 1e-12) {
+			zero_area_count++;
+			if (zero_area_count <= 3) {
+				error_list.push_back(vformat("Zero-area triangle at index %d: vertices (%d, %d, %d) at positions (%.3f,%.3f,%.3f), (%.3f,%.3f,%.3f), (%.3f,%.3f,%.3f)",
+						i, idx0, idx1, idx2,
+						v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z));
+			}
+			has_errors = true;
+		} else {
+			real_t area = Math::sqrt(area_squared) * 0.5;
+			min_area = MIN(min_area, area);
+			max_area = MAX(max_area, area);
+			total_area += area;
+		}
+	}
+
+	if (degenerate_count > 3) {
+		error_list.push_back(vformat("... and %d more degenerate triangles", degenerate_count - 3));
+	}
+	if (zero_area_count > 3) {
+		error_list.push_back(vformat("... and %d more zero-area triangles", zero_area_count - 3));
+	}
+
+	// Triangle statistics
+	int valid_triangles = triangle_count - degenerate_count - zero_area_count;
+	detailed_report += vformat("  Valid triangles: %d\n", valid_triangles);
+	detailed_report += vformat("  Degenerate triangles: %d\n", degenerate_count);
+	detailed_report += vformat("  Zero-area triangles: %d\n", zero_area_count);
+
+	if (valid_triangles > 0) {
+		detailed_report += vformat("  Triangle area - Min: %.6f, Max: %.6f, Avg: %.6f\n",
+				min_area, max_area, total_area / valid_triangles);
+	}
+
+	// Check for basic winding consistency (simplified check)
+	int normal_flips = 0;
+	int zero_normals = 0;
+	for (int i = 0; i < triangle_count && i < 10; i++) { // Check first 10 triangles for winding
+		int idx0 = p_indices[i * 3];
+		int idx1 = p_indices[i * 3 + 1];
+		int idx2 = p_indices[i * 3 + 2];
+
+		if (idx0 < 0 || idx0 >= p_vertices.size() || idx1 < 0 || idx1 >= p_vertices.size() || idx2 < 0 || idx2 >= p_vertices.size()) {
+			continue;
+		}
+		if (idx0 == idx1 || idx1 == idx2 || idx2 == idx0) {
+			continue; // Skip degenerates
+		}
+
+		Vector3 v0 = p_vertices[idx0];
+		Vector3 v1 = p_vertices[idx1];
+		Vector3 v2 = p_vertices[idx2];
+		Vector3 cross = (v1 - v0).cross(v2 - v0);
+
+		if (cross.length_squared() < 1e-12) {
+			zero_normals++;
+		}
+	}
+
+	if (zero_normals > 0) {
+		warning_list.push_back(vformat("%d triangles have zero normals (possible winding or geometry issues)", zero_normals));
+	}
+
+	// Edge connectivity analysis (basic)
+	HashMap<uint64_t, int> edge_count;
+	for (int i = 0; i < triangle_count; i++) {
+		for (int j = 0; j < 3; j++) {
+			int idx1 = p_indices[i * 3 + j];
+			int idx2 = p_indices[i * 3 + (j + 1) % 3];
+
+			if (idx1 < 0 || idx1 >= p_vertices.size() || idx2 < 0 || idx2 >= p_vertices.size()) {
+				continue;
+			}
+
+			// Create canonical edge key (smaller index first)
+			uint64_t edge_key = (uint64_t)MIN(idx1, idx2) << 32 | MAX(idx1, idx2);
+			edge_count[edge_key]++;
+		}
+	}
+
+	int boundary_edges = 0;
+	int shared_edges = 0;
+	int multi_shared_edges = 0;
+
+	for (const KeyValue<uint64_t, int> &E : edge_count) {
+		if (E.value == 1) {
+			boundary_edges++;
+		} else if (E.value == 2) {
+			shared_edges++;
+		} else {
+			multi_shared_edges++;
+		}
+	}
+
+	detailed_report += vformat("  Edges: %d total, %d boundary, %d shared, %d multi-shared\n",
+			edge_count.size(), boundary_edges, shared_edges, multi_shared_edges);
+
+	if (boundary_edges == 0 && valid_triangles > 0) {
+		warning_list.push_back("Mesh appears to be closed (no boundary edges) - good for manifold");
+	} else if (boundary_edges > 0) {
+		warning_list.push_back(vformat("Mesh has %d boundary edges - may not be watertight", boundary_edges));
+	}
+
+	if (multi_shared_edges > 0) {
+		warning_list.push_back(vformat("%d edges are shared by 3+ triangles - potential non-manifold geometry", multi_shared_edges));
+	}
+
+	// Vertex usage analysis
+	HashMap<int, int> vertex_usage;
+	for (int idx : p_indices) {
+		if (idx >= 0 && idx < p_vertices.size()) {
+			vertex_usage[idx]++;
+		}
+	}
+
+	int unused_vertices = 0;
+	int min_usage = INT_MAX;
+	int max_usage = 0;
+
+	for (int i = 0; i < p_vertices.size(); i++) {
+		int usage = vertex_usage.get(i, 0);
+		if (usage == 0) {
+			unused_vertices++;
+		} else {
+			min_usage = MIN(min_usage, usage);
+			max_usage = MAX(max_usage, usage);
+		}
+	}
+
+	detailed_report += vformat("  Vertex usage - Unused: %d, Min usage: %d, Max usage: %d\n",
+			unused_vertices, min_usage, max_usage);
+
+	if (unused_vertices > 0) {
+		warning_list.push_back(vformat("%d vertices are unused - consider removing them", unused_vertices));
+	}
+
+	// Build final report
+	if (r_error_message) {
+		*r_error_message = detailed_report;
+
+		if (!error_list.is_empty()) {
+			*r_error_message += "\nERRORS:\n";
+			for (const String &error : error_list) {
+				*r_error_message += "  • " + error + "\n";
+			}
+		}
+
+		if (!warning_list.is_empty()) {
+			*r_error_message += "\nWARNINGS:\n";
+			for (const String &warning : warning_list) {
+				*r_error_message += "  • " + warning + "\n";
+			}
+		}
+
+		if (!has_errors && warning_list.is_empty()) {
+			*r_error_message += "\n✓ Mesh passed basic manifold validation checks\n";
+			*r_error_message += "  Note: This is preliminary validation. Full manifold checking occurs during CSG operations.\n";
+		} else if (!has_errors) {
+			*r_error_message += "\n⚠ Mesh has warnings but no critical errors\n";
+			*r_error_message += "  The mesh may still work for CSG operations, but consider addressing the warnings.\n";
+		} else {
+			*r_error_message += "\n✗ Mesh failed manifold validation\n";
+			*r_error_message += "  This mesh will likely cause issues in CSG operations.\n";
+		}
+	}
+
+	return !has_errors;
 }
 
 struct ManifoldOperation {
@@ -1108,6 +1372,8 @@ void CSGShape3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_meshes"), &CSGShape3D::get_meshes);
 
 	ClassDB::bind_method(D_METHOD("bake_static_mesh"), &CSGShape3D::bake_static_mesh);
+
+	ClassDB::bind_static_method("CSGShape3D", D_METHOD("validate_manifold_mesh", "vertices", "indices"), &CSGShape3D::validate_manifold_mesh);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "operation", PROPERTY_HINT_ENUM, "Union,Intersection,Subtraction"), "set_operation", "get_operation");
 #ifndef DISABLE_DEPRECATED

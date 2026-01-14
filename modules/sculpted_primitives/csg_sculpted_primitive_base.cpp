@@ -127,7 +127,6 @@ void generate_profile_points(CSGSculptedPrimitive3D::ProfileCurve p_curve, real_
 Vector3 apply_path_transform(const Vector2 &p_profile_point, real_t p_path_pos, const CSGSculptedPrimitive3D::PathCurve p_path_curve, real_t p_twist, const Vector2 &p_taper, const Vector2 &p_shear, real_t p_radius_offset, real_t p_revolutions, real_t p_skew) {
 	Vector3 result;
 
-	// Normalize path_pos to 0.0-1.0 range for calculations
 	real_t normalized_path = CLAMP(p_path_pos, 0.0, 1.0);
 
 	// Apply taper (taper.x is at begin, taper.y is at end)

@@ -175,6 +175,9 @@ public:
 
 	virtual Ref<TriangleMesh> generate_triangle_mesh() const override;
 
+	// Manifold geometry validation
+	static bool validate_manifold_mesh(const Vector<Vector3> &p_vertices, const Vector<int> &p_indices, String *r_error_message = nullptr);
+
 #ifndef NAVIGATION_3D_DISABLED
 private:
 	static Callable _navmesh_source_geometry_parsing_callback;
