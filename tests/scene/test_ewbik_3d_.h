@@ -834,9 +834,9 @@ TEST_CASE("[SceneTree][EWBIK3D] Bone lengths preservation and pinning behavior")
 	float final_upper_to_lower = final_upper_pos.distance_to(final_lower_pos);
 	float final_lower_to_hand = final_lower_pos.distance_to(final_hand_pos);
 
-	CHECK_MESSAGE(Math::is_equal_approx(initial_shoulder_to_upper, final_shoulder_to_upper, 0.001), vformat("Shoulder to upper arm length should be preserved. Initial: %f, Final: %f", initial_shoulder_to_upper, final_shoulder_to_upper));
-	CHECK_MESSAGE(Math::is_equal_approx(initial_upper_to_lower, final_upper_to_lower, 0.001), vformat("Upper to lower arm length should be preserved. Initial: %f, Final: %f", initial_upper_to_lower, final_upper_to_lower));
-	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand, 0.001), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_shoulder_to_upper, final_shoulder_to_upper, 0.001f), vformat("Shoulder to upper arm length should be preserved. Initial: %f, Final: %f", initial_shoulder_to_upper, final_shoulder_to_upper));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_upper_to_lower, final_upper_to_lower, 0.001f), vformat("Upper to lower arm length should be preserved. Initial: %f, Final: %f", initial_upper_to_lower, final_upper_to_lower));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand, 0.001f), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand));
 
 	// Scenario 2: Pin hand, move shoulder (dragging root)
 	// Reset skeleton to initial pose
@@ -893,9 +893,9 @@ TEST_CASE("[SceneTree][EWBIK3D] Bone lengths preservation and pinning behavior")
 	final_upper_to_lower = final_upper_pos.distance_to(final_lower_pos);
 	final_lower_to_hand = final_lower_pos.distance_to(final_hand_pos);
 
-	CHECK_MESSAGE(Math::is_equal_approx(initial_shoulder_to_upper, final_shoulder_to_upper, 0.001), vformat("Shoulder to upper arm length should be preserved. Initial: %f, Final: %f", initial_shoulder_to_upper, final_shoulder_to_upper));
-	CHECK_MESSAGE(Math::is_equal_approx(initial_upper_to_lower, final_upper_to_lower, 0.001), vformat("Upper to lower arm length should be preserved. Initial: %f, Final: %f", initial_upper_to_lower, final_upper_to_lower));
-	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand, 0.001), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_shoulder_to_upper, final_shoulder_to_upper, 0.001f), vformat("Shoulder to upper arm length should be preserved. Initial: %f, Final: %f", initial_shoulder_to_upper, final_shoulder_to_upper));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_upper_to_lower, final_upper_to_lower, 0.001f), vformat("Upper to lower arm length should be preserved. Initial: %f, Final: %f", initial_upper_to_lower, final_upper_to_lower));
+	CHECK_MESSAGE(Math::is_equal_approx(initial_lower_to_hand, final_lower_to_hand, 0.001f), vformat("Lower arm to hand length should be preserved. Initial: %f, Final: %f", initial_lower_to_hand, final_lower_to_hand));
 
 	// Cleanup
 	root->remove_child(shoulder_target);
