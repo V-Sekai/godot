@@ -120,20 +120,15 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
-		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
-		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: (base2+next_i, base1+next_i, base1+i) - swapped winding
-			indices.push_back(base2 + next_i);
+			indices.push_back(base1 + i);
 			indices.push_back(base1 + next_i);
-			indices.push_back(base1 + i);
-
-			// Triangle 2: (base1+i, base2+i, base2+next_i) - swapped winding
-			indices.push_back(base1 + i);
-			indices.push_back(base2 + i);
 			indices.push_back(base2 + next_i);
+
+			indices.push_back(base2 + next_i);
+			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		// Hollow faces if applicable
@@ -159,8 +154,7 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	}
 
 	// Add end caps for linear paths to ensure manifold geometry
-	bool path_closed = false; // Box uses linear path
-	bool needs_caps = !path_closed;
+	bool needs_caps = !path_closed && path_curve == PATH_CURVE_LINE;
 	cap_open_ends(indices, total_profile, effective_profile_count, effective_hollow_count, path_segments, hollow, needs_caps);
 
 	// Convert to CSGBrush format

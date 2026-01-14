@@ -204,8 +204,7 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		}
 	}
 
-	// Add end caps for linear paths to ensure manifold geometry
-	bool path_closed = false; // Ring uses linear path
+	// Add end caps for open paths (linear or partial revolution) to ensure manifold geometry
 	bool needs_caps = !path_closed;
 	cap_open_ends(indices, total_profile, effective_profile_count, effective_hollow_count, path_segments, hollow, needs_caps);
 
