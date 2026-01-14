@@ -424,42 +424,6 @@ void EWBIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &
 	}
 }
 
-void EWBIK3D::set_effector_opacity(int p_index, float p_opacity) {
-	if (p_index < 0) {
-		return;
-	}
-	if (p_index >= effector_opacities.size()) {
-		effector_opacities.resize(p_index + 1);
-	}
-	// Clamp opacity to valid range [0.0, 1.0]
-	effector_opacities.set(p_index, CLAMP(p_opacity, 0.0f, 1.0f));
-}
-
-float EWBIK3D::get_effector_opacity(int p_index) const {
-	if (p_index < 0 || p_index >= effector_opacities.size()) {
-		return 1.0f; // Default opacity
-	}
-	return effector_opacities[p_index];
-}
-
-void EWBIK3D::set_effector_weight(int p_index, float p_weight) {
-	if (p_index < 0) {
-		return;
-	}
-	if (p_index >= effector_weights.size()) {
-		effector_weights.resize(p_index + 1);
-	}
-	// Clamp weight to valid range [0.0, 1.0]
-	effector_weights.set(p_index, CLAMP(p_weight, 0.0f, 1.0f));
-}
-
-float EWBIK3D::get_effector_weight(int p_index) const {
-	if (p_index < 0 || p_index >= effector_weights.size()) {
-		return 1.0f; // Default weight
-	}
-	return effector_weights[p_index];
-}
-
 void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_effector_opacity", "index", "opacity"), &EWBIK3D::set_effector_opacity);
 	ClassDB::bind_method(D_METHOD("get_effector_opacity", "index"), &EWBIK3D::get_effector_opacity);

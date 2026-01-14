@@ -81,12 +81,7 @@ protected:
 	OptimalTransform _calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights, bool p_calculate_translation = false);
 
 public:
-	void set_effector_opacity(int p_index, float p_opacity);
-	float get_effector_opacity(int p_index) const;
-	void set_effector_weight(int p_index, float p_weight);
-	float get_effector_weight(int p_index) const;
 
 private:
-	Vector<float> effector_opacities;
-	Vector<float> effector_weights;
+
 };

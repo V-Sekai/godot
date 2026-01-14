@@ -145,6 +145,9 @@ public:
 	struct IterateIK3DSetting : public ChainIK3DSetting {
 		NodePath target_node;
 
+		float effector_opacity = 1.0f;
+		float effector_weight = 1.0f;
+
 		LocalVector<IterateIK3DJointSetting *> joint_settings;
 
 		bool simulated = false;
@@ -308,6 +311,11 @@ public:
 	// Setting.
 	void set_target_node(int p_index, const NodePath &p_target_node);
 	NodePath get_target_node(int p_index) const;
+
+	void set_effector_opacity(int p_index, float p_opacity);
+	float get_effector_opacity(int p_index) const;
+	void set_effector_weight(int p_index, float p_weight);
+	float get_effector_weight(int p_index) const;
 
 	// Individual joints.
 	void set_joint_rotation_axis(int p_index, int p_joint, RotationAxis p_axis);
