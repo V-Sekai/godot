@@ -144,7 +144,7 @@ Use this output to diagnose manifold issues and optimize performance.
 ## No Future Enhancements
 
 -   Do not add additional curve types (Bézier, spline-based)
--   Texture-based deformation
--   Animation support for parameters
--   GPU-accelerated generation
--   Advanced hollow shape options
+-   We already have Texture-based deformation in sculpted texture
+-   Godot Engine can animate all properties in Variant
+-   Scuplted uses CPU generation
+-   Do not add advanced hollow shape options
