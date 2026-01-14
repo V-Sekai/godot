@@ -31,6 +31,8 @@
 #include "csg_sculpted_ring.h"
 
 #include "core/math/geometry_3d.h"
+#include "scene/resources/3d/primitive_meshes.h"
+#include "scene/resources/mesh.h"
 
 // Helper function to generate profile points based on curve type
 
@@ -85,7 +87,7 @@ real_t CSGSculptedRing3D::get_height() const {
 
 CSGBrush *CSGSculptedRing3D::_build_brush() {
 	// Ring is similar to torus but with different proportions (thinner, more ring-like)
-	CSGBrush *brush = memnew(CSGBrush);
+	CSGBrush *_brush = memnew(CSGBrush);
 
 	Vector<Vector2> profile;
 	Vector<Vector2> hollow_profile;
@@ -308,7 +310,7 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		}
 	}
 
-	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	_brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
 
 	// Debug output for testing
 	print_verbose("CSGSculptedRing3D::_build_brush() debug:");
@@ -318,16 +320,23 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
 	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
 	print_verbose(vformat("  Faces array size: %d", faces.size()));
-	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
-	if (brush->faces.size() > 0) {
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", _brush->faces.size()));
+	if (_brush->faces.size() > 0) {
 		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
-				brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
-				brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
-				brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+				_brush->faces[0].vertices[0].x, _brush->faces[0].vertices[0].y, _brush->faces[0].vertices[0].z,
+				_brush->faces[0].vertices[1].x, _brush->faces[0].vertices[1].y, _brush->faces[0].vertices[1].z,
+				_brush->faces[0].vertices[2].x, _brush->faces[0].vertices[2].y, _brush->faces[0].vertices[2].z));
 	}
 
 	// Validate manifold geometry requirements
-	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(vertices, indices);
+	Ref<ArrayMesh> test_mesh;
+	test_mesh.instantiate();
+	Array arrays;
+	arrays.resize(RS::ARRAY_MAX);
+	arrays[RS::ARRAY_VERTEX] = vertices;
+	arrays[RS::ARRAY_INDEX] = indices;
+	test_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(test_mesh);
 	if (!(bool)validation_result["valid"]) {
 		print_verbose(vformat("CSGSculptedRing3D::_build_brush() - MANIFOLD VALIDATION FAILED"));
 		Array errors = validation_result["errors"];
@@ -341,5 +350,5 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		print_verbose("CSGSculptedRing3D::_build_brush() - Manifold validation passed");
 	}
 
-	return brush;
+	return _brush;
 }

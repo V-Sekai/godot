@@ -32,9 +32,24 @@
 
 #include "modules/csg/csg_shape.h"
 
+#include "scene/resources/mesh.h"
 #include "tests/test_macros.h"
 
 namespace TestCSG {
+
+// Helper to create test ArrayMesh
+static Ref<ArrayMesh> create_test_mesh(const Vector<Vector3> &vertices, const Vector<int> &indices) {
+	Ref<ArrayMesh> mesh;
+	mesh.instantiate();
+	Array arrays;
+	arrays.resize(Mesh::ARRAY_MAX);
+	arrays[Mesh::ARRAY_VERTEX] = vertices;
+	if (!indices.is_empty()) {
+		arrays[Mesh::ARRAY_INDEX] = indices;
+	}
+	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	return mesh;
+}
 
 TEST_CASE("[SceneTree][CSG] CSGBox3D") {
 	SUBCASE("[SceneTree][CSG] CSGBox3D: Basic shape generation") {
@@ -167,6 +182,65 @@ TEST_CASE("[SceneTree][CSG] CSGMesh3D") {
 
 		SceneTree::get_singleton()->get_root()->remove_child(mesh);
 		memdelete(mesh);
+	}
+}
+
+TEST_CASE("[SceneTree][CSG] validate_manifold_mesh") {
+	SUBCASE("[SceneTree][CSG] validate_manifold_mesh: Valid triangle") {
+		// Create a simple valid triangle
+		Vector<Vector3> vertices;
+		vertices.push_back(Vector3(0, 0, 0));
+		vertices.push_back(Vector3(1, 0, 0));
+		vertices.push_back(Vector3(0, 1, 0));
+
+		Vector<int> indices;
+		indices.push_back(0);
+		indices.push_back(1);
+		indices.push_back(2);
+
+		Ref<ArrayMesh> test_mesh = create_test_mesh(vertices, indices);
+		Dictionary result = CSGShape3D::validate_manifold_mesh(test_mesh);
+
+		CHECK_MESSAGE(result["valid"], "Simple triangle should be valid");
+		CHECK_MESSAGE(result["errors"].operator Array().size() == 0, "Should have no errors");
+	}
+
+	SUBCASE("[SceneTree][CSG] validate_manifold_mesh: Invalid - out of bounds index") {
+		// Create a mesh with an out-of-bounds index
+		Vector<Vector3> vertices;
+		vertices.push_back(Vector3(0, 0, 0));
+		vertices.push_back(Vector3(1, 0, 0));
+		vertices.push_back(Vector3(0, 1, 0));
+
+		Vector<int> indices;
+		indices.push_back(0);
+		indices.push_back(1);
+		indices.push_back(5); // Out of bounds
+
+		Ref<ArrayMesh> test_mesh = create_test_mesh(vertices, indices);
+		Dictionary result = CSGShape3D::validate_manifold_mesh(test_mesh);
+
+		CHECK_MESSAGE(!result["valid"], "Mesh with out-of-bounds index should be invalid");
+		CHECK_MESSAGE(result["errors"].operator Array().size() > 0, "Should have errors");
+	}
+
+	SUBCASE("[SceneTree][CSG] validate_manifold_mesh: Invalid - degenerate triangle") {
+		// Create a degenerate triangle (all points colinear)
+		Vector<Vector3> vertices;
+		vertices.push_back(Vector3(0, 0, 0));
+		vertices.push_back(Vector3(1, 0, 0));
+		vertices.push_back(Vector3(2, 0, 0));
+
+		Vector<int> indices;
+		indices.push_back(0);
+		indices.push_back(1);
+		indices.push_back(2);
+
+		Ref<ArrayMesh> test_mesh = create_test_mesh(vertices, indices);
+		Dictionary result = CSGShape3D::validate_manifold_mesh(test_mesh);
+
+		CHECK_MESSAGE(!result["valid"], "Degenerate triangle should be invalid");
+		CHECK_MESSAGE(result["errors"].operator Array().size() > 0, "Should have errors");
 	}
 }
 

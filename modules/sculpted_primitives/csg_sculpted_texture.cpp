@@ -30,7 +30,9 @@
 
 #include "csg_sculpted_texture.h"
 
+#include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/image_texture.h"
+#include "scene/resources/mesh.h"
 
 void CSGSculptedTexture3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_sculpt_texture", "texture"), &CSGSculptedTexture3D::set_sculpt_texture);
@@ -109,23 +111,23 @@ bool CSGSculptedTexture3D::get_invert() const {
 }
 
 CSGBrush *CSGSculptedTexture3D::_build_brush() {
-	CSGBrush *brush = memnew(CSGBrush);
+	CSGBrush *_brush = memnew(CSGBrush);
 
 	if (!sculpt_texture.is_valid()) {
 		// Return empty brush if no texture
-		return brush;
+		return _brush;
 	}
 
 	Ref<Image> image = sculpt_texture->get_image();
 	if (!image.is_valid() || image->is_empty()) {
-		return brush;
+		return _brush;
 	}
 
 	int width = image->get_width();
 	int height = image->get_height();
 
 	if (width < 2 || height < 2) {
-		return brush;
+		return _brush;
 	}
 
 	// Convert texture RGB values to 3D coordinates
@@ -225,10 +227,17 @@ CSGBrush *CSGSculptedTexture3D::_build_brush() {
 		}
 	}
 
-	brush->build_from_faces(faces, face_uvs, smooth, materials, invert_faces);
+	_brush->build_from_faces(faces, face_uvs, smooth, materials, invert_faces);
 
 	// Validate manifold geometry requirements
-	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(vertices, indices);
+	Ref<ArrayMesh> test_mesh;
+	test_mesh.instantiate();
+	Array arrays;
+	arrays.resize(RS::ARRAY_MAX);
+	arrays[RS::ARRAY_VERTEX] = vertices;
+	arrays[RS::ARRAY_INDEX] = indices;
+	test_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(test_mesh);
 	if (!(bool)validation_result["valid"]) {
 		print_verbose(vformat("CSGSculptedTexture3D::_build_brush() - MANIFOLD VALIDATION FAILED"));
 		Array errors = validation_result["errors"];
@@ -242,5 +251,5 @@ CSGBrush *CSGSculptedTexture3D::_build_brush() {
 		print_verbose("CSGSculptedTexture3D::_build_brush() - Manifold validation passed");
 	}
 
-	return brush;
+	return _brush;
 }

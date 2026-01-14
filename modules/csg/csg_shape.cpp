@@ -513,11 +513,54 @@ static void _pack_manifold(
 }
 
 // Manifold geometry validation function
-Dictionary CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const Vector<int> &p_indices) {
-	// Comprehensive validation checks for manifold geometry requirements
-	// Based on Godot's CSG manifold specification: clockwise vertex ordering when viewed from outside
+Dictionary CSGShape3D::validate_manifold_mesh(const Ref<Mesh> &p_mesh) {
+	if (!p_mesh.is_valid()) {
+		Dictionary result;
+		result["valid"] = false;
+		result["report"] = "Error: Invalid or null mesh provided.";
+		result["errors"] = PackedStringArray{ "Invalid mesh" };
+		result["warnings"] = Array();
+		return result;
+	}
 
-	String detailed_report = "Manifold Mesh Validation Report:\n";
+	int surface_count = p_mesh->get_surface_count();
+	if (surface_count == 0) {
+		Dictionary result;
+		result["valid"] = false;
+		result["report"] = "Error: Mesh has no surfaces.";
+		result["errors"] = PackedStringArray{ "No surfaces" };
+		result["warnings"] = Array();
+		return result;
+	}
+
+	// For simplicity, validate the first surface (common for CSG primitives)
+	// TODO: Add option to validate all surfaces
+	Array arrays = p_mesh->surface_get_arrays(0);
+	if (arrays.is_empty()) {
+		Dictionary result;
+		result["valid"] = false;
+		result["report"] = "Error: Could not retrieve arrays from surface 0.";
+		result["errors"] = PackedStringArray{ "Empty arrays" };
+		result["warnings"] = Array();
+		return result;
+	}
+
+	PackedVector3Array vertices_packed = arrays[Mesh::ARRAY_VERTEX];
+	PackedInt32Array indices_packed = arrays[Mesh::ARRAY_INDEX];
+
+	Vector<Vector3> p_vertices;
+	p_vertices.resize(vertices_packed.size());
+	for (int i = 0; i < vertices_packed.size(); ++i) {
+		p_vertices.write[i] = vertices_packed[i];
+	}
+
+	Vector<int> p_indices;
+	p_indices.resize(indices_packed.size());
+	for (int i = 0; i < indices_packed.size(); ++i) {
+		p_indices.write[i] = indices_packed[i];
+	}
+
+	String detailed_report = "Manifold Mesh Validation Report (Surface 0):\n";
 	detailed_report += vformat("  Vertices: %d\n", p_vertices.size());
 	detailed_report += vformat("  Indices: %d\n", p_indices.size());
 
@@ -745,6 +788,81 @@ Dictionary CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices,
 
 	if (unused_vertices > 0) {
 		warning_list.push_back(vformat("%d vertices are unused - consider removing them", unused_vertices));
+	}
+
+	// Manifold library validation
+	manifold::MeshGL64 validation_mesh;
+	validation_mesh.numProp = 3; // Only position properties (x, y, z)
+	validation_mesh.vertProperties.reserve(p_vertices.size() * 3);
+	validation_mesh.triVerts.reserve(p_indices.size());
+
+	// Add vertices
+	for (const Vector3 &vert : p_vertices) {
+		validation_mesh.vertProperties.push_back(vert.x);
+		validation_mesh.vertProperties.push_back(vert.y);
+		validation_mesh.vertProperties.push_back(vert.z);
+	}
+
+	// Add indices
+	for (int idx : p_indices) {
+		validation_mesh.triVerts.push_back(idx);
+	}
+
+	// Create manifold and check status
+	manifold::Manifold test_manifold(validation_mesh);
+	manifold::Manifold::Error manifold_status = test_manifold.Status();
+
+	detailed_report += "  Manifold library validation:\n";
+	detailed_report += vformat("    Status: %s\n", manifold_status == manifold::Manifold::Error::NoError ? "Valid" : "Invalid");
+
+	if (manifold_status != manifold::Manifold::Error::NoError) {
+		has_errors = true;
+		String error_desc;
+		switch (manifold_status) {
+			case manifold::Manifold::Error::NonFiniteVertex:
+				error_desc = "Non-finite vertex coordinates detected";
+				break;
+			case manifold::Manifold::Error::NotManifold:
+				error_desc = "Mesh is not manifold (edges connect to more than 2 faces or mesh has holes)";
+				break;
+			case manifold::Manifold::Error::VertexOutOfBounds:
+				error_desc = "Vertex indices out of bounds";
+				break;
+			case manifold::Manifold::Error::PropertiesWrongLength:
+				error_desc = "Vertex properties array has wrong length";
+				break;
+			case manifold::Manifold::Error::MissingPositionProperties:
+				error_desc = "Missing position properties in vertex data";
+				break;
+			case manifold::Manifold::Error::MergeVectorsDifferentLengths:
+				error_desc = "Merge vectors have different lengths";
+				break;
+			case manifold::Manifold::Error::MergeIndexOutOfBounds:
+				error_desc = "Merge index out of bounds";
+				break;
+			case manifold::Manifold::Error::TransformWrongLength:
+				error_desc = "Transform matrix has wrong length";
+				break;
+			case manifold::Manifold::Error::RunIndexWrongLength:
+				error_desc = "Run index array has wrong length";
+				break;
+			case manifold::Manifold::Error::FaceIDWrongLength:
+				error_desc = "Face ID array has wrong length";
+				break;
+			case manifold::Manifold::Error::InvalidConstruction:
+				error_desc = "Invalid mesh construction";
+				break;
+			case manifold::Manifold::Error::ResultTooLarge:
+				error_desc = "Result mesh too large";
+				break;
+			default:
+				error_desc = "Unknown manifold validation error";
+				break;
+		}
+		error_list.push_back(vformat("Manifold library validation failed: %s", error_desc));
+		detailed_report += vformat("    Error: %s\n", error_desc);
+	} else {
+		detailed_report += "    Mesh passes manifold library validation\n";
 	}
 
 	// Build final result
@@ -1409,7 +1527,7 @@ void CSGShape3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("bake_static_mesh"), &CSGShape3D::bake_static_mesh);
 
-	ClassDB::bind_static_method("CSGShape3D", D_METHOD("validate_manifold_mesh", "vertices", "indices"), &CSGShape3D::validate_manifold_mesh);
+	ClassDB::bind_static_method("CSGShape3D", D_METHOD("validate_manifold_mesh", "mesh"), &CSGShape3D::validate_manifold_mesh);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "operation", PROPERTY_HINT_ENUM, "Union,Intersection,Subtraction"), "set_operation", "get_operation");
 #ifndef DISABLE_DEPRECATED

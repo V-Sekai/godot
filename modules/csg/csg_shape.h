@@ -176,7 +176,7 @@ public:
 	virtual Ref<TriangleMesh> generate_triangle_mesh() const override;
 
 	// Manifold geometry validation
-	static Dictionary validate_manifold_mesh(const Vector<Vector3> &p_vertices, const Vector<int> &p_indices);
+	static Dictionary validate_manifold_mesh(const Ref<Mesh> &p_mesh);
 
 #ifndef NAVIGATION_3D_DISABLED
 private:

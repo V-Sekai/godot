@@ -28,6 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#include "scene/resources/3d/primitive_meshes.h"
+/**************************************************************************/
+/*  csg_sculpted_prism.cpp                                                */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "csg_sculpted_prism.h"
 
 #include "core/math/geometry_3d.h"
@@ -288,7 +319,14 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	}
 
 	// Validate manifold geometry requirements
-	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(vertices, indices);
+	Ref<ArrayMesh> test_mesh;
+	test_mesh.instantiate();
+	Array arrays;
+	arrays.resize(RS::ARRAY_MAX);
+	arrays[RS::ARRAY_VERTEX] = vertices;
+	arrays[RS::ARRAY_INDEX] = indices;
+	test_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(test_mesh);
 	if (!(bool)validation_result["valid"]) {
 		print_verbose(vformat("CSGSculptedPrism3D::_build_brush() - MANIFOLD VALIDATION FAILED"));
 		Array errors = validation_result["errors"];
