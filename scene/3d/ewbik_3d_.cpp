@@ -422,7 +422,8 @@ void EWBIK3D::set_effector_opacity(int p_index, float p_opacity) {
 	if (p_index >= effector_opacities.size()) {
 		effector_opacities.resize(p_index + 1);
 	}
-	effector_opacities.set(p_index, p_opacity);
+	// Clamp opacity to valid range [0.0, 1.0]
+	effector_opacities.set(p_index, CLAMP(p_opacity, 0.0f, 1.0f));
 }
 
 float EWBIK3D::get_effector_opacity(int p_index) const {
