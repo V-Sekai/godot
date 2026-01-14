@@ -91,11 +91,6 @@ func _init():
     for i in range(20):
         box_param_sets.append({"size": Vector3(rng.randf_range(-2, 20), rng.randf_range(-2, 20), rng.randf_range(-2, 20))})
 
-    fuzz_primitive("CSGSculptedBox3D", box_param_sets)
-    fuzz_primitive("CSGSculptedSphere3D", sphere_param_sets)
-    # Fuzz CSG add, sub, overlap between box and sphere
-    fuzz_csg_ops("CSGSculptedBox3D", box_param_sets, "CSGSculptedSphere3D", sphere_param_sets)
-
     var sphere_param_sets = [
         {"radius": 0.0},
         {"radius": 0.01},
@@ -104,7 +99,11 @@ func _init():
     ]
     for i in range(20):
         sphere_param_sets.append({"radius": rng.randf_range(-2, 20)})
+
+    fuzz_primitive("CSGSculptedBox3D", box_param_sets)
     fuzz_primitive("CSGSculptedSphere3D", sphere_param_sets)
+    # Fuzz CSG add, sub, overlap between box and sphere
+    fuzz_csg_ops("CSGSculptedBox3D", box_param_sets, "CSGSculptedSphere3D", sphere_param_sets)
 
     var cylinder_param_sets = [
         {"radius": 0.0, "height": 0.0},
