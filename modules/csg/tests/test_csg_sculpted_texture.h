@@ -30,7 +30,8 @@
 
 #pragma once
 
-#include "modules/csg/csg_sculpted_primitive.h"
+#include "modules/csg/csg_sculpted_primitive_base.h"
+#include "modules/csg/csg_sculpted_texture.h"
 
 #include "tests/test_macros.h"
 

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  csg_sculpted_texture.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,56 +28,39 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "csg_sculpted_box.h"
-#include "csg_sculpted_cylinder.h"
 #include "csg_sculpted_primitive_base.h"
-#include "csg_sculpted_prism.h"
-#include "csg_sculpted_ring.h"
-#include "csg_sculpted_sphere.h"
-#include "csg_sculpted_texture.h"
-#include "csg_sculpted_torus.h"
-#include "csg_sculpted_tube.h"
-#include "csg_shape.h"
 
-#ifdef TOOLS_ENABLED
-#include "editor/csg_gizmos.h"
-#endif
+/**
+ * Texture-based sculpted primitive.
+ * Uses a texture where RGB values encode 3D coordinates (R=X, G=Y, B=Z).
+ * This allows for highly variable organic shapes defined by texture data.
+ */
+class CSGSculptedTexture3D : public CSGSculptedPrimitive3D {
+	GDCLASS(CSGSculptedTexture3D, CSGSculptedPrimitive3D);
 
-void initialize_csg_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_ABSTRACT_CLASS(CSGShape3D);
-		GDREGISTER_ABSTRACT_CLASS(CSGPrimitive3D);
-		GDREGISTER_CLASS(CSGMesh3D);
-		GDREGISTER_CLASS(CSGSphere3D);
-		GDREGISTER_CLASS(CSGBox3D);
-		GDREGISTER_CLASS(CSGCylinder3D);
-		GDREGISTER_CLASS(CSGTorus3D);
-		GDREGISTER_CLASS(CSGPolygon3D);
-		GDREGISTER_CLASS(CSGCombiner3D);
-		GDREGISTER_ABSTRACT_CLASS(CSGSculptedPrimitive3D);
-		GDREGISTER_CLASS(CSGSculptedBox3D);
-		GDREGISTER_CLASS(CSGSculptedCylinder3D);
-		GDREGISTER_CLASS(CSGSculptedSphere3D);
-		GDREGISTER_CLASS(CSGSculptedTorus3D);
-		GDREGISTER_CLASS(CSGSculptedPrism3D);
-		GDREGISTER_CLASS(CSGSculptedTube3D);
-		GDREGISTER_CLASS(CSGSculptedRing3D);
-		GDREGISTER_CLASS(CSGSculptedTexture3D);
-#ifndef NAVIGATION_3D_DISABLED
-		CSGShape3D::navmesh_parse_init();
-#endif // NAVIGATION_3D_DISABLED
-	}
-#ifdef TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		EditorPlugins::add_by_type<EditorPluginCSG>();
-	}
-#endif
-}
+	virtual CSGBrush *_build_brush() override;
 
-void uninitialize_csg_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-}
+	Ref<Texture2D> sculpt_texture;
+	bool mirror = false;
+	bool invert = false;
+
+	void _texture_changed();
+
+protected:
+	static void _bind_methods();
+	void _notification(int p_what);
+
+public:
+	void set_sculpt_texture(const Ref<Texture2D> &p_texture);
+	Ref<Texture2D> get_sculpt_texture() const;
+
+	void set_mirror(bool p_mirror);
+	bool get_mirror() const;
+
+	void set_invert(bool p_invert);
+	bool get_invert() const;
+
+	CSGSculptedTexture3D();
+};

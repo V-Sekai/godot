@@ -30,7 +30,12 @@
 
 #pragma once
 
-#include "modules/csg/csg_sculpted_primitive.h"
+#include "modules/csg/csg_sculpted_box.h"
+#include "modules/csg/csg_sculpted_cylinder.h"
+#include "modules/csg/csg_sculpted_primitive_base.h"
+#include "modules/csg/csg_sculpted_prism.h"
+#include "modules/csg/csg_sculpted_sphere.h"
+#include "modules/csg/csg_sculpted_torus.h"
 
 #include "tests/test_macros.h"
 
