@@ -15,59 +15,117 @@ Sculpted primitives extend Godot's CSG system with parametric shapes that can be
 
 **Critical Requirement**: All sculpted primitives MUST generate manifold meshes. A manifold mesh has the property that every edge is shared by exactly two faces, ensuring valid solid geometry for CSG operations.
 
+### What is Manifold Geometry?
+
+A manifold mesh represents a closed, orientable surface without holes, gaps, or self-intersections. In practical terms for CSG:
+
+- **Every edge connects exactly two faces** - no dangling edges or T-junctions
+- **Consistent face orientation** - all faces point outward (counter-clockwise winding)
+- **No self-intersections** - the mesh doesn't cross itself
+- **Closed surface** - forms a complete boundary around a volume
+
+Non-manifold geometry breaks CSG boolean operations and can cause rendering artifacts, physics simulation failures, and export issues.
+
 ### Validation Checks
 
 The code includes several validation mechanisms:
 
 1. **Debug Output**: Verbose logging shows vertex counts, face counts, and manifold status
-2. **Manifold Library Validation**: Uses the manifold library's built-in error checking
-3. **Profile Closure**: Ensures profile curves are properly closed loops
-4. **Face Winding**: Maintains consistent counter-clockwise winding for manifoldness
+2. **Manifold Library Validation**: Uses the manifold library's built-in error checking with descriptive error messages
+3. **Profile Closure**: Ensures profile curves are properly closed loops without gaps
+4. **Face Winding**: Maintains consistent counter-clockwise winding for outward-facing normals
+5. **Edge Connectivity**: Verifies all edges are shared by exactly two faces
+6. **Self-Intersection Detection**: Checks for geometry that crosses itself
+
+### Testing Manifoldness
+
+Before committing sculpted primitive changes:
+
+1. **Enable verbose logging** to see detailed mesh statistics
+2. **Test with extreme parameters** (zero radius, maximum twist, etc.)
+3. **Verify with manifold library** - check that `manifold::Manifold` construction succeeds
+4. **Visual inspection** - ensure no holes, gaps, or overlapping faces
+5. **CSG operations** - test boolean operations with other shapes
 
 ### Common Issues and Solutions
 
 #### 1. Non-Manifold Edges
 
-**Symptom**: Manifold library reports "Not Manifold" error
+**Symptom**: Manifold library reports "Not Manifold" error or edge connectivity warnings
 **Causes**:
 
 -   Incorrect vertex indexing in face generation
--   Missing or duplicate edges
--   Improper loop closure
+-   Missing or duplicate edges in triangle strips
+-   Improper loop closure (gaps between first and last vertices)
+-   Inconsistent edge sharing between adjacent faces
 
 **Solutions**:
 
--   Verify all triangles share edges correctly
--   Ensure profile loops are closed without duplicate vertices
+-   Verify all triangles share edges correctly using consistent vertex ordering
+-   Ensure profile loops are closed without duplicate vertices at seam
 -   Check face winding order (counter-clockwise from outside)
+-   Use edge adjacency checks in debug builds
 
 #### 2. Degenerate Faces
 
-**Symptom**: Zero-area triangles or invalid geometry
+**Symptom**: Zero-area triangles, invalid geometry, or manifold library errors
 **Causes**:
 
--   Collinear vertices
--   Incorrect parameter combinations
--   Floating-point precision issues
+-   Collinear or coincident vertices creating zero-area triangles
+-   Incorrect parameter combinations causing geometric collapse
+-   Floating-point precision issues with near-zero values
+-   Division by zero in transformation calculations
 
 **Solutions**:
 
--   Add epsilon checks for near-zero values
--   Validate parameter ranges
--   Use robust geometric computations
+-   Add epsilon checks (`Math::is_zero_approx()`) for near-zero values
+-   Validate parameter ranges with `CLAMP()` and minimum thresholds
+-   Use robust geometric computations avoiding exact zero divisions
+-   Skip degenerate triangles during mesh generation
 
 #### 3. Path/Profile Mismatches
 
-**Symptom**: Inconsistent vertex counts between path segments
+**Symptom**: Inconsistent vertex counts between path segments or profile discontinuities
 **Causes**:
 
--   Profile point count changes along path
+-   Profile point count changes along path extrusion
 -   Incorrect handling of closed vs open curves
+-   Path segmentation that doesn't align with profile resolution
+-   Hollow shape inner/outer profile count mismatches
 
 **Solutions**:
 
--   Pre-calculate profile sizes before vertex generation
--   Ensure consistent segmentation
+-   Pre-calculate and fix profile sizes before vertex generation
+-   Ensure consistent segmentation across the entire path
+-   Handle closed loops correctly with proper vertex indexing
+-   Validate hollow shape profile compatibility
+
+#### 4. Self-Intersections
+
+**Symptom**: Geometry crosses itself, causing invalid topology
+**Causes**:
+
+-   Extreme twist or shear parameters
+-   Profile curves that intersect when extruded
+-   Path curves that create overlapping sections
+-   Insufficient resolution for complex curves
+
+**Solutions**:
+
+-   Limit parameter ranges to prevent extreme deformations
+-   Increase curve resolution for complex shapes
+-   Add intersection detection in validation
+-   Use manifold library's intersection removal features
+
+### Best Practices for Manifold Generation
+
+1. **Consistent Winding**: Always generate triangles with counter-clockwise vertex order
+2. **Closed Loops**: Ensure profile curves form complete loops without gaps
+3. **Edge Sharing**: Every edge must be shared by exactly two triangles
+4. **Parameter Validation**: Clamp inputs to prevent degenerate cases
+5. **Precision Handling**: Use epsilon comparisons for floating-point operations
+6. **Debug Verification**: Always test with verbose logging enabled
+7. **Incremental Testing**: Validate after each mesh generation step
 -   Handle closed loops correctly
 
 ## Contributing Guidelines
@@ -146,5 +204,5 @@ Use this output to diagnose manifold issues and optimize performance.
 -   Do not add additional curve types (Bézier, spline-based)
 -   We already have Texture-based deformation in sculpted texture
 -   Godot Engine can animate all properties in Variant
--   Scuplted uses CPU generation
+-   Sculpted uses CPU generation
 -   Do not add advanced hollow shape options
