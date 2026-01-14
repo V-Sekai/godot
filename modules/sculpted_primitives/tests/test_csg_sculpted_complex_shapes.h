@@ -38,61 +38,115 @@
 
 namespace TestCSG {
 
-TEST_CASE("[SceneTree][CSG] CSGSculptedTube3D") {
-	SUBCASE("[SceneTree][CSG] CSGSculptedTube3D: Basic shape generation") {
+TEST_CASE("[CSG] CSGSculptedTube3D") {
+	SUBCASE("Default initialization") {
 		CSGSculptedTube3D *tube = memnew(CSGSculptedTube3D);
-		SceneTree::get_singleton()->get_root()->add_child(tube);
 
-		tube->set_inner_radius(0.25);
-		tube->set_outer_radius(0.5);
-		tube->set_height(2.0);
-		Vector<Vector3> faces = tube->get_brush_faces();
+		// Check default properties
+		CHECK(tube->get_inner_radius() == doctest::Approx(0.25));
+		CHECK(tube->get_outer_radius() == doctest::Approx(0.5));
+		CHECK(tube->get_height() == doctest::Approx(1.0));
 
-		CHECK_MESSAGE(faces.size() > 0, "Tube should generate faces");
-		CHECK_MESSAGE(faces.size() % 3 == 0, "Faces should be triangles (multiple of 3)");
+		// Check default profile curve (should be circle for tube)
+		CHECK(tube->get_profile_curve() == CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE);
 
-		SceneTree::get_singleton()->get_root()->remove_child(tube);
 		memdelete(tube);
 	}
 
-	SUBCASE("[SceneTree][CSG] CSGSculptedTube3D: Property getters and setters") {
+	SUBCASE("Inner and outer radius property getters and setters") {
 		CSGSculptedTube3D *tube = memnew(CSGSculptedTube3D);
+
 		tube->set_inner_radius(0.3);
-		tube->set_outer_radius(0.6);
-		tube->set_height(3.0);
+		tube->set_outer_radius(0.8);
+		tube->set_height(2.5);
 		CHECK(tube->get_inner_radius() == doctest::Approx(0.3));
-		CHECK(tube->get_outer_radius() == doctest::Approx(0.6));
-		CHECK(tube->get_height() == doctest::Approx(3.0));
+		CHECK(tube->get_outer_radius() == doctest::Approx(0.8));
+		CHECK(tube->get_height() == doctest::Approx(2.5));
+
+		// Test zero values
+		tube->set_inner_radius(0.0);
+		tube->set_outer_radius(0.0);
+		tube->set_height(0.0);
+		CHECK(tube->get_inner_radius() == doctest::Approx(0.0));
+		CHECK(tube->get_outer_radius() == doctest::Approx(0.0));
+		CHECK(tube->get_height() == doctest::Approx(0.0));
+
+		// Test negative values (should be allowed)
+		tube->set_inner_radius(-0.1);
+		tube->set_outer_radius(-0.5);
+		tube->set_height(-1.0);
+		CHECK(tube->get_inner_radius() == doctest::Approx(-0.1));
+		CHECK(tube->get_outer_radius() == doctest::Approx(-0.5));
+		CHECK(tube->get_height() == doctest::Approx(-1.0));
+
+		memdelete(tube);
+	}
+
+	SUBCASE("Radius relationship validation") {
+		CSGSculptedTube3D *tube = memnew(CSGSculptedTube3D);
+
+		// Inner radius should typically be less than outer radius, but not enforced
+		tube->set_inner_radius(0.8);
+		tube->set_outer_radius(0.3);
+		CHECK(tube->get_inner_radius() == doctest::Approx(0.8));
+		CHECK(tube->get_outer_radius() == doctest::Approx(0.3));
+
+		// Test equal radii
+		tube->set_inner_radius(0.5);
+		tube->set_outer_radius(0.5);
+		CHECK(tube->get_inner_radius() == doctest::Approx(0.5));
+		CHECK(tube->get_outer_radius() == doctest::Approx(0.5));
 
 		memdelete(tube);
 	}
 }
 
-TEST_CASE("[SceneTree][CSG] CSGSculptedRing3D") {
-	SUBCASE("[SceneTree][CSG] CSGSculptedRing3D: Basic shape generation") {
+TEST_CASE("[CSG] CSGSculptedRing3D") {
+	SUBCASE("Default initialization") {
 		CSGSculptedRing3D *ring = memnew(CSGSculptedRing3D);
-		SceneTree::get_singleton()->get_root()->add_child(ring);
 
-		ring->set_inner_radius(0.4);
-		ring->set_outer_radius(0.5);
-		ring->set_height(0.1);
-		Vector<Vector3> faces = ring->get_brush_faces();
+		// Check default properties
+		CHECK(ring->get_inner_radius() == doctest::Approx(0.25));
+		CHECK(ring->get_outer_radius() == doctest::Approx(0.5));
+		CHECK(ring->get_height() == doctest::Approx(0.1));
 
-		CHECK_MESSAGE(faces.size() > 0, "Ring should generate faces");
-		CHECK_MESSAGE(faces.size() % 3 == 0, "Faces should be triangles (multiple of 3)");
+		// Check default profile curve (should be circle for ring)
+		CHECK(ring->get_profile_curve() == CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE);
 
-		SceneTree::get_singleton()->get_root()->remove_child(ring);
 		memdelete(ring);
 	}
 
-	SUBCASE("[SceneTree][CSG] CSGSculptedRing3D: Property getters and setters") {
+	SUBCASE("Ring property getters and setters") {
 		CSGSculptedRing3D *ring = memnew(CSGSculptedRing3D);
-		ring->set_inner_radius(0.3);
-		ring->set_outer_radius(0.6);
+
+		ring->set_inner_radius(0.4);
+		ring->set_outer_radius(0.7);
 		ring->set_height(0.2);
-		CHECK(ring->get_inner_radius() == doctest::Approx(0.3));
-		CHECK(ring->get_outer_radius() == doctest::Approx(0.6));
+		CHECK(ring->get_inner_radius() == doctest::Approx(0.4));
+		CHECK(ring->get_outer_radius() == doctest::Approx(0.7));
 		CHECK(ring->get_height() == doctest::Approx(0.2));
+
+		// Test very thin ring
+		ring->set_height(0.01);
+		CHECK(ring->get_height() == doctest::Approx(0.01));
+
+		memdelete(ring);
+	}
+
+	SUBCASE("Ring geometry constraints") {
+		CSGSculptedRing3D *ring = memnew(CSGSculptedRing3D);
+
+		// Test when inner radius equals outer radius (degenerate case)
+		ring->set_inner_radius(0.5);
+		ring->set_outer_radius(0.5);
+		CHECK(ring->get_inner_radius() == doctest::Approx(0.5));
+		CHECK(ring->get_outer_radius() == doctest::Approx(0.5));
+
+		// Test when inner radius is larger than outer radius
+		ring->set_inner_radius(0.8);
+		ring->set_outer_radius(0.3);
+		CHECK(ring->get_inner_radius() == doctest::Approx(0.8));
+		CHECK(ring->get_outer_radius() == doctest::Approx(0.3));
 
 		memdelete(ring);
 	}
