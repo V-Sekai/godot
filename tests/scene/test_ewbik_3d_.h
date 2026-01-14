@@ -516,7 +516,7 @@ TEST_CASE("[SceneTree][EWBIK3D] Effector opacity functionality") {
 }
 
 // TEST_CASE("[SceneTree][EWBIK3D] DISABLED_Single effector IK solving test") {
-#if 0
+#if 1
 TEST_CASE("[SceneTree][EWBIK3D] Single effector IK solving test") {
 	// Create scene tree setup
 	SceneTree *tree = SceneTree::get_singleton();
@@ -530,6 +530,7 @@ TEST_CASE("[SceneTree][EWBIK3D] Single effector IK solving test") {
 	root->add_child(skeleton);
 	skeleton->set_owner(root);
 	skeleton->add_child(ik);
+	ik->set_name("EWBIK");
 	ik->set_owner(root);
 
 	// Setup two effectors: one for left hand, one for right hand
