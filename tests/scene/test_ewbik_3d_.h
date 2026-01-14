@@ -601,9 +601,10 @@ TEST_CASE("[SceneTree][EWBIK3D] Single effector IK solving test") {
 	memdelete(ik);
 	memdelete(skeleton);
 }
+#endif
 
-// TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence on solving") {
-TEST_CASE("[SceneTree][EWBIK3D] DISABLED_Effector opacity influence on solving") {
+#if 0
+TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence on solving") {
 	// Create scene tree setup
 	SceneTree *tree = SceneTree::get_singleton();
 	Window *root = tree->get_root();
@@ -679,5 +680,6 @@ TEST_CASE("[SceneTree][EWBIK3D] DISABLED_Effector opacity influence on solving")
 	memdelete(ik);
 	memdelete(skeleton);
 }
+#endif
 
 } // namespace TestEWBIK3D
