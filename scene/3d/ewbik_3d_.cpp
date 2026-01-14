@@ -165,10 +165,6 @@ void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const Iterat
 	float distance_to_effector = bone_origin.distance_to(current_effector);
 	float weight = 1.0f / (1.0f + distance_to_effector); // Closer bones have higher weight
 
-	// Defensive: If either vector is zero, skip this correspondence to avoid zero quaternion errors.
-	if (head_to_destination.is_zero_approx() || head_to_effector.is_zero_approx()) {
-		return;
-	}
 	// Add origin correspondence
 	r_target_headings.push_back(head_to_destination);
 	r_tip_headings.push_back(head_to_effector);
