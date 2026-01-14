@@ -197,11 +197,13 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
-				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Counter-clockwise: (center, i, i+1)
+				// Triangulate polygon with center vertex - create fan of triangles
+				for (int i = 0; i < effective_hollow_count; i++) {
+					int next_i = (i + 1) % effective_hollow_count;
+					// Counter-clockwise: (center, i, next_i)
 					indices.push_back(hollow_bottom_base);
 					indices.push_back(hollow_bottom_base + i);
-					indices.push_back(hollow_bottom_base + i + 1);
+					indices.push_back(hollow_bottom_base + next_i);
 				}
 			}
 		}
@@ -211,10 +213,12 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
-				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Counter-clockwise from above: (center, i+1, i) - reversed
+				// Triangulate polygon with center vertex - create fan of triangles
+				for (int i = 0; i < effective_hollow_count; i++) {
+					int next_i = (i + 1) % effective_hollow_count;
+					// Counter-clockwise from above: (center, next_i, i) - reversed for correct winding
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + next_i);
 					indices.push_back(hollow_top_base + i);
 				}
 			}

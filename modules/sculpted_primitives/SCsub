@@ -11,6 +11,10 @@ env_sculpted_primitives.Prepend(CPPPATH=["#modules/csg"])
 # Also add to main environment for tests and other global usage
 env.Prepend(CPPPATH=["#modules/csg"])
 
+# Include path for manifold library (used by CSG and needed for tests)
+env_sculpted_primitives.Prepend(CPPPATH=["#thirdparty/manifold/include"])
+env.Prepend(CPPPATH=["#thirdparty/manifold/include"])
+
 # Godot source files
 
 module_obj = []

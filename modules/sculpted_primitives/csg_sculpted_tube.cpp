@@ -214,10 +214,12 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		if (effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
-				for (int i = 1; i < effective_hollow_count - 1; i++) {
+				// Triangulate polygon with center vertex - create fan of triangles
+				for (int i = 0; i < effective_hollow_count; i++) {
+					int next_i = (i + 1) % effective_hollow_count;
 					indices.push_back(hollow_bottom_base);
 					indices.push_back(hollow_bottom_base + i);
-					indices.push_back(hollow_bottom_base + i + 1);
+					indices.push_back(hollow_bottom_base + next_i);
 				}
 			}
 		}
@@ -226,9 +228,11 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		if (effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
-				for (int i = 1; i < effective_hollow_count - 1; i++) {
+				// Triangulate polygon with center vertex - create fan of triangles
+				for (int i = 0; i < effective_hollow_count; i++) {
+					int next_i = (i + 1) % effective_hollow_count;
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + next_i);
 					indices.push_back(hollow_top_base + i);
 				}
 			}
