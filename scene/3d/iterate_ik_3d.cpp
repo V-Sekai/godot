@@ -78,16 +78,17 @@ bool IterateIK3D::_get(const StringName &p_path, Variant &r_ret) const {
 	String path = p_path;
 
 	if (path.begins_with("settings/")) {
+		LocalVector<IterateIK3DSetting *> iter_settings = _cast_settings<IterateIK3DSetting>();
 		int which = path.get_slicec('/', 1).to_int();
 		String what = path.get_slicec('/', 2);
-		ERR_FAIL_INDEX_V(which, (int)settings.size(), false);
+		ERR_FAIL_INDEX_V(which, (int)iter_settings.size(), false);
 
 		if (what == "target_node") {
 			r_ret = get_target_node(which);
 		} else if (what == "effector_opacity") {
-			r_ret = get_effector_opacity(which);
+			r_ret = iter_settings[which]->effector_opacity;
 		} else if (what == "effector_weight") {
-			r_ret = get_effector_weight(which);
+			r_ret = iter_settings[which]->effector_weight;
 		} else if (what == "joints") {
 			int idx = path.get_slicec('/', 3).to_int();
 			String prop = path.get_slicec('/', 4);
@@ -222,21 +223,33 @@ NodePath IterateIK3D::get_target_node(int p_index) const {
 }
 
 void IterateIK3D::set_effector_opacity(int p_index, float p_opacity) {
+	if ((int)iterate_settings.size() != (int)settings.size()) {
+		iterate_settings = _cast_settings<IterateIK3DSetting>();
+	}
 	ERR_FAIL_INDEX(p_index, (int)iterate_settings.size());
 	iterate_settings[p_index]->effector_opacity = CLAMP(p_opacity, 0.0f, 1.0f);
 }
 
 float IterateIK3D::get_effector_opacity(int p_index) const {
+	if ((int)iterate_settings.size() != (int)settings.size()) {
+		const_cast<IterateIK3D *>(this)->iterate_settings = _cast_settings<IterateIK3DSetting>();
+	}
 	ERR_FAIL_INDEX_V(p_index, (int)iterate_settings.size(), 1.0f);
 	return iterate_settings[p_index]->effector_opacity;
 }
 
 void IterateIK3D::set_effector_weight(int p_index, float p_weight) {
+	if ((int)iterate_settings.size() != (int)settings.size()) {
+		iterate_settings = _cast_settings<IterateIK3DSetting>();
+	}
 	ERR_FAIL_INDEX(p_index, (int)iterate_settings.size());
 	iterate_settings[p_index]->effector_weight = MAX(p_weight, 0.0f);
 }
 
 float IterateIK3D::get_effector_weight(int p_index) const {
+	if ((int)iterate_settings.size() != (int)settings.size()) {
+		const_cast<IterateIK3D *>(this)->iterate_settings = _cast_settings<IterateIK3DSetting>();
+	}
 	ERR_FAIL_INDEX_V(p_index, (int)iterate_settings.size(), 1.0f);
 	return iterate_settings[p_index]->effector_weight;
 }
