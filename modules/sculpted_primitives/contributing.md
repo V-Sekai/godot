@@ -17,12 +17,16 @@ Sculpted primitives extend Godot's CSG system with parametric shapes that can be
 
 ### What is Manifold Geometry?
 
-A manifold mesh represents a closed, orientable surface without holes, gaps, or self-intersections. In practical terms for CSG:
+A manifold mesh is defined according to Godot's CSG implementation, adapted from the manifold library:
 
-- **Every edge connects exactly two faces** - no dangling edges or T-junctions
-- **Consistent face orientation** - all faces point outward (counter-clockwise winding)
-- **No self-intersections** - the mesh doesn't cross itself
-- **Closed surface** - forms a complete boundary around a volume
+> Every edge of every triangle must contain the same two vertices (by index) as exactly one other triangle edge, and the start and end vertices must switch places between these two edges. The triangle vertices must appear in clockwise order when viewed from the outside of the Godot Engine manifold mesh.
+
+In practical terms for CSG sculpted primitives:
+
+- **Edge pairing**: Every triangle edge must be shared with exactly one other triangle
+- **Vertex ordering**: Triangle vertices must be specified in clockwise order when viewed from outside
+- **No boundary edges**: All edges must connect exactly two faces (no holes or gaps)
+- **Orientable surface**: The mesh forms a continuous, orientable boundary
 
 Non-manifold geometry breaks CSG boolean operations and can cause rendering artifacts, physics simulation failures, and export issues.
 
@@ -63,7 +67,7 @@ Before committing sculpted primitive changes:
 
 -   Verify all triangles share edges correctly using consistent vertex ordering
 -   Ensure profile loops are closed without duplicate vertices at seam
--   Check face winding order (counter-clockwise from outside)
+-   Check face winding order (clockwise from outside)
 -   Use edge adjacency checks in debug builds
 
 #### 2. Degenerate Faces
@@ -119,7 +123,7 @@ Before committing sculpted primitive changes:
 
 ### Best Practices for Manifold Generation
 
-1. **Consistent Winding**: Always generate triangles with counter-clockwise vertex order
+1. **Clockwise vertex ordering**: Always generate triangles with clockwise vertex order when viewed from outside
 2. **Closed Loops**: Ensure profile curves form complete loops without gaps
 3. **Edge Sharing**: Every edge must be shared by exactly two triangles
 4. **Parameter Validation**: Clamp inputs to prevent degenerate cases
