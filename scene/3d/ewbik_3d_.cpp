@@ -193,10 +193,19 @@ void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const Iterat
 		// Positive direction: emanating basis vector
 		r_target_headings.push_back(head_to_destination + target_axis * scale);
 		r_tip_headings.push_back(head_to_effector + current_axis * scale);
+		r_weights.push_back(1.0f);
 
 		// Negative direction: opposite basis vector
 		r_target_headings.push_back(head_to_destination - target_axis * scale);
 		r_tip_headings.push_back(head_to_effector - current_axis * scale);
+		r_weights.push_back(1.0f);
+
+		// Add origin correspondence
+		Vector3 axis_vector = Vector3(0, 0, 0);
+		axis_vector[axis] = 1.0;
+		r_target_headings.push_back(head_to_destination * axis_vector);
+		r_tip_headings.push_back(head_to_effector * axis_vector);
+		r_weights.push_back(1.0f);
 	}
 }
 
