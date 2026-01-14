@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_sculpted_primitives = env_modules.Clone()
+
+# Include path for CSG module dependencies
+env_sculpted_primitives.Prepend(CPPPATH=["#modules/csg"])
+
+# Godot source files
+
+module_obj = []
+
+env_sculpted_primitives.add_source_files(module_obj, "*.cpp")
+
+if env.editor_build:
+    env_sculpted_primitives.add_source_files(module_obj, "editor/*.cpp")
+
+env.modules_sources += module_obj

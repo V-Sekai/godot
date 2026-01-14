@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_csg_sculpted_primitives.h                                        */
+/*  register_types.cpp                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,20 +28,34 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "register_types.h"
 
-#include "modules/csg/csg_sculpted_box.h"
-#include "modules/csg/csg_sculpted_cylinder.h"
-#include "modules/csg/csg_sculpted_primitive_base.h"
-#include "modules/csg/csg_sculpted_prism.h"
-#include "modules/csg/csg_sculpted_ring.h"
-#include "modules/csg/csg_sculpted_sphere.h"
-#include "modules/csg/csg_sculpted_texture.h"
-#include "modules/csg/csg_sculpted_torus.h"
-#include "modules/csg/csg_sculpted_tube.h"
+#include "csg_sculpted_box.h"
+#include "csg_sculpted_cylinder.h"
+#include "csg_sculpted_primitive_base.h"
+#include "csg_sculpted_prism.h"
+#include "csg_sculpted_ring.h"
+#include "csg_sculpted_sphere.h"
+#include "csg_sculpted_texture.h"
+#include "csg_sculpted_torus.h"
+#include "csg_sculpted_tube.h"
 
-#include "tests/test_macros.h"
+void initialize_sculpted_primitives_module(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		GDREGISTER_ABSTRACT_CLASS(CSGSculptedPrimitive3D);
+		GDREGISTER_CLASS(CSGSculptedBox3D);
+		GDREGISTER_CLASS(CSGSculptedCylinder3D);
+		GDREGISTER_CLASS(CSGSculptedSphere3D);
+		GDREGISTER_CLASS(CSGSculptedTorus3D);
+		GDREGISTER_CLASS(CSGSculptedPrism3D);
+		GDREGISTER_CLASS(CSGSculptedTube3D);
+		GDREGISTER_CLASS(CSGSculptedRing3D);
+		GDREGISTER_CLASS(CSGSculptedTexture3D);
+	}
+}
 
-namespace TestCSG {
-
-} // namespace TestCSG
+void uninitialize_sculpted_primitives_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+}

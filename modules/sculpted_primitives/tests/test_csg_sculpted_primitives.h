@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  test_csg_sculpted_primitives.h                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,38 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "csg_shape.h"
+#include "modules/sculpted_primitives/csg_sculpted_box.h"
+#include "modules/sculpted_primitives/csg_sculpted_cylinder.h"
+#include "modules/sculpted_primitives/csg_sculpted_primitive_base.h"
+#include "modules/sculpted_primitives/csg_sculpted_prism.h"
+#include "modules/sculpted_primitives/csg_sculpted_ring.h"
+#include "modules/sculpted_primitives/csg_sculpted_sphere.h"
+#include "modules/sculpted_primitives/csg_sculpted_texture.h"
+#include "modules/sculpted_primitives/csg_sculpted_torus.h"
+#include "modules/sculpted_primitives/csg_sculpted_tube.h"
 
-#ifdef TOOLS_ENABLED
-#include "editor/csg_gizmos.h"
-#endif
+#include "tests/test_macros.h"
 
-void initialize_csg_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_ABSTRACT_CLASS(CSGShape3D);
-		GDREGISTER_ABSTRACT_CLASS(CSGPrimitive3D);
-		GDREGISTER_CLASS(CSGMesh3D);
-		GDREGISTER_CLASS(CSGSphere3D);
-		GDREGISTER_CLASS(CSGBox3D);
-		GDREGISTER_CLASS(CSGCylinder3D);
-		GDREGISTER_CLASS(CSGTorus3D);
-		GDREGISTER_CLASS(CSGPolygon3D);
-		GDREGISTER_CLASS(CSGCombiner3D);
-#ifndef NAVIGATION_3D_DISABLED
-		CSGShape3D::navmesh_parse_init();
-#endif // NAVIGATION_3D_DISABLED
-	}
-#ifdef TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		EditorPlugins::add_by_type<EditorPluginCSG>();
-	}
-#endif
-}
+namespace TestCSG {
 
-void uninitialize_csg_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-}
+} // namespace TestCSG

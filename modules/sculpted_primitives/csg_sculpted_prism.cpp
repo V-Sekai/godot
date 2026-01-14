@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  csg_sculpted_tube.cpp                                                 */
+/*  csg_sculpted_prism.cpp                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,209 +28,44 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "csg_sculpted_tube.h"
+#include "csg_sculpted_prism.h"
 
 #include "core/math/geometry_3d.h"
 
 // Helper function to generate profile points based on curve type
-void generate_profile_points(CSGSculptedPrimitive3D::ProfileCurve p_curve, real_t p_begin, real_t p_end, real_t p_hollow, CSGSculptedPrimitive3D::HollowShape p_hollow_shape, int p_segments, Vector<Vector2> &r_profile, Vector<Vector2> &r_hollow_profile) {
-	r_profile.clear();
-	r_hollow_profile.clear();
-
-	real_t begin_angle = p_begin * Math::TAU;
-	real_t end_angle = p_end * Math::TAU;
-	real_t angle_range = end_angle - begin_angle;
-
-	if (angle_range <= 0.0) {
-		angle_range = Math::TAU;
-	}
-
-	switch (p_curve) {
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE:
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE_HALF: {
-			int segments = p_segments;
-			if (p_curve == CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE_HALF) {
-				segments = segments / 2;
-			}
-
-			// Generate points, ensuring the profile closes if it's a full circle
-			bool is_full_circle = (p_begin == 0.0 && p_end == 1.0) || angle_range >= Math::TAU - 0.001;
-			int point_count = is_full_circle ? segments : segments + 1;
-
-			for (int i = 0; i < point_count; i++) {
-				real_t angle = begin_angle + (angle_range * i / segments);
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)));
-			}
-
-			// Close the loop if it's a full circle
-			if (is_full_circle && r_profile.size() > 0) {
-				r_profile.push_back(r_profile[0]);
-			}
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < point_count; i++) {
-					real_t angle = begin_angle + (angle_range * i / segments);
-					r_hollow_profile.push_back(Vector2(Math::cos(angle) * hollow_radius, Math::sin(angle) * hollow_radius));
-				}
-				// Close the hollow loop if it's a full circle
-				if (is_full_circle && r_hollow_profile.size() > 0) {
-					r_hollow_profile.push_back(r_hollow_profile[0]);
-				}
-			}
-		} break;
-
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_SQUARE: {
-			// Square profile
-			real_t step = angle_range / 4.0;
-			for (int i = 0; i < 4; i++) {
-				real_t angle = begin_angle + step * i;
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized());
-			}
-			r_profile.push_back(r_profile[0]); // Close the loop
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < 4; i++) {
-					real_t angle = begin_angle + step * i;
-					r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized() * hollow_radius);
-				}
-				r_hollow_profile.push_back(r_hollow_profile[0]);
-			}
-		} break;
-
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_ISOTRI:
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_EQUALTRI:
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_RIGHTTRI: {
-			// Triangle profiles
-			int sides = 3;
-			real_t step = angle_range / sides;
-			for (int i = 0; i < sides; i++) {
-				real_t angle = begin_angle + step * i;
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized());
-			}
-			r_profile.push_back(r_profile[0]);
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < sides; i++) {
-					real_t angle = begin_angle + step * i;
-					r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized() * hollow_radius);
-				}
-				r_hollow_profile.push_back(r_hollow_profile[0]);
-			}
-		} break;
-	}
-}
 
 // Helper function to apply path transformations
-Vector3 apply_path_transform(const Vector2 &p_profile_point, real_t p_path_pos, const CSGSculptedPrimitive3D::PathCurve p_path_curve, real_t p_twist, const Vector2 &p_taper, const Vector2 &p_shear, real_t p_radius_offset, real_t p_revolutions, real_t p_skew) {
-	Vector3 result;
 
-	// Normalize path_pos to 0.0-1.0 range for calculations
-	real_t normalized_path = CLAMP(p_path_pos, 0.0, 1.0);
+void CSGSculptedPrism3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_size", "size"), &CSGSculptedPrism3D::set_size);
+	ClassDB::bind_method(D_METHOD("get_size"), &CSGSculptedPrism3D::get_size);
 
-	// Apply taper (taper.x is at begin, taper.y is at end)
-	real_t taper_factor = 1.0 - (p_taper.x * (1.0 - normalized_path) + p_taper.y * normalized_path);
-	Vector2 scaled_profile = p_profile_point * taper_factor;
-
-	// Apply radius offset
-	real_t radius = scaled_profile.length() + p_radius_offset;
-	if (radius < 0.0) {
-		radius = 0.0;
-	}
-
-	// Apply twist
-	real_t twist_angle = p_twist * normalized_path * Math::TAU;
-	Vector2 twisted_profile = Vector2(
-			scaled_profile.x * Math::cos(twist_angle) - scaled_profile.y * Math::sin(twist_angle),
-			scaled_profile.x * Math::sin(twist_angle) + scaled_profile.y * Math::cos(twist_angle));
-
-	// Apply path curve
-	switch (p_path_curve) {
-		case CSGSculptedPrimitive3D::PATH_CURVE_LINE: {
-			result = Vector3(twisted_profile.x, twisted_profile.y, normalized_path - 0.5);
-		} break;
-
-		case CSGSculptedPrimitive3D::PATH_CURVE_CIRCLE:
-		case CSGSculptedPrimitive3D::PATH_CURVE_CIRCLE_33:
-		case CSGSculptedPrimitive3D::PATH_CURVE_CIRCLE2: {
-			real_t path_angle = normalized_path * p_revolutions * Math::TAU;
-			real_t path_radius = radius;
-			result = Vector3(
-					path_radius * Math::cos(path_angle),
-					twisted_profile.y,
-					path_radius * Math::sin(path_angle));
-		} break;
-	}
-
-	// Apply shear
-	result.x += p_shear.x * normalized_path;
-	result.y += p_shear.y * normalized_path;
-
-	// Apply skew
-	result.z += p_skew * normalized_path;
-
-	return result;
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
 }
 
-void CSGSculptedTube3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_inner_radius", "inner_radius"), &CSGSculptedTube3D::set_inner_radius);
-	ClassDB::bind_method(D_METHOD("get_inner_radius"), &CSGSculptedTube3D::get_inner_radius);
-
-	ClassDB::bind_method(D_METHOD("set_outer_radius", "outer_radius"), &CSGSculptedTube3D::set_outer_radius);
-	ClassDB::bind_method(D_METHOD("get_outer_radius"), &CSGSculptedTube3D::get_outer_radius);
-
-	ClassDB::bind_method(D_METHOD("set_height", "height"), &CSGSculptedTube3D::set_height);
-	ClassDB::bind_method(D_METHOD("get_height"), &CSGSculptedTube3D::get_height);
-
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "inner_radius"), "set_inner_radius", "get_inner_radius");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "outer_radius"), "set_outer_radius", "get_outer_radius");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "height"), "set_height", "get_height");
-}
-
-CSGSculptedTube3D::CSGSculptedTube3D() {
-	profile_curve = PROFILE_CURVE_CIRCLE;
+CSGSculptedPrism3D::CSGSculptedPrism3D() {
+	profile_curve = PROFILE_CURVE_SQUARE;
 	path_curve = PATH_CURVE_LINE;
 }
 
-void CSGSculptedTube3D::set_inner_radius(const real_t p_inner_radius) {
-	inner_radius = p_inner_radius;
+void CSGSculptedPrism3D::set_size(const Vector3 &p_size) {
+	size = p_size;
 	_make_dirty();
 }
 
-real_t CSGSculptedTube3D::get_inner_radius() const {
-	return inner_radius;
+Vector3 CSGSculptedPrism3D::get_size() const {
+	return size;
 }
 
-void CSGSculptedTube3D::set_outer_radius(const real_t p_outer_radius) {
-	outer_radius = p_outer_radius;
-	_make_dirty();
-}
-
-real_t CSGSculptedTube3D::get_outer_radius() const {
-	return outer_radius;
-}
-
-void CSGSculptedTube3D::set_height(const real_t p_height) {
-	height = p_height;
-	_make_dirty();
-}
-
-real_t CSGSculptedTube3D::get_height() const {
-	return height;
-}
-
-CSGBrush *CSGSculptedTube3D::_build_brush() {
-	// Tube is a hollow cylinder - similar to cylinder but with explicit inner/outer radius
+CSGBrush *CSGSculptedPrism3D::_build_brush() {
+	// Prism is similar to box but with a 5-sided profile
+	// Use box implementation as base with profile modifications
 	CSGBrush *brush = memnew(CSGBrush);
 
 	Vector<Vector2> profile;
 	Vector<Vector2> hollow_profile;
 	int segments = 16;
-	// For tube, we always have a hollow, so set hollow to represent the inner radius
-	real_t effective_hollow = inner_radius / outer_radius;
-	generate_profile_points(profile_curve, profile_begin, profile_end, effective_hollow, hollow_shape, segments, profile, hollow_profile);
+	generate_profile_points(profile_curve, profile_begin, profile_end, hollow, hollow_shape, segments, profile, hollow_profile);
 
 	int path_segments = 16;
 	real_t path_range = path_end - path_begin;
@@ -242,7 +77,7 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
 	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
 	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-	int effective_hollow_count = hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size();
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
 	int total_profile = effective_profile_count + effective_hollow_count;
 
 	Vector<Vector3> vertices;
@@ -256,19 +91,23 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 
 		// Only generate vertices for unique profile points (skip duplicate if closed)
 		for (int i = 0; i < effective_profile_count; i++) {
-			Vector2 prof = profile[i] * scale * outer_radius;
+			Vector2 prof = profile[i] * scale;
+			prof.x *= size.x;
+			prof.y *= size.y;
 			Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
-			vertex.y *= height;
+			vertex.z *= size.z;
 			vertices.push_back(vertex);
 			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (effective_hollow_count > 0) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
 			// Only generate vertices for unique hollow profile points
 			for (int i = 0; i < effective_hollow_count; i++) {
-				Vector2 prof = hollow_profile[i] * scale * outer_radius;
+				Vector2 prof = hollow_profile[i] * scale;
+				prof.x *= size.x;
+				prof.y *= size.y;
 				Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
-				vertex.y *= height;
+				vertex.z *= size.z;
 				vertices.push_back(vertex);
 				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
@@ -303,7 +142,7 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 			indices.push_back(base1 + i);
 		}
 
-		if (effective_hollow_count > 0) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_base1 = base1 + effective_profile_count;
 			int hollow_base2 = base2 + effective_profile_count;
 
@@ -326,33 +165,39 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 
 	// Add end caps for linear paths to ensure manifold geometry
 	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
-		// Bottom cap (at path_begin) - outer profile
+		// Bottom cap (at path_begin)
+		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
-			// Triangulate the bottom face
+			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
+				// Counter-clockwise: (center, i, i+1)
 				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base + i + 1);
 			}
 		}
 
-		// Top cap (at path_end) - outer profile
+		// Top cap (at path_end)
+		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
-			// Triangulate the top face (reverse winding for opposite side)
+			// Triangulate the top face - counter-clockwise when viewed from outside (above)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
+				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
-				indices.push_back(top_base + i);
 				indices.push_back(top_base + i + 1);
+				indices.push_back(top_base + i);
 			}
 		}
 
-		// Bottom cap - inner profile (hollow)
-		if (effective_hollow_count > 0) {
+		// Hollow bottom cap
+		// Counter-clockwise when viewed from outside (below) - same as outer bottom
+		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					// Counter-clockwise: (center, i, i+1)
 					indices.push_back(hollow_bottom_base);
 					indices.push_back(hollow_bottom_base + i);
 					indices.push_back(hollow_bottom_base + i + 1);
@@ -360,11 +205,13 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 			}
 		}
 
-		// Top cap - inner profile (hollow)
-		if (effective_hollow_count > 0) {
+		// Hollow top cap
+		// Counter-clockwise when viewed from outside (above) - same as outer top
+		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					// Counter-clockwise from above: (center, i+1, i) - reversed
 					indices.push_back(hollow_top_base);
 					indices.push_back(hollow_top_base + i + 1);
 					indices.push_back(hollow_top_base + i);
@@ -412,7 +259,7 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 				face_uvsw[idx + 1] = uvs[indices[idx + 1]];
 				face_uvsw[idx + 2] = uvs[indices[idx + 2]];
 			}
-			smoothw[i] = true;
+			smoothw[i] = false;
 			materialsw[i] = material;
 			invertw[i] = flip;
 		}
@@ -421,7 +268,7 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
 
 	// Debug output for testing
-	print_verbose("CSGSculptedTube3D::_build_brush() debug:");
+	print_verbose("CSGSculptedPrism3D::_build_brush() debug:");
 	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
 	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
 	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));

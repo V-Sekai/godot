@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include "modules/csg/csg_sculpted_primitive_base.h"
-#include "modules/csg/csg_sculpted_ring.h"
-#include "modules/csg/csg_sculpted_tube.h"
+#include "modules/sculpted_primitives/csg_sculpted_primitive_base.h"
+#include "modules/sculpted_primitives/csg_sculpted_ring.h"
+#include "modules/sculpted_primitives/csg_sculpted_tube.h"
 
 #include "tests/test_macros.h"
 

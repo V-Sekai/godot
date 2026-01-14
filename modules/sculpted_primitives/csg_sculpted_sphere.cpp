@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  csg_sculpted_prism.cpp                                                */
+/*  csg_sculpted_sphere.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,176 +28,38 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "csg_sculpted_prism.h"
+#include "csg_sculpted_sphere.h"
 
 #include "core/math/geometry_3d.h"
+#include "csg.h"
+#include "scene/resources/material.h"
 
-// Helper function to generate profile points based on curve type
-void generate_profile_points(CSGSculptedPrimitive3D::ProfileCurve p_curve, real_t p_begin, real_t p_end, real_t p_hollow, CSGSculptedPrimitive3D::HollowShape p_hollow_shape, int p_segments, Vector<Vector2> &r_profile, Vector<Vector2> &r_hollow_profile) {
-	r_profile.clear();
-	r_hollow_profile.clear();
+// Helper functions are defined in csg_sculpted_primitive_base.cpp
 
-	real_t begin_angle = p_begin * Math::TAU;
-	real_t end_angle = p_end * Math::TAU;
-	real_t angle_range = end_angle - begin_angle;
+void CSGSculptedSphere3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_radius", "radius"), &CSGSculptedSphere3D::set_radius);
+	ClassDB::bind_method(D_METHOD("get_radius"), &CSGSculptedSphere3D::get_radius);
 
-	if (angle_range <= 0.0) {
-		angle_range = Math::TAU;
-	}
-
-	switch (p_curve) {
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE:
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE_HALF: {
-			int segments = p_segments;
-			if (p_curve == CSGSculptedPrimitive3D::PROFILE_CURVE_CIRCLE_HALF) {
-				segments = segments / 2;
-			}
-
-			// Generate points, ensuring the profile closes if it's a full circle
-			bool is_full_circle = (p_begin == 0.0 && p_end == 1.0) || angle_range >= Math::TAU - 0.001;
-			int point_count = is_full_circle ? segments : segments + 1;
-
-			for (int i = 0; i < point_count; i++) {
-				real_t angle = begin_angle + (angle_range * i / segments);
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)));
-			}
-
-			// Close the loop if it's a full circle
-			if (is_full_circle && r_profile.size() > 0) {
-				r_profile.push_back(r_profile[0]);
-			}
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < point_count; i++) {
-					real_t angle = begin_angle + (angle_range * i / segments);
-					r_hollow_profile.push_back(Vector2(Math::cos(angle) * hollow_radius, Math::sin(angle) * hollow_radius));
-				}
-				// Close the hollow loop if it's a full circle
-				if (is_full_circle && r_hollow_profile.size() > 0) {
-					r_hollow_profile.push_back(r_hollow_profile[0]);
-				}
-			}
-		} break;
-
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_SQUARE: {
-			// Square profile
-			real_t step = angle_range / 4.0;
-			for (int i = 0; i < 4; i++) {
-				real_t angle = begin_angle + step * i;
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized());
-			}
-			r_profile.push_back(r_profile[0]); // Close the loop
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < 4; i++) {
-					real_t angle = begin_angle + step * i;
-					r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized() * hollow_radius);
-				}
-				r_hollow_profile.push_back(r_hollow_profile[0]);
-			}
-		} break;
-
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_ISOTRI:
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_EQUALTRI:
-		case CSGSculptedPrimitive3D::PROFILE_CURVE_RIGHTTRI: {
-			// Triangle profiles
-			int sides = 3;
-			real_t step = angle_range / sides;
-			for (int i = 0; i < sides; i++) {
-				real_t angle = begin_angle + step * i;
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized());
-			}
-			r_profile.push_back(r_profile[0]);
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < sides; i++) {
-					real_t angle = begin_angle + step * i;
-					r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized() * hollow_radius);
-				}
-				r_hollow_profile.push_back(r_hollow_profile[0]);
-			}
-		} break;
-	}
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "radius"), "set_radius", "get_radius");
 }
 
-// Helper function to apply path transformations
-Vector3 apply_path_transform(const Vector2 &p_profile_point, real_t p_path_pos, const CSGSculptedPrimitive3D::PathCurve p_path_curve, real_t p_twist, const Vector2 &p_taper, const Vector2 &p_shear, real_t p_radius_offset, real_t p_revolutions, real_t p_skew) {
-	Vector3 result;
-
-	// Normalize path_pos to 0.0-1.0 range for calculations
-	real_t normalized_path = CLAMP(p_path_pos, 0.0, 1.0);
-
-	// Apply taper (taper.x is at begin, taper.y is at end)
-	real_t taper_factor = 1.0 - (p_taper.x * (1.0 - normalized_path) + p_taper.y * normalized_path);
-	Vector2 scaled_profile = p_profile_point * taper_factor;
-
-	// Apply radius offset
-	real_t radius = scaled_profile.length() + p_radius_offset;
-	if (radius < 0.0) {
-		radius = 0.0;
-	}
-
-	// Apply twist
-	real_t twist_angle = p_twist * normalized_path * Math::TAU;
-	Vector2 twisted_profile = Vector2(
-			scaled_profile.x * Math::cos(twist_angle) - scaled_profile.y * Math::sin(twist_angle),
-			scaled_profile.x * Math::sin(twist_angle) + scaled_profile.y * Math::cos(twist_angle));
-
-	// Apply path curve
-	switch (p_path_curve) {
-		case CSGSculptedPrimitive3D::PATH_CURVE_LINE: {
-			result = Vector3(twisted_profile.x, twisted_profile.y, normalized_path - 0.5);
-		} break;
-
-		case CSGSculptedPrimitive3D::PATH_CURVE_CIRCLE:
-		case CSGSculptedPrimitive3D::PATH_CURVE_CIRCLE_33:
-		case CSGSculptedPrimitive3D::PATH_CURVE_CIRCLE2: {
-			real_t path_angle = normalized_path * p_revolutions * Math::TAU;
-			real_t path_radius = radius;
-			result = Vector3(
-					path_radius * Math::cos(path_angle),
-					twisted_profile.y,
-					path_radius * Math::sin(path_angle));
-		} break;
-	}
-
-	// Apply shear
-	result.x += p_shear.x * normalized_path;
-	result.y += p_shear.y * normalized_path;
-
-	// Apply skew
-	result.z += p_skew * normalized_path;
-
-	return result;
+CSGSculptedSphere3D::CSGSculptedSphere3D() {
+	profile_curve = PROFILE_CURVE_CIRCLE;
+	path_curve = PATH_CURVE_CIRCLE;
+	revolutions = 0.5; // Half sphere by default
 }
 
-void CSGSculptedPrism3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_size", "size"), &CSGSculptedPrism3D::set_size);
-	ClassDB::bind_method(D_METHOD("get_size"), &CSGSculptedPrism3D::get_size);
-
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
-}
-
-CSGSculptedPrism3D::CSGSculptedPrism3D() {
-	profile_curve = PROFILE_CURVE_SQUARE;
-	path_curve = PATH_CURVE_LINE;
-}
-
-void CSGSculptedPrism3D::set_size(const Vector3 &p_size) {
-	size = p_size;
+void CSGSculptedSphere3D::set_radius(const real_t p_radius) {
+	radius = p_radius;
 	_make_dirty();
 }
 
-Vector3 CSGSculptedPrism3D::get_size() const {
-	return size;
+real_t CSGSculptedSphere3D::get_radius() const {
+	return radius;
 }
 
-CSGBrush *CSGSculptedPrism3D::_build_brush() {
-	// Prism is similar to box but with a 5-sided profile
-	// Use box implementation as base with profile modifications
+CSGBrush *CSGSculptedSphere3D::_build_brush() {
+	// Sphere uses circular profile swept along circular path
 	CSGBrush *brush = memnew(CSGBrush);
 
 	Vector<Vector2> profile;
@@ -229,11 +91,7 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 
 		// Only generate vertices for unique profile points (skip duplicate if closed)
 		for (int i = 0; i < effective_profile_count; i++) {
-			Vector2 prof = profile[i] * scale;
-			prof.x *= size.x;
-			prof.y *= size.y;
-			Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
-			vertex.z *= size.z;
+			Vector3 vertex = apply_path_transform(profile[i] * scale * radius, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 			vertices.push_back(vertex);
 			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
@@ -241,11 +99,7 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			// Only generate vertices for unique hollow profile points
 			for (int i = 0; i < effective_hollow_count; i++) {
-				Vector2 prof = hollow_profile[i] * scale;
-				prof.x *= size.x;
-				prof.y *= size.y;
-				Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
-				vertex.z *= size.z;
+				Vector3 vertex = apply_path_transform(hollow_profile[i] * scale * radius, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 				vertices.push_back(vertex);
 				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
@@ -397,7 +251,7 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 				face_uvsw[idx + 1] = uvs[indices[idx + 1]];
 				face_uvsw[idx + 2] = uvs[indices[idx + 2]];
 			}
-			smoothw[i] = false;
+			smoothw[i] = true;
 			materialsw[i] = material;
 			invertw[i] = flip;
 		}
@@ -406,7 +260,7 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
 
 	// Debug output for testing
-	print_verbose("CSGSculptedPrism3D::_build_brush() debug:");
+	print_verbose("CSGSculptedSphere3D::_build_brush() debug:");
 	print_verbose(vformat("  Profile size: %d, effective_profile_count: %d", profile.size(), effective_profile_count));
 	print_verbose(vformat("  Hollow profile size: %d, effective_hollow_count: %d", hollow_profile.size(), effective_hollow_count));
 	print_verbose(vformat("  Total profile: %d, path_segments: %d", total_profile, path_segments));
