@@ -515,8 +515,76 @@ TEST_CASE("[SceneTree][EWBIK3D] Effector opacity functionality") {
 	memdelete(ik);
 }
 
-// TEST_CASE("[SceneTree][EWBIK3D] DISABLED_Single effector IK solving test") {
-#if 1
+TEST_CASE("[SceneTree][EWBIK3D] Multi-effector settings validation") {
+	EWBIK3D *ik = memnew(EWBIK3D);
+
+	// Test setting up multiple effectors
+	ik->set_setting_count(3);
+
+	// Test that we can set different root/end bones for each effector
+	ik->set_root_bone_name(0, "LeftShoulder");
+	ik->set_end_bone_name(0, "LeftHand");
+	ik->set_effector_opacity(0, 0.8f);
+
+	ik->set_root_bone_name(1, "RightShoulder");
+	ik->set_end_bone_name(1, "RightHand");
+	ik->set_effector_opacity(1, 1.0f);
+
+	ik->set_root_bone_name(2, "Spine");
+	ik->set_end_bone_name(2, "Chest");
+	ik->set_effector_opacity(2, 0.5f);
+
+	// Verify settings are stored correctly
+	CHECK_MESSAGE(ik->get_root_bone_name(0) == "LeftShoulder", "First effector root bone should be set");
+	CHECK_MESSAGE(ik->get_end_bone_name(0) == "LeftHand", "First effector end bone should be set");
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(0), 0.8f), "First effector opacity should be 0.8");
+
+	CHECK_MESSAGE(ik->get_root_bone_name(1) == "RightShoulder", "Second effector root bone should be set");
+	CHECK_MESSAGE(ik->get_end_bone_name(1) == "RightHand", "Second effector end bone should be set");
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(1), 1.0f), "Second effector opacity should be 1.0");
+
+	CHECK_MESSAGE(ik->get_root_bone_name(2) == "Spine", "Third effector root bone should be set");
+	CHECK_MESSAGE(ik->get_end_bone_name(2) == "Chest", "Third effector end bone should be set");
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(2), 0.5f), "Third effector opacity should be 0.5");
+
+	// Test opacity clamping
+	ik->set_effector_opacity(0, -0.5f); // Negative value
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(0), 0.0f), "Negative opacity should be clamped to 0.0");
+
+	ik->set_effector_opacity(0, 2.0f); // Value > 1.0
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(0), 1.0f), "Opacity > 1.0 should be clamped to 1.0");
+
+	memdelete(ik);
+}
+
+TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence validation") {
+	EWBIK3D *ik = memnew(EWBIK3D);
+
+	// Test that opacity values are properly stored and retrieved
+	ik->set_setting_count(2);
+
+	// Set different opacity values
+	ik->set_effector_opacity(0, 0.0f); // Completely disabled
+	ik->set_effector_opacity(1, 1.0f); // Fully enabled
+
+	// Verify values are stored correctly
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(0), 0.0f), "Effector 0 should have 0.0 opacity");
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(1), 1.0f), "Effector 1 should have 1.0 opacity");
+
+	// Test boundary values
+	ik->set_effector_opacity(0, 0.001f); // Very small positive value
+	ik->set_effector_opacity(1, 0.999f); // Very close to 1.0
+
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(0), 0.001f), "Very small opacity should be preserved");
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(1), 0.999f), "Opacity close to 1.0 should be preserved");
+
+	// Test that out-of-bounds access returns default (1.0)
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(-1), 1.0f), "Negative index should return default opacity");
+	CHECK_MESSAGE(Math::is_equal_approx(ik->get_effector_opacity(5), 1.0f), "Out-of-bounds index should return default opacity");
+
+	memdelete(ik);
+}
+
 TEST_CASE("[SceneTree][EWBIK3D] Single effector IK solving test") {
 	// Create scene tree setup
 	SceneTree *tree = SceneTree::get_singleton();
@@ -602,9 +670,7 @@ TEST_CASE("[SceneTree][EWBIK3D] Single effector IK solving test") {
 	memdelete(ik);
 	memdelete(skeleton);
 }
-#endif
 
-#if 0
 TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence on solving") {
 	// Create scene tree setup
 	SceneTree *tree = SceneTree::get_singleton();
@@ -681,6 +747,5 @@ TEST_CASE("[SceneTree][EWBIK3D] Effector opacity influence on solving") {
 	memdelete(ik);
 	memdelete(skeleton);
 }
-#endif
 
 } // namespace TestEWBIK3D
