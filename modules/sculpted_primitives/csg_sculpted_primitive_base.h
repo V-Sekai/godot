@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "csg_shape.h"
+#include "modules/csg/csg_shape.h"
 
 #include "core/variant/type_info.h"
 #include "scene/resources/texture.h"
@@ -41,7 +41,7 @@
  * hollow, taper, twist, shear, and revolutions.
  */
 class CSGSculptedPrimitive3D : public CSGPrimitive3D {
-	GDSOFTCLASS(CSGSculptedPrimitive3D, CSGPrimitive3D);
+	GDCLASS(CSGSculptedPrimitive3D, CSGPrimitive3D);
 
 public:
 	enum ProfileCurve {

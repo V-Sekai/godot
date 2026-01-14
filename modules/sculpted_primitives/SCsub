@@ -8,6 +8,8 @@ env_sculpted_primitives = env_modules.Clone()
 
 # Include path for CSG module dependencies
 env_sculpted_primitives.Prepend(CPPPATH=["#modules/csg"])
+# Also add to main environment for tests and other global usage
+env.Prepend(CPPPATH=["#modules/csg"])
 
 # Godot source files
 
