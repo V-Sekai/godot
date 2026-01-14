@@ -36,17 +36,30 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	int joint_size = (int)p_setting->joints.size();
 	int chain_size = (int)p_setting->chain.size();
 
+	// Find the setting index
+	int setting_idx = -1;
+	for (int i = 0; i < iterate_settings.size(); i++) {
+		if (iterate_settings[i] == p_setting) {
+			setting_idx = i;
+			break;
+		}
+	}
+	if (setting_idx == -1) {
+		return; // Should not happen
+	}
+	float effector_weight = get_effector_weight(setting_idx);
+
 	// Build and sort effector groups using Eron's decomposition algorithm
 	// Collect effectors from all settings
 	Vector<Effector> all_effectors;
-	for (int setting_idx = 0; setting_idx < iterate_settings.size(); setting_idx++) {
+	for (size_t setting_idx = 0; setting_idx < iterate_settings.size(); setting_idx++) {
 		IterateIK3D::IterateIK3DSetting *iter_setting = iterate_settings[setting_idx];
 		int last_idx = iter_setting->joints.size() - 1;
 		if (last_idx >= 0 && last_idx < (int)iter_setting->chain.size()) {
 			Effector eff;
 			eff.effector_bone = iter_setting->joints[last_idx].bone;
 			eff.target_position = iter_setting->chain[last_idx];
-			eff.weight = 1.0f;
+			eff.weight = get_effector_weight(setting_idx);
 			eff.opacity = get_effector_opacity(setting_idx);
 			all_effectors.push_back(eff);
 		}
@@ -108,7 +121,7 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 		PackedVector3Array tip_headings;
 		Vector<double> weights;
 
-		_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights);
+		_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights, effector_weight);
 
 		// Calculate optimal rotation and translation using QCP
 		OptimalTransform opt = _calculate_optimal_rotation(target_headings, tip_headings, weights, true);
@@ -136,7 +149,7 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 }
 
 void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, int p_bone_idx, const Vector3 &p_destination, const Transform3D &p_target_transform,
-		PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights) {
+		PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights, float p_effector_weight) {
 	int chain_size = (int)p_setting->chain.size();
 	if (chain_size < 2 || p_bone_idx < 0 || p_bone_idx >= (int)p_setting->joints.size()) {
 		return;
@@ -168,7 +181,7 @@ void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const Iterat
 	// Add origin correspondence
 	r_target_headings.push_back(head_to_destination);
 	r_tip_headings.push_back(head_to_effector);
-	r_weights.push_back(weight);
+	r_weights.push_back(weight * p_effector_weight);
 
 	// Scale for basis vectors as per design: distance >=1 and >= magnitude of origin
 	float distance_to_target = head_to_destination.length();
@@ -185,12 +198,12 @@ void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const Iterat
 		// Positive direction: emanating basis vector
 		r_target_headings.push_back(head_to_destination + target_axis * scale);
 		r_tip_headings.push_back(head_to_effector + current_axis * scale);
-		r_weights.push_back(weight * 0.3f); // Medium weight for directional constraints
+		r_weights.push_back(weight * 0.3f * p_effector_weight); // Medium weight for directional constraints
 
 		// Negative direction: opposite basis vector
 		r_target_headings.push_back(head_to_destination - target_axis * scale);
 		r_tip_headings.push_back(head_to_effector - current_axis * scale);
-		r_weights.push_back(weight * 0.3f); // Medium weight for directional constraints
+		r_weights.push_back(weight * 0.3f * p_effector_weight); // Medium weight for directional constraints
 	}
 }
 
@@ -437,7 +450,27 @@ float EWBIK3D::get_effector_opacity(int p_index) const {
 	return effector_opacities[p_index];
 }
 
+void EWBIK3D::set_effector_weight(int p_index, float p_weight) {
+	if (p_index < 0) {
+		return;
+	}
+	if (p_index >= effector_weights.size()) {
+		effector_weights.resize(p_index + 1);
+	}
+	// Clamp weight to valid range [0.0, 1.0]
+	effector_weights.set(p_index, CLAMP(p_weight, 0.0f, 1.0f));
+}
+
+float EWBIK3D::get_effector_weight(int p_index) const {
+	if (p_index < 0 || p_index >= effector_weights.size()) {
+		return 1.0f; // Default weight
+	}
+	return effector_weights[p_index];
+}
+
 void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_effector_opacity", "index", "opacity"), &EWBIK3D::set_effector_opacity);
 	ClassDB::bind_method(D_METHOD("get_effector_opacity", "index"), &EWBIK3D::get_effector_opacity);
+	ClassDB::bind_method(D_METHOD("set_effector_weight", "index", "weight"), &EWBIK3D::set_effector_weight);
+	ClassDB::bind_method(D_METHOD("get_effector_weight", "index"), &EWBIK3D::get_effector_weight);
 }
