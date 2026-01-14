@@ -51,21 +51,18 @@
 			</description>
 		</method>
 		<method name="validate_manifold_mesh" qualifiers="static">
-			<return type="bool" />
+			<return type="Dictionary" />
 			<param index="0" name="vertices" type="PackedVector3Array" />
 			<param index="1" name="indices" type="PackedInt32Array" />
 			<description>
 				Validates that a mesh meets Godot's manifold geometry requirements for CSG operations. A manifold shape is closed, does not self-intersect, does not contain internal faces and has no edges that connect to more than two faces. Triangles must use clockwise vertex ordering when viewed from outside.
-				This performs comprehensive checks and returns detailed debugging information including:
-				- Mesh statistics (vertex count, triangle count, edge connectivity)
-				- Invalid vertex indices and their locations
-				- Degenerate triangles (duplicate vertices)
-				- Zero-area triangles with vertex positions
-				- Edge sharing analysis (boundary vs shared edges)
-				- Vertex usage statistics
-				- Potential manifold issues and suggestions
-				[b]Note:[/b] This is a preliminary validation that catches common mesh issues early. The full manifold validation is performed by the CSG system during boolean operations. This method is primarily useful for debugging custom mesh generation or validating meshes before CSG operations.
-				[b]Returns:[/b] [code]true[/code] if the mesh passes basic manifold validation, [code]false[/code] otherwise. Check the console output or returned error string for detailed validation report with statistics and specific issues found.
+				This performs comprehensive checks and returns a dictionary with detailed validation results including:
+				- [code]"valid"[/code]: Boolean indicating if the mesh passed validation
+				- [code]"report"[/code]: String with detailed mesh statistics and analysis
+				- [code]"errors"[/code]: Array of error messages (empty if valid)
+				- [code]"warnings"[/code]: Array of warning messages
+				The report includes mesh statistics (vertex count, triangle count, edge connectivity), invalid vertex indices, degenerate triangles, zero-area triangles, edge sharing analysis, and vertex usage statistics.
+				[b]Note:[/b] This is a preliminary validation that catches common mesh issues early. The full manifold validation is performed by the CSG system during boolean operations.
 			</description>
 		</method>
 		<method name="is_root_shape" qualifiers="const">

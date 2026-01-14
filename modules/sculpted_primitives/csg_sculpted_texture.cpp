@@ -226,5 +226,21 @@ CSGBrush *CSGSculptedTexture3D::_build_brush() {
 	}
 
 	brush->build_from_faces(faces, face_uvs, smooth, materials, invert_faces);
+
+	// Validate manifold geometry requirements
+	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(vertices, indices);
+	if (!(bool)validation_result["valid"]) {
+		print_verbose(vformat("CSGSculptedTexture3D::_build_brush() - MANIFOLD VALIDATION FAILED"));
+		Array errors = validation_result["errors"];
+		for (int i = 0; i < errors.size(); i++) {
+			print_verbose(vformat("  ERROR: %s", (String)errors[i]));
+		}
+		print_verbose("CSGSculptedTexture3D::_build_brush() - This may cause CSG operations to fail!");
+		// Don't return nullptr - let the manifold library catch issues later
+		// But warn the user that there are problems
+	} else {
+		print_verbose("CSGSculptedTexture3D::_build_brush() - Manifold validation passed");
+	}
+
 	return brush;
 }

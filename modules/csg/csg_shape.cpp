@@ -452,10 +452,55 @@ static void _pack_manifold(
 	// Debug output after creating Manifold
 	manifold::MeshGL64 debug_unpacked = r_manifold.GetMeshGL64();
 	manifold::Manifold::Error status = r_manifold.Status();
+	String status_str = "Unknown";
+	switch (status) {
+		case manifold::Manifold::Error::NoError:
+			status_str = "No Error";
+			break;
+		case manifold::Manifold::Error::NonFiniteVertex:
+			status_str = "Non Finite Vertex";
+			break;
+		case manifold::Manifold::Error::NotManifold:
+			status_str = "Not Manifold";
+			break;
+		case manifold::Manifold::Error::VertexOutOfBounds:
+			status_str = "Vertex Out Of Bounds";
+			break;
+		case manifold::Manifold::Error::PropertiesWrongLength:
+			status_str = "Properties Wrong Length";
+			break;
+		case manifold::Manifold::Error::MissingPositionProperties:
+			status_str = "Missing Position Properties";
+			break;
+		case manifold::Manifold::Error::MergeVectorsDifferentLengths:
+			status_str = "Merge Vectors Different Lengths";
+			break;
+		case manifold::Manifold::Error::MergeIndexOutOfBounds:
+			status_str = "Merge Index Out Of Bounds";
+			break;
+		case manifold::Manifold::Error::TransformWrongLength:
+			status_str = "Transform Wrong Length";
+			break;
+		case manifold::Manifold::Error::RunIndexWrongLength:
+			status_str = "Run Index Wrong Length";
+			break;
+		case manifold::Manifold::Error::FaceIDWrongLength:
+			status_str = "Face ID Wrong Length";
+			break;
+		case manifold::Manifold::Error::InvalidConstruction:
+			status_str = "Invalid Construction";
+			break;
+		case manifold::Manifold::Error::ResultTooLarge:
+			status_str = "Result Too Large";
+			break;
+		default:
+			status_str = "Unknown Error";
+			break;
+	}
 	print_verbose(vformat("_pack_manifold() - after Manifold constructor: mesh has %d triangles, %d vertices, status: %s",
-			(int)(debug_unpacked.triVerts.size() / 3), (int)(debug_unpacked.vertProperties.size() / debug_unpacked.numProp), manifold::Manifold::ToString(status)));
+			(int)(debug_unpacked.triVerts.size() / 3), (int)(debug_unpacked.vertProperties.size() / debug_unpacked.numProp), status_str));
 	if (status != manifold::Manifold::Error::NoError) {
-		print_verbose(vformat("_pack_manifold() - Manifold construction failed with error: %s", manifold::Manifold::ToString(status)));
+		print_verbose(vformat("_pack_manifold() - Manifold construction failed with error: %s", status_str));
 		if (status == manifold::Manifold::Error::NotManifold) {
 			print_verbose("_pack_manifold() - ERROR: Mesh is not manifold - edges not shared correctly or winding order wrong");
 			// Print edge information to help debug
@@ -468,7 +513,7 @@ static void _pack_manifold(
 }
 
 // Manifold geometry validation function
-bool CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const Vector<int> &p_indices, String *r_error_message) {
+Dictionary CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const Vector<int> &p_indices) {
 	// Comprehensive validation checks for manifold geometry requirements
 	// Based on Godot's CSG manifold specification: clockwise vertex ordering when viewed from outside
 
@@ -501,13 +546,16 @@ bool CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const
 
 	// Early return for basic structure issues
 	if (has_errors && error_list.size() > 0) {
-		if (r_error_message) {
-			*r_error_message = detailed_report;
-			for (const String &error : error_list) {
-				*r_error_message += "  ERROR: " + error + "\n";
-			}
+		Dictionary result;
+		result["valid"] = false;
+		result["report"] = detailed_report;
+		Array errors;
+		for (const String &error : error_list) {
+			errors.push_back("ERROR: " + error);
 		}
-		return false;
+		result["errors"] = errors;
+		result["warnings"] = Array();
+		return result;
 	}
 
 	// Check for valid vertex indices
@@ -682,7 +730,8 @@ bool CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const
 	int max_usage = 0;
 
 	for (int i = 0; i < p_vertices.size(); i++) {
-		int usage = vertex_usage.get(i, 0);
+		const int *usage_ptr = vertex_usage.getptr(i);
+		int usage = usage_ptr ? *usage_ptr : 0;
 		if (usage == 0) {
 			unused_vertices++;
 		} else {
@@ -698,37 +747,24 @@ bool CSGShape3D::validate_manifold_mesh(const Vector<Vector3> &p_vertices, const
 		warning_list.push_back(vformat("%d vertices are unused - consider removing them", unused_vertices));
 	}
 
-	// Build final report
-	if (r_error_message) {
-		*r_error_message = detailed_report;
+	// Build final result
+	Dictionary result;
+	result["valid"] = !has_errors;
+	result["report"] = detailed_report;
 
-		if (!error_list.is_empty()) {
-			*r_error_message += "\nERRORS:\n";
-			for (const String &error : error_list) {
-				*r_error_message += "  • " + error + "\n";
-			}
-		}
-
-		if (!warning_list.is_empty()) {
-			*r_error_message += "\nWARNINGS:\n";
-			for (const String &warning : warning_list) {
-				*r_error_message += "  • " + warning + "\n";
-			}
-		}
-
-		if (!has_errors && warning_list.is_empty()) {
-			*r_error_message += "\n✓ Mesh passed basic manifold validation checks\n";
-			*r_error_message += "  Note: This is preliminary validation. Full manifold checking occurs during CSG operations.\n";
-		} else if (!has_errors) {
-			*r_error_message += "\n⚠ Mesh has warnings but no critical errors\n";
-			*r_error_message += "  The mesh may still work for CSG operations, but consider addressing the warnings.\n";
-		} else {
-			*r_error_message += "\n✗ Mesh failed manifold validation\n";
-			*r_error_message += "  This mesh will likely cause issues in CSG operations.\n";
-		}
+	Array errors;
+	for (const String &error : error_list) {
+		errors.push_back(error);
 	}
+	result["errors"] = errors;
 
-	return !has_errors;
+	Array warnings;
+	for (const String &warning : warning_list) {
+		warnings.push_back(warning);
+	}
+	result["warnings"] = warnings;
+
+	return result;
 }
 
 struct ManifoldOperation {

@@ -289,9 +289,13 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 	}
 
 	// Validate manifold geometry requirements
-	String validation_error;
-	if (!CSGShape3D::validate_manifold_mesh(vertices, indices, &validation_error)) {
-		print_verbose(vformat("CSGSculptedCylinder3D::_build_brush() - MANIFOLD VALIDATION FAILED: %s", validation_error));
+	Dictionary validation_result = CSGShape3D::validate_manifold_mesh(vertices, indices);
+	if (!(bool)validation_result["valid"]) {
+		print_verbose(vformat("CSGSculptedCylinder3D::_build_brush() - MANIFOLD VALIDATION FAILED"));
+		Array errors = validation_result["errors"];
+		for (int i = 0; i < errors.size(); i++) {
+			print_verbose(vformat("  ERROR: %s", (String)errors[i]));
+		}
 		print_verbose("CSGSculptedCylinder3D::_build_brush() - This may cause CSG operations to fail!");
 		// Don't return nullptr - let the manifold library catch issues later
 		// But warn the user that there are problems
