@@ -544,7 +544,7 @@ void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
 			}
 			iterate_settings[i]->cache_current_joint_rotations(p_skeleton); // Iterate over first to detect parent (outside of the chain) bone pose changes.
 
-			Vector3 destination = cached_space.affine_inverse().xform(target->get_global_transform_interpolated().origin);
+			Vector3 destination = target->get_global_transform_interpolated().origin;
 			_process_joints(p_delta, p_skeleton, iterate_settings[i], destination);
 		}
 	} else {
@@ -558,7 +558,7 @@ void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
 				continue; // Abort.
 			}
 			iterate_settings[i]->cache_current_joint_rotations(p_skeleton); // Iterate over first to detect parent (outside of the chain) bone pose changes.
-			target_destinations.push_back(cached_space.affine_inverse().xform(target->get_global_transform_interpolated().origin));
+			target_destinations.push_back(target->get_global_transform_interpolated().origin);
 		}
 		// Handle pinning by translating roots for high-opacity effectors
 		for (uint32_t i = 0; i < iterate_settings.size(); i++) {
@@ -568,11 +568,9 @@ void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
 				float opacity = get_effector_opacity(i);
 				if (opacity >= 0.999f) {
 					Vector3 effector_global = p_skeleton->get_bone_global_pose(setting->joints[last_idx].bone).origin;
-					Vector3 effector_local = cached_space.affine_inverse().xform(effector_global);
-					Vector3 translation_local = target_destinations[i] - effector_local;
-					Vector3 translation_global = cached_space.xform(translation_local);
+					Vector3 translation = target_destinations[i] - effector_global;
 					Transform3D root_pose = p_skeleton->get_bone_global_pose(setting->joints[0].bone);
-					root_pose.origin += translation_global;
+					root_pose.origin += translation;
 					p_skeleton->set_bone_global_pose(setting->joints[0].bone, root_pose);
 					// Update chain
 					for (uint32_t j = 0; j < setting->joints.size(); j++) {
@@ -620,6 +618,18 @@ void IterateIK3D::_process_ik(Skeleton3D *p_skeleton, double p_delta) {
 }
 
 void IterateIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
+	if (p_setting->joints.size() == 1) {
+		Transform3D root_pose = p_skeleton->get_bone_global_pose(p_setting->joints[0].bone);
+		root_pose.origin = p_destination;
+		p_skeleton->set_bone_global_pose(p_setting->joints[0].bone, root_pose);
+		// Update chain
+		for (uint32_t j = 0; j < p_setting->joints.size(); j++) {
+			p_setting->chain[j] = p_skeleton->get_bone_global_pose(p_setting->joints[j].bone).origin;
+		}
+		p_setting->simulated = true;
+		return;
+	}
+
 	double distance_to_target_sq = INFINITY;
 	int iteration_count = 0;
 
