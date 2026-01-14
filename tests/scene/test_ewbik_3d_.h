@@ -601,6 +601,9 @@ TEST_CASE("[SceneTree][EWBIK3D] Single effector IK solving test") {
 	ik->set_name("EWBIK");
 	ik->set_owner(root);
 
+	// Increase max iterations for better convergence
+	ik->set_max_iterations(100);
+
 	// Setup two effectors: one for left hand, one for right hand
 	ik->set_setting_count(2);
 
