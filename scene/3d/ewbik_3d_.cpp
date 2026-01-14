@@ -39,8 +39,8 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 	// Build and sort effector groups using Eron's decomposition algorithm
 	// Collect effectors from all settings
 	Vector<Effector> all_effectors;
-	for (int setting_idx = 0; setting_idx < settings.size(); setting_idx++) {
-		auto iter_setting = static_cast<IterateIK3DSetting *>(settings[setting_idx]);
+	for (int setting_idx = 0; setting_idx < iterate_settings.size(); setting_idx++) {
+		IterateIK3D::IterateIK3DSetting *iter_setting = iterate_settings[setting_idx];
 		int last_idx = iter_setting->joints.size() - 1;
 		if (last_idx >= 0) {
 			Effector eff;
