@@ -210,3 +210,21 @@ Use this output to diagnose manifold issues and optimize performance.
 -   Godot Engine can animate all properties in Variant
 -   Sculpted uses CPU generation
 -   Do not add advanced hollow shape options
+
+## Commit Messages
+
+Follow root [CONTRIBUTING.md](../../../CONTRIBUTING.md) guidelines strictly.
+
+**Avoid conventional commits** (`feat:`, `fix:`, `docs:`, etc.).
+
+Use Godot style:
+- Imperative mood, capitalized title ≤72 chars
+- Optional area prefix (`CSG:`, `Tests:`)
+- Wrapped body at 80 chars
+
+Example:
+```
+CSG: Fix cap_open_ends winding for manifold validation
+
+Reversed bottom cap triangle order for correct outward normals (CW from above).
+```
