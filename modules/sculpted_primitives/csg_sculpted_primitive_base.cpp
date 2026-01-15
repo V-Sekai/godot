@@ -81,54 +81,40 @@ void generate_profile_points(CSGSculptedPrimitive3D::ProfileCurve p_curve, real_
 		} break;
 
 		case CSGSculptedPrimitive3D::PROFILE_CURVE_SQUARE: {
-			bool is_full_circle = (p_begin == 0.0f && p_end == 1.0f) || angle_range >= Math::TAU - 0.001f;
-			if (is_full_circle) {
-				// Full circle polygon degenerates; approximate with circle
+			// Generate square profile points
+			// For full square (begin=0, end=1), generate the 4 corners
+			if (p_begin == 0.0f && p_end == 1.0f) {
+				r_profile.push_back(Vector2(1.0, 1.0));
+				r_profile.push_back(Vector2(1.0, -1.0));
+				r_profile.push_back(Vector2(-1.0, -1.0));
+				r_profile.push_back(Vector2(-1.0, 1.0));
+				r_profile.push_back(Vector2(1.0, 1.0)); // Close the loop
+
+				if (p_hollow > 0.0f) {
+					real_t hollow_radius = 1.0f - p_hollow;
+					r_hollow_profile.push_back(Vector2(1.0, 1.0) * hollow_radius);
+					r_hollow_profile.push_back(Vector2(1.0, -1.0) * hollow_radius);
+					r_hollow_profile.push_back(Vector2(-1.0, -1.0) * hollow_radius);
+					r_hollow_profile.push_back(Vector2(-1.0, 1.0) * hollow_radius);
+					r_hollow_profile.push_back(Vector2(1.0, 1.0) * hollow_radius); // Close the loop
+				}
+			} else {
+				// For partial square, approximate with circle for now
 				int segments = p_segments;
-				for (int i = 0; i < segments; i++) {
+				for (int i = 0; i <= segments; i++) {
 					real_t t = (real_t)i / segments;
 					real_t angle = begin_angle + angle_range * t;
 					r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)));
 				}
-				r_profile.push_back(r_profile[0]);
+				// No need to close, since partial
 
 				if (p_hollow > 0.0f) {
 					real_t hollow_radius = 1.0f - p_hollow;
-					for (int i = 0; i < segments; i++) {
+					for (int i = 0; i <= segments; i++) {
 						real_t t = (real_t)i / segments;
 						real_t angle = begin_angle + angle_range * t;
-						r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)) * hollow_radius);
+						r_hollow_profile.push_back(Vector2(Math::cos(angle) * hollow_radius, Math::sin(angle) * hollow_radius));
 					}
-					r_hollow_profile.push_back(r_hollow_profile[0]);
-				}
-			} else {
-				// Exact square profile (avoid FP cos/sin)
-				Vector2 square_points[4] = {
-					Vector2(1.0, 0.0),
-					Vector2(0.0, 1.0),
-					Vector2(-1.0, 0.0),
-					Vector2(0.0, -1.0)
-				};
-				real_t step_angle = angle_range / 4.0;
-				for (int i = 0; i < 4; i++) {
-					real_t angle = begin_angle + step_angle * i;
-					Vector2 rotated = Vector2(
-							square_points[i].x * Math::cos(angle) - square_points[i].y * Math::sin(angle),
-							square_points[i].x * Math::sin(angle) + square_points[i].y * Math::cos(angle));
-					r_profile.push_back(rotated.normalized());
-				}
-				r_profile.push_back(r_profile[0]); // Close the loop
-
-				if (p_hollow > 0.0) {
-					real_t hollow_radius = 1.0 - p_hollow;
-					for (int i = 0; i < 4; i++) {
-						real_t angle = begin_angle + step_angle * i;
-						Vector2 rotated = Vector2(
-								square_points[i].x * Math::cos(angle) - square_points[i].y * Math::sin(angle),
-								square_points[i].x * Math::sin(angle) + square_points[i].y * Math::cos(angle));
-						r_hollow_profile.push_back(rotated.normalized() * hollow_radius);
-					}
-					r_hollow_profile.push_back(r_hollow_profile[0]);
 				}
 			}
 		} break;
