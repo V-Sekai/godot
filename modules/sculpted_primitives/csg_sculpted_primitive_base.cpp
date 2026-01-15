@@ -278,11 +278,14 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 		r_indices.push_back(bottom_base + 2);
 		r_indices.push_back(bottom_base + 3);
 	} else if (p_effective_profile_count >= 5) {
-		// Fan: perimeter CW from below matching side (next_i -> i reversed to i -> next_i)
-		for (int i = 1; i < p_effective_profile_count - 1; i++) {
-			r_indices.push_back(bottom_base + i);
-			r_indices.push_back(bottom_base + i + 1);
-			r_indices.push_back(bottom_base);
+		// Full fan: center -> i -> next_i (perimeter i -> next_i)
+		for (int i = 1; i < p_effective_profile_count; i++) {
+			int next_i = (i + 1) % p_effective_profile_count;
+			if (next_i != 0) {
+				r_indices.push_back(bottom_base);
+				r_indices.push_back(bottom_base + i);
+				r_indices.push_back(bottom_base + next_i);
+			}
 		}
 	}
 
@@ -302,11 +305,14 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 		r_indices.push_back(top_base + 3);
 		r_indices.push_back(top_base + 2);
 	} else if (p_effective_profile_count >= 5) {
-		// Fan: perimeter CCW from above matching side (i -> next_i reversed to next_i -> i)
-		for (int i = 1; i < p_effective_profile_count - 1; i++) {
-			r_indices.push_back(top_base + i + 1);
-			r_indices.push_back(top_base + i);
-			r_indices.push_back(top_base);
+		// Full fan: center -> i -> next_i (consistent winding)
+		for (int i = 1; i < p_effective_profile_count; i++) {
+			int next_i = (i + 1) % p_effective_profile_count;
+			if (next_i != 0) {
+				r_indices.push_back(top_base);
+				r_indices.push_back(top_base + i);
+				r_indices.push_back(top_base + next_i);
+			}
 		}
 	}
 
@@ -326,10 +332,14 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 		r_indices.push_back(hollow_bottom_base + 3);
 	} else if (p_hollow > 0.0 && p_effective_hollow_count >= 5) {
 		int hollow_bottom_base = p_effective_profile_count;
-		for (int i = 1; i < p_effective_hollow_count - 1; i++) {
-			r_indices.push_back(hollow_bottom_base + i);
-			r_indices.push_back(hollow_bottom_base + i + 1);
-			r_indices.push_back(hollow_bottom_base);
+		// Full fan matching outer bottom
+		for (int i = 1; i < p_effective_hollow_count; i++) {
+			int next_i = (i + 1) % p_effective_hollow_count;
+			if (next_i != 0) {
+				r_indices.push_back(hollow_bottom_base);
+				r_indices.push_back(hollow_bottom_base + i);
+				r_indices.push_back(hollow_bottom_base + next_i);
+			}
 		}
 	}
 
@@ -349,10 +359,14 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 		r_indices.push_back(hollow_top_base + 2);
 	} else if (p_hollow > 0.0 && p_effective_hollow_count >= 5) {
 		int hollow_top_base = p_path_segments * p_total_profile + p_effective_profile_count;
-		for (int i = 1; i < p_effective_hollow_count - 1; i++) {
-			r_indices.push_back(hollow_top_base + i + 1);
-			r_indices.push_back(hollow_top_base + i);
-			r_indices.push_back(hollow_top_base);
+		// Full fan matching outer top (inward facing)
+		for (int i = 1; i < p_effective_hollow_count; i++) {
+			int next_i = (i + 1) % p_effective_hollow_count;
+			if (next_i != 0) {
+				r_indices.push_back(hollow_top_base);
+				r_indices.push_back(hollow_top_base + i);
+				r_indices.push_back(hollow_top_base + next_i);
+			}
 		}
 	}
 }
