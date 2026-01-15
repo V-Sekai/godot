@@ -769,7 +769,6 @@ inline void Sandbox::CurrentState::append(Variant &&value) {
 inline void Sandbox::CurrentState::reset() {
 	variants.clear();
 	scoped_variants.clear();
-	scoped_objects.clear();
 }
 
 inline bool Sandbox::is_allowed_object(Object *obj) const {
