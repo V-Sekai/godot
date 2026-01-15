@@ -51,7 +51,7 @@ bool SafeGDScriptInstance::set(const StringName &p_name, const Variant &p_value)
 		return false;
 	}
 
-	auto [sandbox, created] = get_sandbox();
+	Sandbox *sandbox = current_sandbox;
 	if (sandbox) {
 		ScopedTreeBase stb(sandbox, Object::cast_to<Node>(this->owner));
 		if (sandbox->set_property(p_name, p_value)) {
@@ -67,7 +67,7 @@ bool SafeGDScriptInstance::get(const StringName &p_name, Variant &r_ret) const {
 		r_ret = this->script;
 		return true;
 	}
-	auto [sandbox, created] = get_sandbox();
+	Sandbox *sandbox = current_sandbox;
 	if (sandbox) {
 		ScopedTreeBase stb(sandbox, Object::cast_to<Node>(this->owner));
 		if (sandbox->get_property(p_name, r_ret)) {
@@ -95,12 +95,12 @@ Variant SafeGDScriptInstance::callp(
 	// use _enter_tree to get the sandbox instance.
 	// Also, avoid calling internal methods.
 	if (!this->auto_created_sandbox) {
-		if (p_method == StringName("_enter_tree")) {
+		if (p_method == StringName("_enter_tree") && current_sandbox) {
 			current_sandbox->load_buffer(script->get_content());
 		}
 	}
 
-	auto [sandbox, created] = get_sandbox();
+	Sandbox *sandbox = current_sandbox;
 	if (!sandbox) {
 		r_error.error = Callable::CallError::CALL_ERROR_INSTANCE_IS_NULL;
 		return Variant();
@@ -133,11 +133,10 @@ void SafeGDScriptInstance::get_method_list(List<MethodInfo> *p_list) const {
 }
 
 void SafeGDScriptInstance::get_property_list(List<PropertyInfo> *p_properties) const {
-	auto [sandbox, created] = get_sandbox();
+	Sandbox *sandbox = current_sandbox;
 	if (!sandbox) {
 		return;
 	}
-
 	std::vector<PropertyInfo> prop_list = sandbox->create_sandbox_property_list();
 
 	// Sandboxed properties
@@ -171,14 +170,18 @@ Variant::Type SafeGDScriptInstance::get_property_type(const StringName &p_name, 
 	if constexpr (VERBOSE_LOGGING) {
 		ERR_PRINT("SafeGDScriptInstance::get_property_type " + p_name);
 	}
-	auto [sandbox, created] = get_sandbox();
-	if (sandbox) {
-		if (const SandboxProperty *prop = sandbox->find_property_or_null(p_name)) {
-			if (r_is_valid) {
-				*r_is_valid = true;
-			}
-			return prop->type();
+	Sandbox *sandbox = current_sandbox;
+	if (!sandbox) {
+		if (r_is_valid) {
+			*r_is_valid = false;
 		}
+		return Variant::NIL;
+	}
+	if (const SandboxProperty *prop = sandbox->find_property_or_null(p_name)) {
+		if (r_is_valid) {
+			*r_is_valid = true;
+		}
+		return prop->type();
 	}
 	if (r_is_valid) {
 		*r_is_valid = false;
@@ -259,46 +262,30 @@ ScriptLanguage *SafeGDScriptInstance::get_language() {
 }
 
 void SafeGDScriptInstance::reset_to(const PackedByteArray &p_elf_data) {
-	auto [sandbox, created] = get_sandbox();
+	Sandbox *sandbox = current_sandbox;
 	if (sandbox) {
 		sandbox->load_buffer(p_elf_data);
 	}
 }
 
-static std::unordered_map<SafeGDScript *, Sandbox *> sandbox_instances;
-
-std::tuple<Sandbox *, bool> SafeGDScriptInstance::get_sandbox() const {
-	auto it = sandbox_instances.find(this->script.ptr());
-	if (it != sandbox_instances.end()) {
-		return { it->second, true };
-	}
-
-	Sandbox *sandbox_ptr = Object::cast_to<Sandbox>(this->owner);
-	if (sandbox_ptr != nullptr) {
-		return { sandbox_ptr, false };
-	}
-
-	ERR_PRINT("SafeGDScriptInstance: owner is not a Sandbox");
-	if constexpr (VERBOSE_LOGGING) {
-		fprintf(stderr, "SafeGDScriptInstance: owner is instead a '%s'!\n", this->owner->get_class().utf8().get_data());
-	}
-	return { nullptr, false };
-}
+struct SandboxAndCount {
+	Sandbox *sandbox = nullptr;
+	unsigned count = 0;
+};
+static std::unordered_map<SafeGDScript *, SandboxAndCount> sandbox_instances;
 
 static Sandbox *create_sandbox(Object *p_owner, const Ref<SafeGDScript> &p_script) {
 	auto it = sandbox_instances.find(p_script.ptr());
 	if (it != sandbox_instances.end()) {
-		return it->second;
+		it->second.count++;
+		return it->second.sandbox;
 	}
 
-	Sandbox *sandbox_ptr = memnew(Sandbox);
+	Sandbox *sandbox_ptr = memnew(Sandbox());
 	sandbox_ptr->set_tree_base(Object::cast_to<Node>(p_owner));
 	sandbox_ptr->set_unboxed_arguments(false);
 	sandbox_ptr->load_buffer(p_script->get_content());
-	sandbox_instances.insert_or_assign(p_script.ptr(), sandbox_ptr);
-	if constexpr (VERBOSE_LOGGING) {
-		ERR_PRINT("SafeGDScriptInstance: created sandbox for " + Object::cast_to<Node>(p_owner)->get_name());
-	}
+	sandbox_instances.insert_or_assign(p_script.ptr(), SandboxAndCount{ sandbox_ptr, 1 });
 
 	return sandbox_ptr;
 }
@@ -316,11 +303,14 @@ SafeGDScriptInstance::SafeGDScriptInstance(Object *p_owner, const Ref<SafeGDScri
 }
 
 SafeGDScriptInstance::~SafeGDScriptInstance() {
-	if (current_sandbox && auto_created_sandbox) {
-		sandbox_instances.erase(script.ptr());
-		memdelete(current_sandbox);
+	auto it = sandbox_instances.find(script.ptr());
+	if (it != sandbox_instances.end()) {
+		it->second.count--;
+		if (it->second.count == 0) {
+			memdelete(it->second.sandbox);
+			sandbox_instances.erase(it);
+		}
 	}
-	if (script.is_valid()) {
-		script->remove_instance(this);
-	}
+	this->current_sandbox = nullptr;
+	script->remove_instance(this);
 }
