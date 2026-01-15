@@ -36,7 +36,7 @@
 #include <libriscv/util/crc32.hpp>
 
 namespace riscv {
-extern Object *get_object_from_address(const Sandbox &emu, uint64_t addr);
+extern Object *get_object_from_address(const Sandbox &emu, uint64_t index);
 } //namespace riscv
 
 Variant GuestVariant::toVariant(const Sandbox &emu) const {
@@ -100,9 +100,9 @@ const Variant *GuestVariant::toVariantPtr(const Sandbox &emu) const {
 }
 
 void GuestVariant::set_object(Sandbox &emu, Object *obj) {
-	emu.add_scoped_object(obj);
+	unsigned int idx = emu.add_scoped_object(obj);
 	this->type = Variant::OBJECT;
-	this->v.i = (uintptr_t)obj;
+	this->v.i = idx;
 }
 
 void GuestVariant::set(Sandbox &emu, const Variant &value, bool implicit_trust) {
@@ -205,8 +205,8 @@ void GuestVariant::set(Sandbox &emu, const Variant &value, bool implicit_trust) 
 			if (!emu.is_allowed_object(obj)) {
 				throw std::runtime_error("GuestVariant::set(): Object is not allowed");
 			}
-			emu.add_scoped_object(obj);
-			this->v.i = (uintptr_t)obj;
+			unsigned int idx = emu.add_scoped_object(obj);
+			this->v.i = idx;
 			break;
 		}
 
@@ -244,8 +244,8 @@ void GuestVariant::create(Sandbox &emu, Variant &&value) {
 			Object *obj = value.operator Object *();
 			if (!emu.is_allowed_object(obj))
 				throw std::runtime_error("GuestVariant::create(): Object is not allowed");
-			emu.add_scoped_object(obj);
-			this->v.i = (uintptr_t)obj;
+			unsigned int idx = emu.add_scoped_object(obj);
+			this->v.i = idx;
 			break;
 		}
 

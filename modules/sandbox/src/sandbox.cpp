@@ -1299,7 +1299,7 @@ unsigned Sandbox::add_scoped_variant(const Variant *value) const {
 	else
 		return -int32_t(st.scoped_variants.size());
 }
-unsigned Sandbox::create_scoped_variant(Variant &&value) const {
+uint64_t Sandbox::create_scoped_variant(Variant &&value) const {
 	CurrentState &st = this->state();
 	if (st.scoped_variants.size() >= st.variants.capacity()) {
 		ERR_PRINT("Maximum number of scoped variants reached.");
@@ -1311,7 +1311,7 @@ unsigned Sandbox::create_scoped_variant(Variant &&value) const {
 	else
 		return -int32_t(st.scoped_variants.size());
 }
-std::optional<const Variant *> Sandbox::get_scoped_variant(int32_t index) const noexcept {
+std::optional<const Variant *> Sandbox::get_scoped_variant(uint64_t index) const noexcept {
 	// Add bounds checking to detect memory corruption
 	if (index >= 0) {
 		// Positive index is access into current state
@@ -1342,7 +1342,7 @@ std::optional<const Variant *> Sandbox::get_scoped_variant(int32_t index) const 
 		return std::nullopt;
 	}
 }
-Variant &Sandbox::get_mutable_scoped_variant(int32_t index) {
+Variant &Sandbox::get_mutable_scoped_variant(uint64_t index) {
 	std::optional<const Variant *> var_opt = get_scoped_variant(index);
 	if (!var_opt.has_value()) {
 		ERR_PRINT("Invalid scoped variant index.");
@@ -1427,11 +1427,11 @@ unsigned Sandbox::try_reuse_assign_variant(int32_t src_idx, const Variant &src_v
 	}
 }
 
-void Sandbox::add_scoped_object(const void *ptr) {
+uint64_t Sandbox::add_scoped_object(const void *ptr) {
 	// In GDExtension, objects are accessed through Variants
 	// Store the object as a Variant in the scoped variants array
 	Variant obj_var = Variant(static_cast<Object *>(const_cast<void *>(ptr)));
-	create_scoped_variant(std::move(obj_var));
+	return create_scoped_variant(std::move(obj_var));
 }
 
 //-- Properties --//
