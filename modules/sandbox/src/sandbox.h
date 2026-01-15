@@ -280,12 +280,12 @@ public:
 	/// @brief Get a scoped variant by its index.
 	/// @param idx The index of the variant to get.
 	/// @return The variant, or an empty optional if the index is invalid.
-	std::optional<const Variant *> get_scoped_variant(uint64_t idx) const noexcept;
+	std::optional<const Variant *> get_scoped_variant(int64_t idx) const noexcept;
 
 	/// @brief Get a mutable scoped variant by its index.
 	/// @param idx The index of the variant to get.
 	/// @return The variant.
-	Variant &get_mutable_scoped_variant(uint64_t idx);
+	Variant &get_mutable_scoped_variant(int64_t idx);
 
 	/// @brief Create a new permanent variant, storing it in the current state.
 	/// @param idx The index of the variant to duplicate or move.

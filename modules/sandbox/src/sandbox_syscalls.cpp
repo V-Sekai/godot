@@ -60,7 +60,7 @@
 namespace riscv {
 extern std::unordered_map<std::string, std::function<uint64_t()>> global_singleton_list;
 
-::Object *get_object_from_address(const Sandbox &emu, uint64_t index) {
+::Object *get_object_from_address(const Sandbox &emu, int64_t index) {
 	SYS_TRACE("get_object_from_address", index);
 
 	// In GDExtension, objects are accessed through Variants
@@ -89,7 +89,7 @@ extern std::unordered_map<std::string, std::function<uint64_t()>> global_singlet
 
 	return obj;
 }
-inline ::Node *get_node_from_address(const Sandbox &emu, uint64_t index) {
+inline ::Node *get_node_from_address(const Sandbox &emu, int64_t index) {
 	SYS_TRACE("get_node_from_address", index);
 	::Object *obj = get_object_from_address(emu, index);
 	::Node *node = ::Object::cast_to<::Node>(obj);
@@ -1733,7 +1733,7 @@ APICALL(api_string_ops) {
 			str = opt_str.value()->operator String();
 		}
 	} else {
-		ERR_PRINT("Invalid String object idx: " + itos(str_idx));
+		ERR_PRINT("Invalid String object idx: " + uitos(str_idx));
 		str = "";
 	}
 

@@ -36,7 +36,7 @@
 #include <libriscv/util/crc32.hpp>
 
 namespace riscv {
-extern Object *get_object_from_address(const Sandbox &emu, uint64_t index);
+extern Object *get_object_from_address(const Sandbox &emu, int64_t index);
 } //namespace riscv
 
 Variant GuestVariant::toVariant(const Sandbox &emu) const {
