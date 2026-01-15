@@ -81,46 +81,129 @@ void generate_profile_points(CSGSculptedPrimitive3D::ProfileCurve p_curve, real_
 		} break;
 
 		case CSGSculptedPrimitive3D::PROFILE_CURVE_SQUARE: {
-			// Square profile
-			real_t step = angle_range / 4.0;
-			for (int i = 0; i < 4; i++) {
-				real_t angle = begin_angle + step * i;
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized());
-			}
-			r_profile.push_back(r_profile[0]); // Close the loop
-
-			if (p_hollow > 0.0) {
-				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < 4; i++) {
-					real_t angle = begin_angle + step * i;
-					r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized() * hollow_radius);
+			bool is_full_circle = (p_begin == 0.0f && p_end == 1.0f) || angle_range >= Math::TAU - 0.001f;
+			if (is_full_circle) {
+				// Full circle polygon degenerates; approximate with circle
+				int segments = p_segments;
+				for (int i = 0; i < segments; i++) {
+					real_t t = (real_t)i / segments;
+					real_t angle = begin_angle + angle_range * t;
+					r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)));
 				}
-				r_hollow_profile.push_back(r_hollow_profile[0]);
+				r_profile.push_back(r_profile[0]);
+
+				if (p_hollow > 0.0f) {
+					real_t hollow_radius = 1.0f - p_hollow;
+					for (int i = 0; i < segments; i++) {
+						real_t t = (real_t)i / segments;
+						real_t angle = begin_angle + angle_range * t;
+						r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)) * hollow_radius);
+					}
+					r_hollow_profile.push_back(r_hollow_profile[0]);
+				}
+			} else {
+				// Exact square profile (avoid FP cos/sin)
+				Vector2 square_points[4] = {
+					Vector2(1.0, 0.0),
+					Vector2(0.0, 1.0),
+					Vector2(-1.0, 0.0),
+					Vector2(0.0, -1.0)
+				};
+				real_t step_angle = angle_range / 4.0;
+				for (int i = 0; i < 4; i++) {
+					real_t angle = begin_angle + step_angle * i;
+					Vector2 rotated = Vector2(
+							square_points[i].x * Math::cos(angle) - square_points[i].y * Math::sin(angle),
+							square_points[i].x * Math::sin(angle) + square_points[i].y * Math::cos(angle));
+					r_profile.push_back(rotated.normalized());
+				}
+				r_profile.push_back(r_profile[0]); // Close the loop
+
+				if (p_hollow > 0.0) {
+					real_t hollow_radius = 1.0 - p_hollow;
+					for (int i = 0; i < 4; i++) {
+						real_t angle = begin_angle + step_angle * i;
+						Vector2 rotated = Vector2(
+								square_points[i].x * Math::cos(angle) - square_points[i].y * Math::sin(angle),
+								square_points[i].x * Math::sin(angle) + square_points[i].y * Math::cos(angle));
+						r_hollow_profile.push_back(rotated.normalized() * hollow_radius);
+					}
+					r_hollow_profile.push_back(r_hollow_profile[0]);
+				}
 			}
 		} break;
 
 		case CSGSculptedPrimitive3D::PROFILE_CURVE_ISOTRI:
 		case CSGSculptedPrimitive3D::PROFILE_CURVE_EQUALTRI:
 		case CSGSculptedPrimitive3D::PROFILE_CURVE_RIGHTTRI: {
-			// Triangle profiles
-			int sides = 3;
-			real_t step = angle_range / sides;
-			for (int i = 0; i < sides; i++) {
-				real_t angle = begin_angle + step * i;
-				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized());
+			// Exact triangle profile (avoid FP)
+			Vector2 tri_points[3] = {
+				Vector2(1.0, 0.0),
+				Vector2(-0.5, Math::sqrt(3.0) / 2.0),
+				Vector2(-0.5, -Math::sqrt(3.0) / 2.0)
+			};
+			real_t step_angle = angle_range / 3.0;
+			for (int i = 0; i < 3; i++) {
+				real_t angle = begin_angle + step_angle * i;
+				Vector2 rotated = Vector2(
+						tri_points[i].x * Math::cos(angle) - tri_points[i].y * Math::sin(angle),
+						tri_points[i].x * Math::sin(angle) + tri_points[i].y * Math::cos(angle));
+				r_profile.push_back(rotated.normalized());
 			}
 			r_profile.push_back(r_profile[0]);
 
 			if (p_hollow > 0.0) {
 				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i < sides; i++) {
-					real_t angle = begin_angle + step * i;
-					r_hollow_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)).normalized() * hollow_radius);
+				for (int i = 0; i < 3; i++) {
+					real_t angle = begin_angle + step_angle * i;
+					Vector2 rotated = Vector2(
+							tri_points[i].x * Math::cos(angle) - tri_points[i].y * Math::sin(angle),
+							tri_points[i].x * Math::sin(angle) + tri_points[i].y * Math::cos(angle));
+					r_hollow_profile.push_back(rotated.normalized() * hollow_radius);
 				}
 				r_hollow_profile.push_back(r_hollow_profile[0]);
 			}
 		} break;
 	}
+
+	// Snap near-zero components to exact zero for polygon profiles (fixes FP cos/sin errors)
+	for (int i = 0; i < r_profile.size(); i++) {
+		Vector2 &p = r_profile.write[i];
+		if (Math::abs(p.x) < 1e-10f) {
+			p.x = 0.0f;
+		}
+		if (Math::abs(p.y) < 1e-10f) {
+			p.y = 0.0f;
+		}
+	}
+	for (int i = 0; i < r_hollow_profile.size(); i++) {
+		Vector2 &p = r_hollow_profile.write[i];
+		if (Math::abs(p.x) < 1e-10f) {
+			p.x = 0.0f;
+		}
+		if (Math::abs(p.y) < 1e-10f) {
+			p.y = 0.0f;
+		}
+	}
+
+	// Reverse profile order for outward-facing side normals
+	r_profile.reverse();
+	if (p_hollow > 0.0 && r_hollow_profile.size() > 0) {
+		r_hollow_profile.reverse();
+	}
+}
+
+static Vector3 snap_vert(Vector3 p_vert) {
+	if (Math::abs(p_vert.x) < 1e-8f) {
+		p_vert.x = 0.0f;
+	}
+	if (Math::abs(p_vert.y) < 1e-8f) {
+		p_vert.y = 0.0f;
+	}
+	if (Math::abs(p_vert.z) < 1e-8f) {
+		p_vert.z = 0.0f;
+	}
+	return p_vert;
 }
 
 // Helper function to apply path transformations
@@ -170,7 +253,7 @@ Vector3 apply_path_transform(const Vector2 &p_profile_point, real_t p_path_pos, 
 	// Apply skew
 	result.z += p_skew * normalized_path;
 
-	return result;
+	return snap_vert(result);
 }
 
 // cap_open_ends implementation
@@ -181,8 +264,21 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 
 	// Bottom cap (at path_begin = 0)
 	int bottom_base = 0;
-	if (p_effective_profile_count >= 3) {
-		// Fan triangulation from first vertex (clockwise viewed from above == CCW from below for outward normal)
+	if (p_effective_profile_count == 3) {
+		// Triangle: CW from below (outward)
+		r_indices.push_back(bottom_base + 0);
+		r_indices.push_back(bottom_base + 2);
+		r_indices.push_back(bottom_base + 1);
+	} else if (p_effective_profile_count == 4) {
+		// Square: diagonal split, CW from below
+		r_indices.push_back(bottom_base + 0);
+		r_indices.push_back(bottom_base + 1);
+		r_indices.push_back(bottom_base + 2);
+		r_indices.push_back(bottom_base + 0);
+		r_indices.push_back(bottom_base + 2);
+		r_indices.push_back(bottom_base + 3);
+	} else if (p_effective_profile_count >= 5) {
+		// Fan for circle/poly, reverse perimeter for pairing
 		for (int i = 1; i < p_effective_profile_count - 1; i++) {
 			r_indices.push_back(bottom_base);
 			r_indices.push_back(bottom_base + i + 1);
@@ -192,34 +288,71 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 
 	// Top cap (at path_end)
 	int top_base = p_path_segments * p_total_profile;
-	if (p_effective_profile_count >= 3) {
-		// Fan triangulation, reversed winding for counter-clockwise from outside (above)
+	if (p_effective_profile_count == 3) {
+		// Triangle: CW from above (reversed)
+		r_indices.push_back(top_base + 0);
+		r_indices.push_back(top_base + 1);
+		r_indices.push_back(top_base + 2);
+	} else if (p_effective_profile_count == 4) {
+		// Square: diagonal split, CW from above (reversed)
+		r_indices.push_back(top_base + 0);
+		r_indices.push_back(top_base + 2);
+		r_indices.push_back(top_base + 1);
+		r_indices.push_back(top_base + 0);
+		r_indices.push_back(top_base + 3);
+		r_indices.push_back(top_base + 2);
+	} else if (p_effective_profile_count >= 5) {
+		// Fan for circle/poly, forward perimeter
 		for (int i = 1; i < p_effective_profile_count - 1; i++) {
 			r_indices.push_back(top_base);
-			r_indices.push_back(top_base + i + 1);
 			r_indices.push_back(top_base + i);
+			r_indices.push_back(top_base + i + 1);
 		}
 	}
 
-	// Hollow bottom cap (inner hole cap)
-	if (p_hollow > 0.0 && p_effective_hollow_count >= 3) {
+	// Hollow bottom cap
+	if (p_hollow > 0.0 && p_effective_hollow_count == 3) {
 		int hollow_bottom_base = p_effective_profile_count;
-		for (int i = 0; i < p_effective_hollow_count; i++) {
-			int next_i = (i + 1) % p_effective_hollow_count;
+		r_indices.push_back(hollow_bottom_base + 0);
+		r_indices.push_back(hollow_bottom_base + 2);
+		r_indices.push_back(hollow_bottom_base + 1);
+	} else if (p_hollow > 0.0 && p_effective_hollow_count == 4) {
+		int hollow_bottom_base = p_effective_profile_count;
+		r_indices.push_back(hollow_bottom_base + 0);
+		r_indices.push_back(hollow_bottom_base + 1);
+		r_indices.push_back(hollow_bottom_base + 2);
+		r_indices.push_back(hollow_bottom_base + 0);
+		r_indices.push_back(hollow_bottom_base + 2);
+		r_indices.push_back(hollow_bottom_base + 3);
+	} else if (p_hollow > 0.0 && p_effective_hollow_count >= 5) {
+		int hollow_bottom_base = p_effective_profile_count;
+		for (int i = 1; i < p_effective_hollow_count - 1; i++) {
 			r_indices.push_back(hollow_bottom_base);
+			r_indices.push_back(hollow_bottom_base + i + 1);
 			r_indices.push_back(hollow_bottom_base + i);
-			r_indices.push_back(hollow_bottom_base + next_i);
 		}
 	}
 
 	// Hollow top cap
-	if (p_hollow > 0.0 && p_effective_hollow_count >= 3) {
+	if (p_hollow > 0.0 && p_effective_hollow_count == 3) {
 		int hollow_top_base = p_path_segments * p_total_profile + p_effective_profile_count;
-		for (int i = 0; i < p_effective_hollow_count; i++) {
-			int next_i = (i + 1) % p_effective_hollow_count;
+		r_indices.push_back(hollow_top_base + 0);
+		r_indices.push_back(hollow_top_base + 1);
+		r_indices.push_back(hollow_top_base + 2);
+	} else if (p_hollow > 0.0 && p_effective_hollow_count == 4) {
+		int hollow_top_base = p_path_segments * p_total_profile + p_effective_profile_count;
+		r_indices.push_back(hollow_top_base + 0);
+		r_indices.push_back(hollow_top_base + 2);
+		r_indices.push_back(hollow_top_base + 1);
+		r_indices.push_back(hollow_top_base + 0);
+		r_indices.push_back(hollow_top_base + 3);
+		r_indices.push_back(hollow_top_base + 2);
+	} else if (p_hollow > 0.0 && p_effective_hollow_count >= 5) {
+		int hollow_top_base = p_path_segments * p_total_profile + p_effective_profile_count;
+		for (int i = 1; i < p_effective_hollow_count - 1; i++) {
 			r_indices.push_back(hollow_top_base);
-			r_indices.push_back(hollow_top_base + next_i);
 			r_indices.push_back(hollow_top_base + i);
+			r_indices.push_back(hollow_top_base + i + 1);
 		}
 	}
 }

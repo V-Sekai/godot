@@ -122,13 +122,13 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		// Outer faces - close the loop
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			indices.push_back(base1 + i);
+			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
-			indices.push_back(base2 + next_i);
-
-			indices.push_back(base2 + next_i);
-			indices.push_back(base2 + i);
 			indices.push_back(base1 + i);
+
+			indices.push_back(base1 + i);
+			indices.push_back(base2 + i);
+			indices.push_back(base2 + next_i);
 		}
 
 		// Hollow faces if applicable

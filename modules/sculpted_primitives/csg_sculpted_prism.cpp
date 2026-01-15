@@ -91,7 +91,7 @@ Vector3 CSGSculptedPrism3D::get_size() const {
 CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	// Prism is similar to box but with a 5-sided profile
 	// Use box implementation as base with profile modifications
-	CSGBrush *brush = memnew(CSGBrush);
+	CSGBrush *_brush = memnew(CSGBrush);
 
 	Vector<Vector2> profile;
 	Vector<Vector2> hollow_profile;
@@ -243,7 +243,7 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		}
 	}
 
-	brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
+	_brush->build_from_faces(faces, face_uvs, smooth, materials, invert);
 
 	// Debug output for testing
 	print_verbose("CSGSculptedPrism3D::_build_brush() debug:");
@@ -253,12 +253,12 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	print_verbose(vformat("  Vertices generated: %d", vertices.size()));
 	print_verbose(vformat("  Indices generated: %d (face_count: %d)", indices.size(), face_count));
 	print_verbose(vformat("  Faces array size: %d", faces.size()));
-	print_verbose(vformat("  Brush faces after build_from_faces: %d", brush->faces.size()));
-	if (brush->faces.size() > 0) {
+	print_verbose(vformat("  Brush faces after build_from_faces: %d", _brush->faces.size()));
+	if (_brush->faces.size() > 0) {
 		print_verbose(vformat("  First face vertices: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)",
-				brush->faces[0].vertices[0].x, brush->faces[0].vertices[0].y, brush->faces[0].vertices[0].z,
-				brush->faces[0].vertices[1].x, brush->faces[0].vertices[1].y, brush->faces[0].vertices[1].z,
-				brush->faces[0].vertices[2].x, brush->faces[0].vertices[2].y, brush->faces[0].vertices[2].z));
+				_brush->faces[0].vertices[0].x, _brush->faces[0].vertices[0].y, _brush->faces[0].vertices[0].z,
+				_brush->faces[0].vertices[1].x, _brush->faces[0].vertices[1].y, _brush->faces[0].vertices[1].z,
+				_brush->faces[0].vertices[2].x, _brush->faces[0].vertices[2].y, _brush->faces[0].vertices[2].z));
 	}
 
 	// Validate manifold geometry requirements
@@ -283,5 +283,5 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		print_verbose("CSGSculptedPrism3D::_build_brush() - Manifold validation passed");
 	}
 
-	return brush;
+	return _brush;
 }
