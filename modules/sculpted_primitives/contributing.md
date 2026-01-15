@@ -224,7 +224,7 @@ Use Godot style:
 
 Example:
 ```
-CSG: Fix cap_open_ends winding for manifold validation
+Fix CSG cap_open_ends winding for manifold validation
 
 Reversed bottom cap triangle order for correct outward normals (CW from above).
 ```
