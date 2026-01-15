@@ -43,8 +43,6 @@
 #include <string>
 #include <unordered_set>
 
-static constexpr const char *icon_path = "res://addons/godot_sandbox/SafeGDScript.svg";
-
 static SafeGDScriptLanguage *safegdscript_language;
 
 void SafeGDScriptLanguage::init_language() {
@@ -300,11 +298,11 @@ void SafeGDScriptLanguage::load_icon() {
 		return;
 	}
 	reenter = true;
-	Ref<FileAccess> fa = FileAccess::open(icon_path, FileAccess::READ);
+	Ref<FileAccess> fa = FileAccess::open("res://addons/godot_sandbox/SafeGDScript.svg", FileAccess::READ);
 	if (Engine::get_singleton()->is_editor_hint() && fa.is_valid()) {
 		Ref<Theme> editor_theme = EditorInterface::get_singleton()->get_editor_theme();
 		if (editor_theme.is_valid() && !editor_theme->has_icon("SafeGDScript", "EditorIcons")) {
-			Ref<Texture2D> tex = ResourceLoader::load(icon_path);
+			Ref<Texture2D> tex = ResourceLoader::load("res://addons/godot_sandbox/SafeGDScript.svg");
 			if (tex.is_valid()) {
 				editor_theme->set_icon("SafeGDScript", "EditorIcons", tex);
 			}
@@ -323,7 +321,7 @@ String SafeGDScriptLanguage::get_global_class_name(const String &p_path, String 
 			*r_base_type = "Sandbox";
 		}
 		if (r_icon_path) {
-			*r_icon_path = String(icon_path);
+			*r_icon_path = "res://addons/godot_sandbox/SafeGDScript.svg";
 		}
 		if (r_is_abstract) {
 			*r_is_abstract = false;
