@@ -278,11 +278,11 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 		r_indices.push_back(bottom_base + 2);
 		r_indices.push_back(bottom_base + 3);
 	} else if (p_effective_profile_count >= 5) {
-		// Fan for circle/poly, reverse perimeter for pairing
+		// Fan: perimeter CW from below matching side (next_i -> i reversed to i -> next_i)
 		for (int i = 1; i < p_effective_profile_count - 1; i++) {
-			r_indices.push_back(bottom_base);
-			r_indices.push_back(bottom_base + i + 1);
 			r_indices.push_back(bottom_base + i);
+			r_indices.push_back(bottom_base + i + 1);
+			r_indices.push_back(bottom_base);
 		}
 	}
 
@@ -302,11 +302,11 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 		r_indices.push_back(top_base + 3);
 		r_indices.push_back(top_base + 2);
 	} else if (p_effective_profile_count >= 5) {
-		// Fan for circle/poly, forward perimeter
+		// Fan: perimeter CCW from above matching side (i -> next_i reversed to next_i -> i)
 		for (int i = 1; i < p_effective_profile_count - 1; i++) {
-			r_indices.push_back(top_base);
-			r_indices.push_back(top_base + i);
 			r_indices.push_back(top_base + i + 1);
+			r_indices.push_back(top_base + i);
+			r_indices.push_back(top_base);
 		}
 	}
 
@@ -327,9 +327,9 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 	} else if (p_hollow > 0.0 && p_effective_hollow_count >= 5) {
 		int hollow_bottom_base = p_effective_profile_count;
 		for (int i = 1; i < p_effective_hollow_count - 1; i++) {
-			r_indices.push_back(hollow_bottom_base);
-			r_indices.push_back(hollow_bottom_base + i + 1);
 			r_indices.push_back(hollow_bottom_base + i);
+			r_indices.push_back(hollow_bottom_base + i + 1);
+			r_indices.push_back(hollow_bottom_base);
 		}
 	}
 
@@ -350,9 +350,9 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 	} else if (p_hollow > 0.0 && p_effective_hollow_count >= 5) {
 		int hollow_top_base = p_path_segments * p_total_profile + p_effective_profile_count;
 		for (int i = 1; i < p_effective_hollow_count - 1; i++) {
-			r_indices.push_back(hollow_top_base);
-			r_indices.push_back(hollow_top_base + i);
 			r_indices.push_back(hollow_top_base + i + 1);
+			r_indices.push_back(hollow_top_base + i);
+			r_indices.push_back(hollow_top_base);
 		}
 	}
 }

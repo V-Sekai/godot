@@ -961,7 +961,12 @@ CSGBrush *CSGShape3D::_get_brush() {
 		manifolds.push_back(child_manifold);
 	}
 	if (!manifolds.empty()) {
-		manifold::Manifold manifold_result = manifold::Manifold::BatchBoolean(manifolds, current_op);
+		manifold::Manifold manifold_result;
+		if (manifolds.size() == 1) {
+			manifold_result = manifolds[0];
+		} else {
+			manifold_result = manifold::Manifold::BatchBoolean(manifolds, current_op);
+		}
 
 		// Debug output after boolean operation
 		manifold::MeshGL64 debug_result_mesh = manifold_result.GetMeshGL64();
