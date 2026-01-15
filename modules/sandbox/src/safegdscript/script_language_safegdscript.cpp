@@ -77,7 +77,7 @@ String SafeGDScriptLanguage::get_type() const {
 }
 
 String SafeGDScriptLanguage::get_extension() const {
-	return "sgd";
+	return "safegd";
 }
 
 void SafeGDScriptLanguage::finish() {
@@ -193,7 +193,6 @@ bool SafeGDScriptLanguage::overrides_external_editor() {
 }
 
 void SafeGDScriptLanguage::get_recognized_extensions(List<String> *p_extensions) const {
-	p_extensions->push_back("sgd");
 	p_extensions->push_back("safegd");
 }
 
