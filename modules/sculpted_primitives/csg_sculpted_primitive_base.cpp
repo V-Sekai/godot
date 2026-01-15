@@ -182,11 +182,11 @@ void CSGSculptedPrimitive3D::cap_open_ends(Vector<int> &r_indices, int p_total_p
 	// Bottom cap (at path_begin = 0)
 	int bottom_base = 0;
 	if (p_effective_profile_count >= 3) {
-		// Fan triangulation from first vertex (counter-clockwise viewed from outside)
+		// Fan triangulation from first vertex (clockwise viewed from above == CCW from below for outward normal)
 		for (int i = 1; i < p_effective_profile_count - 1; i++) {
 			r_indices.push_back(bottom_base);
-			r_indices.push_back(bottom_base + i);
 			r_indices.push_back(bottom_base + i + 1);
+			r_indices.push_back(bottom_base + i);
 		}
 	}
 
