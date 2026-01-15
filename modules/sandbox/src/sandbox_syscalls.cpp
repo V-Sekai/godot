@@ -62,22 +62,31 @@ extern std::unordered_map<std::string, std::function<uint64_t()>> global_singlet
 
 ::Object *get_object_from_address(const Sandbox &emu, uint64_t addr) {
 	SYS_TRACE("get_object_from_address", addr);
-	::Object *obj = (::Object *)uintptr_t(addr);
-	if (UNLIKELY(obj == nullptr)) {
-		ERR_PRINT("Object is Null");
-		throw std::runtime_error("Object is Null");
-	} else if (UNLIKELY(!emu.is_scoped_object(obj))) {
+
+	// In GDExtension, objects are accessed through Variants
+	// addr is now a Variant index, not a raw pointer
+	std::optional<const Variant *> opt_var = emu.get_scoped_variant(addr);
+	if (!opt_var.has_value()) {
 		char buffer[256];
-		const uintptr_t obj_uint = reinterpret_cast<uintptr_t>(obj);
-		if (obj_uint < 0x1000) {
-			snprintf(buffer, sizeof(buffer), "Object is not found, but likely a Variant with index: %lu", long(obj_uint));
-			ERR_PRINT(buffer);
-			throw std::runtime_error(buffer);
-		}
-		snprintf(buffer, sizeof(buffer), "Object is not scoped: %p", obj);
+		snprintf(buffer, sizeof(buffer), "Invalid object Variant index: %lu", long(addr));
 		ERR_PRINT(buffer);
 		throw std::runtime_error(buffer);
 	}
+
+	const Variant *var = *opt_var;
+	if (var->get_type() != Variant::OBJECT) {
+		char buffer[256];
+		snprintf(buffer, sizeof(buffer), "Variant is not an Object, type: %d", var->get_type());
+		ERR_PRINT(buffer);
+		throw std::runtime_error(buffer);
+	}
+
+	::Object *obj = var->operator ::Object *();
+	if (UNLIKELY(obj == nullptr)) {
+		ERR_PRINT("Object is Null");
+		throw std::runtime_error("Object is Null");
+	}
+
 	return obj;
 }
 inline ::Node *get_node_from_address(const Sandbox &emu, uint64_t addr) {

@@ -1428,11 +1428,10 @@ unsigned Sandbox::try_reuse_assign_variant(int32_t src_idx, const Variant &src_v
 }
 
 void Sandbox::add_scoped_object(const void *ptr) {
-	if (state().scoped_objects.size() >= this->m_max_refs) {
-		ERR_PRINT("Maximum number of scoped objects reached.");
-		throw std::runtime_error("Maximum number of scoped objects reached.");
-	}
-	state().scoped_objects.push_back(reinterpret_cast<uintptr_t>(ptr));
+	// In GDExtension, objects are accessed through Variants
+	// Store the object as a Variant in the scoped variants array
+	Variant obj_var = Variant(static_cast<godot::Object *>(const_cast<void *>(ptr)));
+	create_scoped_variant(std::move(obj_var));
 }
 
 //-- Properties --//
@@ -1727,7 +1726,6 @@ void Sandbox::CurrentState::reinitialize(unsigned level, unsigned max_refs) {
 	(void)level;
 	this->variants.reserve(max_refs);
 	this->variants.clear();
-	this->scoped_objects.clear();
 	this->scoped_variants.clear();
 }
 bool Sandbox::CurrentState::is_mutable_variant(const Variant &var) const {

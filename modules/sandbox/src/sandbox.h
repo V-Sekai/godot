@@ -97,7 +97,6 @@ public:
 	struct CurrentState {
 		std::vector<Variant> variants;
 		std::vector<const Variant *> scoped_variants;
-		std::vector<uintptr_t> scoped_objects;
 
 		void append(Variant &&value);
 		void initialize(unsigned level, unsigned max_refs);
@@ -318,13 +317,6 @@ public:
 
 	/// @brief Remove a scoped object from the current state.
 	/// @param ptr The pointer to the object to remove.
-	void rem_scoped_object(const void *ptr) { state().scoped_objects.erase(std::remove(state().scoped_objects.begin(), state().scoped_objects.end(), reinterpret_cast<uintptr_t>(ptr)), state().scoped_objects.end()); }
-
-	/// @brief Check if an object is scoped in the current state.
-	/// @param ptr The pointer to the object to check.
-	/// @return True if the object is scoped, false otherwise.
-	bool is_scoped_object(const void *ptr) const noexcept { return state().scoped_objects.end() != std::find(state().scoped_objects.begin(), state().scoped_objects.end(), reinterpret_cast<uintptr_t>(ptr)); }
-
 	// -= Sandbox Restrictions =-
 
 	/// @brief Enable *all* restrictions on the sandbox, restricting access to
