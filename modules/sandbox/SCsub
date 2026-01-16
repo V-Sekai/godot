@@ -25,7 +25,7 @@ env_sandbox.Prepend(CPPPATH=["#modules/sandbox/thirdparty/libriscv/lib"])
 env_sandbox.Append(CPPPATH=["#modules/sandbox/src/", "#modules/sandbox/."])
 
 # Set C++20 standard and allow C99 designated initializers for libriscv
-if env.get("use_llvm", False):
+if env["platform"] != "windows" or env.get("use_mingw", False):
     cxx_flags = ["-std=c++20"]
     # Only add -Wno-c99-designator if compiler supports it (newer GCC/Clang)
     import subprocess
@@ -41,10 +41,8 @@ if env.get("use_llvm", False):
         # If test fails, continue without the flag
         pass
     env_sandbox.Append(CXXFLAGS=cxx_flags)
-elif env["platform"] != "windows" or env.get("use_mingw", False):
-    # Non-Windows platforms or MinGW can use C++17
-    env_sandbox.Append(CXXFLAGS=["-std=c++17"])
-# Windows MSVC stays at default (C++17)
+else:
+    env_sandbox.Append(CXXFLAGS=["/std:c++20"])
 
 # Platform-specific configurations
 if env["platform"] == "windows":

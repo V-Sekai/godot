@@ -43,6 +43,7 @@ class SafeGDScriptInstance : public ScriptInstance {
 	Ref<SafeGDScript> script;
 	Sandbox *current_sandbox = nullptr;
 	bool auto_created_sandbox = false;
+	std::tuple<Sandbox *, bool> get_sandbox() const;
 
 	friend class SafeGDScript;
 
