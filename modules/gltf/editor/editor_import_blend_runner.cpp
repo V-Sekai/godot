@@ -90,6 +90,112 @@ if opts['unpack_all']:
 bpy.ops.export_scene.gltf(**opts['gltf_options'])
 )";
 
+static constexpr char PYTHON_SCRIPT_USD_DIRECT[] = R"(
+import bpy, sys
+opts = %s
+if bpy.app.version < (3, 0, 0):
+  print('Blender 3.0 or higher is required for USD support.', file=sys.stderr)
+  sys.exit(1)
+try:
+  # Clear default scene - select all and delete
+  bpy.ops.object.select_all(action='SELECT')
+  bpy.ops.object.delete(use_global=False)
+  # Clear all meshes, materials, etc. (iterate over list copy to avoid modification during iteration)
+  for mesh in list(bpy.data.meshes):
+    bpy.data.meshes.remove(mesh)
+  for material in list(bpy.data.materials):
+    bpy.data.materials.remove(material)
+  for texture in list(bpy.data.textures):
+    bpy.data.textures.remove(texture)
+  for image in list(bpy.data.images):
+    bpy.data.images.remove(image)
+  # Import USD file
+  bpy.ops.wm.usd_import(**opts['usd_import_options'])
+  # Export to glTF
+  export_success = False
+  try:
+    bpy.ops.export_scene.gltf(**opts['gltf_options'])
+    export_success = True
+  except Exception as e:
+    # Blender's glTF exporter may fail on lights imported from USD due to color format issues
+    # Retry without lights if the error is related to lights
+    error_str = str(e)
+    if ('light' in error_str.lower() or 'color' in error_str.lower()) and opts['gltf_options'].get('export_lights', False):
+      gltf_opts_retry = opts['gltf_options'].copy()
+      gltf_opts_retry['export_lights'] = False
+      try:
+        bpy.ops.export_scene.gltf(**gltf_opts_retry)
+        export_success = True
+      except Exception as e2:
+        print('Error: glTF export failed even without lights: ' + str(e2), file=sys.stderr)
+        raise
+    else:
+      raise
+  if not export_success:
+    print('Error: glTF export failed.', file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+  print('Error during USD import/export: ' + str(e), file=sys.stderr)
+  import traceback
+  traceback.print_exc(file=sys.stderr)
+  sys.exit(1)
+)";
+
+static constexpr char PYTHON_SCRIPT_USD_EXPORT[] = R"(
+import bpy, sys, os
+opts = %s
+if bpy.app.version < (3, 0, 0):
+  print('Blender 3.0 or higher is required for USD support.', file=sys.stderr)
+  sys.exit(1)
+try:
+  # Clear default scene - select all and delete
+  bpy.ops.object.select_all(action='SELECT')
+  bpy.ops.object.delete(use_global=False)
+  # Clear all meshes, materials, etc. (iterate over list copy to avoid modification during iteration)
+  for mesh in list(bpy.data.meshes):
+    bpy.data.meshes.remove(mesh)
+  for material in list(bpy.data.materials):
+    bpy.data.materials.remove(material)
+  for texture in list(bpy.data.textures):
+    bpy.data.textures.remove(texture)
+  for image in list(bpy.data.images):
+    bpy.data.images.remove(image)
+  # Import GLTF file
+  gltf_filepath = opts['gltf_import_options'].get('filepath', '')
+  if not os.path.exists(gltf_filepath):
+    print('GLTF file does not exist: ' + str(gltf_filepath), file=sys.stderr)
+    sys.exit(1)
+  result = bpy.ops.import_scene.gltf(**opts['gltf_import_options'])
+  if 'FINISHED' not in result:
+    print('GLTF import failed with result: ' + str(result), file=sys.stderr)
+    sys.exit(1)
+  # Export to USD
+  usd_filepath = opts['usd_export_options'].get('filepath', '')
+  # Normalize path (ensure forward slashes and absolute path)
+  usd_filepath = usd_filepath.replace('\\', '/')
+  # Ensure absolute path
+  if not os.path.isabs(usd_filepath):
+    usd_filepath = os.path.abspath(usd_filepath)
+  opts['usd_export_options']['filepath'] = usd_filepath
+  # Ensure directory exists
+  usd_dir = os.path.dirname(usd_filepath)
+  if usd_dir and not os.path.exists(usd_dir):
+    os.makedirs(usd_dir, exist_ok=True)
+  result = bpy.ops.wm.usd_export(**opts['usd_export_options'])
+  if 'FINISHED' not in result:
+    print('USD export failed with result: ' + str(result), file=sys.stderr)
+    sys.exit(1)
+  # Verify file was created
+  if not os.path.exists(usd_filepath):
+    print('USD export reported success but file not found: ' + str(usd_filepath), file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+  print('Error during USD export: ' + str(e), file=sys.stderr)
+  import traceback
+  traceback.print_exc(file=sys.stderr)
+  sys.exit(1)
+)";
+
 String dict_to_python(const Dictionary &p_dict) {
 	String entries;
 	for (const KeyValue<Variant, Variant> &kv : p_dict) {
@@ -165,12 +271,14 @@ Error EditorImportBlendRunner::start_blender(const String &p_python_script, bool
 	args.push_back(p_python_script);
 
 	Error err;
-	String str;
 	if (p_blocking) {
 		int exitcode = 0;
-		err = OS::get_singleton()->execute(blender_path, args, &str, &exitcode, true);
+		String output;
+		err = OS::get_singleton()->execute(blender_path, args, &output, &exitcode, true);
 		if (exitcode != 0) {
-			print_error(vformat("Blender import failed: %s.", str));
+			if (!output.is_empty()) {
+				ERR_PRINT(vformat("Blender output (stdout+stderr): %s", output));
+			}
 			return FAILED;
 		}
 	} else {
@@ -343,6 +451,28 @@ bool EditorImportBlendRunner::_extract_error_message_xml(const Vector<uint8_t> &
 Error EditorImportBlendRunner::do_import_direct(const Dictionary &p_options) {
 	// Export glTF directly.
 	String python = vformat(PYTHON_SCRIPT_DIRECT, dict_to_python(p_options));
+	Error err = start_blender(python, true);
+	if (err != OK) {
+		return err;
+	}
+
+	return OK;
+}
+
+Error EditorImportBlendRunner::do_import_usd(const Dictionary &p_options) {
+	// Import USD and export glTF directly.
+	String python = vformat(PYTHON_SCRIPT_USD_DIRECT, dict_to_python(p_options));
+	Error err = start_blender(python, true);
+	if (err != OK) {
+		return err;
+	}
+
+	return OK;
+}
+
+Error EditorImportBlendRunner::do_export_usd(const Dictionary &p_options) {
+	// Import GLTF and export USD directly.
+	String python = vformat(PYTHON_SCRIPT_USD_EXPORT, dict_to_python(p_options));
 	Error err = start_blender(python, true);
 	if (err != OK) {
 		return err;
