@@ -275,17 +275,17 @@ public:
 	/// @brief Create a new scoped variant, storing it in the current state.
 	/// @param var The variant to add.
 	/// @return The index of the added variant, passed to and used by the guest.
-	uint64_t create_scoped_variant(Variant &&var) const;
+	unsigned create_scoped_variant(Variant &&var) const;
 
 	/// @brief Get a scoped variant by its index.
 	/// @param idx The index of the variant to get.
 	/// @return The variant, or an empty optional if the index is invalid.
-	std::optional<const Variant *> get_scoped_variant(uint64_t idx) const noexcept;
+	std::optional<const Variant *> get_scoped_variant(int32_t idx) const noexcept;
 
 	/// @brief Get a mutable scoped variant by its index.
 	/// @param idx The index of the variant to get.
 	/// @return The variant.
-	Variant &get_mutable_scoped_variant(uint64_t idx);
+	Variant &get_mutable_scoped_variant(int32_t idx);
 
 	/// @brief Create a new permanent variant, storing it in the current state.
 	/// @param idx The index of the variant to duplicate or move.
@@ -312,9 +312,8 @@ public:
 	unsigned try_reuse_assign_variant(int32_t src_idx, const Variant &src_var, int32_t assign_to_idx, const Variant &var);
 
 	/// @brief Add a scoped object to the current state.
-	/// @param ptr The object pointer to add.
-	/// @return The Variant index of the added object.
-	uint64_t add_scoped_object(const void *ptr);
+	/// @param ptr The pointer to the object to add.
+	void add_scoped_object(const void *ptr);
 
 	/// @brief Remove a scoped object from the current state.
 	/// @param ptr The pointer to the object to remove.

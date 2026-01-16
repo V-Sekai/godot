@@ -60,15 +60,15 @@
 namespace riscv {
 extern std::unordered_map<std::string, std::function<uint64_t()>> global_singleton_list;
 
-::Object *get_object_from_address(const Sandbox &emu, uint64_t index) {
-	SYS_TRACE("get_object_from_address", index);
+::Object *get_object_from_address(const Sandbox &emu, uint64_t addr) {
+	SYS_TRACE("get_object_from_address", addr);
 
 	// In GDExtension, objects are accessed through Variants
-	// index is now a Variant index, not a raw pointer
-	std::optional<const Variant *> opt_var = emu.get_scoped_variant(index);
+	// addr is now a Variant index, not a raw pointer
+	std::optional<const Variant *> opt_var = emu.get_scoped_variant(addr);
 	if (!opt_var.has_value()) {
 		char buffer[256];
-		snprintf(buffer, sizeof(buffer), "Invalid object Variant index: %llu", index);
+		snprintf(buffer, sizeof(buffer), "Invalid object Variant index: %lu", long(addr));
 		ERR_PRINT(buffer);
 		throw std::runtime_error(buffer);
 	}
@@ -89,9 +89,9 @@ extern std::unordered_map<std::string, std::function<uint64_t()>> global_singlet
 
 	return obj;
 }
-inline ::Node *get_node_from_address(const Sandbox &emu, uint64_t index) {
-	SYS_TRACE("get_node_from_address", index);
-	::Object *obj = get_object_from_address(emu, index);
+inline ::Node *get_node_from_address(const Sandbox &emu, uint64_t addr) {
+	SYS_TRACE("get_node_from_address", addr);
+	::Object *obj = get_object_from_address(emu, addr);
 	::Node *node = ::Object::cast_to<::Node>(obj);
 	if (UNLIKELY(node == nullptr)) {
 		ERR_PRINT("Object is not a Node: " + obj->get_class());
@@ -844,8 +844,8 @@ APICALL(api_get_obj) {
 	auto it = global_singleton_list.find(name);
 	if (it != global_singleton_list.end()) {
 		auto obj = it->second();
-		uint64_t obj_index = emu.add_scoped_object(reinterpret_cast<::Object *>(obj));
-		machine.set_result(obj_index);
+		emu.add_scoped_object(reinterpret_cast<::Object *>(obj));
+		machine.set_result(obj);
 		return;
 	}
 	// Special case for SceneTree.
@@ -1072,8 +1072,8 @@ APICALL(api_get_node) {
 		return;
 	}
 
-	uint64_t node_index = emu.add_scoped_object(node);
-	machine.set_result(node_index);
+	emu.add_scoped_object(node);
+	machine.set_result(reinterpret_cast<uint64_t>(node));
 }
 
 APICALL(api_node_create) {
@@ -1106,8 +1106,8 @@ APICALL(api_node_create) {
 			node = Object::cast_to<Node>(obj);
 			// If it's not a Node, just return the Object.
 			if (node == nullptr) {
-				uint64_t obj_index = emu.add_scoped_object(obj);
-				machine.set_result(obj_index);
+				emu.add_scoped_object(obj);
+				machine.set_result(uint64_t(uintptr_t(obj)));
 				return;
 			}
 			// It's a Node, so continue to set the name.
@@ -1146,8 +1146,8 @@ APICALL(api_node_create) {
 	if (!name.empty()) {
 		node->set_name(String::utf8(name.data(), name.size()));
 	}
-	uint64_t node_index = emu.add_scoped_object(node);
-	machine.set_result(node_index);
+	emu.add_scoped_object(node);
+	machine.set_result(uint64_t(uintptr_t(node)));
 }
 
 APICALL(api_node) {
