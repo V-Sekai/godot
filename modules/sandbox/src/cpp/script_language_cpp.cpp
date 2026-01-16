@@ -145,6 +145,10 @@ Script *CPPScriptLanguage::create_script() const {
 	return cpp_script;
 }
 
+bool CPPScriptLanguage::has_named_classes() const {
+	return true;
+}
+
 bool CPPScriptLanguage::supports_builtin_mode() const {
 	return true;
 }
