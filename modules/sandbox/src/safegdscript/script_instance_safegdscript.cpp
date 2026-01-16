@@ -154,7 +154,7 @@ void SafeGDScriptInstance::get_property_list(List<PropertyInfo> *p_properties) c
 		prop.usage = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_SCRIPT_VARIABLE | PROPERTY_USAGE_NIL_IS_VARIANT;
 		p_properties->push_back(prop);
 	}
-	for (size_t i = 0; i < prop_list.size(); i++) {
+	for (int i = 0; i < prop_list.size(); i++) {
 		const PropertyInfo &prop = prop_list[i];
 		if constexpr (VERBOSE_LOGGING) {
 			printf("SafeGDScriptInstance::get_property_list %s\n", String(prop.name).utf8().ptr());

@@ -263,6 +263,7 @@ void SafeGDScriptLanguage::reload_scripts(const Array &p_scripts, bool p_soft_re
 void SafeGDScriptLanguage::reload_tool_script(const Ref<Script> &p_script, bool p_soft_reload) {
 }
 
+#ifdef TOOLS_ENABLED
 void SafeGDScriptLanguage::get_public_functions(List<MethodInfo> *p_functions) const {
 	// No public functions to add
 }
@@ -291,8 +292,6 @@ int SafeGDScriptLanguage::profiling_get_accumulated_data(ProfilingInfo *p_info_a
 int SafeGDScriptLanguage::profiling_get_frame_data(ProfilingInfo *p_info_arr, int p_info_max) {
 	return 0;
 }
-
-#ifdef TOOLS_ENABLED
 
 void SafeGDScriptLanguage::load_icon() {
 	static bool reenter = false;

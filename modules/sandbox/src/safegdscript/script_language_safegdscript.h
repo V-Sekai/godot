@@ -95,6 +95,8 @@ public:
 	virtual void reload_all_scripts() override;
 	virtual void reload_scripts(const Array &p_scripts, bool p_soft_reload) override;
 	virtual void reload_tool_script(const Ref<Script> &p_script, bool p_soft_reload) override;
+
+#ifdef TOOLS_ENABLED
 	virtual void get_public_functions(List<MethodInfo> *p_functions) const override;
 	virtual void get_public_constants(List<Pair<String, Variant>> *p_constants) const override;
 	virtual void get_public_annotations(List<MethodInfo> *p_annotations) const override;
@@ -103,8 +105,6 @@ public:
 	virtual void profiling_set_save_native_calls(bool p_enable) override;
 	virtual int profiling_get_accumulated_data(ProfilingInfo *p_info_arr, int p_info_max) override;
 	virtual int profiling_get_frame_data(ProfilingInfo *p_info_arr, int p_info_max) override;
-
-#ifdef TOOLS_ENABLED
 	virtual bool handles_global_class_type(const String &p_type) const override;
 	virtual String get_global_class_name(const String &p_path, String *r_base_type = nullptr, String *r_icon_path = nullptr, bool *r_is_abstract = nullptr, bool *r_is_tool = nullptr) const override;
 	void load_icon();
