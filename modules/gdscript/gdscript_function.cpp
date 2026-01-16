@@ -42,6 +42,16 @@ StringName GDScriptFunction::get_global_name(int p_idx) const {
 	return global_names[p_idx];
 }
 
+PackedByteArray GDScriptFunction::compile_to_elf64(int p_mode) const {
+	// ELF compilation removed - module now only generates StableHLO
+	return PackedByteArray();
+}
+
+bool GDScriptFunction::can_compile_to_elf64(int p_mode) const {
+	// ELF compilation removed - module now only generates StableHLO
+	return false;
+}
+
 struct _GDFKC {
 	int order = 0;
 	List<int> pos;
