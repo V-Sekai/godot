@@ -1311,19 +1311,19 @@ uint64_t Sandbox::create_scoped_variant(Variant &&value) const {
 	else
 		return -int32_t(st.scoped_variants.size());
 }
-std::optional<const Variant *> Sandbox::get_scoped_variant(int64_t index) const noexcept {
+std::optional<const Variant *> Sandbox::get_scoped_variant(uint64_t index) const noexcept {
 	// Add bounds checking to detect memory corruption
 	if (index >= 0) {
 		// Positive index is access into current state
 		const auto &current_state = state();
-		if (index < current_state.scoped_variants.size()) {
+		if (index < static_cast<int32_t>(current_state.scoped_variants.size())) {
 			return current_state.scoped_variants[index];
 		}
 		// Check for obviously corrupted indices
 		if (index > 100000) {
 			ERR_PRINT("Detected corrupted scoped variant index: " + itos(index) + " (possible memory corruption)");
 		} else {
-			ERR_PRINT("Invalid scoped variant index: " + itos(index) + " (max: " + uitos(current_state.scoped_variants.size()) + ")");
+			ERR_PRINT("Invalid scoped variant index: " + itos(index) + " (max: " + itos(current_state.scoped_variants.size()) + ")");
 		}
 		return std::nullopt;
 	} else {
@@ -1337,12 +1337,12 @@ std::optional<const Variant *> Sandbox::get_scoped_variant(int64_t index) const 
 		if (index < -100000) {
 			ERR_PRINT("Detected corrupted permanent variant index: " + itos(index) + " (possible memory corruption)");
 		} else {
-			ERR_PRINT("Invalid permanent variant index: " + itos(perm_index) + " (max: " + uitos(init_state.scoped_variants.size()) + ")");
+			ERR_PRINT("Invalid permanent variant index: " + itos(perm_index) + " (max: " + itos(init_state.scoped_variants.size()) + ")");
 		}
 		return std::nullopt;
 	}
 }
-Variant &Sandbox::get_mutable_scoped_variant(int64_t index) {
+Variant &Sandbox::get_mutable_scoped_variant(uint64_t index) {
 	std::optional<const Variant *> var_opt = get_scoped_variant(index);
 	if (!var_opt.has_value()) {
 		ERR_PRINT("Invalid scoped variant index.");
