@@ -48,6 +48,7 @@ static SafeGDScriptLanguage *safegdscript_language;
 void SafeGDScriptLanguage::init_language() {
 	if (safegdscript_language == nullptr) {
 		safegdscript_language = memnew(SafeGDScriptLanguage);
+		ScriptServer::register_language(safegdscript_language);
 	}
 }
 
