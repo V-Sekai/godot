@@ -13,7 +13,8 @@ def can_build(env, platform):
     if env["platform"] == "web" and env.get("disable_exceptions", True):
         print("Sandbox module cannot be built for web with exceptions disabled.")
         return False
-    return True
+    # All platforms minus windows without mingw
+    return (env["platform"] == "windows" and env.get("use_mingw", False)) or env["platform"] != "windows"
 
 
 def configure(env):
