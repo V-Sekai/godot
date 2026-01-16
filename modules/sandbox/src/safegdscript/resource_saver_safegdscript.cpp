@@ -75,7 +75,7 @@ void ResourceFormatSaverSafeGDScript::get_recognized_extensions(const Ref<Resour
 	if (Object::cast_to<SafeGDScript>(*p_resource) == nullptr) {
 		return;
 	}
-	p_extensions->push_back("safegd");
+	p_extensions->push_back("sgd");
 }
 
 bool ResourceFormatSaverSafeGDScript::recognize_path(const Ref<Resource> &p_resource, const String &p_path) const {
