@@ -136,8 +136,7 @@ import glob
 import os
 
 # Add sources from subdirectories
-# Note: "godot" directory uses godot-cpp APIs and is excluded from pure Godot module build
-for subdir in ["bintr", "cpp", "elf", "safegdscript"]:
+for subdir in ["bintr", "cpp", "elf", "godot"]:
     subdir_path = f"src/{subdir}"
     if os.path.exists(subdir_path):
         cpp_files = glob.glob(f"{subdir_path}/*.cpp")
@@ -145,19 +144,6 @@ for subdir in ["bintr", "cpp", "elf", "safegdscript"]:
             # Convert to relative path from module root
             rel_path = cpp_file.replace("\\", "/")
             sandbox_sources.append(rel_path)
-
-# Add docker sources
-if os.path.exists("src/docker.cpp"):
-    sandbox_sources.append("src/docker.cpp")
-
-# GDScript compiler sources (code present but not compiled by default)
-# The compiler code is included in the repository but not built unless explicitly enabled
-# To build gdscript.elf, use the CMakeLists.txt in src/gdscript/compiler/ or build separately
-gdscript_compiler_files = glob.glob("src/gdscript/compiler/*.cpp")
-if gdscript_compiler_files:
-    # Note: These files are present but not added to sandbox_sources by default
-    # They can be built separately using the compiler's CMakeLists.txt
-    print("GDScript compiler code present (not compiled by default)")
 
 env_sandbox.add_source_files(env.modules_sources, sandbox_sources)
 
