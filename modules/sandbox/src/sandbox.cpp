@@ -1430,7 +1430,7 @@ unsigned Sandbox::try_reuse_assign_variant(int32_t src_idx, const Variant &src_v
 void Sandbox::add_scoped_object(const void *ptr) {
 	// In GDExtension, objects are accessed through Variants
 	// Store the object as a Variant in the scoped variants array
-	Variant obj_var = Variant(static_cast<Object *>(const_cast<void *>(ptr)));
+	Variant obj_var = Variant(static_cast<godot::Object *>(const_cast<void *>(ptr)));
 	create_scoped_variant(std::move(obj_var));
 }
 
