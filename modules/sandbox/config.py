@@ -1,4 +1,8 @@
 def can_build(env, platform):
+    if platform == "android":
+        return False
+    if platform == "ios":
+        return False
     print("Building with ", env)
     if env.get("use_asan", False):
         print("Sandbox module cannot be built with ASAN enabled.")
