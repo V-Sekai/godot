@@ -1530,13 +1530,11 @@ APICALL(api_array_ops) {
 	}
 
 	std::optional<const Variant *> opt_array = emu.get_scoped_variant(arr_idx);
-	::Array array;
-	if (opt_array.has_value() && opt_array.value()->get_type() == Variant::ARRAY) {
-		array = opt_array.value()->operator Array();
-	} else {
+	if (!opt_array.has_value() || opt_array.value()->get_type() != Variant::ARRAY) {
 		ERR_PRINT("Invalid Array object");
-		array = ::Array(); // Use empty array
+		throw std::runtime_error("Invalid Array object, idx = " + std::to_string(arr_idx));
 	}
+	::Array array = opt_array.value()->operator Array();
 
 	switch (op) {
 		case Array_Op::PUSH_BACK:
@@ -1597,13 +1595,12 @@ APICALL(api_array_at) {
 	SYS_TRACE("array_at", arr_idx, idx, vret);
 
 	std::optional<const Variant *> opt_array = emu.get_scoped_variant(arr_idx);
-	::Array array;
-	if (opt_array.has_value() && opt_array.value()->get_type() == Variant::ARRAY) {
-		array = opt_array.value()->operator Array();
-	} else {
+	if (!opt_array.has_value() || opt_array.value()->get_type() != Variant::ARRAY) {
 		ERR_PRINT("Invalid Array object");
-		array = ::Array(); // Use empty array
+		throw std::runtime_error("Invalid Array object, idx = " + std::to_string(arr_idx));
 	}
+
+	::Array array = opt_array.value()->operator Array();
 	const bool set_mode = idx < 0;
 	if (set_mode) {
 		idx = -idx - 1;
@@ -1626,13 +1623,12 @@ APICALL(api_array_size) {
 	Sandbox &emu = riscv::emu(machine);
 
 	std::optional<const Variant *> opt_array = emu.get_scoped_variant(arr_idx);
-	::Array array;
-	if (opt_array.has_value() && opt_array.value()->get_type() == Variant::ARRAY) {
-		array = opt_array.value()->operator Array();
-	} else {
+	if (!opt_array.has_value() || opt_array.value()->get_type() != Variant::ARRAY) {
 		ERR_PRINT("Invalid Array object");
-		array = ::Array(); // Use empty array
+		throw std::runtime_error("Invalid Array object");
 	}
+
+	::Array array = opt_array.value()->operator Array();
 	machine.set_result(array.size());
 }
 
@@ -1643,13 +1639,11 @@ APICALL(api_dict_ops) {
 	SYS_TRACE("dict_ops", int(op), dict_idx, vkey, vaddr);
 
 	std::optional<const Variant *> opt_dict = emu.get_scoped_variant(dict_idx);
-	::Dictionary dict;
-	if (opt_dict.has_value() && opt_dict.value()->get_type() == Variant::DICTIONARY) {
-		dict = opt_dict.value()->operator Dictionary();
-	} else {
+	if (!opt_dict.has_value() || opt_dict.value()->get_type() != Variant::DICTIONARY) {
 		ERR_PRINT("Invalid Dictionary object");
-		dict = ::Dictionary(); // Use empty dict
+		throw std::runtime_error("Invalid Dictionary object");
 	}
+	::Dictionary dict = opt_dict.value()->operator Dictionary();
 
 	switch (op) {
 		case Dictionary_Op::GET: {
@@ -1778,14 +1772,8 @@ APICALL(api_string_ops) {
 		}
 		case String_Op::COMPARE: {
 			unsigned *vother = machine.memory.memarray<unsigned>(vaddr, 1);
-			std::optional<const Variant *> opt_other = emu.get_scoped_variant(*vother);
-			if (opt_other.has_value()) {
-				const Variant *other = *opt_other;
-				machine.set_result(str == other->operator String());
-			} else {
-				ERR_PRINT("Invalid String object idx for compare: " + itos(*vother));
-				machine.set_result(false); // Not equal if invalid
-			}
+			const Variant *other = emu.get_scoped_variant(*vother).value();
+			machine.set_result(str == other->operator String());
 			break;
 		}
 		case String_Op::COMPARE_CSTR: {
@@ -1805,20 +1793,15 @@ APICALL(api_string_at) {
 	SYS_TRACE("string_at", str_idx, index);
 
 	std::optional<const Variant *> opt_str = emu.get_scoped_variant(str_idx);
-	::String str;
-	if (opt_str.has_value() && opt_str.value()->get_type() == Variant::STRING) {
-		str = opt_str.value()->operator String();
-	} else {
+	if (!opt_str.has_value() || opt_str.value()->get_type() != Variant::STRING) {
 		ERR_PRINT("Invalid String object");
-		str = ""; // Use empty string
+		throw std::runtime_error("Invalid String object");
 	}
+	::String str = opt_str.value()->operator String();
 
 	if (index < 0 || index >= str.length()) {
 		ERR_PRINT("String index out of bounds");
-		char32_t new_string = 0; // Return null character
-		unsigned int new_varidx = emu.create_scoped_variant(Variant(std::move(new_string)));
-		machine.set_result(new_varidx);
-		return;
+		throw std::runtime_error("String index out of bounds");
 	}
 
 	char32_t new_string = str[index];
@@ -1832,13 +1815,11 @@ APICALL(api_string_size) {
 	SYS_TRACE("string_size", str_idx);
 
 	std::optional<const Variant *> opt_str = emu.get_scoped_variant(str_idx);
-	::String str;
-	if (opt_str.has_value() && opt_str.value()->get_type() == Variant::STRING) {
-		str = opt_str.value()->operator String();
-	} else {
+	if (!opt_str.has_value() || opt_str.value()->get_type() != Variant::STRING) {
 		ERR_PRINT("Invalid String object");
-		str = ""; // Use empty string
+		throw std::runtime_error("Invalid String object");
 	}
+	::String str = opt_str.value()->operator String();
 	machine.set_result(str.length());
 }
 
