@@ -100,32 +100,6 @@ Vector3 JointLimitationKusudama3D::get_cone_center(int p_index) const {
 	return Vector3(cone_data.x, cone_data.y, cone_data.z);
 }
 
-void JointLimitationKusudama3D::set_cone_center_quaternion(int p_index, const Quaternion &p_quaternion) {
-	ERR_FAIL_INDEX(p_index, cones.size());
-	// Convert quaternion to direction vector by rotating the default direction (0, 1, 0)
-	Vector3 default_dir = Vector3(0, 1, 0);
-	Vector3 center = p_quaternion.normalized().xform(default_dir);
-	// Normalize and store
-	if (center.length_squared() > CMP_EPSILON) {
-		center.normalize();
-	} else {
-		center = Vector3(0, 1, 0); // Default fallback
-	}
-	Vector4 &cone = cones.write[p_index];
-	cone.x = center.x;
-	cone.y = center.y;
-	cone.z = center.z;
-	emit_changed();
-}
-
-Quaternion JointLimitationKusudama3D::get_cone_center_quaternion(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, cones.size(), Quaternion());
-	Vector3 center = get_cone_center(p_index); // This already normalizes
-	Vector3 default_dir = Vector3(0, 1, 0);
-	// Create quaternion representing rotation from default_dir to center
-	return Quaternion(default_dir, center);
-}
-
 void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
 	ERR_FAIL_INDEX(p_index, cones.size());
 	cones.write[p_index].w = p_radius;
@@ -147,12 +121,7 @@ bool JointLimitationKusudama3D::_set(const StringName &p_name, const Variant &p_
 		int index = prop_name.get_slicec('/', 1).to_int();
 		String what = prop_name.get_slicec('/', 2);
 		if (what == "center") {
-			// Handle quaternion input from inspector
-			if (p_value.get_type() == Variant::QUATERNION) {
-				set_cone_center_quaternion(index, p_value);
-			} else {
-				set_cone_center(index, p_value);
-			}
+			set_cone_center(index, p_value);
 			return true;
 		}
 		if (what == "radius") {
@@ -173,8 +142,7 @@ bool JointLimitationKusudama3D::_get(const StringName &p_name, Variant &r_ret) c
 		int index = prop_name.get_slicec('/', 1).to_int();
 		String what = prop_name.get_slicec('/', 2);
 		if (what == "center") {
-			// Return as quaternion for inspector display with degrees
-			r_ret = get_cone_center_quaternion(index);
+			r_ret = get_cone_center(index);
 			return true;
 		}
 		if (what == "radius") {
@@ -189,8 +157,7 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 	p_list->push_back(PropertyInfo(Variant::INT, PNAME("cone_count"), PROPERTY_HINT_RANGE, "0,16384,1,or_greater", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY, "Cones," + String(PNAME("cones")) + "/"));
 	for (int i = 0; i < get_cone_count(); i++) {
 		const String prefix = vformat("%s/%d/", PNAME("cones"), i);
-		// Use quaternion for inspector display with Euler angles in degrees
-		p_list->push_back(PropertyInfo(Variant::QUATERNION, prefix + PNAME("center"), PROPERTY_HINT_NONE, ""));
+		p_list->push_back(PropertyInfo(Variant::VECTOR3, prefix + PNAME("center"), PROPERTY_HINT_NONE, ""));
 		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("radius"), PROPERTY_HINT_RANGE, "0,180,0.1,radians_as_degrees"));
 	}
 }
