@@ -1,0 +1,25 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# TLA+ generated files (TLC state directories and files)
+tla/states/
+*.st
+*.fp
+*.te
+
+# MiniZinc output files (if any)
+*.dzn.out
+*.mzn.out
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
