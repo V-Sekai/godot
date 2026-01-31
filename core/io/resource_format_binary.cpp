@@ -430,8 +430,15 @@ Error ResourceLoaderBinary::parse_variant(Variant &r_v) {
 						path = remaps[path];
 					}
 
-					Ref<Resource> res = ResourceLoader::load(path, exttype, cache_mode_for_external);
-
+					Ref<Resource> res;
+					if (!using_whitelist || ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
+						// For legacy format, use load_whitelisted when whitelist is enabled to ensure recursive enforcement
+						if (using_whitelist) {
+							res = ResourceLoader::load_whitelisted(path, external_path_whitelist, type_whitelist, exttype, cache_mode_for_external);
+						} else {
+							res = ResourceLoader::load(path, exttype, cache_mode_for_external);
+						}
+					}
 					if (res.is_null()) {
 						WARN_PRINT(vformat("Couldn't load resource: %s.", path));
 					}
@@ -683,6 +690,8 @@ Error ResourceLoaderBinary::load() {
 		return error;
 	}
 
+	bool has_missing_dependencies = false;
+
 	for (int i = 0; i < external_resources.size(); i++) {
 		String path = external_resources[i].path;
 
@@ -696,12 +705,35 @@ Error ResourceLoaderBinary::load() {
 		}
 
 		external_resources.write[i].path = path; //remap happens here, not on load because on load it can actually be used for filesystem dock resource remap
-		external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external);
+
+		// Check external dependencies against whitelist
+		// Empty whitelist means "deny all external dependencies (consistent with main resource behavior)"
+		// Non-empty whitelist means "only allow external dependencies in the whitelist"
+		if (using_whitelist) {
+			// Empty whitelist denies all external dependencies
+			if (external_path_whitelist.is_empty() || !ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
+				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
+				ERR_FAIL_V_MSG(error, "External dependency not in whitelist: " + path + ".");
+			}
+		}
+
+		// Once the external resource has passed the whitelist, recursively enforce whitelist for its dependencies.
+		// This ensures all nested dependencies are also validated against the whitelist.
+		// Only pass whitelist parameters if we're actually using a whitelist.
+		if (using_whitelist) {
+			external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, true, external_path_whitelist, type_whitelist);
+		} else {
+			external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, false, Dictionary(), Dictionary());
+		}
+
 		if (external_resources[i].load_token.is_null()) {
+			has_missing_dependencies = true;
 			if (!ResourceLoader::get_abort_on_missing_resources()) {
 				ResourceLoader::notify_dependency_error(local_path, path, external_resources[i].type);
 			} else {
 				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				ERR_FAIL_V_MSG(error, vformat("Can't load dependency: '%s'.", path));
 			}
 		}
@@ -768,7 +800,11 @@ Error ResourceLoaderBinary::load() {
 			if (res.is_null()) {
 				//did not replace
 
-				Object *obj = ClassDB::instantiate(t);
+				Object *obj = nullptr;
+				// Empty type whitelist denies all types (consistent with path whitelist behavior)
+				if (!using_whitelist || (!type_whitelist.is_empty() && type_whitelist.has(t))) {
+					obj = ClassDB::instantiate(t);
+				}
 				if (!obj) {
 					if (ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
 						//create a missing resource
@@ -820,6 +856,7 @@ Error ResourceLoaderBinary::load() {
 
 			if (name == StringName()) {
 				error = ERR_FILE_CORRUPT;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				ERR_FAIL_V(ERR_FILE_CORRUPT);
 			}
 
@@ -827,6 +864,7 @@ Error ResourceLoaderBinary::load() {
 
 			error = parse_variant(value);
 			if (error) {
+				resource = Ref<Resource>(); // Clear resource before returning error
 				return error;
 			}
 
@@ -893,6 +931,13 @@ Error ResourceLoaderBinary::load() {
 
 		if (main) {
 			f.unref();
+			if (has_missing_dependencies) {
+				// Even if abort_on_missing_resources is false, we should not return OK
+				// when dependencies are missing, as the resource is invalid
+				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
+				return error;
+			}
 			resource = res;
 			resource->set_as_translation_remapped(translation_remapped);
 			error = OK;
@@ -1241,6 +1286,41 @@ Ref<Resource> ResourceFormatLoaderBinary::load(const String &p_path, const Strin
 	String path = !p_original_path.is_empty() ? p_original_path : p_path;
 	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
 	loader.res_path = loader.local_path;
+	loader.using_whitelist = false;
+	loader.open(f);
+
+	err = loader.load();
+
+	if (r_error) {
+		*r_error = err;
+	}
+
+	if (err) {
+		return Ref<Resource>();
+	}
+	return loader.resource;
+}
+
+Ref<Resource> ResourceFormatLoaderBinary::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	if (r_error) {
+		*r_error = ERR_FILE_CANT_OPEN;
+	}
+
+	Error err;
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ, &err);
+
+	ERR_FAIL_COND_V_MSG(err != OK, Ref<Resource>(), "Cannot open file '" + p_path + "'.");
+
+	ResourceLoaderBinary loader;
+	loader.cache_mode = p_cache_mode;
+	loader.use_sub_threads = p_use_sub_threads;
+	loader.progress = r_progress;
+	String path = !p_original_path.is_empty() ? p_original_path : p_path;
+	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
+	loader.res_path = loader.local_path;
+	loader.using_whitelist = true;
+	loader.external_path_whitelist = p_external_path_whitelist;
+	loader.type_whitelist = p_type_whitelist;
 	loader.open(f);
 
 	err = loader.load();
