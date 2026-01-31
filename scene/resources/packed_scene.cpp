@@ -2499,13 +2499,23 @@ void PackedScene::reload_from_file() {
 }
 
 bool PackedScene::can_instantiate() const {
-	return state->can_instantiate();
+	return state.is_valid() && state->can_instantiate();
 }
 
 Node *PackedScene::instantiate(GenEditState p_edit_state) const {
 #ifndef TOOLS_ENABLED
 	ERR_FAIL_COND_V_MSG(p_edit_state != GEN_EDIT_STATE_DISABLED, nullptr, "Edit state is only for editors, does not work without tools compiled.");
 #endif
+
+	if (state.is_null()) {
+		ERR_PRINT(vformat("Cannot instantiate PackedScene from path '%s': scene state is null. The scene may not have been loaded correctly.", get_path()));
+		return nullptr;
+	}
+
+	if (!state->can_instantiate()) {
+		ERR_PRINT(vformat("Cannot instantiate PackedScene from path '%s': scene state is invalid.", get_path()));
+		return nullptr;
+	}
 
 	Node *s = state->instantiate((SceneState::GenEditState)p_edit_state);
 	if (!s) {
@@ -2526,6 +2536,7 @@ Node *PackedScene::instantiate(GenEditState p_edit_state) const {
 }
 
 void PackedScene::replace_state(Ref<SceneState> p_by) {
+	ERR_FAIL_COND_MSG(p_by.is_null(), "Cannot replace state with null SceneState.");
 	state = p_by;
 	state->set_path(get_path());
 #ifdef TOOLS_ENABLED

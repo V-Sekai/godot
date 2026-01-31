@@ -154,6 +154,9 @@ Error ResourceLoaderText::_parse_ext_resource(VariantParser::Stream *p_stream, R
 						err = error;
 					} else {
 						ResourceLoader::notify_dependency_error(local_path, path, type);
+						// Even if abort_on_missing_resources is false, we should still return an error
+						// to indicate the resource is invalid
+						err = ERR_FILE_MISSING_DEPENDENCIES;
 					}
 				}
 			} else {
@@ -457,6 +460,8 @@ Error ResourceLoaderText::load() {
 		_count_resources();
 	}
 
+	bool has_missing_dependencies = false;
+
 	while (true) {
 		if (next_tag.name != "ext_resource") {
 			break;
@@ -516,8 +521,20 @@ Error ResourceLoaderText::load() {
 
 		ext_resources[id].path = path;
 		ext_resources[id].type = type;
-		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external);
+
+		// Validate external resource path against whitelist if whitelist is provided
+		if (using_whitelist && !ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
+			error = ERR_FILE_MISSING_DEPENDENCIES;
+			error_text = "[ext_resource] External dependency not in whitelist: " + path;
+			_printerr();
+			return error;
+		}
+
+		// Once the external resource has passed the whitelist, recursively enforce whitelist for its dependencies.
+		// This ensures all nested dependencies are also validated against the whitelist.
+		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, using_whitelist, external_path_whitelist, type_whitelist);
 		if (ext_resources[id].load_token.is_null()) {
+			has_missing_dependencies = true;
 			if (ResourceLoader::get_abort_on_missing_resources()) {
 				error = ERR_FILE_CORRUPT;
 				error_text = "[ext_resource] referenced non-existent resource at: " + path;
@@ -592,7 +609,11 @@ Error ResourceLoaderText::load() {
 			} else {
 				//create
 
-				Object *obj = ClassDB::instantiate(type);
+				Object *obj = nullptr;
+				// Empty type whitelist denies all types (consistent with path whitelist behavior)
+				if (!using_whitelist || (!type_whitelist.is_empty() && type_whitelist.has(type))) {
+					obj = ClassDB::instantiate(type);
+				}
 				if (!obj) {
 					if (ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
 						missing_resource = memnew(MissingResource);
@@ -696,6 +717,11 @@ Error ResourceLoaderText::load() {
 				}
 				//it's assignment
 			} else if (!next_tag.name.is_empty()) {
+				if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+					error = ERR_FILE_MISSING_DEPENDENCIES;
+					resource = Ref<Resource>(); // Clear resource before returning error
+					return error;
+				}
 				error = OK;
 				break;
 			} else {
@@ -779,6 +805,11 @@ Error ResourceLoaderText::load() {
 					return error;
 				}
 				// EOF, Done parsing.
+				if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+					error = ERR_FILE_MISSING_DEPENDENCIES;
+					resource = Ref<Resource>(); // Clear resource before returning error
+					return error;
+				}
 				error = OK;
 				if (cache_mode != ResourceFormatLoader::CACHE_MODE_IGNORE) {
 					if (!ResourceCache::has(res_path)) {
@@ -859,6 +890,12 @@ Error ResourceLoaderText::load() {
 			resource->set_meta(META_MISSING_RESOURCES, missing_resource_properties);
 		}
 
+		if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+			error = ERR_FILE_MISSING_DEPENDENCIES;
+			resource = Ref<Resource>(); // Clear resource before returning error
+			return error;
+		}
+
 		error = OK;
 
 		return error;
@@ -877,6 +914,12 @@ Error ResourceLoaderText::load() {
 		Ref<PackedScene> packed_scene = _parse_node_tag(rp);
 
 		if (packed_scene.is_null()) {
+			return error;
+		}
+
+		if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+			error = ERR_FILE_MISSING_DEPENDENCIES;
+			resource = Ref<Resource>(); // Clear resource before returning error
 			return error;
 		}
 
@@ -1451,11 +1494,65 @@ Ref<Resource> ResourceFormatLoaderText::load(const String &p_path, const String 
 	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
 	loader.progress = r_progress;
 	loader.res_path = loader.local_path;
+	loader.using_whitelist = false;
+	loader.external_path_whitelist = Dictionary();
+	loader.type_whitelist = Dictionary();
 	loader.open(f);
 	err = loader.load();
 	if (r_error) {
 		*r_error = err;
 	}
+	if (err == OK) {
+		return loader.get_resource();
+	} else {
+		return Ref<Resource>();
+	}
+}
+
+Ref<Resource> ResourceFormatLoaderText::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	if (r_error) {
+		*r_error = ERR_CANT_OPEN;
+	}
+
+	Error err;
+
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ, &err);
+
+	ERR_FAIL_COND_V_MSG(err != OK, Ref<Resource>(), "Cannot open file '" + p_path + "'.");
+
+	ResourceLoaderText loader;
+	String path = !p_original_path.is_empty() ? p_original_path : p_path;
+	switch (p_cache_mode) {
+		case CACHE_MODE_IGNORE:
+		case CACHE_MODE_REUSE:
+		case CACHE_MODE_REPLACE:
+			loader.cache_mode = p_cache_mode;
+			loader.cache_mode_for_external = CACHE_MODE_REUSE;
+			break;
+		case CACHE_MODE_IGNORE_DEEP:
+			loader.cache_mode = ResourceFormatLoader::CACHE_MODE_IGNORE;
+			loader.cache_mode_for_external = p_cache_mode;
+			break;
+		case CACHE_MODE_REPLACE_DEEP:
+			loader.cache_mode = ResourceFormatLoader::CACHE_MODE_REPLACE;
+			loader.cache_mode_for_external = p_cache_mode;
+			break;
+	}
+	loader.use_sub_threads = p_use_sub_threads;
+	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
+	loader.progress = r_progress;
+	loader.res_path = loader.local_path;
+	loader.using_whitelist = true;
+	loader.external_path_whitelist = p_external_path_whitelist;
+	loader.type_whitelist = p_type_whitelist;
+	loader.open(f);
+
+	err = loader.load();
+
+	if (r_error) {
+		*r_error = err;
+	}
+
 	if (err == OK) {
 		return loader.get_resource();
 	} else {
