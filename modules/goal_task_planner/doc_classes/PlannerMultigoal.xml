@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerMultigoal" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		A [PlannerMultigoal] represents multiple goals to be achieved in a [PlannerPlan] and [PlannerDomain].
+	</brief_description>
+	<description>
+		The [PlannerMultigoal] represents a set of goals that a [PlannerPlan] needs to be achieved and provides methods for managing the state variables associated with these goals.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_goal_tag" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="multigoal" type="Variant" />
+			<description>
+				Extracts the goal_tag from a multigoal. The multigoal can be either a plain [Array] (which has no tag) or a [Dictionary] wrapper containing "item" and "goal_tag" keys. Returns an empty [String] if no tag is present. This is useful for identifying which multigoal methods should be used for a particular multigoal.
+			</description>
+		</method>
+		<method name="is_multigoal_array" qualifiers="static">
+			<return type="bool" />
+			<param index="0" name="variant" type="Variant" />
+			<description>
+				Checks if a [Variant] is a multigoal array. A multigoal array is an [Array] where the first element is also an [Array] (representing a unigoal). Returns true if the variant is a multigoal array, false otherwise.
+			</description>
+		</method>
+		<method name="method_goals_not_achieved" qualifiers="static">
+			<return type="Array" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="multigoal_array" type="Array" />
+			<description>
+				Compares the current state with the desired states in the multigoal and returns a [Dictionary] containing only the conditions from the multigoal that are not yet met in the current state.
+			</description>
+		</method>
+		<method name="method_verify_multigoal" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="method" type="String" />
+			<param index="2" name="multigoal_array" type="Array" />
+			<param index="3" name="depth" type="int" />
+			<param index="4" name="verbose" type="int" />
+			<description>
+				Verifies if all conditions in the multigoal are met by the current state. Returns an empty [Array] if all goals are achieved, or false if any goal is not achieved or if the multigoal is null. This is typically used for debugging and plan verification, potentially logging information if verbose is high enough.
+			</description>
+		</method>
+		<method name="set_goal_tag" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="multigoal" type="Variant" />
+			<param index="1" name="tag" type="String" />
+			<description>
+				Attaches a goal_tag to a multigoal. If the multigoal is already wrapped in a [Dictionary], updates the tag. If it's a plain [Array], wraps it in a [Dictionary] with "item" and "goal_tag" keys. Returns the tagged multigoal (as a [Dictionary]). This tag can be used to match multigoals to specific methods in the domain.
+			</description>
+		</method>
+	</methods>
+</class>

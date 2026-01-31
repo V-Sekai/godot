@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerPersona" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Unified Persona Entity for belief-immersed planning architecture.
+	</brief_description>
+	<description>
+		Represents a persona (human, AI, or hybrid) with capabilities and ego-centric beliefs. Personas are the core abstraction in the belief-immersed planning system, where each persona plans from their own perspective with beliefs about others.
+
+		[b]Capabilities:[/b]
+		Personas are differentiated by capabilities:
+		- **Human capabilities**: movable, inventory, craft, mine, build, interact
+		- **AI capabilities**: movable, compute, optimize, predict, learn, navigate
+		- **Hybrid**: Both human and AI capabilities
+
+		[b]Belief Semantics:[/b]
+		- Confidence: A normalized float (0.0 - 1.0) indicating certainty.
+		- Timestamp: Last time the belief was updated (game tick).
+		- Information Asymmetry: Personas plan based solely on their beliefs. (e.g., if believing a door is open, they plan to walk through it, even if locked in reality).
+
+		[b]Capability Filtering:[/b]
+		Planning methods filter themselves based on the current persona's capabilities. For example, a "mine_resources" method is pruned if the persona lacks the "mine" capability.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_capability">
+			<return type="void" />
+			<param index="0" name="capability" type="String" />
+			<description>
+				Add a capability to the persona.
+			</description>
+		</method>
+		<method name="create_ai" qualifiers="static">
+			<return type="PlannerPersona" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Create an AI persona with AI capabilities (movable, compute, optimize, predict, learn, navigate).
+			</description>
+		</method>
+		<method name="create_basic" qualifiers="static">
+			<return type="PlannerPersona" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Create a basic persona with no special capabilities.
+			</description>
+		</method>
+		<method name="create_human" qualifiers="static">
+			<return type="PlannerPersona" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Create a human persona with human capabilities (movable, inventory, craft, mine, build, interact).
+			</description>
+		</method>
+		<method name="create_hybrid" qualifiers="static">
+			<return type="PlannerPersona" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Create a hybrid persona with both human and AI capabilities.
+			</description>
+		</method>
+		<method name="enable_ai_capabilities">
+			<return type="void" />
+			<description>
+				Enable all AI capabilities for the persona.
+			</description>
+		</method>
+		<method name="enable_human_capabilities">
+			<return type="void" />
+			<description>
+				Enable all human capabilities for the persona.
+			</description>
+		</method>
+		<method name="get_belief_confidence" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns a [Dictionary] of all belief confidence levels. The dictionary structure is: target_persona_id -&gt; Dictionary(belief_key -&gt; confidence). Confidence values range from 0.0 (no confidence) to 1.0 (full confidence).
+			</description>
+		</method>
+		<method name="get_belief_confidence_for" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="belief_key" type="String" />
+			<description>
+				Returns the confidence level (0.0 to 1.0) for a specific belief about another persona. Returns 0.0 if the belief does not exist.
+			</description>
+		</method>
+		<method name="get_belief_timestamp_for" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="belief_key" type="String" />
+			<description>
+				Returns the timestamp (absolute microseconds since Unix epoch) when a specific belief was last updated. Returns 0 if the belief does not exist.
+			</description>
+		</method>
+		<method name="get_beliefs_about" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="target_persona_id" type="String" />
+			<description>
+				Get ego-centric beliefs about another persona.
+			</description>
+		</method>
+		<method name="get_beliefs_about_others" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns a [Dictionary] of all ego-centric beliefs about other personas. The dictionary structure is: target_persona_id -&gt; Dictionary(belief_key -&gt; belief_value).
+			</description>
+		</method>
+		<method name="get_capabilities" qualifiers="const">
+			<return type="String[]" />
+			<description>
+				Returns an [Array] of all capabilities that the persona has. Capabilities determine what commands the persona can perform.
+			</description>
+		</method>
+		<method name="get_identity_type" qualifiers="const">
+			<return type="int" />
+			<description>
+				Get the persona's identity type (IDENTITY_BASIC, IDENTITY_HUMAN, IDENTITY_AI, or IDENTITY_HUMAN_AND_AI).
+			</description>
+		</method>
+		<method name="get_metadata" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns the persona's metadata [Dictionary], which can contain character information, position, and other custom data.
+			</description>
+		</method>
+		<method name="get_persona_id" qualifiers="const">
+			<return type="String" />
+			<description>
+				Get the persona's unique identifier.
+			</description>
+		</method>
+		<method name="get_persona_name" qualifiers="const">
+			<return type="String" />
+			<description>
+				Get the persona's name.
+			</description>
+		</method>
+		<method name="get_planner_state" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="requesting_persona_id" type="String" />
+			<description>
+				Static method that demonstrates information asymmetry. Personas cannot directly access each other's internal planner states. This method returns an error [Dictionary] to enforce this constraint. Use [method PlannerBeliefManager.get_planner_state] instead, which also enforces information asymmetry.
+			</description>
+		</method>
+		<method name="has_capability" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="capability" type="String" />
+			<description>
+				Check if the persona has a specific capability.
+			</description>
+		</method>
+		<method name="initialize">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Initialize a persona with an ID and name.
+			</description>
+		</method>
+		<method name="is_active" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns true if the persona is active (can participate in planning), false if inactive.
+			</description>
+		</method>
+		<method name="process_communication">
+			<return type="void" />
+			<param index="0" name="communication" type="Dictionary" />
+			<description>
+				Process communication to update beliefs. Expected format: {"sender": String, "content": String, "type": String, ...}
+			</description>
+		</method>
+		<method name="process_observation">
+			<return type="void" />
+			<param index="0" name="observation" type="Dictionary" />
+			<description>
+				Process an observation to update beliefs. Expected format: {"entity": String, "command": String, "confidence": float, ...}
+			</description>
+		</method>
+		<method name="remove_capability">
+			<return type="void" />
+			<param index="0" name="capability" type="String" />
+			<description>
+				Removes a capability from the persona. The persona's identity type is automatically updated based on remaining capabilities.
+			</description>
+		</method>
+		<method name="set_active">
+			<return type="void" />
+			<param index="0" name="active" type="bool" />
+			<description>
+				Sets whether the persona is active. Inactive personas cannot participate in planning.
+			</description>
+		</method>
+		<method name="set_belief_about">
+			<return type="void" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="belief_key" type="String" />
+			<param index="2" name="belief_value" type="Variant" />
+			<param index="3" name="confidence" type="float" default="1.0" />
+			<param index="4" name="timestamp" type="int" default="0" />
+			<description>
+				Set a belief about another persona with an optional confidence level (0.0 to 1.0).
+			</description>
+		</method>
+		<method name="set_metadata">
+			<return type="void" />
+			<param index="0" name="metadata" type="Dictionary" />
+			<description>
+				Sets the persona's metadata [Dictionary], which can contain character information, position, and other custom data.
+			</description>
+		</method>
+		<method name="set_persona_id">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<description>
+				Sets the persona's unique identifier.
+			</description>
+		</method>
+		<method name="set_persona_name">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Sets the persona's display name.
+			</description>
+		</method>
+		<method name="update_belief_confidence">
+			<return type="void" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="belief_key" type="String" />
+			<param index="2" name="confidence" type="float" />
+			<description>
+				Updates the confidence level (0.0 to 1.0) for a specific belief about another persona. The belief must already exist.
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="IDENTITY_BASIC" value="0" enum="PlannerPersonaIdentity">
+			No special capabilities.
+		</constant>
+		<constant name="IDENTITY_HUMAN" value="1" enum="PlannerPersonaIdentity">
+			Human capabilities (movable, inventory, craft, mine, build, interact).
+		</constant>
+		<constant name="IDENTITY_AI" value="2" enum="PlannerPersonaIdentity">
+			AI capabilities (movable, compute, optimize, predict, learn, navigate).
+		</constant>
+		<constant name="IDENTITY_HUMAN_AND_AI" value="3" enum="PlannerPersonaIdentity">
+			Both human and AI capabilities.
+		</constant>
+	</constants>
+</class>
