@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SubdivisionBaker" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_baked_arrays">
+			<return type="Array" />
+			<param index="0" name="topology_arrays" type="Array" />
+			<param index="1" name="subdivision_level" type="int" />
+			<param index="2" name="format" type="int" />
+			<param index="3" name="topology_type" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
