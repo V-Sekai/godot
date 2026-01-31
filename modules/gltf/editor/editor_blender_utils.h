@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_import_blend_runner.h                                          */
+/*  editor_blender_utils.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,38 +30,23 @@
 
 #pragma once
 
-#include "core/io/http_client.h"
-#include "core/os/os.h"
-#include "scene/main/node.h"
-#include "scene/main/timer.h"
+#include "core/string/ustring.h"
 
-class EditorImportBlendRunner : public Node {
-	GDCLASS(EditorImportBlendRunner, Node);
-
-	static EditorImportBlendRunner *singleton;
-
-	Timer *kill_timer;
-	void _resources_reimported(const PackedStringArray &p_files);
-	void _kill_blender();
-	void _notification(int p_what);
-	bool _extract_error_message_xml(const Vector<uint8_t> &p_response_data, String &r_error_message);
-
-protected:
-	int rpc_port = 0;
-	OS::ProcessID blender_pid = 0;
-	Error start_blender(const String &p_python_script, bool p_blocking);
-	Error do_import_direct(const Dictionary &p_options);
-	Error do_import_rpc(const Dictionary &p_options);
-
+class EditorBlenderUtils {
 public:
-	static EditorImportBlendRunner *get_singleton() { return singleton; }
+	// Get Blender version from executable path
+	// Returns true if successful, false otherwise
+	// r_major and r_minor are set to the version numbers
+	// r_err is set to an error message if the function returns false
+	static bool get_blender_version(const String &p_path, int &r_major, int &r_minor, String *r_err = nullptr);
 
-	bool is_running() { return blender_pid != 0 && OS::get_singleton()->is_process_running(blender_pid); }
-	bool is_using_rpc() { return rpc_port != 0; }
-	Error do_import(const Dictionary &p_options);
-	Error do_import_usd(const Dictionary &p_options);
-	Error do_export_usd(const Dictionary &p_options);
-	HTTPClient::Status connect_blender_rpc(const Ref<HTTPClient> &p_client, int p_timeout_usecs);
+	// Fix Windows network share paths for Blender compatibility
+	// On Windows, network share paths starting with "//" need to be converted to "\\"
+	// Returns the fixed path
+	static String fix_windows_network_share_path(const String &p_path);
 
-	EditorImportBlendRunner();
+	// Validate Blender path and check version
+	// Returns true if path is valid and version is acceptable (3.0+)
+	// r_err is set to an error message if validation fails
+	static bool validate_blender_path(const String &p_path, String *r_err = nullptr);
 };

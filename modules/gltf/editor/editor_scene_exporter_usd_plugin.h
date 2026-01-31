@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_import_blend_runner.h                                          */
+/*  editor_scene_exporter_usd_plugin.h                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,38 +30,32 @@
 
 #pragma once
 
-#include "core/io/http_client.h"
-#include "core/os/os.h"
-#include "scene/main/node.h"
-#include "scene/main/timer.h"
+#include "../gltf_document.h"
+#include "editor_scene_exporter_gltf_settings.h"
 
-class EditorImportBlendRunner : public Node {
-	GDCLASS(EditorImportBlendRunner, Node);
+#include "editor/plugins/editor_plugin.h"
 
-	static EditorImportBlendRunner *singleton;
+class ConfirmationDialog;
+class EditorFileDialog;
+class EditorInspector;
 
-	Timer *kill_timer;
-	void _resources_reimported(const PackedStringArray &p_files);
-	void _kill_blender();
-	void _notification(int p_what);
-	bool _extract_error_message_xml(const Vector<uint8_t> &p_response_data, String &r_error_message);
+class SceneExporterUSDPlugin : public EditorPlugin {
+	GDCLASS(SceneExporterUSDPlugin, EditorPlugin);
 
-protected:
-	int rpc_port = 0;
-	OS::ProcessID blender_pid = 0;
-	Error start_blender(const String &p_python_script, bool p_blocking);
-	Error do_import_direct(const Dictionary &p_options);
-	Error do_import_rpc(const Dictionary &p_options);
+	Ref<GLTFDocument> _gltf_document;
+	Ref<EditorSceneExporterGLTFSettings> _export_settings;
+	String export_path;
+
+	EditorInspector *_settings_inspector = nullptr;
+	ConfirmationDialog *_config_dialog = nullptr;
+	EditorFileDialog *_file_dialog = nullptr;
+
+	void _popup_usd_settings_dialog(const String &p_selected_path);
+	void _popup_usd_export_dialog();
+	void _export_scene_as_usd();
 
 public:
-	static EditorImportBlendRunner *get_singleton() { return singleton; }
-
-	bool is_running() { return blender_pid != 0 && OS::get_singleton()->is_process_running(blender_pid); }
-	bool is_using_rpc() { return rpc_port != 0; }
-	Error do_import(const Dictionary &p_options);
-	Error do_import_usd(const Dictionary &p_options);
-	Error do_export_usd(const Dictionary &p_options);
-	HTTPClient::Status connect_blender_rpc(const Ref<HTTPClient> &p_client, int p_timeout_usecs);
-
-	EditorImportBlendRunner();
+	virtual String get_plugin_name() const override;
+	bool has_main_screen() const override;
+	SceneExporterUSDPlugin();
 };
