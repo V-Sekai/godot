@@ -3990,6 +3990,8 @@ void Control::_notification(int p_notification) {
 }
 
 void Control::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("call_gui_input", "event"), &Control::_call_gui_input);
+
 	ClassDB::bind_method(D_METHOD("accept_event"), &Control::accept_event);
 	ClassDB::bind_method(D_METHOD("get_minimum_size"), &Control::get_minimum_size);
 	ClassDB::bind_method(D_METHOD("get_combined_minimum_size"), &Control::get_combined_minimum_size);

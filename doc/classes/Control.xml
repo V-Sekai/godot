@@ -355,6 +355,13 @@
 				Prevents [code]*_theme_*_override[/code] methods from emitting [constant NOTIFICATION_THEME_CHANGED] until [method end_bulk_theme_override] is called.
 			</description>
 		</method>
+		<method name="call_gui_input">
+			<return type="void" />
+			<param index="0" name="event" type="InputEvent" />
+			<description>
+				Manually triggers the [method _gui_input] virtual method with the provided [param event]. This allows simulating GUI input events programmatically, which is useful for alternative interaction systems for custom input handling.
+			</description>
+		</method>
 		<method name="end_bulk_theme_override">
 			<return type="void" />
 			<description>
