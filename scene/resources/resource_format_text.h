@@ -93,6 +93,10 @@ private:
 
 	HashMap<String, String> remaps;
 
+	bool using_whitelist = false;
+	Dictionary external_path_whitelist;
+	Dictionary type_whitelist;
+
 	static Error _parse_sub_resources(void *p_self, VariantParser::Stream *p_stream, Ref<Resource> &r_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceLoaderText *>(p_self)->_parse_sub_resource(p_stream, r_res, line, r_err_str); }
 	static Error _parse_ext_resources(void *p_self, VariantParser::Stream *p_stream, Ref<Resource> &r_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceLoaderText *>(p_self)->_parse_ext_resource(p_stream, r_res, line, r_err_str); }
 
@@ -162,6 +166,7 @@ public:
 	virtual bool has_custom_uid_support() const override;
 	virtual void get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types = false) override;
 	virtual Error rename_dependencies(const String &p_path, const HashMap<String, String> &p_map) override;
+	virtual Ref<Resource> load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE) override;
 
 	ResourceFormatLoaderText() { singleton = this; }
 };
