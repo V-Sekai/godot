@@ -181,7 +181,12 @@ try:
   usd_dir = os.path.dirname(usd_filepath)
   if usd_dir and not os.path.exists(usd_dir):
     os.makedirs(usd_dir, exist_ok=True)
-  result = bpy.ops.wm.usd_export(**opts['usd_export_options'])
+  # Remove problematic parameters for Blender 5.0+ as they may no longer be recognized
+  usd_export_options = opts['usd_export_options'].copy()
+  if bpy.app.version >= (5, 0, 0):
+    usd_export_options.pop('visible_objects_only', None)
+    usd_export_options.pop('selected_objects_only', None)
+  result = bpy.ops.wm.usd_export(**usd_export_options)
   if 'FINISHED' not in result:
     print('USD export failed with result: ' + str(result), file=sys.stderr)
     sys.exit(1)
