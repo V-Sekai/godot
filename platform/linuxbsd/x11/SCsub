@@ -3,6 +3,8 @@ from misc.utility.scons_hints import *
 
 Import("env")
 
+obj_builder = env.SharedObject if env["library_type"] == "shared_library" else env.Object
+
 source_files = [
     "display_server_x11.cpp",
     "key_mapping_x11.cpp",
@@ -34,6 +36,6 @@ if env["opengl3"]:
 objects = []
 
 for source_file in source_files:
-    objects.append(env.Object(source_file))
+    objects.append(obj_builder(source_file))
 
 Return("objects")
