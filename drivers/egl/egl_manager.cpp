@@ -203,18 +203,8 @@ typedef struct EGLConfigRequirements {
 } EGLConfigRequirements;
 
 const EGLConfigRequirements config_reqs[] = {
-	{ .red_size = 8,
-			.green_size = 8,
-			.blue_size = 8,
-			.alpha_size = 8,
-			.depth_size = 24,
-			.stencil_size = 0 },
-	{ .red_size = 8,
-			.green_size = 8,
-			.blue_size = 8,
-			.alpha_size = 8,
-			.depth_size = 16,
-			.stencil_size = 0 },
+	{ 8, 8, 8, 8, 24, 0 },
+	{ 8, 8, 8, 8, 16, 0 },
 };
 
 EGLint config_attribs[] = {

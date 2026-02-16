@@ -46,7 +46,7 @@ public:
 
 	FramebufferBinding(GLenum p_target, GLuint p_framebuffer, bool p_bind) {
 		target = p_target;
-		GLenum binding_target;
+		GLenum binding_target = GL_FRAMEBUFFER_BINDING;
 		switch (p_target) {
 			case GL_FRAMEBUFFER:
 				binding_target = GL_FRAMEBUFFER_BINDING;
@@ -56,6 +56,8 @@ public:
 				break;
 			case GL_DRAW_FRAMEBUFFER:
 				binding_target = GL_DRAW_FRAMEBUFFER_BINDING;
+				break;
+			default:
 				break;
 		}
 		glGetIntegerv(binding_target, &framebuffer);
