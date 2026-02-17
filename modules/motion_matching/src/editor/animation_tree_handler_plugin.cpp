@@ -37,6 +37,12 @@ AnimationTreeHandlerPlugin::AnimationTreeHandlerPlugin() {
 	_animation_tree = nullptr;
 }
 
+AnimationTreeHandlerPlugin::~AnimationTreeHandlerPlugin() {
+	if (_singleton == this) {
+		_singleton = nullptr;
+	}
+}
+
 bool AnimationTreeHandlerPlugin::handles(Object *p_object) const {
 	return Object::cast_to<AnimationTree>(p_object) != nullptr;
 }
