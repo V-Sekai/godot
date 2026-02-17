@@ -73,7 +73,6 @@ void MMAnimationLibrary::bake_data(const MMCharacter *p_character, const Animati
 
 		const double animation_length = animation->get_length();
 		const double time_step = 1.0f / get_sampling_rate();
-		int pose_count = 0;
 		// Every time step
 		for (double time = 0; time < animation_length; time += time_step) {
 			PackedFloat32Array pose_data;
