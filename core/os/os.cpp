@@ -473,6 +473,12 @@ bool OS::has_feature(const String &p_feature) {
 		return _writing_movie;
 	}
 
+#ifdef LIBGODOT_ENABLED
+	if (p_feature == "libgodot") {
+		return true;
+	}
+#endif
+
 #ifdef DEBUG_ENABLED
 	if (p_feature == "debug") {
 		return true;
@@ -833,5 +839,6 @@ OS::~OS() {
 	if (_logger) {
 		memdelete(_logger);
 	}
+	OS::target_ticks = 0;
 	singleton = nullptr;
 }
