@@ -77,6 +77,7 @@ void DampedSkeletonModifier::_process_modification(double p_delta) {
 void DampedSkeletonModifier::_bind_methods() {
 	BINDER_PROPERTY_PARAMS(DampedSkeletonModifier, Variant::FLOAT, halflife);
 }
+
 void DampedSkeletonModifier::_notification(int32_t p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY:
