@@ -36,7 +36,7 @@ void DisplayServerEmbeddedHostInterface::_bind_methods() {
 }
 
 Input::CursorShape DisplayServerEmbeddedHostInterface::cursor_get_shape() const {
-	Input::CursorShape cursor_shape;
+	Input::CursorShape cursor_shape = Input::CURSOR_ARROW;
 	GDVIRTUAL_CALL(_cursor_get_shape, cursor_shape);
 	return cursor_shape;
 }
