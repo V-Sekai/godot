@@ -30,6 +30,8 @@
 
 #include "mm_feature.h"
 
+#include <cmath>
+
 MMFeature::MMFeature() {
 }
 
@@ -79,7 +81,7 @@ void MMFeature::_normalize_minmax(float *p_data) const {
 	}
 	for (int64_t i = 0; i < get_dimension_count(); ++i) {
 		const float delta = maxes[i] - mins[i];
-		if (abs(delta) < KINDA_SMALL_NUMBER) {
+		if (std::abs(delta) < KINDA_SMALL_NUMBER) {
 			continue;
 		}
 		p_data[i] = (p_data[i] - mins[i]) / delta;
@@ -93,7 +95,7 @@ void MMFeature::_denormalize_minmax(float *p_data) const {
 	}
 	for (int64_t i = 0; i < get_dimension_count(); ++i) {
 		const float delta = maxes[i] - mins[i];
-		if (abs(delta) < KINDA_SMALL_NUMBER) {
+		if (std::abs(delta) < KINDA_SMALL_NUMBER) {
 			continue;
 		}
 		p_data[i] = (p_data[i] * delta) + mins[i];

@@ -37,6 +37,7 @@
 #include "scene/resources/material.h"
 #include "scene/resources/mesh.h"
 
+#include <cmath>
 #include <cstdint>
 
 MMTrajectoryFeature::MMTrajectoryFeature() {
@@ -95,7 +96,7 @@ PackedFloat32Array MMTrajectoryFeature::bake_animation_pose(Ref<Animation> p_ani
 				extrapolation_velocity = (p_animation->position_track_interpolate(_root_position_track, 0.0) -
 												 p_animation->position_track_interpolate(_root_position_track, extrapolation_dt)) /
 						extrapolation_dt;
-				extrapolation_time = abs(p_time);
+				extrapolation_time = std::abs(p_time);
 			}
 
 			position = interpolated_position + extrapolation_velocity * extrapolation_time - current_pos;
