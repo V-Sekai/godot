@@ -29,7 +29,7 @@
 /**************************************************************************/
 
 #include "gdextension_function_loader.h"
-
+#include "core/config/project_settings.h"
 #include "gdextension.h"
 
 Error GDExtensionFunctionLoader::open_library(const String &p_path) {
@@ -48,7 +48,8 @@ Error GDExtensionFunctionLoader::initialize(GDExtensionInterfaceGetProcAddress p
 	if (ret) {
 		return OK;
 	} else {
-		ERR_FAIL_V_MSG(FAILED, "GDExtension initialization function for '" + library_path + "' returned an error.");
+		ERR_PRINT("GDExtension initialization function for '" + library_path + "' returned an error.");
+		return FAILED;
 	}
 }
 

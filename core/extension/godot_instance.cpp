@@ -29,11 +29,33 @@
 /**************************************************************************/
 
 #include "godot_instance.h"
-
+#include "core/extension/gdextension.h"
 #include "core/extension/gdextension_manager.h"
-#include "core/os/main_loop.h"
 #include "main/main.h"
 #include "servers/display/display_server.h"
+
+#define GODOT_INSTANCE_LOG(...) print_line(__VA_ARGS__)
+
+TaskExecutor::TaskExecutor(InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data) {
+	async_func = p_async_func;
+	async_data = p_async_data;
+	sync_func = p_sync_func;
+	sync_data = p_sync_data;
+}
+
+void TaskExecutor::sync(std::function<void()> p_callback) {
+	sync_func(&TaskExecutor::invokeCallback, new std::function<void()>(p_callback), sync_data);
+}
+
+void TaskExecutor::async(std::function<void()> p_callback) {
+	async_func(&TaskExecutor::invokeCallback, new std::function<void()>(p_callback), async_data);
+}
+
+void TaskExecutor::invokeCallback(void *p_callback) {
+	std::function<void()> *callback = (std::function<void()> *)p_callback;
+	(*callback)();
+	delete callback;
+}
 
 void GodotInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("start"), &GodotInstance::start);
@@ -43,6 +65,7 @@ void GodotInstance::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("focus_out"), &GodotInstance::focus_out);
 	ClassDB::bind_method(D_METHOD("pause"), &GodotInstance::pause);
 	ClassDB::bind_method(D_METHOD("resume"), &GodotInstance::resume);
+	ClassDB::bind_method(D_METHOD("execute", "callback", "async"), &GodotInstance::execute);
 }
 
 GodotInstance::GodotInstance() {
@@ -51,23 +74,32 @@ GodotInstance::GodotInstance() {
 GodotInstance::~GodotInstance() {
 }
 
-bool GodotInstance::initialize(GDExtensionInitializationFunction p_init_func) {
-	print_verbose("Godot Instance initialization");
+bool GodotInstance::initialize(GDExtensionInitializationFunction p_init_func, GodotInstanceCallbacks *p_callbacks) {
+	GODOT_INSTANCE_LOG("Godot Instance initialization");
+	callbacks = p_callbacks;
 	GDExtensionManager *gdextension_manager = GDExtensionManager::get_singleton();
 	GDExtensionConstPtr<const GDExtensionInitializationFunction> ptr((const GDExtensionInitializationFunction *)&p_init_func);
-	GDExtensionManager::LoadStatus status = gdextension_manager->load_extension_from_function("libgodot://main", ptr);
+	GDExtensionManager::LoadStatus status = gdextension_manager->load_function_extension("libgodot://main", ptr);
 	return status == GDExtensionManager::LoadStatus::LOAD_STATUS_OK;
 }
 
+#define CALL_CB(cb)          \
+	if (callbacks) {         \
+		callbacks->cb(this); \
+	}
+
 bool GodotInstance::start() {
-	print_verbose("GodotInstance::start()");
+	GODOT_INSTANCE_LOG("GodotInstance::start()");
+	CALL_CB(before_setup2);
 	Error err = Main::setup2();
 	if (err != OK) {
 		return false;
 	}
+	CALL_CB(before_start);
 	started = Main::start() == EXIT_SUCCESS;
 	if (started) {
 		OS::get_singleton()->get_main_loop()->initialize();
+		CALL_CB(after_start);
 	}
 	return started;
 }
@@ -77,12 +109,19 @@ bool GodotInstance::is_started() {
 }
 
 bool GodotInstance::iteration() {
-	DisplayServer::get_singleton()->process_events();
-	return Main::iteration();
+	CALL_CB(before_iteration);
+	if (DisplayServer::get_singleton()) {
+		DisplayServer::get_singleton()->process_events();
+	}
+	bool exit = Main::iteration();
+	if (callbacks) {
+		callbacks->after_iteration(this, exit);
+	}
+	return exit;
 }
 
 void GodotInstance::stop() {
-	print_verbose("GodotInstance::stop()");
+	GODOT_INSTANCE_LOG("GodotInstance::stop()");
 	if (started) {
 		OS::get_singleton()->get_main_loop()->finalize();
 	}
@@ -90,37 +129,66 @@ void GodotInstance::stop() {
 }
 
 void GodotInstance::focus_out() {
-	print_verbose("GodotInstance::focus_out()");
+	GODOT_INSTANCE_LOG("GodotInstance::focus_out()");
 	if (started) {
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_OUT);
 		}
+
+		CALL_CB(focus_out);
 	}
 }
 
 void GodotInstance::focus_in() {
-	print_verbose("GodotInstance::focus_in()");
+	GODOT_INSTANCE_LOG("GodotInstance::focus_in()");
 	if (started) {
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_IN);
 		}
+		CALL_CB(focus_in);
 	}
 }
 
 void GodotInstance::pause() {
-	print_verbose("GodotInstance::pause()");
+	GODOT_INSTANCE_LOG("GodotInstance::pause()");
 	if (started) {
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_PAUSED);
 		}
+		CALL_CB(pause);
 	}
 }
 
 void GodotInstance::resume() {
-	print_verbose("GodotInstance::resume()");
+	GODOT_INSTANCE_LOG("GodotInstance::resume()");
 	if (started) {
+		CALL_CB(resume);
 		if (OS::get_singleton()->get_main_loop()) {
 			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_RESUMED);
 		}
+	}
+}
+
+void GodotInstance::set_executor(TaskExecutor *p_executor) {
+	executor = p_executor;
+}
+
+TaskExecutor *GodotInstance::get_executor() {
+	return executor;
+}
+
+void GodotInstance::execute(Callable p_callback, bool p_async) {
+	if (executor == nullptr) {
+		p_callback.call();
+		return;
+	}
+	if (p_async) {
+		executor->async([p_callback]() {
+			p_callback.call();
+		});
+	} else {
+		executor->sync([p_callback]() {
+			p_callback.call();
+		});
 	}
 }

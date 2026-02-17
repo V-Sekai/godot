@@ -28,10 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef GDEXTENSION_FUNCTION_LOADER_H
+#define GDEXTENSION_FUNCTION_LOADER_H
 
 #include "core/extension/gdextension_loader.h"
 #include "core/os/shared_object.h"
+#include <functional>
 
 class GDExtension;
 
@@ -39,16 +41,19 @@ class GDExtensionFunctionLoader : public GDExtensionLoader {
 	friend class GDExtensionManager;
 	friend class GDExtension;
 
+private:
 	String library_path;
 	GDExtensionInitializationFunction initialization_function = nullptr;
 
 public:
-	virtual Error open_library(const String &p_path) override;
-	virtual Error initialize(GDExtensionInterfaceGetProcAddress p_get_proc_address, const Ref<GDExtension> &p_extension, GDExtensionInitialization *r_initialization) override;
-	virtual void close_library() override;
-	virtual bool is_library_open() const override;
-	virtual bool has_library_changed() const override;
-	virtual bool library_exists() const override;
+	Error open_library(const String &p_path) override;
+	Error initialize(GDExtensionInterfaceGetProcAddress p_get_proc_address, const Ref<GDExtension> &p_extension, GDExtensionInitialization *r_initialization) override;
+	void close_library() override;
+	bool is_library_open() const override;
+	bool has_library_changed() const override;
+	bool library_exists() const override;
 
-	void set_initialization_function(GDExtensionInitializationFunction p_initialization_function);
+	void set_initialization_function(GDExtensionInitializationFunction initialization_function);
 };
+
+#endif // GDEXTENSION_FUNCTION_LOADER_H
