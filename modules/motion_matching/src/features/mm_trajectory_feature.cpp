@@ -178,6 +178,7 @@ PackedFloat32Array MMTrajectoryFeature::evaluate_runtime_data(const MMQueryInput
 	return result;
 }
 
+#ifdef TOOLS_ENABLED
 void MMTrajectoryFeature::display_data(const Ref<EditorNode3DGizmo> &p_gizmo, const Transform3D &p_transform, const float *p_data) const {
 	Ref<StandardMaterial3D> trajectory_material = p_gizmo->get_plugin()->get_material("trajectory_material", p_gizmo);
 	if (trajectory_material.is_null()) {
@@ -235,6 +236,7 @@ void MMTrajectoryFeature::display_data(const Ref<EditorNode3DGizmo> &p_gizmo, co
 
 	delete[] dernomalized_data;
 }
+#endif // TOOLS_ENABLED
 
 float MMTrajectoryFeature::calculate_normalized_weight(int64_t p_feature_dim) const {
 	float normalized_w = MMFeature::calculate_normalized_weight(p_feature_dim);
