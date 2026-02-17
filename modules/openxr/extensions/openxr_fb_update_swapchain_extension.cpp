@@ -199,6 +199,7 @@ void OpenXRFBUpdateSwapchainExtension::update_swapchain_surface_size(XrSwapchain
 
 uint32_t OpenXRFBUpdateSwapchainExtension::filter_to_gl(OpenXRCompositionLayerExtension::Filter p_filter, OpenXRCompositionLayerExtension::MipmapMode p_mipmap_mode) {
 #ifdef XR_USE_GRAPHICS_API_OPENGL_ES
+#ifndef GLAD_ENABLED
 	switch (p_mipmap_mode) {
 		case OpenXRCompositionLayerExtension::MipmapMode::MIPMAP_MODE_DISABLED:
 			switch (p_filter) {
@@ -228,12 +229,14 @@ uint32_t OpenXRFBUpdateSwapchainExtension::filter_to_gl(OpenXRCompositionLayerEx
 					return GL_CUBIC_MIPMAP_LINEAR_IMG;
 			}
 	}
-#endif
+#endif // GLAD_ENABLED
+#endif // XR_USE_GRAPHICS_API_OPENGL_ES
 	return 0;
 }
 
 uint32_t OpenXRFBUpdateSwapchainExtension::wrap_to_gl(OpenXRCompositionLayerExtension::Wrap p_wrap) {
 #ifdef XR_USE_GRAPHICS_API_OPENGL_ES
+#ifndef GLAD_ENABLED
 	switch (p_wrap) {
 		case OpenXRCompositionLayerExtension::Wrap::WRAP_CLAMP_TO_BORDER:
 			return GL_CLAMP_TO_BORDER;
@@ -246,12 +249,14 @@ uint32_t OpenXRFBUpdateSwapchainExtension::wrap_to_gl(OpenXRCompositionLayerExte
 		case OpenXRCompositionLayerExtension::Wrap::WRAP_MIRROR_CLAMP_TO_EDGE:
 			return GL_CLAMP_TO_EDGE;
 	}
-#endif
+#endif // GLAD_ENABLED
+#endif // XR_USE_GRAPHICS_API_OPENGL_ES
 	return 0;
 }
 
 uint32_t OpenXRFBUpdateSwapchainExtension::swizzle_to_gl(OpenXRCompositionLayerExtension::Swizzle p_swizzle) {
 #ifdef XR_USE_GRAPHICS_API_OPENGL_ES
+#ifndef GLAD_ENABLED
 	switch (p_swizzle) {
 		case OpenXRCompositionLayerExtension::Swizzle::SWIZZLE_RED:
 			return GL_RED;
@@ -266,7 +271,8 @@ uint32_t OpenXRFBUpdateSwapchainExtension::swizzle_to_gl(OpenXRCompositionLayerE
 		case OpenXRCompositionLayerExtension::Swizzle::SWIZZLE_ONE:
 			return GL_ONE;
 	}
-#endif
+#endif // GLAD_ENABLED
+#endif // XR_USE_GRAPHICS_API_OPENGL_ES
 	return 0;
 }
 
