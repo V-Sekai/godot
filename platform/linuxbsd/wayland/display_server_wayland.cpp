@@ -32,6 +32,9 @@
 
 #ifdef WAYLAND_ENABLED
 
+#include "core/io/file_access.h"
+#include "core/os/main_loop.h"
+
 #define WAYLAND_DISPLAY_SERVER_DEBUG_LOGS_ENABLED
 #ifdef WAYLAND_DISPLAY_SERVER_DEBUG_LOGS_ENABLED
 #define DEBUG_LOG_WAYLAND(...) print_verbose(__VA_ARGS__)
@@ -39,15 +42,14 @@
 #define DEBUG_LOG_WAYLAND(...)
 #endif
 
-#include "core/os/main_loop.h"
 #include "servers/rendering/dummy/rasterizer_dummy.h"
+#include "rendering_native_surface_wayland.h"
 
 #ifdef VULKAN_ENABLED
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #endif
 
 #ifdef GLES3_ENABLED
-#include "core/io/file_access.h"
 #include "detect_prime_egl.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "wayland/egl_manager_wayland.h"
@@ -187,7 +189,6 @@ bool DisplayServerWayland::has_feature(Feature p_feature) const {
 		case FEATURE_CURSOR_SHAPE:
 		case FEATURE_CUSTOM_CURSOR_SHAPE:
 		case FEATURE_WINDOW_TRANSPARENCY:
-		case FEATURE_ICON:
 		case FEATURE_HIDPI:
 		case FEATURE_SWAP_BUFFERS:
 		case FEATURE_KEEP_SCREEN_ON:
@@ -195,7 +196,6 @@ bool DisplayServerWayland::has_feature(Feature p_feature) const {
 		case FEATURE_WINDOW_DRAG:
 		case FEATURE_CLIPBOARD_PRIMARY:
 		case FEATURE_SUBWINDOWS:
-		case FEATURE_WINDOW_EMBEDDING:
 		case FEATURE_SELF_FITTING_WINDOWS: {
 			return true;
 		} break;
@@ -546,8 +546,6 @@ Ref<Image> DisplayServerWayland::clipboard_get_image() const {
 		err = image->load_tga_from_buffer(wayland_thread.selection_get_mime("image/x-targa"));
 	} else if (wayland_thread.selection_has_mime("image/ktx")) {
 		err = image->load_ktx_from_buffer(wayland_thread.selection_get_mime("image/ktx"));
-	} else if (wayland_thread.selection_has_mime("image/x-exr")) {
-		err = image->load_exr_from_buffer(wayland_thread.selection_get_mime("image/x-exr"));
 	}
 
 	ERR_FAIL_COND_V(err != OK, Ref<Image>());
@@ -688,18 +686,7 @@ void DisplayServerWayland::screen_set_keep_on(bool p_enable) {
 	wayland_thread.window_set_idle_inhibition(MAIN_WINDOW_ID, p_enable);
 
 #ifdef DBUS_ENABLED
-	if (portal_desktop && portal_desktop->is_inhibit_supported()) {
-		if (p_enable) {
-			// Attach the inhibit request to the main window, not the last focused window,
-			// on the basis that inhibiting the screensaver is global state for the application.
-			WindowID window_id = MAIN_WINDOW_ID;
-			WaylandThread::WindowState *ws = wayland_thread.wl_surface_get_window_state(wayland_thread.window_get_wl_surface(window_id));
-			screensaver_inhibited = portal_desktop->inhibit(ws ? ws->exported_handle : String());
-		} else {
-			portal_desktop->uninhibit();
-			screensaver_inhibited = false;
-		}
-	} else if (screensaver) {
+	if (screensaver) {
 		if (p_enable) {
 			screensaver->inhibit();
 		} else {
@@ -788,11 +775,15 @@ void DisplayServerWayland::show_window(WindowID p_window_id) {
 			wd.rect.position = Point2i();
 
 			DEBUG_LOG_WAYLAND(vformat("Creating regular window of size %s", wd.rect.size));
-			wayland_thread.window_create(p_window_id, wd.rect.size, wd.parent_id);
+			wayland_thread.window_create(p_window_id, wd.rect.size);
 			wayland_thread.window_set_min_size(p_window_id, wd.min_size);
 			wayland_thread.window_set_max_size(p_window_id, wd.max_size);
 			wayland_thread.window_set_app_id(p_window_id, _get_app_id_from_context(context));
 			wayland_thread.window_set_borderless(p_window_id, window_get_flag(WINDOW_FLAG_BORDERLESS, p_window_id));
+
+			if (wd.parent_id != INVALID_WINDOW_ID) {
+				wayland_thread.window_set_parent(wd.id, wd.parent_id);
+			}
 
 			// Since it can't have a position. Let's tell the window node the news by
 			// the actual rect to it.
@@ -818,19 +809,13 @@ void DisplayServerWayland::show_window(WindowID p_window_id) {
 		// graphics context window creation logic here.
 #ifdef RD_ENABLED
 		if (rendering_context) {
-			union {
-#ifdef VULKAN_ENABLED
-				RenderingContextDriverVulkanWayland::WindowPlatformData vulkan;
-#endif
-			} wpd;
+			Ref<RenderingNativeSurfaceWayland> ns;
 #ifdef VULKAN_ENABLED
 			if (rendering_driver == "vulkan") {
-				wpd.vulkan.surface = wayland_thread.window_get_wl_surface(wd.id);
-				ERR_FAIL_NULL(wpd.vulkan.surface);
-				wpd.vulkan.display = wayland_thread.get_wl_display();
+				ns = RenderingNativeSurfaceWayland::create(wayland_thread.get_wl_display(), wayland_thread.window_get_wl_surface(wd.id));
 			}
 #endif
-			Error err = rendering_context->window_create(wd.id, &wpd);
+			Error err = rendering_context->window_create(wd.id, ns);
 			ERR_FAIL_COND_MSG(err != OK, vformat("Can't create a %s window", rendering_driver));
 
 			rendering_context->window_set_size(wd.id, wd.rect.size.width, wd.rect.size.height);
@@ -848,7 +833,6 @@ void DisplayServerWayland::show_window(WindowID p_window_id) {
 #ifdef GLES3_ENABLED
 		if (egl_manager) {
 			struct wl_surface *wl_surface = wayland_thread.window_get_wl_surface(wd.id);
-			ERR_FAIL_NULL(wl_surface);
 			wd.wl_egl_window = wl_egl_window_create(wl_surface, wd.rect.size.width, wd.rect.size.height);
 
 			Error err = egl_manager->window_create(p_window_id, wayland_thread.get_wl_display(), wd.wl_egl_window, wd.rect.size.width, wd.rect.size.height);
@@ -1204,12 +1188,11 @@ void DisplayServerWayland::window_set_size(const Size2i p_size, DisplayServer::W
 	ERR_FAIL_COND(!windows.has(p_window_id));
 	WindowData &wd = windows[p_window_id];
 
-	Size2i new_size = p_size;
-	if (wd.visible) {
-		new_size = wayland_thread.window_set_size(p_window_id, p_size);
+	// The XDG spec doesn't allow non-interactive resizes. Let's update the
+	// window's internal representation to account for that.
+	if (wd.rect_changed_callback.is_valid()) {
+		wd.rect_changed_callback.call(wd.rect);
 	}
-
-	_update_window_rect(Rect2i(wd.rect.position, new_size), p_window_id);
 }
 
 Size2i DisplayServerWayland::window_get_size(DisplayServer::WindowID p_window_id) const {
@@ -1227,15 +1210,6 @@ Size2i DisplayServerWayland::window_get_size_with_decorations(DisplayServer::Win
 	// that useful in this case. We'll just return the main window's size.
 	ERR_FAIL_COND_V(!windows.has(p_window_id), Size2i());
 	return windows[p_window_id].rect.size;
-}
-
-float DisplayServerWayland::window_get_scale(WindowID p_window_id) const {
-	MutexLock mutex_lock(wayland_thread.mutex);
-
-	const WaylandThread::WindowState *ws = wayland_thread.window_get_state(p_window_id);
-	ERR_FAIL_NULL_V(ws, 1);
-
-	return wayland_thread.window_state_get_scale_factor(ws);
 }
 
 void DisplayServerWayland::window_set_mode(WindowMode p_mode, DisplayServer::WindowID p_window_id) {
@@ -1324,8 +1298,6 @@ void DisplayServerWayland::window_move_to_foreground(DisplayServer::WindowID p_w
 }
 
 bool DisplayServerWayland::window_is_focused(WindowID p_window_id) const {
-	MutexLock mutex_lock(wayland_thread.mutex);
-
 	return wayland_thread.pointer_get_pointed_window_id() == p_window_id;
 }
 
@@ -1533,95 +1505,6 @@ bool DisplayServerWayland::get_swap_cancel_ok() {
 	return swap_cancel_ok;
 }
 
-Error DisplayServerWayland::embed_process(WindowID p_window, OS::ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) {
-	MutexLock mutex_lock(wayland_thread.mutex);
-
-	struct godot_embedding_compositor *ec = wayland_thread.get_embedding_compositor();
-	ERR_FAIL_NULL_V_MSG(ec, ERR_BUG, "Missing embedded compositor interface");
-
-	struct WaylandThread::EmbeddingCompositorState *ecs = WaylandThread::godot_embedding_compositor_get_state(ec);
-	ERR_FAIL_NULL_V(ecs, ERR_BUG);
-
-	if (!ecs->mapped_clients.has(p_pid)) {
-		return ERR_DOES_NOT_EXIST;
-	}
-
-	struct godot_embedded_client *embedded_client = ecs->mapped_clients[p_pid];
-	WaylandThread::EmbeddedClientState *client_data = (WaylandThread::EmbeddedClientState *)godot_embedded_client_get_user_data(embedded_client);
-	ERR_FAIL_NULL_V(client_data, ERR_BUG);
-
-	if (p_grab_focus) {
-		godot_embedded_client_focus_window(embedded_client);
-	}
-
-	if (p_visible) {
-		WaylandThread::WindowState *ws = wayland_thread.window_get_state(p_window);
-		ERR_FAIL_NULL_V(ws, ERR_BUG);
-
-		struct xdg_toplevel *toplevel = ws->xdg_toplevel;
-#ifdef LIBDECOR_ENABLED
-		if (toplevel == nullptr && ws->libdecor_frame) {
-			toplevel = libdecor_frame_get_xdg_toplevel(ws->libdecor_frame);
-		}
-#endif
-
-		ERR_FAIL_NULL_V(toplevel, ERR_CANT_CREATE);
-
-		godot_embedded_client_set_embedded_window_parent(embedded_client, toplevel);
-
-		double window_scale = WaylandThread::window_state_get_scale_factor(ws);
-
-		Rect2i scaled_rect = p_rect;
-		scaled_rect.position = WaylandThread::scale_vector2i(scaled_rect.position, 1 / window_scale);
-		scaled_rect.size = WaylandThread::scale_vector2i(scaled_rect.size, 1 / window_scale);
-
-		print_verbose(vformat("Scaling embedded rect down by %f from %s to %s.", window_scale, p_rect, scaled_rect));
-
-		godot_embedded_client_set_embedded_window_rect(embedded_client, scaled_rect.position.x, scaled_rect.position.y, scaled_rect.size.width, scaled_rect.size.height);
-	} else {
-		godot_embedded_client_set_embedded_window_parent(embedded_client, nullptr);
-	}
-
-	return OK;
-}
-
-Error DisplayServerWayland::request_close_embedded_process(OS::ProcessID p_pid) {
-	MutexLock mutex_lock(wayland_thread.mutex);
-
-	struct godot_embedding_compositor *ec = wayland_thread.get_embedding_compositor();
-	ERR_FAIL_NULL_V_MSG(ec, ERR_BUG, "Missing embedded compositor interface");
-
-	struct WaylandThread::EmbeddingCompositorState *ecs = WaylandThread::godot_embedding_compositor_get_state(ec);
-	ERR_FAIL_NULL_V(ecs, ERR_BUG);
-
-	if (!ecs->mapped_clients.has(p_pid)) {
-		return ERR_DOES_NOT_EXIST;
-	}
-
-	struct godot_embedded_client *embedded_client = ecs->mapped_clients[p_pid];
-	WaylandThread::EmbeddedClientState *client_data = (WaylandThread::EmbeddedClientState *)godot_embedded_client_get_user_data(embedded_client);
-	ERR_FAIL_NULL_V(client_data, ERR_BUG);
-
-	godot_embedded_client_embedded_window_request_close(embedded_client);
-	return OK;
-}
-
-Error DisplayServerWayland::remove_embedded_process(OS::ProcessID p_pid) {
-	return request_close_embedded_process(p_pid);
-}
-
-OS::ProcessID DisplayServerWayland::get_focused_process_id() {
-	MutexLock mutex_lock(wayland_thread.mutex);
-
-	OS::ProcessID embedded_pid = wayland_thread.embedded_compositor_get_focused_pid();
-
-	if (embedded_pid < 0) {
-		return OS::get_singleton()->get_process_id();
-	}
-
-	return embedded_pid;
-}
-
 int DisplayServerWayland::keyboard_get_layout_count() const {
 	MutexLock mutex_lock(wayland_thread.mutex);
 
@@ -1677,12 +1560,6 @@ Key DisplayServerWayland::keyboard_get_keycode_from_physical(Key p_keycode) cons
 	return key;
 }
 
-Key DisplayServerWayland::keyboard_get_label_from_physical(Key p_keycode) const {
-	MutexLock mutex_lock(wayland_thread.mutex);
-
-	return wayland_thread.keyboard_get_label_from_physical(p_keycode);
-}
-
 bool DisplayServerWayland::color_picker(const Callable &p_callback) {
 #ifdef DBUS_ENABLED
 	if (!portal_desktop) {
@@ -1712,8 +1589,6 @@ void DisplayServerWayland::try_suspend() {
 
 void DisplayServerWayland::process_events() {
 	wayland_thread.mutex.lock();
-
-	wayland_thread.keyboard_echo_keys();
 
 	while (wayland_thread.has_message()) {
 		Ref<WaylandThread::Message> msg = wayland_thread.pop_message();
@@ -1767,10 +1642,11 @@ void DisplayServerWayland::process_events() {
 			Ref<InputEventMouseButton> mb = inputev_msg->event;
 
 			bool handled = false;
-			if (mb.is_valid()) {
+			if (!popup_menu_list.is_empty() && mb.is_valid()) {
+				// Popup menu handling.
+
 				BitField<MouseButtonMask> mouse_mask = mb->get_button_mask();
-				if (!popup_menu_list.is_empty() && mb->is_pressed() && mouse_mask != last_mouse_monitor_mask) {
-					// Popup menu handling.
+				if (mouse_mask != last_mouse_monitor_mask && mb->is_pressed()) {
 					List<WindowID>::Element *E = popup_menu_list.back();
 					List<WindowID>::Element *C = nullptr;
 
@@ -1855,6 +1731,8 @@ void DisplayServerWayland::process_events() {
 			continue;
 		}
 	}
+
+	wayland_thread.keyboard_echo_keys();
 
 	switch (suspend_state) {
 		case SuspendState::NONE: {
@@ -1952,11 +1830,6 @@ void DisplayServerWayland::swap_buffers() {
 		egl_manager->swap_buffers();
 	}
 #endif
-}
-
-void DisplayServerWayland::set_icon(const Ref<Image> &p_icon) {
-	MutexLock mutex_lock(wayland_thread.mutex);
-	wayland_thread.set_icon(p_icon);
 }
 
 void DisplayServerWayland::set_context(Context p_context) {
@@ -2065,9 +1938,16 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 	}
 
 #ifdef RD_ENABLED
+	Ref<RenderingNativeSurfaceWayland> wayland_surface;
 #ifdef VULKAN_ENABLED
 	if (rendering_driver == "vulkan") {
-		rendering_context = memnew(RenderingContextDriverVulkanWayland);
+		wayland_surface = RenderingNativeSurfaceWayland::create(
+				wayland_thread.get_wl_display(),
+				nullptr);
+	}
+
+	if (wayland_surface.is_valid()) {
+		rendering_context = wayland_surface->create_rendering_context(rendering_driver);
 	}
 #endif // VULKAN_ENABLED
 

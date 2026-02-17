@@ -8,6 +8,7 @@ File = env.File
 source_files = [
     File("display_server_x11.cpp"),
     File("key_mapping_x11.cpp"),
+    File("rendering_native_surface_x11.cpp"),
 ]
 
 if env["use_sowrap"]:

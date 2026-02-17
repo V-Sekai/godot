@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_x11.cpp                               */
+/*  rendering_native_surface_x11.h                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,40 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifdef VULKAN_ENABLED
+#ifndef RENDERING_NATIVE_SURFACE_X11_H
+#define RENDERING_NATIVE_SURFACE_X11_H
 
-#include "rendering_context_driver_vulkan_x11.h"
-#include "drivers/vulkan/rendering_native_surface_vulkan.h"
-#include "rendering_native_surface_x11.h"
+#include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
-#include "drivers/vulkan/godot_vulkan.h"
+#include <X11/Xlib.h>
 
-const char *RenderingContextDriverVulkanX11::_get_platform_surface_extension() const {
-	return VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
-}
+class RenderingNativeSurfaceX11 : public RenderingNativeSurface {
+	GDCLASS(RenderingNativeSurfaceX11, RenderingNativeSurface);
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanX11::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
-	Ref<RenderingNativeSurfaceX11> x11_native_surface = Object::cast_to<RenderingNativeSurfaceX11>(*p_native_surface);
-	ERR_FAIL_COND_V(x11_native_surface.is_null(), SurfaceID());
+	static void _bind_methods();
 
-	VkXlibSurfaceCreateInfoKHR create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-	create_info.dpy = x11_native_surface->get_display();
-	create_info.window = x11_native_surface->get_window();
+	::Window window;
+	Display *display;
 
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateXlibSurfaceKHR(instance_get(), &create_info, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR), &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
+public:
+	static Ref<RenderingNativeSurfaceX11> create_api(GDExtensionConstPtr<const void> p_window, GDExtensionConstPtr<const void> p_display);
 
-	Ref<RenderingNativeSurfaceVulkan> vulkan_surface = RenderingNativeSurfaceVulkan::create(vk_surface);
-	RenderingContextDriver::SurfaceID result = RenderingContextDriverVulkan::surface_create(vulkan_surface);
-	return result;
-}
+	static Ref<RenderingNativeSurfaceX11> create(::Window p_window, Display *p_display);
 
-RenderingContextDriverVulkanX11::RenderingContextDriverVulkanX11() {
-	// Does nothing.
-}
+	::Window get_window() const {
+		return window;
+	}
 
-RenderingContextDriverVulkanX11::~RenderingContextDriverVulkanX11() {
-	// Does nothing.
-}
+	Display *get_display() const {
+		return display;
+	}
 
-#endif // VULKAN_ENABLED
+	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
+	void *get_native_id() const override;
+
+	RenderingNativeSurfaceX11();
+	~RenderingNativeSurfaceX11();
+};
+
+#endif // RENDERING_NATIVE_SURFACE_X11_H

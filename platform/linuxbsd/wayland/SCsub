@@ -120,6 +120,7 @@ source_files = generated_sources + [
     File("key_mapping_xkb.cpp"),
     File("wayland_thread.cpp"),
     File("wayland_embedder.cpp"),
+    File("rendering_native_surface_wayland.cpp"),
 ]
 
 if env["use_sowrap"]:
