@@ -33,7 +33,7 @@
 #include "core/config/project_settings.h"
 #include "core/math/transform_interpolator.h"
 #include "core/object/worker_thread_pool.h"
-#include "core/profiling/profiling.h"
+#include "core/profiling.h"
 #include "renderer_canvas_cull.h"
 #include "renderer_scene_cull.h"
 #include "rendering_server_globals.h"
@@ -193,7 +193,6 @@ void RendererViewport::_configure_3d_render_buffers(Viewport *p_viewport) {
 				// Fall back to bilinear scaling.
 				WARN_PRINT_ONCE("FSR 3D resolution scaling is not designed for downsampling. Falling back to bilinear 3D resolution scaling.");
 				scaling_3d_mode = RS::VIEWPORT_SCALING_3D_MODE_BILINEAR;
-				scaling_type = RS::scaling_3d_mode_type(scaling_3d_mode);
 			}
 
 			if (scaling_3d_is_not_bilinear && !upscaler_available) {
@@ -201,7 +200,6 @@ void RendererViewport::_configure_3d_render_buffers(Viewport *p_viewport) {
 				// Fall back to bilinear scaling.
 				WARN_PRINT_ONCE("FSR 3D resolution scaling is not available. Falling back to bilinear 3D resolution scaling.");
 				scaling_3d_mode = RS::VIEWPORT_SCALING_3D_MODE_BILINEAR;
-				scaling_type = RS::scaling_3d_mode_type(scaling_3d_mode);
 			}
 
 			if (use_taa && (scaling_type == RS::VIEWPORT_SCALING_3D_TYPE_TEMPORAL)) {
@@ -328,7 +326,7 @@ void RendererViewport::_draw_viewport(Viewport *p_viewport) {
 		timestamp_vp_map[rt_id] = p_viewport->self;
 	}
 
-	if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility") {
+	if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility" && p_viewport->viewport_to_screen != DisplayServer::INVALID_WINDOW_ID) {
 		// This is currently needed for GLES to keep the current window being rendered to up to date
 		DisplayServer::get_singleton()->gl_window_make_current(p_viewport->viewport_to_screen);
 	}
@@ -825,9 +823,7 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 	int draw_calls_used = 0;
 
 	for (int i = 0; i < sorted_active_viewports.size(); i++) {
-		// TODO Somehow print the index
 		GodotProfileZone("render viewport");
-
 		Viewport *vp = sorted_active_viewports[i];
 
 		if (vp->last_pass != draw_viewports_pass) {
@@ -837,6 +833,7 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 		RENDER_TIMESTAMP("> Render Viewport " + itos(i));
 
 		RSG::texture_storage->render_target_set_as_unused(vp->render_target);
+		DisplayServer::get_singleton()->pre_draw_viewport(vp->render_target);
 #ifndef XR_DISABLED
 		if (vp->use_xr && xr_interface.is_valid()) {
 			// Inform XR interface we're about to render its viewport,
@@ -917,6 +914,8 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 			}
 		}
 
+		DisplayServer::get_singleton()->post_draw_viewport(vp->render_target);
+
 		if (vp->update_mode == RS::VIEWPORT_UPDATE_ONCE) {
 			vp->update_mode = RS::VIEWPORT_UPDATE_DISABLED;
 		}
@@ -964,7 +963,6 @@ void RendererViewport::viewport_initialize(RID p_rid) {
 	viewport->fsr_enabled = !RSG::rasterizer->is_low_end() && !viewport->disable_3d;
 }
 
-#ifndef XR_DISABLED
 void RendererViewport::viewport_set_use_xr(RID p_viewport, bool p_use_xr) {
 	Viewport *viewport = viewport_owner.get_or_null(p_viewport);
 	ERR_FAIL_NULL(viewport);
@@ -982,28 +980,19 @@ void RendererViewport::viewport_set_use_xr(RID p_viewport, bool p_use_xr) {
 		_configure_3d_render_buffers(viewport);
 	}
 }
-#endif // !XR_DISABLED
 
 void RendererViewport::viewport_set_scaling_3d_mode(RID p_viewport, RS::ViewportScaling3DMode p_mode) {
 	Viewport *viewport = viewport_owner.get_or_null(p_viewport);
 	ERR_FAIL_NULL(viewport);
-#ifdef DEBUG_ENABLED
 	const String rendering_method = OS::get_singleton()->get_current_rendering_method();
 	if (rendering_method != "forward_plus") {
-		if (p_mode == RS::VIEWPORT_SCALING_3D_MODE_FSR) {
-			WARN_PRINT_ONCE_ED("FSR1 3D scaling is only available when using the Forward+ renderer.");
-		}
-		if (p_mode == RS::VIEWPORT_SCALING_3D_MODE_FSR2) {
-			WARN_PRINT_ONCE_ED("FSR2 3D scaling is only available when using the Forward+ renderer.");
-		}
-		if (p_mode == RS::VIEWPORT_SCALING_3D_MODE_METALFX_TEMPORAL) {
-			WARN_PRINT_ONCE_ED("MetalFX Temporal 3D scaling is only available when using the Forward+ renderer.");
-		}
+		ERR_FAIL_COND_EDMSG(p_mode == RS::VIEWPORT_SCALING_3D_MODE_FSR, "FSR1 is only available when using the Forward+ renderer.");
+		ERR_FAIL_COND_EDMSG(p_mode == RS::VIEWPORT_SCALING_3D_MODE_FSR2, "FSR2 is only available when using the Forward+ renderer.");
+		ERR_FAIL_COND_EDMSG(p_mode == RS::VIEWPORT_SCALING_3D_MODE_METALFX_TEMPORAL, "MetalFX Temporal is only available when using the Forward+ renderer.");
 	}
-	if (rendering_method == "gl_compatibility" && p_mode == RS::VIEWPORT_SCALING_3D_MODE_METALFX_SPATIAL) {
-		WARN_PRINT_ONCE_ED("MetalFX Spatial 3D scaling is only available when using the Forward+ or Mobile renderer.");
+	if (rendering_method == "gl_compatibility") {
+		ERR_FAIL_COND_EDMSG(p_mode == RS::VIEWPORT_SCALING_3D_MODE_METALFX_SPATIAL, "MetalFX Spatial is only available when using the Forward+ and Mobile renderers.");
 	}
-#endif
 
 	if (viewport->scaling_3d_mode == p_mode) {
 		return;
@@ -1122,8 +1111,8 @@ void RendererViewport::viewport_attach_to_screen(RID p_viewport, const Rect2 &p_
 	ERR_FAIL_NULL(viewport);
 
 	if (p_screen != DisplayServer::INVALID_WINDOW_ID) {
-		// If using OpenGL we can optimize this operation by rendering directly to system_fbo
-		// instead of rendering to fbo and copying to system_fbo after
+		// If using OpenGL we can optimize this operation by rendering directly to the system fbo
+		// instead of rendering to fbo and copying to the system fbo after
 		if (RSG::rasterizer->is_low_end() && viewport->viewport_render_direct_to_screen) {
 			RSG::texture_storage->render_target_set_size(viewport->render_target, p_rect.size.x, p_rect.size.y, viewport->view_count);
 			RSG::texture_storage->render_target_set_position(viewport->render_target, p_rect.position.x, p_rect.position.y);
@@ -1157,7 +1146,7 @@ void RendererViewport::viewport_set_render_direct_to_screen(RID p_viewport, bool
 		RSG::texture_storage->render_target_set_size(viewport->render_target, viewport->size.x, viewport->size.y, viewport->view_count);
 	}
 
-	RSG::texture_storage->render_target_set_direct_to_screen(viewport->render_target, p_enable);
+	RSG::texture_storage->render_target_set_direct_to_screen(viewport->render_target, p_enable, viewport->viewport_to_screen);
 	viewport->viewport_render_direct_to_screen = p_enable;
 
 	// if attached to screen already, setup screen size and position, this needs to happen after setting flag to avoid an unnecessary buffer allocation
@@ -1395,11 +1384,7 @@ bool RendererViewport::viewport_is_using_hdr_2d(RID p_viewport) const {
 void RendererViewport::viewport_set_screen_space_aa(RID p_viewport, RS::ViewportScreenSpaceAA p_mode) {
 	Viewport *viewport = viewport_owner.get_or_null(p_viewport);
 	ERR_FAIL_NULL(viewport);
-#ifdef DEBUG_ENABLED
-	if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility" && p_mode != RS::VIEWPORT_SCREEN_SPACE_AA_DISABLED) {
-		WARN_PRINT_ONCE_ED("Screen-space AA is only available when using the Forward+ or Mobile renderer.");
-	}
-#endif
+	ERR_FAIL_COND_EDMSG(p_mode != RS::VIEWPORT_SCREEN_SPACE_AA_DISABLED && OS::get_singleton()->get_current_rendering_method() == "gl_compatibility", "Screen space AA is currently unavailable on the Compatibility renderer.");
 
 	if (viewport->screen_space_aa == p_mode) {
 		return;
@@ -1411,11 +1396,7 @@ void RendererViewport::viewport_set_screen_space_aa(RID p_viewport, RS::Viewport
 void RendererViewport::viewport_set_use_taa(RID p_viewport, bool p_use_taa) {
 	Viewport *viewport = viewport_owner.get_or_null(p_viewport);
 	ERR_FAIL_NULL(viewport);
-#ifdef DEBUG_ENABLED
-	if (OS::get_singleton()->get_current_rendering_method() != "forward_plus") {
-		WARN_PRINT_ONCE_ED("TAA is only available when using the Forward+ renderer.");
-	}
-#endif
+	ERR_FAIL_COND_EDMSG(OS::get_singleton()->get_current_rendering_method() != "forward_plus", "TAA is only available when using the Forward+ renderer.");
 
 	if (viewport->use_taa == p_use_taa) {
 		return;

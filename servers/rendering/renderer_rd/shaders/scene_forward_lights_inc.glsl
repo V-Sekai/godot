@@ -81,25 +81,14 @@ void light_compute(hvec3 N, hvec3 L, hvec3 V, half A, hvec3 light_color, bool is
 		inout hvec3 diffuse_light, inout hvec3 specular_light) {
 #if defined(LIGHT_CODE_USED)
 	// Light is written by the user shader.
-	mat4 inv_view_matrix = transpose(mat4(scene_data_block.data.inv_view_matrix[0],
-			scene_data_block.data.inv_view_matrix[1],
-			scene_data_block.data.inv_view_matrix[2],
-			vec4(0.0, 0.0, 0.0, 1.0)));
-	mat4 read_view_matrix = transpose(mat4(scene_data_block.data.view_matrix[0],
-			scene_data_block.data.view_matrix[1],
-			scene_data_block.data.view_matrix[2],
-			vec4(0.0, 0.0, 0.0, 1.0)));
+	mat4 inv_view_matrix = scene_data_block.data.inv_view_matrix;
+	mat4 read_view_matrix = scene_data_block.data.view_matrix;
 
 #ifdef USING_MOBILE_RENDERER
-	uint instance_index = draw_call.instance_index;
+	mat4 read_model_matrix = instances.data[draw_call.instance_index].transform;
 #else
-	uint instance_index = instance_index_interp;
+	mat4 read_model_matrix = instances.data[instance_index_interp].transform;
 #endif
-
-	mat4 read_model_matrix = transpose(mat4(instances.data[instance_index].transform[0],
-			instances.data[instance_index].transform[1],
-			instances.data[instance_index].transform[2],
-			vec4(0.0, 0.0, 0.0, 1.0)));
 
 #undef projection_matrix
 #define projection_matrix scene_data_block.data.projection_matrix
@@ -937,7 +926,6 @@ void reflection_process(uint ref_index, vec3 vertex, hvec3 ref_vec, hvec3 normal
 		blend = pow(blend_axes.x * blend_axes.y * blend_axes.z, half(2.0));
 	}
 
-	vec2 border_size = scene_data_block.data.reflection_atlas_border_size;
 	if (reflections.data[ref_index].intensity > 0.0 && reflection_accum.a < half(1.0)) { // compute reflection
 
 		vec3 local_ref_vec = (reflections.data[ref_index].local_matrix * vec4(ref_vec, 0.0)).xyz;
@@ -958,9 +946,7 @@ void reflection_process(uint ref_index, vec3 vertex, hvec3 ref_vec, hvec3 normal
 		hvec4 reflection;
 		half reflection_blend = max(half(0.0), blend - reflection_accum.a);
 
-		float roughness_lod = sqrt(roughness) * MAX_ROUGHNESS_LOD;
-		vec2 reflection_uv = vec3_to_oct_with_border(local_ref_vec, border_size);
-		reflection.rgb = hvec3(textureLod(sampler2DArray(reflection_atlas, DEFAULT_SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP), vec3(reflection_uv, reflections.data[ref_index].index), roughness_lod).rgb) * REFLECTION_MULTIPLIER;
+		reflection.rgb = hvec3(textureLodFix(reflection_atlas, DEFAULT_SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP, vec4(local_ref_vec, reflections.data[ref_index].index), sqrt(roughness) * MAX_ROUGHNESS_LOD).rgb) * sc_luminance_multiplier();
 		reflection.rgb *= half(reflections.data[ref_index].exposure_normalization);
 		reflection.a = reflection_blend;
 
@@ -983,9 +969,7 @@ void reflection_process(uint ref_index, vec3 vertex, hvec3 ref_vec, hvec3 normal
 			hvec4 ambient_out;
 			half ambient_blend = max(half(0.0), blend - ambient_accum.a);
 
-			float roughness_lod = MAX_ROUGHNESS_LOD;
-			vec2 ambient_uv = vec3_to_oct_with_border(local_amb_vec, border_size);
-			ambient_out.rgb = hvec3(textureLod(sampler2DArray(reflection_atlas, DEFAULT_SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP), vec3(ambient_uv, reflections.data[ref_index].index), roughness_lod).rgb);
+			ambient_out.rgb = hvec3(textureLodFix(reflection_atlas, DEFAULT_SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP, vec4(local_amb_vec, reflections.data[ref_index].index), MAX_ROUGHNESS_LOD).rgb);
 			ambient_out.rgb *= half(reflections.data[ref_index].exposure_normalization);
 			ambient_out.a = ambient_blend;
 			ambient_out.rgb *= ambient_out.a;

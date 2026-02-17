@@ -58,6 +58,12 @@ void AudioDriver::set_singleton() {
 	singleton = this;
 }
 
+AudioDriver::~AudioDriver() {
+	if (singleton == this) {
+		singleton = nullptr;
+	}
+}
+
 void AudioDriver::audio_server_process(int p_frames, int32_t *p_buffer, bool p_update_mix_time) {
 	if (p_update_mix_time) {
 		update_mix_time(p_frames);
@@ -213,6 +219,11 @@ int AudioDriverManager::get_driver_count() {
 	return driver_count;
 }
 
+void AudioDriverManager::cleanup() {
+	drivers[0] = &AudioDriverManager::dummy_driver;
+	driver_count = 1;
+}
+
 void AudioDriverManager::initialize(int p_driver) {
 	GLOBAL_DEF_RST("audio/driver/enable_input", false);
 	GLOBAL_DEF_RST(PropertyInfo(Variant::INT, "audio/driver/mix_rate", PROPERTY_HINT_RANGE, "11025,192000,1,or_greater,suffix:Hz"), DEFAULT_MIX_RATE);
@@ -251,6 +262,11 @@ void AudioDriverManager::initialize(int p_driver) {
 AudioDriver *AudioDriverManager::get_driver(int p_driver) {
 	ERR_FAIL_INDEX_V(p_driver, driver_count, nullptr);
 	return drivers[p_driver];
+}
+
+void AudioDriverManager::reset() {
+	drivers[0] = &AudioDriverManager::dummy_driver;
+	driver_count = 1;
 }
 
 //////////////////////////////////////////////

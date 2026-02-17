@@ -12,6 +12,8 @@
 #define SCENE_DATA_FLAGS_USE_PANCAKE_SHADOWS (1 << 6)
 #define SCENE_DATA_FLAGS_IN_SHADOW_PASS (1 << 7)
 
+#include "metal_simulator_inc.glsl"
+
 struct SceneData {
 	mat4 projection_matrix;
 	mat4 inv_projection_matrix;

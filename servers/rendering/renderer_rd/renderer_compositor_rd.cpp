@@ -176,16 +176,16 @@ void RendererCompositorRD::finalize() {
 
 	//only need to erase these, the rest are erased by cascade
 	blit.shader.version_free(blit.shader_version);
-	RD::get_singleton()->free_rid(blit.index_buffer);
-	RD::get_singleton()->free_rid(blit.sampler);
+	RD::get_singleton()->free(blit.index_buffer);
+	RD::get_singleton()->free(blit.sampler);
 }
 
-void RendererCompositorRD::set_boot_image_with_stretch(const Ref<Image> &p_image, const Color &p_color, RenderingServer::SplashStretchMode p_stretch_mode, bool p_use_filter) {
+void RendererCompositorRD::set_boot_image(const Ref<Image> &p_image, const Color &p_color, bool p_scale, DisplayServer::WindowID p_screen, bool p_use_filter) {
 	if (p_image.is_null() || p_image->is_empty()) {
 		return;
 	}
 
-	Error err = RD::get_singleton()->screen_prepare_for_drawing(DisplayServer::MAIN_WINDOW_ID);
+	Error err = RD::get_singleton()->screen_prepare_for_drawing(p_screen);
 	if (err != OK) {
 		// Window is minimized and does not have valid swapchain, skip drawing without printing errors.
 		return;
@@ -213,15 +213,21 @@ void RendererCompositorRD::set_boot_image_with_stretch(const Ref<Image> &p_image
 		uset = RD::get_singleton()->uniform_set_create(uniforms, blit.shader.version_get_shader(blit.shader_version, BLIT_MODE_NORMAL), 0);
 	}
 
-	Size2 window_size = DisplayServer::get_singleton()->window_get_size();
+	Size2 window_size = DisplayServer::get_singleton()->window_get_size(p_screen);
 
-	Rect2 screenrect = RenderingServer::get_splash_stretched_screen_rect(p_image->get_size(), window_size, p_stretch_mode);
+	Rect2 imgrect(0, 0, p_image->get_width(), p_image->get_height());
+	Rect2 screenrect;
+	if (p_scale) {
+		screenrect = OS::get_singleton()->calculate_boot_screen_rect(window_size, imgrect.size);
+	} else {
+		screenrect = imgrect;
+		screenrect.position += ((window_size - screenrect.size) / 2.0).floor();
+	}
+
 	screenrect.position /= window_size;
 	screenrect.size /= window_size;
 
-	// p_color never needs to be converted to linear encoding because HDR 2D is always disabled for the boot image.
-	// If HDR 2D can ever be enabled during the boot image, p_color must be converted to linear encoding for this case.
-	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin_for_screen(DisplayServer::MAIN_WINDOW_ID, p_color);
+	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin_for_screen(p_screen, p_color);
 
 	RD::get_singleton()->draw_list_bind_render_pipeline(draw_list, blit.pipelines[BLIT_MODE_NORMAL_ALPHA]);
 	RD::get_singleton()->draw_list_bind_index_array(draw_list, blit.array);
@@ -257,7 +263,7 @@ void RendererCompositorRD::set_boot_image_with_stretch(const Ref<Image> &p_image
 	RD::get_singleton()->swap_buffers(true);
 
 	texture_storage->texture_free(texture);
-	RD::get_singleton()->free_rid(sampler);
+	RD::get_singleton()->free(sampler);
 }
 
 RendererCompositorRD *RendererCompositorRD::singleton = nullptr;

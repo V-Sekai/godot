@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  audio_driver_dummy.h                                                  */
+/*  display_server_embedded_host_interface.h                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,59 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef DISPLAY_SERVER_EMBEDDED_HOST_INTERFACE_H
+#define DISPLAY_SERVER_EMBEDDED_HOST_INTERFACE_H
 
-#include "servers/audio/audio_server.h"
+#include "core/input/input.h"
+#include "core/object/ref_counted.h"
 
-#include "core/os/mutex.h"
-#include "core/os/thread.h"
-#include "core/templates/safe_refcount.h"
+class DisplayServerEmbeddedHostInterface : public RefCounted {
+	GDCLASS(DisplayServerEmbeddedHostInterface, RefCounted);
 
-class AudioDriverDummy : public AudioDriver {
-	Thread thread;
-	Mutex mutex;
-
-	int32_t *samples_in = nullptr;
-
-	static void thread_func(void *p_udata);
-
-	uint32_t buffer_frames = 4096;
-	int32_t mix_rate = -1;
-	SpeakerMode speaker_mode = SPEAKER_MODE_STEREO;
-
-	int channels;
-
-	SafeFlag active;
-	SafeFlag exit_thread;
-
-	bool use_threads = true;
-
-	static AudioDriverDummy *singleton;
+protected:
+	static void _bind_methods();
 
 public:
-	virtual const char *get_name() const override {
-		return "Dummy";
-	}
+	GDVIRTUAL0RC(Input::CursorShape, _cursor_get_shape);
+	GDVIRTUAL1(_cursor_set_shape, Input::CursorShape);
 
-	virtual Error init() override;
-	virtual void start() override;
-	virtual int get_mix_rate() const override;
-	virtual SpeakerMode get_speaker_mode() const override;
-
-	virtual void lock() override;
-	virtual void unlock() override;
-	virtual void finish() override;
-
-	void set_use_threads(bool p_use_threads);
-	void set_speaker_mode(SpeakerMode p_mode);
-	void set_mix_rate(int p_rate);
-
-	uint32_t get_channels() const;
-
-	void mix_audio(int p_frames, int32_t *p_buffer);
-
-	static AudioDriverDummy *get_dummy_singleton() { return singleton; }
-
-	AudioDriverDummy();
-	~AudioDriverDummy();
+	virtual Input::CursorShape cursor_get_shape() const;
+	virtual void cursor_set_shape(Input::CursorShape p_shape);
 };
+
+#endif // DISPLAY_SERVER_EMBEDDED_HOST_INTERFACE_H

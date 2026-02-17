@@ -155,7 +155,7 @@ public:
 	virtual void set_sample_bus_mute(int p_bus, bool p_enable) {}
 
 	AudioDriver() {}
-	virtual ~AudioDriver() {}
+	virtual ~AudioDriver();
 };
 
 class AudioDriverManager {
@@ -173,8 +173,10 @@ public:
 
 	static void add_driver(AudioDriver *p_driver);
 	static void initialize(int p_driver);
+	static void cleanup();
 	static int get_driver_count();
 	static AudioDriver *get_driver(int p_driver);
+	static void reset();
 };
 
 class AudioBusLayout;

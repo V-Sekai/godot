@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  audio_driver_dummy.h                                                  */
+/*  gl_manager.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,59 +28,40 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef GL_MANAGER_H
+#define GL_MANAGER_H
 
-#include "servers/audio/audio_server.h"
+#if defined(GLES3_ENABLED)
+// These must come first to avoid windows.h mess.
+#include "platform_gl.h"
+#endif
 
-#include "core/os/mutex.h"
-#include "core/os/thread.h"
-#include "core/templates/safe_refcount.h"
+#include "core/error/error_macros.h"
+#include "servers/display/display_server.h"
+#include "servers/rendering/rendering_native_surface.h"
 
-class AudioDriverDummy : public AudioDriver {
-	Thread thread;
-	Mutex mutex;
-
-	int32_t *samples_in = nullptr;
-
-	static void thread_func(void *p_udata);
-
-	uint32_t buffer_frames = 4096;
-	int32_t mix_rate = -1;
-	SpeakerMode speaker_mode = SPEAKER_MODE_STEREO;
-
-	int channels;
-
-	SafeFlag active;
-	SafeFlag exit_thread;
-
-	bool use_threads = true;
-
-	static AudioDriverDummy *singleton;
-
+class GLManager {
 public:
-	virtual const char *get_name() const override {
-		return "Dummy";
-	}
+	virtual Error open_display(void *p_display) = 0;
+	virtual Error window_create(DisplayServer::WindowID p_window_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) = 0;
+	virtual void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height) = 0;
+	virtual void window_destroy(DisplayServer::WindowID p_window_id) = 0;
+	virtual Size2i window_get_size(DisplayServer::WindowID p_window_id) const = 0;
+	virtual int window_get_render_target(DisplayServer::WindowID p_window_id) const = 0;
+	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const = 0;
+	virtual void release_current() = 0;
+	virtual void swap_buffers() = 0;
 
-	virtual Error init() override;
-	virtual void start() override;
-	virtual int get_mix_rate() const override;
-	virtual SpeakerMode get_speaker_mode() const override;
+	virtual void window_make_current(DisplayServer::WindowID p_window_id) = 0;
 
-	virtual void lock() override;
-	virtual void unlock() override;
-	virtual void finish() override;
+	virtual void set_use_vsync(bool p_use) = 0;
+	virtual bool is_using_vsync() const = 0;
+	virtual bool validate_driver() const = 0;
 
-	void set_use_threads(bool p_use_threads);
-	void set_speaker_mode(SpeakerMode p_mode);
-	void set_mix_rate(int p_rate);
+	virtual Error initialize(void *p_native_display = nullptr) = 0;
 
-	uint32_t get_channels() const;
-
-	void mix_audio(int p_frames, int32_t *p_buffer);
-
-	static AudioDriverDummy *get_dummy_singleton() { return singleton; }
-
-	AudioDriverDummy();
-	~AudioDriverDummy();
+	GLManager() {}
+	virtual ~GLManager() {}
 };
+
+#endif // GL_MANAGER_H

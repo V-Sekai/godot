@@ -4,7 +4,7 @@
 
 #VERSION_DEFINES
 
-#include "../oct_inc.glsl"
+#include "../metal_simulator_inc.glsl"
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -17,13 +17,12 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 #define FLAG_FORCE_LUMINANCE (1 << 6)
 #define FLAG_COPY_ALL_SOURCE (1 << 7)
 #define FLAG_ALPHA_TO_ONE (1 << 8)
-#define FLAG_SANITIZE_INF_NAN (1 << 9)
 
 layout(push_constant, std430) uniform Params {
 	ivec4 section;
 	ivec2 target;
 	uint flags;
-	float luminance_multiplier;
+	uint pad;
 	// Glow.
 	float glow_strength;
 	float glow_bloom;
@@ -37,17 +36,16 @@ layout(push_constant, std430) uniform Params {
 	// DOF.
 	float camera_z_far;
 	float camera_z_near;
-	// Octmap.
-	vec2 octmap_border_size;
+	uint pad2[2];
 
 	vec4 set_color;
 }
 params;
 
-#ifdef MODE_OCTMAP_ARRAY_TO_PANORAMA
-layout(set = 0, binding = 0) uniform sampler2DArray source_color;
-#elif defined(MODE_OCTMAP_TO_PANORAMA)
-layout(set = 0, binding = 0) uniform sampler2D source_color;
+#ifdef MODE_CUBEMAP_ARRAY_TO_PANORAMA
+layout(set = 0, binding = 0) uniform samplerCubeArrayFix source_color;
+#elif defined(MODE_CUBEMAP_TO_PANORAMA)
+layout(set = 0, binding = 0) uniform samplerCube source_color;
 #elif !defined(MODE_SET_COLOR)
 layout(set = 0, binding = 0) uniform sampler2D source_color;
 #endif
@@ -99,10 +97,17 @@ void main() {
 	vec2 quad_center_uv = clamp(vec2(params.section.xy + gl_GlobalInvocationID.xy + gl_LocalInvocationID.xy - 3.5) / params.section.zw, vec2(0.5 / params.section.zw), vec2(1.0 - 1.5 / params.section.zw));
 	uint dest_index = gl_LocalInvocationID.x * 2 + gl_LocalInvocationID.y * 2 * 16;
 
+#ifdef MODE_CUBEMAP_ARRAY_TO_PANORAMA
+	local_cache[dest_index] = textureLodFix(source_color, quad_center_uv, 0);
+	local_cache[dest_index + 1] = textureLodFix(source_color, quad_center_uv + vec2(1.0 / params.section.z, 0.0), 0);
+	local_cache[dest_index + 16] = textureLodFix(source_color, quad_center_uv + vec2(0.0, 1.0 / params.section.w), 0);
+	local_cache[dest_index + 16 + 1] = textureLodFix(source_color, quad_center_uv + vec2(1.0 / params.section.zw), 0);
+#else
 	local_cache[dest_index] = textureLod(source_color, quad_center_uv, 0);
 	local_cache[dest_index + 1] = textureLod(source_color, quad_center_uv + vec2(1.0 / params.section.z, 0.0), 0);
 	local_cache[dest_index + 16] = textureLod(source_color, quad_center_uv + vec2(0.0, 1.0 / params.section.w), 0);
 	local_cache[dest_index + 16 + 1] = textureLod(source_color, quad_center_uv + vec2(1.0 / params.section.zw), 0);
+#endif
 
 #ifdef MODE_GLOW
 	if (bool(params.flags & FLAG_GLOW_FIRST_PASS)) {
@@ -212,7 +217,11 @@ void main() {
 		if (bool(params.flags & FLAG_FLIP_Y)) {
 			uv.y = 1.0 - uv.y;
 		}
+#ifdef MODE_CUBEMAP_ARRAY_TO_PANORAMA
+		color = textureLodFix(source_color, uv, 0.0);
+#else
 		color = textureLod(source_color, uv, 0.0);
+#endif
 
 	} else {
 		color = texelFetch(source_color, pos + params.section.xy, 0);
@@ -228,11 +237,6 @@ void main() {
 
 	if (bool(params.flags & FLAG_ALPHA_TO_ONE)) {
 		color.a = 1.0;
-	}
-
-	if (bool(params.flags & FLAG_SANITIZE_INF_NAN)) {
-		color = mix(color, vec4(100.0, 100.0, 100.0, 1.0), isinf(color));
-		color = mix(color, vec4(100.0, 100.0, 100.0, 1.0), isnan(color));
 	}
 
 	imageStore(dest_buffer, pos + params.target, color);
@@ -265,7 +269,7 @@ void main() {
 	imageStore(dest_buffer, pos + params.target, color);
 #endif // MODE_LINEARIZE_DEPTH_COPY
 
-#if defined(MODE_OCTMAP_TO_PANORAMA) || defined(MODE_OCTMAP_ARRAY_TO_PANORAMA)
+#if defined(MODE_CUBEMAP_TO_PANORAMA) || defined(MODE_CUBEMAP_ARRAY_TO_PANORAMA)
 
 	const float PI = 3.14159265359;
 	vec2 uv = vec2(pos) / vec2(params.section.zw);
@@ -280,13 +284,15 @@ void main() {
 	normal.y = cos(theta);
 	normal.z = cos(phi) * sin(theta) * -1.0;
 
-#ifdef MODE_OCTMAP_TO_PANORAMA
-	vec4 color = textureLod(source_color, vec3_to_oct_with_border(normal, params.octmap_border_size), params.camera_z_far); //the biggest the lod the least the acne
+#ifdef MODE_CUBEMAP_TO_PANORAMA
+	vec4 color = textureLod(source_color, normal, params.camera_z_far); //the biggest the lod the least the acne
+#elif defined(MODE_CUBEMAP_ARRAY_TO_PANORAMA)
+	vec4 color = textureLodFix(source_color, vec4(normal, params.camera_z_far), 0.0); //the biggest the lod the least the acne
 #else
-	vec4 color = textureLod(source_color, vec3(vec3_to_oct_with_border(normal, params.octmap_border_size), params.camera_z_far), 0.0); //the biggest the lod the least the acne
+	vec4 color = textureLod(source_color, vec4(normal, params.camera_z_far), 0.0); //the biggest the lod the least the acne
 #endif
-	imageStore(dest_buffer, pos + params.target, color * params.luminance_multiplier);
-#endif // defined(MODE_OCTMAP_TO_PANORAMA) || defined(MODE_OCTMAP_ARRAY_TO_PANORAMA)
+	imageStore(dest_buffer, pos + params.target, color);
+#endif // defined(MODE_CUBEMAP_TO_PANORAMA) || defined(MODE_CUBEMAP_ARRAY_TO_PANORAMA)
 
 #ifdef MODE_SET_COLOR
 	imageStore(dest_buffer, pos + params.target, params.set_color);

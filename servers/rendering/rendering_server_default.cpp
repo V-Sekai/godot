@@ -31,7 +31,7 @@
 #include "rendering_server_default.h"
 
 #include "core/os/os.h"
-#include "core/profiling/profiling.h"
+#include "core/profiling.h"
 #include "renderer_canvas_cull.h"
 #include "renderer_scene_cull.h"
 #include "rendering_server_globals.h"
@@ -77,7 +77,6 @@ void RenderingServerDefault::_draw(bool p_swap_buffers, double frame_step) {
 	RENDER_TIMESTAMP("Prepare Render Frame");
 
 #ifndef XR_DISABLED
-	GodotProfileZoneGrouped(_profile_zone, "xr_server->pre_render");
 	XRServer *xr_server = XRServer::get_singleton();
 	if (xr_server != nullptr) {
 		// Let XR server know we're about to render a frame.
@@ -254,16 +253,36 @@ void RenderingServerDefault::_init() {
 
 void RenderingServerDefault::_finish() {
 	if (test_cube.is_valid()) {
-		free_rid(test_cube);
+		free(test_cube);
 	}
 
 	RSG::canvas->finalize();
 	memdelete(RSG::canvas);
+	RSG::canvas = nullptr;
+
 	RSG::rasterizer->finalize();
 	memdelete(RSG::viewport);
+	RSG::viewport = nullptr;
+
 	memdelete(RSG::rasterizer);
+	RSG::rasterizer = nullptr;
 	memdelete(RSG::scene);
+	RSG::scene = nullptr;
+
 	memdelete(RSG::camera_attributes);
+	RSG::camera_attributes = nullptr;
+
+	RSG::threaded = false;
+
+	RSG::utilities = nullptr;
+	RSG::light_storage = nullptr;
+	RSG::material_storage = nullptr;
+	RSG::mesh_storage = nullptr;
+	RSG::particles_storage = nullptr;
+	RSG::texture_storage = nullptr;
+	RSG::gi = nullptr;
+	RSG::fog = nullptr;
+	RSG::canvas_render = nullptr;
 }
 
 void RenderingServerDefault::init() {
