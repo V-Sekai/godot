@@ -36,6 +36,8 @@
 #include "core/os/os.h"
 #include "core/variant/callable.h"
 #include "servers/display/native_menu.h"
+#include "servers/display_server_embedded_host_interface.h"
+#include "servers/rendering/rendering_native_surface.h"
 
 class Texture2D;
 class AccessibilityDriver;
@@ -50,7 +52,6 @@ class DisplayServer : public Object {
 	mutable HashMap<String, RID> menu_names;
 
 	RID _get_rid_from_name(NativeMenu *p_nmenu, const String &p_menu_root) const;
-	RID _accessibility_create_sub_text_edit_elements_bind_compat_113459(const RID &p_parent_rid, const RID &p_shaped_text, float p_min_height, int p_insert_pos = -1);
 #endif
 
 	LocalVector<ObjectID> additional_outputs;
@@ -84,6 +85,7 @@ public:
 		OPENGL_CONTEXT,
 		EGL_DISPLAY,
 		EGL_CONFIG,
+		OPENGL_FBO,
 	};
 
 	enum Context {
@@ -169,6 +171,7 @@ public:
 		FEATURE_NATIVE_COLOR_PICKER,
 		FEATURE_SELF_FITTING_WINDOWS,
 		FEATURE_ACCESSIBILITY_SCREEN_READER,
+		FEATURE_NATIVE_WINDOWS,
 	};
 
 	virtual bool has_feature(Feature p_feature) const = 0;
@@ -241,7 +244,7 @@ public:
 		int volume = 50;
 		float pitch = 1.f;
 		float rate = 1.f;
-		int64_t id = 0;
+		int id = 0;
 	};
 
 	enum TTSUtteranceEvent {
@@ -267,7 +270,7 @@ public:
 	virtual void tts_stop();
 
 	virtual void tts_set_utterance_callback(TTSUtteranceEvent p_event, const Callable &p_callable);
-	virtual void tts_post_utterance_event(TTSUtteranceEvent p_event, int64_t p_id, int p_pos = 0);
+	virtual void tts_post_utterance_event(TTSUtteranceEvent p_event, int p_id, int p_pos = 0);
 
 	virtual bool is_dark_mode_supported() const { return false; }
 	virtual bool is_dark_mode() const { return false; }
@@ -358,12 +361,12 @@ public:
 	virtual int screen_get_dpi(int p_screen = SCREEN_OF_MAIN_WINDOW) const = 0;
 	virtual float screen_get_scale(int p_screen = SCREEN_OF_MAIN_WINDOW) const;
 	virtual float screen_get_max_scale() const {
-		float max_scale = 1.f;
+		float scale = 1.f;
 		int screen_count = get_screen_count();
 		for (int i = 0; i < screen_count; i++) {
-			max_scale = std::fmax(max_scale, screen_get_scale(i));
+			scale = std::fmax(scale, screen_get_scale(i));
 		}
-		return max_scale;
+		return scale;
 	}
 	virtual float screen_get_refresh_rate(int p_screen = SCREEN_OF_MAIN_WINDOW) const = 0;
 	virtual Color screen_get_pixel(const Point2i &p_position) const { return Color(); }
@@ -438,11 +441,16 @@ public:
 	virtual void show_window(WindowID p_id);
 	virtual void delete_sub_window(WindowID p_id);
 
+	virtual WindowID create_native_window(Ref<RenderingNativeSurface> p_native_window);
+	virtual bool is_native_window(WindowID p_id);
+	virtual void delete_native_window(WindowID p_id);
+
 	virtual WindowID window_get_active_popup() const { return INVALID_WINDOW_ID; }
 	virtual void window_set_popup_safe_rect(WindowID p_window, const Rect2i &p_rect) {}
 	virtual Rect2i window_get_popup_safe_rect(WindowID p_window) const { return Rect2i(); }
 
 	virtual int64_t window_get_native_handle(HandleType p_handle_type, WindowID p_window = MAIN_WINDOW_ID) const;
+	virtual float window_get_scale(WindowID p_window_id = MAIN_WINDOW_ID) const { return screen_get_scale(); }
 
 	virtual WindowID get_window_at_screen_position(const Point2i &p_position) const = 0;
 
@@ -493,11 +501,6 @@ public:
 	virtual Size2i window_get_size(WindowID p_window = MAIN_WINDOW_ID) const = 0;
 	virtual Size2i window_get_size_with_decorations(WindowID p_window = MAIN_WINDOW_ID) const = 0;
 
-	virtual float window_get_scale(WindowID p_window = MAIN_WINDOW_ID) const {
-		int screen = window_get_current_screen(p_window);
-		return screen_get_scale(screen);
-	}
-
 	virtual void window_set_mode(WindowMode p_mode, WindowID p_window = MAIN_WINDOW_ID) = 0;
 	virtual WindowMode window_get_mode(WindowID p_window = MAIN_WINDOW_ID) const = 0;
 
@@ -529,8 +532,6 @@ public:
 	virtual bool window_minimize_on_title_dbl_click() const { return false; }
 
 	virtual void window_start_drag(WindowID p_window = MAIN_WINDOW_ID) {}
-
-	virtual void window_set_color(const Color &p_color) {}
 
 	enum WindowResizeEdge {
 		WINDOW_EDGE_TOP_LEFT,
@@ -764,6 +765,9 @@ public:
 	// necessary for GL focus, may be able to use one of the existing functions for this, not sure yet
 	virtual void gl_window_make_current(DisplayServer::WindowID p_window_id);
 
+	virtual void pre_draw_viewport(RID p_render_target) {}
+	virtual void post_draw_viewport(RID p_render_target) {}
+
 	virtual Point2i ime_get_selection() const;
 	virtual String ime_get_text() const;
 
@@ -861,9 +865,19 @@ public:
 
 	virtual void release_rendering_thread();
 	virtual void swap_buffers();
+	virtual uint64_t get_native_window_id(WindowID p_id = MAIN_WINDOW_ID) const;
+
+	virtual bool is_rendering_flipped() const;
 
 	virtual void set_native_icon(const String &p_filename);
 	virtual void set_icon(const Ref<Image> &p_icon);
+
+	virtual void mouse_button(int p_x, int p_y, MouseButton p_mouse_button_index, bool p_pressed, bool p_double_click, bool p_cancelled, DisplayServer::WindowID p_window);
+	virtual void mouse_motion(int p_prev_x, int p_prev_y, int p_x, int p_y, DisplayServer::WindowID p_window);
+
+	virtual void touch_press(int p_idx, int p_x, int p_y, bool p_pressed, bool p_double_click, DisplayServer::WindowID p_window);
+	virtual void touch_drag(int p_idx, int p_prev_x, int p_prev_y, int p_x, int p_y, float p_pressure, Vector2 p_tilt, DisplayServer::WindowID p_window);
+	virtual void key(Key p_key, char32_t p_char, Key p_unshifted, Key p_physical, BitField<KeyModifierMask> p_modifiers, bool p_pressed, DisplayServer::WindowID p_window);
 
 	virtual IndicatorID create_status_indicator(const Ref<Texture2D> &p_icon, const String &p_tooltip, const Callable &p_callback);
 	virtual void status_indicator_set_icon(IndicatorID p_id, const Ref<Texture2D> &p_icon);
