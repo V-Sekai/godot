@@ -33,6 +33,7 @@
 #include "java_godot_io_wrapper.h"
 #include "java_godot_wrapper.h"
 #include "os_android.h"
+#include "rendering_native_surface_android.h"
 #include "tts_android.h"
 
 #include "core/config/project_settings.h"
@@ -40,16 +41,13 @@
 #if defined(RD_ENABLED)
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #include "servers/rendering/rendering_device.h"
-
-#if defined(VULKAN_ENABLED)
-#include "rendering_context_driver_vulkan_android.h"
-#endif
 #endif
 
 #ifdef GLES3_ENABLED
+#include "platform_gl.h"
+
 #include "drivers/gles3/rasterizer_gles3.h"
 
-#include <EGL/egl.h>
 #endif
 
 DisplayServerAndroid *DisplayServerAndroid::get_singleton() {
@@ -681,28 +679,24 @@ void DisplayServerAndroid::reset_window() {
 		VSyncMode last_vsync_mode = rendering_context->window_get_vsync_mode(MAIN_WINDOW_ID);
 		rendering_context->window_destroy(MAIN_WINDOW_ID);
 
-		union {
-#ifdef VULKAN_ENABLED
-			RenderingContextDriverVulkanAndroid::WindowPlatformData vulkan;
-#endif
-		} wpd;
+		Ref<RenderingNativeSurfaceAndroid> android_surface;
 #ifdef VULKAN_ENABLED
 		if (rendering_driver == "vulkan") {
 			ANativeWindow *native_window = OS_Android::get_singleton()->get_native_window();
 			ERR_FAIL_NULL(native_window);
-			wpd.vulkan.window = native_window;
+
+			Size2i display_size = OS_Android::get_singleton()->get_display_size();
+			android_surface = RenderingNativeSurfaceAndroid::create(native_window, display_size.width, display_size.height);
 		}
 #endif
 
-		if (rendering_context->window_create(MAIN_WINDOW_ID, &wpd) != OK) {
+		if (rendering_context->window_create(MAIN_WINDOW_ID, android_surface) != OK) {
 			ERR_PRINT(vformat("Failed to reset %s window.", rendering_driver));
 			memdelete(rendering_context);
 			rendering_context = nullptr;
 			return;
 		}
 
-		Size2i display_size = OS_Android::get_singleton()->get_display_size();
-		rendering_context->window_set_size(MAIN_WINDOW_ID, display_size.width, display_size.height);
 		rendering_context->window_set_vsync_mode(MAIN_WINDOW_ID, last_vsync_mode);
 
 		if (rendering_device) {
@@ -737,11 +731,19 @@ DisplayServerAndroid::DisplayServerAndroid(const String &p_rendering_driver, Dis
 	rendering_context = nullptr;
 	rendering_device = nullptr;
 
-#if defined(VULKAN_ENABLED)
+	Ref<RenderingNativeSurfaceAndroid> android_surface;
+#ifdef VULKAN_ENABLED
 	if (rendering_driver == "vulkan") {
-		rendering_context = memnew(RenderingContextDriverVulkanAndroid);
+		ANativeWindow *native_window = OS_Android::get_singleton()->get_native_window();
+		ERR_FAIL_NULL(native_window);
+		Size2i display_size = OS_Android::get_singleton()->get_display_size();
+		android_surface = RenderingNativeSurfaceAndroid::create(native_window, display_size.width, display_size.height);
 	}
 #endif
+
+	if (android_surface.is_valid()) {
+		rendering_context = android_surface->create_rendering_context(rendering_driver);
+	}
 
 	if (rendering_context) {
 		if (rendering_context->initialize() != OK) {
@@ -765,20 +767,7 @@ DisplayServerAndroid::DisplayServerAndroid(const String &p_rendering_driver, Dis
 	}
 
 	if (rendering_context) {
-		union {
-#ifdef VULKAN_ENABLED
-			RenderingContextDriverVulkanAndroid::WindowPlatformData vulkan;
-#endif
-		} wpd;
-#ifdef VULKAN_ENABLED
-		if (rendering_driver == "vulkan") {
-			ANativeWindow *native_window = OS_Android::get_singleton()->get_native_window();
-			ERR_FAIL_NULL(native_window);
-			wpd.vulkan.window = native_window;
-		}
-#endif
-
-		if (rendering_context->window_create(MAIN_WINDOW_ID, &wpd) != OK) {
+		if (rendering_context->window_create(MAIN_WINDOW_ID, android_surface) != OK) {
 			ERR_PRINT(vformat("Failed to create %s window.", rendering_driver));
 			memdelete(rendering_context);
 			rendering_context = nullptr;
@@ -786,8 +775,6 @@ DisplayServerAndroid::DisplayServerAndroid(const String &p_rendering_driver, Dis
 			return;
 		}
 
-		Size2i display_size = OS_Android::get_singleton()->get_display_size();
-		rendering_context->window_set_size(MAIN_WINDOW_ID, display_size.width, display_size.height);
 		rendering_context->window_set_vsync_mode(MAIN_WINDOW_ID, p_vsync_mode);
 
 		rendering_device = memnew(RenderingDevice);

@@ -33,17 +33,36 @@
 #include "core/extension/godot_instance.h"
 #include "main/main.h"
 
+#include <cstring>
+
 #include "os_macos.h"
 
 static OS_MacOS *os = nullptr;
 
 static GodotInstance *instance = nullptr;
 
-GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
+static bool has_arg(int p_argc, char *p_argv[], const char *p_flag) {
+	if (!p_flag || !p_flag[0]) {
+		return false;
+	}
+	for (int i = 0; i < p_argc; i++) {
+		if (p_argv[i] && strcmp(p_argv[i], p_flag) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data, LogCallbackFunction p_log_func, LogCallbackData p_log_data) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
 	uint32_t remaining_args = p_argc - 1;
-	os = new OS_MacOS_NSApp(p_argv[0], remaining_args, remaining_args > 0 ? &p_argv[1] : nullptr);
+	const bool headless = has_arg((int)remaining_args, remaining_args > 0 ? &p_argv[1] : nullptr, "--headless");
+	if (headless) {
+		os = new OS_MacOS_Headless(p_argv[0], remaining_args, remaining_args > 0 ? &p_argv[1] : nullptr);
+	} else {
+		os = new OS_MacOS_NSApp(p_argv[0], remaining_args, remaining_args > 0 ? &p_argv[1] : nullptr);
+	}
 
 	@autoreleasepool {
 		Error err = Main::setup(p_argv[0], remaining_args, remaining_args > 0 ? &p_argv[1] : nullptr, false);
@@ -67,8 +86,7 @@ void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
 	if (instance == godot_instance) {
 		godot_instance->stop();
 		memdelete(godot_instance);
-		// Note: When Godot Engine supports reinitialization, clear the instance pointer here.
-		//instance = nullptr;
+		instance = nullptr;
 		Main::cleanup();
 	}
 }

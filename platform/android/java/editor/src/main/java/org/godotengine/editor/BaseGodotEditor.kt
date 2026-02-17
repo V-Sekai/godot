@@ -434,7 +434,7 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 				return XR_RUN_GAME_INFO
 			}
 
-			if ((xrMode == XR_MODE_DEFAULT && GodotLib.getGlobal("xr/openxr/enabled").toBoolean())) {
+			if ((xrMode == XR_MODE_DEFAULT && GodotLib.getInstance().getGlobal("xr/openxr/enabled").toBoolean())) {
 				val hybridLaunchMode = getHybridAppLaunchMode()
 
 				return if (hybridLaunchMode == HybridMode.PANEL) {
@@ -611,7 +611,7 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 	 * Enable long press gestures for the Godot Android editor.
 	 */
 	protected open fun enableLongPressGestures() =
-		java.lang.Boolean.parseBoolean(GodotLib.getEditorSetting("interface/touchscreen/enable_long_press_as_right_click"))
+		java.lang.Boolean.parseBoolean(GodotLib.getInstance().getEditorSetting("interface/touchscreen/enable_long_press_as_right_click"))
 
 	/**
 	 * Disable scroll deadzone for the Godot Android editor.
@@ -622,7 +622,7 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 	 * Enable pan and scale gestures for the Godot Android editor.
 	 */
 	protected open fun enablePanAndScaleGestures() =
-		java.lang.Boolean.parseBoolean(GodotLib.getEditorSetting("interface/touchscreen/enable_pan_and_scale_gestures"))
+		java.lang.Boolean.parseBoolean(GodotLib.getInstance().getEditorSetting("interface/touchscreen/enable_pan_and_scale_gestures"))
 
 	private fun resolveGameEmbedModeIfNeeded(embedMode: GameEmbedMode): GameEmbedMode {
 		return when (embedMode) {
@@ -652,7 +652,7 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 				}
 
 				try {
-					when (Integer.parseInt(GodotLib.getEditorSetting("run/window_placement/android_window"))) {
+					when (Integer.parseInt(GodotLib.getInstance().getEditorSetting("run/window_placement/android_window"))) {
 						ANDROID_WINDOW_SAME_AS_EDITOR -> LaunchPolicy.SAME
 						ANDROID_WINDOW_SIDE_BY_SIDE_WITH_EDITOR -> LaunchPolicy.ADJACENT
 

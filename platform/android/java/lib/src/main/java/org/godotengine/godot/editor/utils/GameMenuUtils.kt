@@ -109,7 +109,8 @@ object GameMenuUtils {
 	 */
 	fun fetchGameEmbedMode(): GameEmbedMode {
 		try {
-			val gameEmbedModeValue = Integer.parseInt(GodotLib.getEditorSetting(GameEmbedMode.SETTING_KEY))
+			// TODO Check GodotLib.getInstance() fix
+			val gameEmbedModeValue = Integer.parseInt(GodotLib.getInstance().getEditorSetting(GameEmbedMode.SETTING_KEY))
 			val gameEmbedMode = GameEmbedMode.fromNativeValue(gameEmbedModeValue) ?: GameEmbedMode.AUTO
 			return gameEmbedMode
 		} catch (e: Exception) {
@@ -124,6 +125,7 @@ object GameMenuUtils {
 	 * Must be called on the render thread.
 	 */
 	fun saveGameEmbedMode(gameEmbedMode: GameEmbedMode) {
-		GodotLib.setEditorSetting(GameEmbedMode.SETTING_KEY, gameEmbedMode.nativeValue)
+		// TODO Check GodotLib.getInstance() fix
+		GodotLib.getInstance().setEditorSetting(GameEmbedMode.SETTING_KEY, gameEmbedMode.nativeValue)
 	}
 }

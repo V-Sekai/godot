@@ -78,7 +78,7 @@ public class GodotIO {
 	final int SCREEN_SENSOR_PORTRAIT = 5;
 	final int SCREEN_SENSOR = 6;
 
-	GodotIO(Godot godot) {
+	public GodotIO(Godot godot) {
 		this.godot = godot;
 		String androidId = Settings.Secure.getString(godot.getContext().getContentResolver(),
 				Settings.Secure.ANDROID_ID);

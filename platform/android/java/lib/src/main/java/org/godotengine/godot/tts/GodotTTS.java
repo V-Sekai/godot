@@ -32,7 +32,6 @@ package org.godotengine.godot.tts;
 
 import org.godotengine.godot.GodotLib;
 
-import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
@@ -41,7 +40,6 @@ import android.speech.tts.Voice;
 
 import androidx.annotation.Keep;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
 
@@ -57,7 +55,7 @@ import java.util.Set;
  */
 @Keep
 public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.OnInitListener {
-	// Note: These constants must be in sync with DisplayServer::TTSUtteranceEvent enum from "servers/display/display_server.h".
+	// Note: These constants must be in sync with DisplayServer::TTSUtteranceEvent enum from "servers/display_server.h".
 	final private static int EVENT_START = 0;
 	final private static int EVENT_END = 1;
 	final private static int EVENT_CANCEL = 2;
@@ -119,9 +117,9 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	@Override
 	public void onRangeStart(String utteranceId, int start, int end, int frame) {
 		synchronized (lock) {
-			if (lastUtterance != null && Long.parseLong(utteranceId) == lastUtterance.id) {
+			if (lastUtterance != null && Integer.parseInt(utteranceId) == lastUtterance.id) {
 				lastUtterance.offset = start;
-				GodotLib.ttsCallback(EVENT_BOUNDARY, lastUtterance.id, start + lastUtterance.start);
+				GodotLib.getInstance().ttsCallback(EVENT_BOUNDARY, lastUtterance.id, start + lastUtterance.start);
 			}
 		}
 	}
@@ -132,8 +130,8 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	@Override
 	public void onStop(String utteranceId, boolean interrupted) {
 		synchronized (lock) {
-			if (lastUtterance != null && !paused && Long.parseLong(utteranceId) == lastUtterance.id) {
-				GodotLib.ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
+			if (lastUtterance != null && !paused && Integer.parseInt(utteranceId) == lastUtterance.id) {
+				GodotLib.getInstance().ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
 				speaking = false;
 				updateTTS();
 			}
@@ -146,8 +144,8 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	@Override
 	public void onStart(String utteranceId) {
 		synchronized (lock) {
-			if (lastUtterance != null && lastUtterance.start == 0 && Long.parseLong(utteranceId) == lastUtterance.id) {
-				GodotLib.ttsCallback(EVENT_START, lastUtterance.id, 0);
+			if (lastUtterance != null && lastUtterance.start == 0 && Integer.parseInt(utteranceId) == lastUtterance.id) {
+				GodotLib.getInstance().ttsCallback(EVENT_START, lastUtterance.id, 0);
 			}
 		}
 	}
@@ -158,8 +156,8 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	@Override
 	public void onDone(String utteranceId) {
 		synchronized (lock) {
-			if (lastUtterance != null && !paused && Long.parseLong(utteranceId) == lastUtterance.id) {
-				GodotLib.ttsCallback(EVENT_END, lastUtterance.id, 0);
+			if (lastUtterance != null && !paused && Integer.parseInt(utteranceId) == lastUtterance.id) {
+				GodotLib.getInstance().ttsCallback(EVENT_END, lastUtterance.id, 0);
 				speaking = false;
 				updateTTS();
 			}
@@ -172,8 +170,8 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	@Override
 	public void onError(String utteranceId, int errorCode) {
 		synchronized (lock) {
-			if (lastUtterance != null && !paused && Long.parseLong(utteranceId) == lastUtterance.id) {
-				GodotLib.ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
+			if (lastUtterance != null && !paused && Integer.parseInt(utteranceId) == lastUtterance.id) {
+				GodotLib.getInstance().ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
 				speaking = false;
 				updateTTS();
 			}
@@ -186,8 +184,8 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	@Override
 	public void onError(String utteranceId) {
 		synchronized (lock) {
-			if (lastUtterance != null && !paused && Long.parseLong(utteranceId) == lastUtterance.id) {
-				GodotLib.ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
+			if (lastUtterance != null && !paused && Integer.parseInt(utteranceId) == lastUtterance.id) {
+				GodotLib.getInstance().ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
 				speaking = false;
 				updateTTS();
 			}
@@ -222,7 +220,7 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 	/**
 	 * Adds an utterance to the queue.
 	 */
-	public void speak(String text, String voice, int volume, float pitch, float rate, long utterance_id, boolean interrupt) {
+	public void speak(String text, String voice, int volume, float pitch, float rate, int utterance_id, boolean interrupt) {
 		synchronized (lock) {
 			if (state != INIT_STATE_SUCCESS) {
 				return;
@@ -301,12 +299,12 @@ public class GodotTTS extends UtteranceProgressListener implements TextToSpeech.
 				return;
 			}
 			for (GodotUtterance u : queue) {
-				GodotLib.ttsCallback(EVENT_CANCEL, u.id, 0);
+				GodotLib.getInstance().ttsCallback(EVENT_CANCEL, u.id, 0);
 			}
 			queue.clear();
 
 			if (lastUtterance != null) {
-				GodotLib.ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
+				GodotLib.getInstance().ttsCallback(EVENT_CANCEL, lastUtterance.id, 0);
 			}
 			lastUtterance = null;
 

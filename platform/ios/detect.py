@@ -32,6 +32,8 @@ def get_opts():
         (("apple_target_triple", "ios_triple"), "Triple for the corresponding target Apple platform toolchain", ""),
         BoolVariable(("simulator", "ios_simulator"), "Build for Simulator", False),
         BoolVariable("generate_bundle", "Generate an APP bundle after building iOS/macOS binaries", False),
+        ("angle_libs", "Path to the ANGLE static libraries", ""),
+        BoolVariable("coreaudio_enabled", "Coreaudio Enabled", True),
     ]
 
 
@@ -149,11 +151,14 @@ def configure(env: "SConsEnvironment"):
     )
 
     env.Prepend(CPPPATH=["#platform/ios"])
-    env.Append(CPPDEFINES=["IOS_ENABLED", "APPLE_EMBEDDED_ENABLED", "UNIX_ENABLED", "COREAUDIO_ENABLED"])
+    env.Append(CPPDEFINES=["IOS_ENABLED", "UNIX_ENABLED", "APPLE_EMBEDDED_ENABLED"])
 
-    if env["metal"] and env["simulator"]:
-        print_warning("iOS Simulator does not support the Metal rendering driver")
-        env["metal"] = False
+    if env["coreaudio_enabled"]:
+        env.Append(CPPDEFINES=["COREAUDIO_ENABLED"])
+
+    #if env["metal"] and env["ios_simulator"]:
+    #    print_warning("iOS simulator does not support the Metal rendering driver")
+    #    env["metal"] = False
 
     if env["metal"]:
         env.AppendUnique(CPPDEFINES=["METAL_ENABLED", "RD_ENABLED"])
@@ -176,8 +181,19 @@ def configure(env: "SConsEnvironment"):
     if env["opengl3"]:
         env.Append(CPPDEFINES=["GLES3_ENABLED", "GLES_SILENCE_DEPRECATION"])
         env.Append(CCFLAGS=["-Wno-module-import-in-extern-c"])
+
         env.Prepend(
             CPPPATH=[
                 "$APPLE_SDK_PATH/System/Library/Frameworks/OpenGLES.framework/Headers",
             ]
         )
+
+        extra_suffix = ""
+        if env["simulator"]:
+            extra_suffix = ".simulator"
+
+        if env["angle_libs"] != "":
+            print("-lANGLE.ios." + env["arch"])
+            env.Append(CPPDEFINES=["EGL_ENABLED"])
+            env.AppendUnique(CPPDEFINES=["ANGLE_ENABLED"])
+            env.Prepend(CPPPATH=["#thirdparty/angle/include"])

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  display_server_embedded.h                                             */
+/*  display_server_macos_embedded.h                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -55,8 +55,8 @@ struct DisplayServerEmbeddedState {
 	}
 };
 
-class DisplayServerEmbedded : public DisplayServerMacOSBase {
-	GDSOFTCLASS(DisplayServerEmbedded, DisplayServerMacOSBase)
+class DisplayServerMacOSEmbedded : public DisplayServerMacOSBase {
+	GDSOFTCLASS(DisplayServerMacOSEmbedded, DisplayServerMacOSBase)
 
 	DisplayServerEmbeddedState state;
 
@@ -164,6 +164,8 @@ public:
 
 	virtual WindowID get_window_at_screen_position(const Point2i &p_position) const override;
 
+	virtual int64_t window_get_native_handle(HandleType p_handle_type, WindowID p_window = MAIN_WINDOW_ID) const override;
+
 	virtual void window_attach_instance_id(ObjectID p_instance, WindowID p_window = MAIN_WINDOW_ID) override;
 	virtual ObjectID window_get_attached_instance_id(WindowID p_window = MAIN_WINDOW_ID) const override;
 
@@ -223,6 +225,6 @@ public:
 	void set_state(const DisplayServerEmbeddedState &p_state);
 	virtual void swap_buffers() override;
 
-	DisplayServerEmbedded(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, Error &r_error);
-	~DisplayServerEmbedded();
+	DisplayServerMacOSEmbedded(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, Error &r_error);
+	~DisplayServerMacOSEmbedded();
 };

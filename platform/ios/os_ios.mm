@@ -31,6 +31,11 @@
 #import "os_ios.h"
 
 #import "display_server_ios.h"
+#include "servers/display_server_embedded.h"
+
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <mach/machine.h>
 
 #ifdef IOS_ENABLED
 
@@ -40,13 +45,57 @@ OS_IOS *OS_IOS::get_singleton() {
 
 OS_IOS::OS_IOS() :
 		OS_AppleEmbedded() {
+#ifndef LIBGODOT_ENABLED
 	DisplayServerIOS::register_ios_driver();
+#endif
+	DisplayServerEmbedded::register_embedded_driver();
 }
 
-OS_IOS::~OS_IOS() {}
+OS_IOS::~OS_IOS() {
+	AudioDriverManager::reset();
+}
 
 String OS_IOS::get_name() const {
 	return "iOS";
+}
+
+String OS_IOS::get_processor_name() const {
+	NSMutableString *ns_cpu = [[NSMutableString alloc] init];
+    size_t size;
+	cpu_type_t type;
+	cpu_subtype_t subtype;
+	size = sizeof(type);
+	sysctlbyname("hw.cputype", &type, &size, NULL, 0);
+
+	size = sizeof(subtype);
+	sysctlbyname("hw.cpusubtype", &subtype, &size, NULL, 0);
+
+	// values for cputype and cpusubtype defined in mach/machine.h
+	if (type == CPU_TYPE_X86_64) {
+		[ns_cpu appendString:@"x86_64"];
+	} else if (type == CPU_TYPE_X86) {
+		[ns_cpu appendString:@"x86"];
+	} else if (type == CPU_TYPE_ARM) {
+		[ns_cpu appendString:@"ARM"];
+		switch(subtype)
+		{
+			case CPU_SUBTYPE_ARM_V6:
+				[ns_cpu appendString:@"V6"];
+				break;
+			case CPU_SUBTYPE_ARM_V7:
+				[ns_cpu appendString:@"V7"];
+				break;
+			case CPU_SUBTYPE_ARM_V8:
+				[ns_cpu appendString:@"V8"];
+				break;
+		}
+	} else if (type == CPU_TYPE_ARM64) {
+		[ns_cpu appendString:@"ARM64"];
+	}
+	if ([ns_cpu length] != 0) {
+		return String::utf8([ns_cpu UTF8String]);
+	}
+	ERR_FAIL_V_MSG("", String("Couldn't get the CPU model name. Returning an empty string."));
 }
 
 #endif // IOS_ENABLED

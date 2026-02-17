@@ -86,6 +86,8 @@ private:
 	void _load_system_font_config() const;
 	String get_system_property(const char *key) const;
 
+	String asset_path_prefix = "";
+
 public:
 	static const char *ANDROID_EXEC_PATH;
 	static const int DEFAULT_WINDOW_WIDTH = 800;
@@ -100,6 +102,9 @@ public:
 	virtual void initialize() override;
 
 	virtual void initialize_joypads() override;
+	
+	virtual Error set_cwd(const String &p_cwd) override;
+	String get_asset_path_prefix() { return asset_path_prefix; };
 
 	virtual void set_main_loop(MainLoop *p_main_loop) override;
 	virtual void delete_main_loop() override;

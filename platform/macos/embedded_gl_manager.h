@@ -103,10 +103,13 @@ public:
 	void window_destroy(DisplayServer::WindowID p_window_id);
 	void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height);
 	Size2i window_get_size(DisplayServer::WindowID p_window_id) const;
+	int window_get_render_target(DisplayServer::WindowID p_window_id) const;
 
 	void set_display_id(uint32_t p_display_id);
 	void set_vsync_enabled(bool p_enabled);
 	bool is_vsync_enabled() const { return vsync_enabled; }
+
+	uint64_t get_fbo(DisplayServer::WindowID p_window_id) const;
 
 	void release_current();
 	void swap_buffers();

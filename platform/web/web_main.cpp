@@ -33,9 +33,8 @@
 #include "os_web.h"
 
 #include "core/config/engine.h"
-#include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
-#include "core/profiling/profiling.h"
+#include "core/profiling.h"
 #include "main/main.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h" // SceneTree only forward declares it.
@@ -66,7 +65,6 @@ void exit_callback() {
 	int exit_code = OS_Web::get_singleton()->get_exit_code();
 	memdelete(os);
 	os = nullptr;
-	godot_cleanup_profiler();
 	emscripten_force_exit(exit_code); // Exit runtime.
 }
 

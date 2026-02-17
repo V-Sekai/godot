@@ -94,7 +94,7 @@ static inline String jstring_to_string(jstring source, JNIEnv *env = nullptr) {
 /**
  * Set up thread-safe Android ClassLoader (used by jni_find_class() below).
  */
-void setup_android_class_loader();
+void setup_android_class_loader(jobject p_class_loader = nullptr);
 void cleanup_android_class_loader();
 
 /**

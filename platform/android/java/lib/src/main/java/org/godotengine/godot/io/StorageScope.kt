@@ -109,7 +109,7 @@ internal enum class StorageScope {
 
 			var pathFile = File(path)
 			if (!pathFile.isAbsolute) {
-				pathFile = File(GodotLib.getProjectResourceDir(), path)
+				pathFile = File(GodotLib.getInstance().getProjectResourceDir(), path)
 				if (!pathFile.isAbsolute) {
 					return UNKNOWN
 				}

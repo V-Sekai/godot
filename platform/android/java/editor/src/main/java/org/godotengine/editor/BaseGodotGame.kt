@@ -48,13 +48,13 @@ abstract class BaseGodotGame: GodotEditor() {
 		private val TAG = BaseGodotGame::class.java.simpleName
 	}
 
-	override fun overrideVolumeButtons() = java.lang.Boolean.parseBoolean(GodotLib.getGlobal("input_devices/pointing/android/override_volume_buttons"))
+	override fun overrideVolumeButtons() = java.lang.Boolean.parseBoolean(GodotLib.getInstance().getGlobal("input_devices/pointing/android/override_volume_buttons"))
 
-	override fun enableLongPressGestures() = java.lang.Boolean.parseBoolean(GodotLib.getGlobal("input_devices/pointing/android/enable_long_press_as_right_click"))
+	override fun enableLongPressGestures() = java.lang.Boolean.parseBoolean(GodotLib.getInstance().getGlobal("input_devices/pointing/android/enable_long_press_as_right_click"))
 
-	override fun enablePanAndScaleGestures() = java.lang.Boolean.parseBoolean(GodotLib.getGlobal("input_devices/pointing/android/enable_pan_and_scale_gestures"))
+	override fun enablePanAndScaleGestures() = java.lang.Boolean.parseBoolean(GodotLib.getInstance().getGlobal("input_devices/pointing/android/enable_pan_and_scale_gestures"))
 
-	override fun disableScrollDeadzone() = java.lang.Boolean.parseBoolean(GodotLib.getGlobal("input_devices/pointing/android/disable_scroll_deadzone"))
+	override fun disableScrollDeadzone() = java.lang.Boolean.parseBoolean(GodotLib.getInstance().getGlobal("input_devices/pointing/android/disable_scroll_deadzone"))
 
 	override fun onGodotSetupCompleted() {
 		super.onGodotSetupCompleted()
@@ -91,7 +91,7 @@ abstract class BaseGodotGame: GodotEditor() {
 		val permissionsToEnable = mutableListOf<String>()
 
 		// Check for RECORD_AUDIO permission.
-		val audioInputEnabled = java.lang.Boolean.parseBoolean(GodotLib.getGlobal("audio/driver/enable_input"))
+		val audioInputEnabled = java.lang.Boolean.parseBoolean(GodotLib.getInstance().getGlobal("audio/driver/enable_input"))
 		if (audioInputEnabled) {
 			permissionsToEnable.add(Manifest.permission.RECORD_AUDIO)
 		}

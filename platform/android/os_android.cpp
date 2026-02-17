@@ -41,8 +41,7 @@
 #include "core/config/project_settings.h"
 #include "core/extension/gdextension_manager.h"
 #include "core/io/xml_parser.h"
-#include "core/os/main_loop.h"
-#include "core/profiling/profiling.h"
+#include "core/profiling.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
 #ifdef TOOLS_ENABLED
@@ -51,6 +50,7 @@
 #endif
 #include "main/main.h"
 #include "scene/main/scene_tree.h"
+#include "servers/display_server_embedded.h"
 #include "servers/rendering/rendering_server.h"
 
 #include <dlfcn.h>
@@ -74,14 +74,6 @@ String _remove_symlink(const String &dir) {
 	chdir(current_dir_name);
 	return dir_without_symlink;
 }
-
-#ifdef TOOLS_ENABLED
-_FORCE_INLINE_ static GameViewPlugin *_get_game_view_plugin() {
-	ERR_FAIL_NULL_V(EditorNode::get_singleton(), nullptr);
-	ERR_FAIL_NULL_V(EditorNode::get_singleton()->get_editor_main_screen(), nullptr);
-	return Object::cast_to<GameViewPlugin>(EditorNode::get_singleton()->get_editor_main_screen()->get_plugin_by_name("Game"));
-}
-#endif
 
 class AndroidLogger : public Logger {
 public:
@@ -132,10 +124,10 @@ void OS_Android::initialize() {
 }
 
 void OS_Android::initialize_joypads() {
-	Input::get_singleton()->set_fallback_mapping(godot_java->get_input_fallback_mapping());
+	// TODO Input::get_singleton()->set_fallback_mapping(godot_java->get_input_fallback_mapping());
 
 	// This queries/updates the currently connected devices/joypads.
-	godot_java->init_input_devices();
+	// TODO godot_java->init_input_devices();
 }
 
 void OS_Android::set_main_loop(MainLoop *p_main_loop) {
@@ -165,15 +157,18 @@ GodotIOJavaWrapper *OS_Android::get_godot_io_java() {
 }
 
 bool OS_Android::request_permission(const String &p_name) {
-	return godot_java->request_permission(p_name);
+	//return godot_java->request_permission(p_name);
+	return false;
 }
 
 bool OS_Android::request_permissions() {
-	return godot_java->request_permissions();
+	// TODO return godot_java->request_permissions();
+	return false;
 }
 
 Vector<String> OS_Android::get_granted_permissions() const {
-	return godot_java->get_granted_permissions();
+	return Vector<String>();
+	// TODO return godot_java->get_granted_permissions();
 }
 
 bool OS_Android::copy_dynamic_library(const String &p_library_path, const String &p_target_dir, String *r_copy_path) {
@@ -356,7 +351,7 @@ void OS_Android::main_loop_begin() {
 
 #ifdef TOOLS_ENABLED
 	if (Engine::get_singleton()->is_editor_hint()) {
-		GameViewPlugin *game_view_plugin = _get_game_view_plugin();
+		GameViewPlugin *game_view_plugin = Object::cast_to<GameViewPlugin>(EditorNode::get_singleton()->get_editor_main_screen()->get_plugin_by_name("Game"));
 		if (game_view_plugin != nullptr) {
 			game_view_plugin->connect("main_screen_changed", callable_mp_static(&OS_Android::_on_main_screen_changed));
 		}
@@ -388,7 +383,7 @@ bool OS_Android::main_loop_iterate(bool *r_should_swap_buffers) {
 void OS_Android::main_loop_end() {
 #ifdef TOOLS_ENABLED
 	if (Engine::get_singleton()->is_editor_hint()) {
-		GameViewPlugin *game_view_plugin = _get_game_view_plugin();
+		GameViewPlugin *game_view_plugin = Object::cast_to<GameViewPlugin>(EditorNode::get_singleton()->get_editor_main_screen()->get_plugin_by_name("Game"));
 		if (game_view_plugin != nullptr) {
 			game_view_plugin->disconnect("main_screen_changed", callable_mp_static(&OS_Android::_on_main_screen_changed));
 		}
@@ -413,18 +408,22 @@ void OS_Android::_on_main_screen_changed(const String &p_screen_name) {
 #endif
 
 void OS_Android::main_loop_focusout() {
+#ifndef LIBGODOT_ENABLED
 	DisplayServerAndroid::get_singleton()->send_window_event(DisplayServer::WINDOW_EVENT_FOCUS_OUT);
 	if (OS::get_singleton()->get_main_loop()) {
 		OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_OUT);
 	}
+#endif
 	audio_driver_android.set_pause(true);
 }
 
 void OS_Android::main_loop_focusin() {
+#ifndef LIBGODOT_ENABLED
 	DisplayServerAndroid::get_singleton()->send_window_event(DisplayServer::WINDOW_EVENT_FOCUS_IN);
 	if (OS::get_singleton()->get_main_loop()) {
 		OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_IN);
 	}
+#endif
 	audio_driver_android.set_pause(false);
 }
 
@@ -436,6 +435,9 @@ String OS_Android::get_resource_dir() const {
 #ifdef TOOLS_ENABLED
 	return OS_Unix::get_resource_dir();
 #else
+	if (!asset_path_prefix.is_empty()) {
+		return asset_path_prefix;
+	}
 	if (remote_fs_dir.is_empty()) {
 		return "/"; // Android has its own filesystem for resources inside the APK
 	} else {
@@ -614,7 +616,7 @@ Vector<String> OS_Android::get_system_font_path_for_text(const String &p_font_na
 		font_name = font_aliases[font_name];
 	}
 	String root = String(getenv("ANDROID_ROOT")).path_join("fonts");
-	String lang_prefix = p_locale.get_slicec('_', 0);
+	String lang_prefix = p_locale.split("_")[0];
 	Vector<String> ret;
 	int best_score = 0;
 	for (const List<FontInfo>::Element *E = fonts.front(); E; E = E->next()) {
@@ -815,7 +817,7 @@ ANativeWindow *OS_Android::get_native_window() const {
 }
 
 void OS_Android::vibrate_handheld(int p_duration_ms, float p_amplitude) {
-	godot_java->vibrate(p_duration_ms, p_amplitude);
+	// TODO godot_java->vibrate(p_duration_ms, p_amplitude);
 }
 
 String OS_Android::get_config_path() const {
@@ -878,11 +880,16 @@ bool OS_Android::_check_internal_feature_support(const String &p_feature) {
 	}
 #endif
 
-	if (godot_java->check_internal_feature_support(p_feature)) {
+	if (godot_java && godot_java->has_feature(p_feature)) {
 		return true;
 	}
 
 	return false;
+}
+
+Error OS_Android::set_cwd(const String &p_cwd) {
+	asset_path_prefix = p_cwd;
+	return OK;
 }
 
 OS_Android::OS_Android(GodotJavaWrapper *p_godot_java, GodotIOJavaWrapper *p_godot_io_java, bool p_use_apk_expansion) {
@@ -911,22 +918,29 @@ OS_Android::OS_Android(GodotJavaWrapper *p_godot_java, GodotIOJavaWrapper *p_god
 	AudioDriverManager::add_driver(&audio_driver_android);
 
 	DisplayServerAndroid::register_android_driver();
+#ifdef LIBGODOT_ENABLED
+	DisplayServerEmbedded::register_embedded_driver();
+#endif
 }
 
 Error OS_Android::execute(const String &p_path, const List<String> &p_arguments, String *r_pipe, int *r_exitcode, bool read_stderr, Mutex *p_pipe_mutex, bool p_open_console) {
-	if (p_path == ANDROID_EXEC_PATH) {
-		return create_instance(p_arguments);
-	} else {
-		return OS_Unix::execute(p_path, p_arguments, r_pipe, r_exitcode, read_stderr, p_pipe_mutex, p_open_console);
-	}
+	//	if (p_path == ANDROID_EXEC_PATH) {
+	//		return create_instance(p_arguments);
+	//	} else {
+	//		return OS_Unix::execute(p_path, p_arguments, r_pipe, r_exitcode, read_stderr, p_pipe_mutex, p_open_console);
+	//	}
+	// TODO: properly handle
+	return OK;
 }
 
 Error OS_Android::create_process(const String &p_path, const List<String> &p_arguments, ProcessID *r_child_id, bool p_open_console) {
-	if (p_path == ANDROID_EXEC_PATH) {
-		return create_instance(p_arguments, r_child_id);
-	} else {
-		return OS_Unix::create_process(p_path, p_arguments, r_child_id, p_open_console);
-	}
+	//	if (p_path == ANDROID_EXEC_PATH) {
+	//		return create_instance(p_arguments, r_child_id);
+	//	} else {
+	//		return OS_Unix::create_process(p_path, p_arguments, r_child_id, p_open_console);
+	//	}
+	// TODO properly disable
+	return OK;
 }
 
 Error OS_Android::create_instance(const List<String> &p_arguments, ProcessID *r_child_id) {
@@ -941,14 +955,17 @@ Error OS_Android::create_instance(const List<String> &p_arguments, ProcessID *r_
 }
 
 Error OS_Android::kill(const ProcessID &p_pid) {
-	if (godot_java->force_quit(nullptr, p_pid)) {
+	// TODO: Disable kill in libgodot mode
+	if (godot_java && godot_java->force_quit(nullptr, p_pid)) {
 		return OK;
 	}
 	return OS_Unix::kill(p_pid);
 }
 
 String OS_Android::get_system_ca_certificates() {
-	return godot_java->get_ca_certificates();
+	return String();
+	// TODO: Get system certificates
+	// return godot_java->get_ca_certificates();
 }
 
 Error OS_Android::setup_remote_filesystem(const String &p_server_host, int p_port, const String &p_password, String &r_project_path) {
@@ -962,12 +979,14 @@ Error OS_Android::setup_remote_filesystem(const String &p_server_host, int p_por
 }
 
 void OS_Android::load_platform_gdextensions() const {
-	Vector<String> extension_list_config_file = godot_java->get_gdextension_list_config_file();
-	for (String config_file_path : extension_list_config_file) {
-		GDExtensionManager::LoadStatus err = GDExtensionManager::get_singleton()->load_extension(config_file_path);
-		ERR_CONTINUE_MSG(err == GDExtensionManager::LOAD_STATUS_FAILED, "Error loading platform extension: " + config_file_path);
-	}
+	// TODO: Implement gdextension support
+	//	Vector<String> extension_list_config_file = godot_java->get_gdextension_list_config_file();
+	//	for (String config_file_path : extension_list_config_file) {
+	//		GDExtensionManager::LoadStatus err = GDExtensionManager::get_singleton()->load_extension(config_file_path);
+	//		ERR_CONTINUE_MSG(err == GDExtensionManager::LOAD_STATUS_FAILED, "Error loading platform extension: " + config_file_path);
+	//	}
 }
 
 OS_Android::~OS_Android() {
+	AudioDriverManager::reset();
 }

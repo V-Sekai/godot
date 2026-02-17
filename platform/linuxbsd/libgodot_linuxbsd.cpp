@@ -39,7 +39,7 @@ static OS_LinuxBSD *os = nullptr;
 
 static GodotInstance *instance = nullptr;
 
-GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
+GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data, LogCallbackFunction p_log_func, LogCallbackData p_log_data) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
 	os = new OS_LinuxBSD();
@@ -52,8 +52,7 @@ GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], 
 	instance = memnew(GodotInstance);
 	if (!instance->initialize(p_init_func)) {
 		memdelete(instance);
-		// Note: When Godot Engine supports reinitialization, clear the instance pointer here.
-		//instance = nullptr;
+		instance = nullptr;
 		return nullptr;
 	}
 

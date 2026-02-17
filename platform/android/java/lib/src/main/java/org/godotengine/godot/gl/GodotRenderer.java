@@ -54,11 +54,11 @@ public class GodotRenderer implements GLSurfaceView.Renderer {
 
 	public boolean onDrawFrame(GL10 gl) {
 		if (activityJustResumed) {
-			GodotLib.onRendererResumed();
+			GodotLib.getInstance().onRendererResumed();
 			activityJustResumed = false;
 		}
 
-		boolean swapBuffers = GodotLib.step();
+		boolean swapBuffers = GodotLib.getInstance().step();
 		for (GodotPlugin plugin : pluginRegistry.getAllPlugins()) {
 			plugin.onGLDrawFrame(gl);
 		}
@@ -69,18 +69,18 @@ public class GodotRenderer implements GLSurfaceView.Renderer {
 	@Override
 	public void onRenderThreadExiting() {
 		Log.d(TAG, "Destroying Godot Engine");
-		GodotLib.ondestroy();
+		GodotLib.getInstance().ondestroy();
 	}
 
 	public void onSurfaceChanged(GL10 gl, int width, int height) {
-		GodotLib.resize(null, width, height);
+		GodotLib.getInstance().resize(null, width, height);
 		for (GodotPlugin plugin : pluginRegistry.getAllPlugins()) {
 			plugin.onGLSurfaceChanged(gl, width, height);
 		}
 	}
 
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		GodotLib.newcontext(null);
+		GodotLib.getInstance().newcontext(null);
 		for (GodotPlugin plugin : pluginRegistry.getAllPlugins()) {
 			plugin.onGLSurfaceCreated(gl, config);
 		}
@@ -93,6 +93,6 @@ public class GodotRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void onActivityPaused() {
-		GodotLib.onRendererPaused();
+		GodotLib.getInstance().onRendererPaused();
 	}
 }

@@ -148,13 +148,11 @@ void GLManagerEmbedded::window_resize(DisplayServer::WindowID p_window_id, int p
 		glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 	}
 	win.current_fb = 0;
-	GLES3::TextureStorage::system_fbo = win.framebuffers[win.current_fb].fbo;
 	win.is_valid = true;
 }
 
 void GLManagerEmbedded::GLWindow::destroy_framebuffers() {
 	is_valid = false;
-	GLES3::TextureStorage::system_fbo = 0;
 
 	for (FrameBuffer &fb : framebuffers) {
 		if (fb.fbo) {
@@ -183,6 +181,12 @@ Size2i GLManagerEmbedded::window_get_size(DisplayServer::WindowID p_window_id) c
 
 	const GLWindow &win = el->value();
 	return Size2i(win.width, win.height);
+}
+
+int GLManagerEmbedded::window_get_render_target(DisplayServer::WindowID p_window_id) const {
+	ERR_FAIL_COND_V(!windows.has(p_window_id), 0);
+	const GLWindow &window = windows[p_window_id];
+	return window.framebuffers[window.current_fb].fbo;
 }
 
 void GLManagerEmbedded::window_destroy(DisplayServer::WindowID p_window_id) {
@@ -246,7 +250,6 @@ void GLManagerEmbedded::swap_buffers() {
 	win.layer.contents = (__bridge id)win.framebuffers[win.current_fb].surface;
 	[CATransaction commit];
 	win.current_fb = (win.current_fb + 1) % BUFFER_COUNT;
-	GLES3::TextureStorage::system_fbo = win.framebuffers[win.current_fb].fbo;
 }
 
 Error GLManagerEmbedded::initialize() {
@@ -305,6 +308,20 @@ void GLManagerEmbedded::set_vsync_enabled(bool p_enabled) {
 			display_link_running = false;
 		}
 	}
+}
+
+uint64_t GLManagerEmbedded::get_fbo(DisplayServer::WindowID p_window_id) const {
+	if (current_window == p_window_id) {
+		return 0;
+	}
+
+	const GLWindowElement *el = windows.find(p_window_id);
+	if (el == nullptr) {
+		return 0;
+	}
+
+	const GLWindow &win = el->value();
+	return win.framebuffers[win.current_fb].fbo;
 }
 
 GLManagerEmbedded::GLManagerEmbedded() {

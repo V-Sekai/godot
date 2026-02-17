@@ -117,6 +117,12 @@ ext.generateGodotLibraryVersion = { List<String> requiredKeys ->
         }
 
         if (requiredKeys.empty) {
+            if (map.containsKey("status")) {
+                String statusFromEnv = System.getenv('GODOT_VERSION_STATUS')
+                if (statusFromEnv != null && !statusFromEnv.empty) {
+                    map["status"] = statusFromEnv
+                }
+            }
             libraryVersionName = map.values().join(".")
             try {
                 if (map.containsKey("status")) {
