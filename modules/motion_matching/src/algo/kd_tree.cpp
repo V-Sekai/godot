@@ -68,7 +68,7 @@ std::vector<int> KDTree::search_knn(const float *pose_data,
 PackedInt32Array KDTree::get_node_indices() const {
 	PackedInt32Array indices;
 	_get_node_indices_recursive(_root, indices);
-	return std::move(indices);
+	return indices;
 }
 
 void KDTree::rebuild_tree(int point_count, const PackedInt32Array &indices) {
@@ -106,7 +106,6 @@ KDTree::TreeNode *KDTree::_build_tree_recursive(const float *data, int *indices,
 			[this, &data, &axis](int lhs, int rhs) {
 				return data[lhs * _point_dim + axis] < data[rhs * _point_dim + axis];
 			});
-	data[indices[mid_index] * _point_dim + axis];
 	node->index = indices[mid_index];
 	node->children[0] = _build_tree_recursive(data, indices, mid_index, current_depth + 1);
 	node->children[1] = _build_tree_recursive(data, indices + mid_index + 1, npoints - mid_index - 1, current_depth + 1);

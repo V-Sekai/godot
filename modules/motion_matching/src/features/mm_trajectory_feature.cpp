@@ -156,7 +156,7 @@ PackedFloat32Array MMTrajectoryFeature::evaluate_runtime_data(const MMQueryInput
 		const size_t max_size = p_query_input.trajectory.size();
 		if (max_size == 0) {
 			add_point(i, MMTrajectoryPoint());
-		} else if (i >= max_size) {
+		} else if (i >= (int64_t)max_size) {
 			add_point(i, p_query_input.trajectory[max_size - 1]);
 		} else {
 			add_point(i, p_query_input.trajectory[i]);
@@ -168,7 +168,7 @@ PackedFloat32Array MMTrajectoryFeature::evaluate_runtime_data(const MMQueryInput
 
 		if (max_size == 0) {
 			add_point(i, MMTrajectoryPoint());
-		} else if (i >= max_size) {
+		} else if (i >= (int64_t)max_size) {
 			add_point(i, p_query_input.trajectory_history[max_size - 1]);
 		} else {
 			add_point(i, p_query_input.trajectory_history[i]);
@@ -237,7 +237,7 @@ void MMTrajectoryFeature::display_data(const Ref<EditorNode3DGizmo> &p_gizmo, co
 }
 
 float MMTrajectoryFeature::calculate_normalized_weight(int64_t p_feature_dim) const {
-	float weight = MMFeature::calculate_normalized_weight(p_feature_dim);
+	float normalized_w = MMFeature::calculate_normalized_weight(p_feature_dim);
 
 	const uint32_t point_dim = _get_point_dimension_count();
 
@@ -245,12 +245,12 @@ float MMTrajectoryFeature::calculate_normalized_weight(int64_t p_feature_dim) co
 	const bool is_facing = include_facing && (p_feature_dim % point_dim) == (include_height ? 3 : 2);
 
 	if (is_height) {
-		weight *= height_weight;
+		normalized_w *= height_weight;
 	} else if (is_facing) {
-		weight *= facing_weight;
+		normalized_w *= facing_weight;
 	}
 
-	return weight;
+	return normalized_w;
 }
 
 TypedArray<Dictionary> MMTrajectoryFeature::get_trajectory_points(const Transform3D &p_character_transform, const PackedFloat32Array &p_trajectory_data) const {

@@ -37,7 +37,7 @@ void MMClampSynchronizer::sync(MMCharacter *p_controller, Node3D *p_character, f
 	const real_t delta_length = position_delta.length();
 
 	Vector3 character_position = p_character->get_global_position();
-	if (position_delta.length() > clamp_distance) {
+	if (delta_length > clamp_distance) {
 		character_position = p_controller->get_global_position() + position_delta.normalized() * clamp_distance;
 	}
 	character_position.y = p_character->get_global_position().y;

@@ -68,7 +68,6 @@ PackedFloat32Array MMBoneDataFeature::evaluate_runtime_data(const MMQueryInput &
 	for (int64_t i = 0; i < bone_names.size(); ++i) {
 		const BoneState &bone_state = p_query_input.skeleton_state.find_bone_state(bone_names[i]);
 		const Vector3 &pos = bone_state.pos;
-		const Quaternion &rot = bone_state.rot;
 
 		result.append(pos.x);
 		result.append(pos.y);

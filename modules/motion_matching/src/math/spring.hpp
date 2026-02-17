@@ -54,22 +54,6 @@ static inline real_t fast_negexp(real_t x) {
 	return 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x);
 }
 
-static Vector3 damp_adjustment_exact(Vector3 g, real_t halflife, real_t dt, real_t eps = 1e-8) {
-	real_t factor = 1.0 - fast_negexp((Spring::Ln2 * dt) / (halflife + eps));
-	return g * factor;
-}
-
-static Quaternion damp_adjustment_exact_quat(Quaternion g, real_t halflife, real_t dt, real_t eps = 1e-8) {
-	real_t factor = 1.0 - fast_negexp((Spring::Ln2 * dt) / (halflife + eps));
-	return Quaternion().slerp(g, factor).normalized();
-}
-
-static Variant damper_exponential(Variant variable, Variant goal, real_t damping, real_t dt) {
-	real_t ft = 1.0 / (real_t)ProjectSettings::get_singleton()->get("physics/common/physics_ticks_per_second");
-	real_t factor = 1.0 - pow(1.0 / (1.0 - ft * damping), -dt / ft);
-	return Math::lerp(variable, goal, factor);
-}
-
 static inline Variant damper_exact(Variant variable, Variant goal, real_t halflife, real_t dt, real_t eps = 1e-5) {
 	return Math::lerp(variable, goal, 1.0 - fast_negexp((Spring::Ln2 * dt) / (halflife + eps)));
 }
@@ -166,46 +150,6 @@ static inline Vector3 quat_to_scaled_angle_axis(Quaternion q, real_t eps = 1e-8)
 
 static inline Vector3 quat_differentiate_angular_velocity(Quaternion next, Quaternion curr, real_t dt, real_t eps = 1e-8) {
 	return quat_to_scaled_angle_axis(quat_abs(next * curr.inverse()), eps) / dt;
-}
-
-static void _spring_damper_exact(real_t &x, real_t &v, real_t x_goal, real_t v_goal, real_t damping_ratio, real_t halflife, real_t dt, real_t eps = 1e-5) {
-	real_t g = x_goal;
-	real_t q = v_goal;
-	real_t d = halflife_to_damping(halflife);
-	real_t s = damping_ratio_to_stiffness(damping_ratio, d);
-	real_t c = g + (d * q) / (s + eps);
-	real_t y = d / 2.0;
-
-	if (std::abs(s - (d * d) / 4.0) < eps) { // Critically Damped
-		real_t j0 = x - c;
-		real_t j1 = v + j0 * y;
-		real_t eydt = std::exp(-y * dt);
-		x = j0 * eydt + dt * j1 * eydt + c;
-		v = -y * j0 * eydt - y * dt * j1 * eydt + j1 * eydt;
-	} else if (s - (d * d) / 4.0 > 0.0) { // Under Damped
-		real_t w = std::sqrt(s - (d * d) / 4.0);
-		real_t j = std::sqrt(std::pow(v + y * (x - c), 2) / (std::pow(w, 2) + eps) + std::pow(x - c, 2));
-		real_t p = std::atan((v + (x - c) * y) / (-(x - c) * w + eps));
-
-		// j = (x - c) > 0.0 ? j : -j;
-		j = (x - c) > 0.0 ? j : -j;
-
-		real_t eydt = std::exp(-y * dt);
-
-		x = j * eydt * std::cos(w * dt + p) + c;
-		v = -y * j * eydt * std::cos(w * dt + p) - w * j * eydt * std::sin(w * dt + p);
-	} else if (s - (d * d) / 4.0 < 0.0) { // Over Damped
-		real_t y0 = (d + std::sqrt(std::pow(d, 2) - 4.0 * s)) / 2.0;
-		real_t y1 = (d - std::sqrt(std::pow(d, 2) - 4.0 * s)) / 2.0;
-		real_t j1 = (c * y0 - x * y0 - v) / (y1 - y0);
-		real_t j0 = x - j1 - c;
-
-		real_t ey0dt = std::exp(-y0 * dt);
-		real_t ey1dt = std::exp(-y1 * dt);
-
-		x = j0 * ey0dt + j1 * ey1dt + c;
-		v = -y0 * j0 * ey0dt - y1 * j1 * ey1dt;
-	}
 }
 
 static void _critical_spring_damper_exact(real_t &x, real_t &v, real_t x_goal, real_t v_goal, real_t halflife, real_t dt) {

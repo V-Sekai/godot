@@ -33,7 +33,6 @@
 #include "mm_character.h"
 
 void MMRootMotionSynchronizer::sync(MMCharacter *p_controller, Node3D *p_character, float p_delta_time) {
-	const Vector3 position_delta = p_character->get_global_position() - p_controller->get_global_position();
 	Vector3 controller_position = p_controller->get_global_position();
 	Vector3 character_position = p_character->get_global_position();
 

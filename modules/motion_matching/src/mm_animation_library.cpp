@@ -181,8 +181,8 @@ void MMAnimationLibrary::display_data(const Ref<EditorNode3DGizmo> &p_gizmo, con
 	get_animation_list(&anim_list);
 	int32_t anim_index = -1;
 	int idx = 0;
-	for (const StringName &name : anim_list) {
-		if (name == p_animation_name) {
+	for (const StringName &anim_name : anim_list) {
+		if (anim_name == p_animation_name) {
 			anim_index = idx;
 			break;
 		}
@@ -194,7 +194,7 @@ void MMAnimationLibrary::display_data(const Ref<EditorNode3DGizmo> &p_gizmo, con
 	int32_t start_frame_index = db_pose_offset[anim_index];
 	int32_t frame_index = start_frame_index + p_pose_index * dim_count;
 
-	for (size_t feature_index = 0; feature_index < features.size(); feature_index++) {
+	for (int feature_index = 0; feature_index < (int)features.size(); feature_index++) {
 		const MMFeature *feature = Object::cast_to<MMFeature>(features[feature_index]);
 		const float *frame_motion_data = motion_data.ptr() + frame_index;
 		feature->display_data(p_gizmo, p_transform, frame_motion_data);

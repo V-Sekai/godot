@@ -68,21 +68,21 @@ void MMDataTab::set_animation_library(Ref<MMAnimationLibrary> p_library) {
 			return;
 		}
 
-		for (int i = 0; i < feature->get_dimension_count(); i++) {
+		for (int j = 0; j < feature->get_dimension_count(); j++) {
 			Label *min_value = memnew(Label);
-			min_value->set_text(String::num(feature->get_mins()[i]));
+			min_value->set_text(String::num(feature->get_mins()[j]));
 			_stats_data_container->add_child(min_value);
 
 			Label *max_value = memnew(Label);
-			max_value->set_text(String::num(feature->get_maxes()[i]));
+			max_value->set_text(String::num(feature->get_maxes()[j]));
 			_stats_data_container->add_child(max_value);
 
 			Label *avg_value = memnew(Label);
-			avg_value->set_text(String::num(feature->get_means()[i]));
+			avg_value->set_text(String::num(feature->get_means()[j]));
 			_stats_data_container->add_child(avg_value);
 
 			Label *std_value = memnew(Label);
-			std_value->set_text(String::num(feature->get_std_devs()[i]));
+			std_value->set_text(String::num(feature->get_std_devs()[j]));
 			_stats_data_container->add_child(std_value);
 		}
 	}
