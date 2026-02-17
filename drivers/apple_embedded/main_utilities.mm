@@ -28,6 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#import "os_ios.h"
+
+#include "core/profiling.h"
 #include "core/string/ustring.h"
 
 #import <UIKit/UIKit.h>
@@ -72,6 +75,8 @@ int add_cmdline(int p_argc, char **p_args) {
 }
 
 int process_args(int p_argc, char **p_args, char **r_args) {
+	godot_init_profiler();
+	
 	for (int i = 0; i < p_argc; i++) {
 		r_args[i] = p_args[i];
 	}

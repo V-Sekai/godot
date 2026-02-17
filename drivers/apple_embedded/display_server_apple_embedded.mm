@@ -32,15 +32,17 @@
 
 #import "app_delegate_service.h"
 #import "apple_embedded.h"
-#import "godot_keyboard_input_view.h"
+#import "display_layer_apple_embedded.h"
 #import "godot_view_apple_embedded.h"
-#import "godot_view_controller.h"
 #import "key_mapping_apple_embedded.h"
+#import "keyboard_input_view.h"
 #import "os_apple_embedded.h"
 #import "tts_apple_embedded.h"
+#import "view_controller.h"
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access_pack.h"
+#include "drivers/apple/rendering_native_surface_apple.h"
 
 #import <GameController/GameController.h>
 
@@ -64,40 +66,34 @@ DisplayServerAppleEmbedded::DisplayServerAppleEmbedded(const String &p_rendering
 
 	bool has_made_render_compositor_current = false;
 
+	Ref<RenderingNativeSurfaceApple> apple_surface;
+
 #if defined(RD_ENABLED)
 	rendering_context = nullptr;
 	rendering_device = nullptr;
 
 	CALayer *layer = nullptr;
 
-	union {
-#ifdef VULKAN_ENABLED
-		RenderingContextDriverVulkanAppleEmbedded::WindowPlatformData vulkan;
-#endif
-#ifdef METAL_ENABLED
-		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-		// Eliminate "RenderingContextDriverMetal is only available on iOS 14.0 or newer".
-		RenderingContextDriverMetal::WindowPlatformData metal;
-		GODOT_CLANG_WARNING_POP
-#endif
-	} wpd;
-
 #if defined(VULKAN_ENABLED)
 	if (rendering_driver == "vulkan") {
+#ifndef LIBGODOT_ENABLED
 		layer = [GDTAppDelegateService.viewController.godotView initializeRenderingForDriver:@"vulkan"];
+#endif
 		if (!layer) {
 			ERR_FAIL_MSG("Failed to create iOS Vulkan rendering layer.");
 		}
-		wpd.vulkan.layer_ptr = (CAMetalLayer *const *)&layer;
-		rendering_context = memnew(RenderingContextDriverVulkanAppleEmbedded);
+		apple_surface = RenderingNativeSurfaceApple::create((__bridge void *)layer);
+		rendering_context = apple_surface->create_rendering_context(rendering_driver);
 	}
 #endif
 #ifdef METAL_ENABLED
 	if (rendering_driver == "metal") {
 		if (@available(iOS 14.0, *)) {
+#ifndef LIBGODOT_ENABLED
 			layer = [GDTAppDelegateService.viewController.godotView initializeRenderingForDriver:@"metal"];
-			wpd.metal.layer = (CAMetalLayer *)layer;
-			rendering_context = memnew(RenderingContextDriverMetal);
+#endif
+			apple_surface = RenderingNativeSurfaceApple::create((__bridge void *)layer);
+			rendering_context = apple_surface->create_rendering_context(rendering_driver);
 		} else {
 			OS::get_singleton()->alert("Metal is only supported on iOS 14.0 and later.");
 			r_error = ERR_UNAVAILABLE;
@@ -127,7 +123,7 @@ DisplayServerAppleEmbedded::DisplayServerAppleEmbedded(const String &p_rendering
 	}
 
 	if (rendering_context) {
-		if (rendering_context->window_create(MAIN_WINDOW_ID, &wpd) != OK) {
+		if (rendering_context->window_create(MAIN_WINDOW_ID, apple_surface) != OK) {
 			ERR_PRINT(vformat("Failed to create %s window.", rendering_driver));
 			memdelete(rendering_context);
 			rendering_context = nullptr;
@@ -156,11 +152,19 @@ DisplayServerAppleEmbedded::DisplayServerAppleEmbedded(const String &p_rendering
 
 #if defined(GLES3_ENABLED)
 	if (rendering_driver == "opengl3") {
-		CALayer *layer = [GDTAppDelegateService.viewController.godotView initializeRenderingForDriver:@"opengl3"];
+		CALayer<GDTDisplayLayer> *layer = nullptr;
+#ifndef LIBGODOT_ENABLED
+		layer = [GDTAppDelegateService.viewController.godotView initializeRenderingForDriver:@"opengl3"];
+#endif
 
 		if (!layer) {
 			ERR_FAIL_MSG("Failed to create iOS OpenGLES rendering layer.");
 		}
+
+		apple_surface = RenderingNativeSurfaceApple::create((__bridge void *)layer);
+		gl_manager = apple_surface->create_gl_manager(rendering_driver);
+		Ref<RenderingNativeSurface> native_surface = Ref<RenderingNativeSurface>(Object::cast_to<RenderingNativeSurface>(apple_surface.ptr()));
+		[layer setupContext:gl_manager withSurface:&native_surface];
 
 		RasterizerGLES3::make_current(false);
 		has_made_render_compositor_current = true;
@@ -413,7 +417,7 @@ TypedArray<Dictionary> DisplayServerAppleEmbedded::tts_get_voices() const {
 	return [tts getVoices];
 }
 
-void DisplayServerAppleEmbedded::tts_speak(const String &p_text, const String &p_voice, int p_volume, float p_pitch, float p_rate, int64_t p_utterance_id, bool p_interrupt) {
+void DisplayServerAppleEmbedded::tts_speak(const String &p_text, const String &p_voice, int p_volume, float p_pitch, float p_rate, int p_utterance_id, bool p_interrupt) {
 	if (unlikely(!tts)) {
 		initialize_tts();
 	}
@@ -478,7 +482,10 @@ void DisplayServerAppleEmbedded::emit_system_theme_changed() {
 
 Rect2i DisplayServerAppleEmbedded::get_display_safe_area() const {
 	UIEdgeInsets insets = UIEdgeInsetsZero;
-	UIView *view = GDTAppDelegateService.viewController.godotView;
+	UIView *view = nullptr;
+#ifndef LIBGODOT_ENABLED
+	view = GDTAppDelegateService.viewController.godotView;
+#endif
 	if ([view respondsToSelector:@selector(safeAreaInsets)]) {
 		insets = [view safeAreaInsets];
 	}
@@ -509,7 +516,10 @@ Size2i DisplayServerAppleEmbedded::screen_get_size(int p_screen) const {
 	int screen_count = get_screen_count();
 	ERR_FAIL_INDEX_V(p_screen, screen_count, Size2i());
 
-	CALayer *layer = GDTAppDelegateService.viewController.godotView.renderingLayer;
+	CALayer *layer = nullptr;
+#ifndef LIBGODOT_ENABLED
+	layer = GDTAppDelegateService.viewController.godotView.renderingLayer;
+#endif
 
 	if (!layer) {
 		return Size2i();
@@ -542,12 +552,22 @@ int64_t DisplayServerAppleEmbedded::window_get_native_handle(HandleType p_handle
 		case DISPLAY_HANDLE: {
 			return 0; // Not supported.
 		}
+#ifndef LIBGODOT_ENABLED
 		case WINDOW_HANDLE: {
 			return (int64_t)GDTAppDelegateService.viewController;
 		}
 		case WINDOW_VIEW: {
 			return (int64_t)GDTAppDelegateService.viewController.godotView;
 		}
+#endif
+#if defined(GLES3_ENABLED)
+		case OPENGL_FBO: {
+			if (gl_manager) {
+				return (int64_t)gl_manager->window_get_render_target(DisplayServer::MAIN_WINDOW_ID);
+			}
+			return 0;
+		}
+#endif
 		default: {
 			return 0;
 		}
@@ -612,8 +632,9 @@ void DisplayServerAppleEmbedded::window_set_size(const Size2i p_size, WindowID p
 }
 
 Size2i DisplayServerAppleEmbedded::window_get_size(WindowID p_window) const {
-	CGRect viewBounds = GDTAppDelegateService.viewController.view.bounds;
-	return Size2i(viewBounds.size.width, viewBounds.size.height) * screen_get_max_scale();
+	id<UIApplicationDelegate> appDelegate = [[UIApplication sharedApplication] delegate];
+	CGRect windowBounds = appDelegate.window.bounds;
+	return Size2i(windowBounds.size.width, windowBounds.size.height) * screen_get_max_scale();
 }
 
 Size2i DisplayServerAppleEmbedded::window_get_size_with_decorations(WindowID p_window) const {
@@ -663,7 +684,9 @@ void DisplayServerAppleEmbedded::screen_set_orientation(DisplayServer::ScreenOri
 
 	screen_orientation = p_orientation;
 	if (@available(iOS 16.0, *)) {
+#ifndef LIBGODOT_ENABLED
 		[GDTAppDelegateService.viewController setNeedsUpdateOfSupportedInterfaceOrientations];
+#endif
 	}
 #if !defined(VISIONOS_ENABLED)
 	else {
@@ -705,6 +728,7 @@ _FORCE_INLINE_ int _convert_utf32_offset_to_utf16(const String &p_existing_text,
 void DisplayServerAppleEmbedded::virtual_keyboard_show(const String &p_existing_text, const Rect2 &p_screen_rect, VirtualKeyboardType p_type, int p_max_length, int p_cursor_start, int p_cursor_end) {
 	NSString *existingString = [[NSString alloc] initWithUTF8String:p_existing_text.utf8().get_data()];
 
+#ifndef LIBGODOT_ENABLED
 	GDTAppDelegateService.viewController.keyboardView.keyboardType = UIKeyboardTypeDefault;
 	GDTAppDelegateService.viewController.keyboardView.textContentType = nil;
 	switch (p_type) {
@@ -742,14 +766,21 @@ void DisplayServerAppleEmbedded::virtual_keyboard_show(const String &p_existing_
 			becomeFirstResponderWithString:existingString
 							   cursorStart:_convert_utf32_offset_to_utf16(p_existing_text, p_cursor_start)
 								 cursorEnd:_convert_utf32_offset_to_utf16(p_existing_text, p_cursor_end)];
+#endif
 }
 
 bool DisplayServerAppleEmbedded::is_keyboard_active() const {
+#ifndef LIBGODOT_ENABLED
 	return [GDTAppDelegateService.viewController.keyboardView isFirstResponder];
+#else
+	return false;
+#endif
 }
 
 void DisplayServerAppleEmbedded::virtual_keyboard_hide() {
+#ifndef LIBGODOT_ENABLED
 	[GDTAppDelegateService.viewController.keyboardView resignFirstResponder];
+#endif
 }
 
 void DisplayServerAppleEmbedded::virtual_keyboard_set_height(int height) {
@@ -816,12 +847,4 @@ DisplayServer::VSyncMode DisplayServerAppleEmbedded::window_get_vsync_mode(Windo
 	}
 #endif
 	return DisplayServer::VSYNC_ENABLED;
-}
-
-void DisplayServerAppleEmbedded::set_native_icon(const String &p_filename) {
-	// Not supported on Apple embedded platforms.
-}
-
-void DisplayServerAppleEmbedded::set_icon(const Ref<Image> &p_icon) {
-	// Not supported on Apple embedded platforms.
 }

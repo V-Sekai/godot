@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_vulkan.h                                                        */
+/*  rendering_context_driver_vulkan_apple.h                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,16 +30,26 @@
 
 #pragma once
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <cstdint>
-#define VK_NO_STDINT_H
-#include <vulkan/vulkan.h>
-#endif
+#ifdef VULKAN_ENABLED
 
-// X11 headers may be pulled in indirectly by Vulkan/Volk on Linux and define
-// common macros that can conflict with Godot identifiers.
-#ifdef CursorShape
-#undef CursorShape
-#endif
+#include "drivers/vulkan/rendering_context_driver_vulkan.h"
+
+#import <QuartzCore/CAMetalLayer.h>
+
+class RenderingContextDriverVulkanApple : public RenderingContextDriverVulkan {
+private:
+	virtual const char *_get_platform_surface_extension() const override final;
+
+protected:
+	virtual SurfaceID surface_create(Ref<RenderingNativeSurface> p_native_surface) override final;
+
+public:
+	struct WindowPlatformData {
+		CAMetalLayer *const *layer_ptr;
+	};
+
+	RenderingContextDriverVulkanApple();
+	~RenderingContextDriverVulkanApple();
+};
+
+#endif // VULKAN_ENABLED

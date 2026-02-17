@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_vulkan.h                                                        */
+/*  rendering_native_surface_vulkan.h                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,18 +28,42 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef RENDERING_NATIVE_SURFACE_VULKAN_H
+#define RENDERING_NATIVE_SURFACE_VULKAN_H
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <cstdint>
-#define VK_NO_STDINT_H
-#include <vulkan/vulkan.h>
+#include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
+
+#ifdef VULKAN_ENABLED
+#include "drivers/vulkan/godot_vulkan.h"
 #endif
 
-// X11 headers may be pulled in indirectly by Vulkan/Volk on Linux and define
-// common macros that can conflict with Godot identifiers.
-#ifdef CursorShape
-#undef CursorShape
+class RenderingNativeSurfaceVulkan : public RenderingNativeSurface {
+	GDCLASS(RenderingNativeSurfaceVulkan, RenderingNativeSurface);
+
+	static void _bind_methods();
+
+#ifdef VULKAN_ENABLED
+	VkSurfaceKHR vulkan_surface = VK_NULL_HANDLE;
 #endif
+
+public:
+	static Ref<RenderingNativeSurfaceVulkan> create_api(GDExtensionConstPtr<const void> vulkan_surface);
+
+#ifdef VULKAN_ENABLED
+	static Ref<RenderingNativeSurfaceVulkan> create(VkSurfaceKHR vulkan_surface);
+
+	VkSurfaceKHR get_vulkan_surface() const {
+		return vulkan_surface;
+	}
+#endif
+
+	void *get_native_id() const override;
+
+	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
+
+	RenderingNativeSurfaceVulkan();
+	~RenderingNativeSurfaceVulkan();
+};
+
+#endif // RENDERING_NATIVE_SURFACE_VULKAN_H

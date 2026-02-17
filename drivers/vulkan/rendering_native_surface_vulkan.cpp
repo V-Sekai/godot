@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_vulkan.h                                                        */
+/*  rendering_native_surface_vulkan.cpp                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,18 +28,53 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "rendering_native_surface_vulkan.h"
 
-#ifdef USE_VOLK
-#include <volk.h>
+#include "drivers/vulkan/rendering_context_driver_vulkan.h"
+
+void RenderingNativeSurfaceVulkan::_bind_methods() {
+	ClassDB::bind_static_method("RenderingNativeSurfaceVulkan", D_METHOD("create", "vulkan_surface"), &RenderingNativeSurfaceVulkan::create_api);
+}
+
+Ref<RenderingNativeSurfaceVulkan> RenderingNativeSurfaceVulkan::create_api(GDExtensionConstPtr<const void> p_vulkan_surface) {
+	Ref<RenderingNativeSurfaceVulkan> result = nullptr;
+#ifdef VULKAN_ENABLED
+	result = RenderingNativeSurfaceVulkan::create((VkSurfaceKHR)p_vulkan_surface.operator const void *());
+#endif
+	return result;
+}
+
+#ifdef VULKAN_ENABLED
+
+Ref<RenderingNativeSurfaceVulkan> RenderingNativeSurfaceVulkan::create(VkSurfaceKHR p_vulkan_surface) {
+	Ref<RenderingNativeSurfaceVulkan> result = memnew(RenderingNativeSurfaceVulkan);
+	result->vulkan_surface = p_vulkan_surface;
+	return result;
+}
+
+#endif
+
+void *RenderingNativeSurfaceVulkan::get_native_id() const {
+#if defined(VULKAN_ENABLED)
+	return (void *)vulkan_surface;
 #else
-#include <cstdint>
-#define VK_NO_STDINT_H
-#include <vulkan/vulkan.h>
+	return nullptr;
 #endif
+}
 
-// X11 headers may be pulled in indirectly by Vulkan/Volk on Linux and define
-// common macros that can conflict with Godot identifiers.
-#ifdef CursorShape
-#undef CursorShape
+RenderingContextDriver *RenderingNativeSurfaceVulkan::create_rendering_context(const String &p_driver_name) {
+#if defined(VULKAN_ENABLED)
+	if (p_driver_name == "vulkan") {
+		return memnew(RenderingContextDriverVulkan);
+	}
 #endif
+	return nullptr;
+}
+
+RenderingNativeSurfaceVulkan::RenderingNativeSurfaceVulkan() {
+	// Does nothing.
+}
+
+RenderingNativeSurfaceVulkan::~RenderingNativeSurfaceVulkan() {
+	// Does nothing.
+}

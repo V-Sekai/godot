@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_vulkan.h                                                        */
+/*  gl_manager_embedded_angle.h                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,18 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef GL_MANAGER_EMBEDDED_ANGLE_H
+#define GL_MANAGER_EMBEDDED_ANGLE_H
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <cstdint>
-#define VK_NO_STDINT_H
-#include <vulkan/vulkan.h>
-#endif
+#if defined(GLES3_ENABLED) && defined(ANGLE_ENABLED)
 
-// X11 headers may be pulled in indirectly by Vulkan/Volk on Linux and define
-// common macros that can conflict with Godot identifiers.
-#ifdef CursorShape
-#undef CursorShape
-#endif
+#include "core/error/error_list.h"
+#include "core/os/os.h"
+#include "core/templates/local_vector.h"
+#include "drivers/egl/egl_manager.h"
+#include "servers/display/display_server.h"
+
+class GLManagerANGLE_Embedded : public EGLManager {
+private:
+	virtual const char *_get_platform_extension_name() const override;
+	virtual EGLenum _get_platform_extension_enum() const override;
+	virtual EGLenum _get_platform_api_enum() const override;
+	virtual Vector<EGLAttrib> _get_platform_display_attributes() const override;
+	virtual Vector<EGLint> _get_platform_context_attribs() const override;
+
+public:
+	void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height) override {}
+
+	GLManagerANGLE_Embedded() {}
+	~GLManagerANGLE_Embedded() {}
+};
+
+#endif // GLES3_ENABLED
+
+#endif // GL_MANAGER_EMBEDDED_ANGLE_H

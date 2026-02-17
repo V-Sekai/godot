@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_vulkan.h                                                        */
+/*  gl_manager_embedded_angle.cpp                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,18 +28,47 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "gl_manager_embedded_angle.h"
 
-#ifdef USE_VOLK
-#include <volk.h>
+#if defined(GLES3_ENABLED) && defined(ANGLE_ENABLED)
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <EGL/eglext_angle.h>
+
+const char *GLManagerANGLE_Embedded::_get_platform_extension_name() const {
+	return "EGL_ANGLE_platform_angle";
+}
+
+EGLenum GLManagerANGLE_Embedded::_get_platform_extension_enum() const {
+	return EGL_PLATFORM_ANGLE_ANGLE;
+}
+
+Vector<EGLAttrib> GLManagerANGLE_Embedded::_get_platform_display_attributes() const {
+	Vector<EGLAttrib> ret;
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_ANGLE);
+#if defined(IOS_ENABLED) || defined(MACOS_ENABLED)
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE);
 #else
-#include <cstdint>
-#define VK_NO_STDINT_H
-#include <vulkan/vulkan.h>
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE);
 #endif
+	ret.push_back(EGL_NONE);
 
-// X11 headers may be pulled in indirectly by Vulkan/Volk on Linux and define
-// common macros that can conflict with Godot identifiers.
-#ifdef CursorShape
-#undef CursorShape
-#endif
+	return ret;
+}
+
+EGLenum GLManagerANGLE_Embedded::_get_platform_api_enum() const {
+	return EGL_OPENGL_ES_API;
+}
+
+Vector<EGLint> GLManagerANGLE_Embedded::_get_platform_context_attribs() const {
+	Vector<EGLint> ret;
+	ret.push_back(EGL_CONTEXT_CLIENT_VERSION);
+	ret.push_back(3);
+	ret.push_back(EGL_NONE);
+
+	return ret;
+}
+
+#endif // GLES3_ENABLED

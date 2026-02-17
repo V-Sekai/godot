@@ -53,24 +53,17 @@ class MDCommandBuffer;
 #endif
 
 class PixelFormats;
-
-#ifdef __OBJC__
-#define METAL_DEVICE id<MTLDevice>
-#define METAL_DRAWABLE id<MTLDrawable>
-#define METAL_LAYER CAMetalLayer *__unsafe_unretained
-#define METAL_RESIDENCY_SET id<MTLResidencySet>
-#else
-#define METAL_DEVICE void *
-#define METAL_DRAWABLE void *
-#define METAL_LAYER void *
-#define METAL_RESIDENCY_SET void *
-#endif
+class MDResourceCache;
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingContextDriverMetal : public RenderingContextDriver {
 	bool capture_available = false;
 
 protected:
-	METAL_DEVICE metal_device = nullptr;
+#ifdef __OBJC__
+	id<MTLDevice> metal_device = nullptr;
+#else
+	void *metal_device = nullptr;
+#endif
 	Device device; // There is only one device on Apple Silicon.
 
 public:
@@ -80,7 +73,7 @@ public:
 	bool device_supports_present(uint32_t p_device_index, SurfaceID p_surface) const final override { return true; }
 	RenderingDeviceDriver *driver_create() final override;
 	void driver_free(RenderingDeviceDriver *p_driver) final override;
-	SurfaceID surface_create(const void *p_platform_data) final override;
+	SurfaceID surface_create(Ref<RenderingNativeSurface> p_native_surface) final override;
 	void surface_set_size(SurfaceID p_surface, uint32_t p_width, uint32_t p_height) final override;
 	void surface_set_vsync_mode(SurfaceID p_surface, DisplayServer::VSyncMode p_vsync_mode) final override;
 	DisplayServer::VSyncMode surface_get_vsync_mode(SurfaceID p_surface) const final override;
@@ -93,14 +86,13 @@ public:
 
 #pragma mark - Metal-specific methods
 
-	// Platform-specific data for the Windows embedded in this driver.
-	struct WindowPlatformData {
-		METAL_LAYER layer;
-	};
-
 	class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) Surface {
 	protected:
-		METAL_DEVICE device;
+#ifdef __OBJC__
+		id<MTLDevice> device;
+#else
+		void *device;
+#endif
 
 	public:
 		uint32_t width = 0;
@@ -109,8 +101,15 @@ public:
 		bool needs_resize = false;
 		double present_minimum_duration = 0.0;
 
-		Surface(METAL_DEVICE p_device) :
-				device(p_device) {}
+		Surface(
+#ifdef __OBJC__
+				id<MTLDevice> p_device
+#else
+				void *p_device
+#endif
+				) :
+				device(p_device) {
+		}
 		virtual ~Surface() = default;
 
 		MTLPixelFormat get_pixel_format() const { return MTLPixelFormatBGRA8Unorm; }
@@ -120,7 +119,12 @@ public:
 		void set_max_fps(int p_max_fps) { present_minimum_duration = p_max_fps ? 1.0 / p_max_fps : 0.0; }
 	};
 
-	METAL_DEVICE get_metal_device() const {
+#ifdef __OBJC__
+	id<MTLDevice>
+#else
+	void *
+#endif
+	get_metal_device() const {
 		return metal_device;
 	}
 

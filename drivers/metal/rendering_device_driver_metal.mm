@@ -230,7 +230,11 @@ static const MTLTextureType TEXTURE_TYPE[RD::TEXTURE_TYPE_MAX] = {
 	MTLTextureTypeCube,
 	MTLTextureType1DArray,
 	MTLTextureType2DArray,
+#if defined(IOS_SIMULATOR)
+	MTLTextureType2DArray,
+#else
 	MTLTextureTypeCubeArray,
+#endif
 };
 
 bool RenderingDeviceDriverMetal::is_valid_linear(TextureFormat const &p_format) const {
@@ -260,7 +264,11 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 			p_format.texture_type == TEXTURE_TYPE_2D_ARRAY) {
 		desc.arrayLength = p_format.array_layers;
 	} else if (p_format.texture_type == TEXTURE_TYPE_CUBE_ARRAY) {
+#if defined(IOS_SIMULATOR)
+		desc.arrayLength = p_format.array_layers;
+#else
 		desc.arrayLength = p_format.array_layers / 6;
+#endif
 	}
 
 	// TODO(sgc): Evaluate lossy texture support (perhaps as a project option?)
@@ -859,6 +867,10 @@ RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
 		fence = memnew(FenceSemaphore());
 	}
 	return FenceID(fence);
+}
+
+void RenderingDeviceDriverMetal::frame_cleanup(FenceID p_fence) {
+
 }
 
 Error RenderingDeviceDriverMetal::fence_wait(FenceID p_fence) {
@@ -2758,6 +2770,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 		print_verbose("- Metal multiview not supported");
 	}
 
+#if !defined(IOS_SIMULATOR)
 	// The Metal renderer requires Apple4 family. This is 2017 era A11 chips and newer.
 	if (device_properties->features.highestFamily < MTLGPUFamilyApple4) {
 		String error_string = vformat("Your Apple GPU does not support the following features, which are required to use Metal-based renderers in Godot:\n\n");
@@ -2774,6 +2787,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 
 		return ERR_CANT_CREATE;
 	}
+#endif
 
 	return OK;
 }

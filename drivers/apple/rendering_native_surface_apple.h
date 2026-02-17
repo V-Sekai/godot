@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_apple_embedded.mm                     */
+/*  rendering_native_surface_apple.h                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,35 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_context_driver_vulkan_apple_embedded.h"
+#ifndef RENDERING_NATIVE_SURFACE_APPLE_H
+#define RENDERING_NATIVE_SURFACE_APPLE_H
 
-#ifdef VULKAN_ENABLED
+#include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <vulkan/vulkan_metal.h>
-#endif
+class RenderingNativeSurfaceApple : public RenderingNativeSurface {
+	GDCLASS(RenderingNativeSurfaceApple, RenderingNativeSurface);
 
-const char *RenderingContextDriverVulkanAppleEmbedded::_get_platform_surface_extension() const {
-	return VK_EXT_METAL_SURFACE_EXTENSION_NAME;
-}
+public:
+	// TODO: Remove workaround when SwiftGodot starts to support const void * arguments.
+	static Ref<RenderingNativeSurfaceApple> create_api(/* GDExtensionConstPtr<const void> */ uint64_t p_layer);
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAppleEmbedded::surface_create(const void *p_platform_data) {
-	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
+	static Ref<RenderingNativeSurfaceApple> create(void *p_layer);
 
-	VkMetalSurfaceCreateInfoEXT create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-	create_info.pLayer = *wpd->layer_ptr;
+	uint64_t get_layer();
 
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateMetalSurfaceEXT(instance_get(), &create_info, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR), &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
+	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
+	GLManager *create_gl_manager(const String &p_driver_name) override;
 
-	Surface *surface = memnew(Surface);
-	surface->vk_surface = vk_surface;
-	return SurfaceID(surface);
-}
+	void *get_native_id() const override;
 
-RenderingContextDriverVulkanAppleEmbedded::RenderingContextDriverVulkanAppleEmbedded() {
-	// Does nothing.
-}
+	RenderingNativeSurfaceApple();
+	~RenderingNativeSurfaceApple();
 
-RenderingContextDriverVulkanAppleEmbedded::~RenderingContextDriverVulkanAppleEmbedded() {
-	// Does nothing.
-}
+private:
+	static void _bind_methods();
 
-#endif // VULKAN_ENABLED
+	void *layer = nullptr;
+};
+
+#endif // RENDERING_NATIVE_SURFACE_APPLE_H
