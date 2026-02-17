@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_motion_matching = env_modules.Clone()
+
+env_motion_matching.Prepend(CPPPATH=["#modules/motion_matching/src", "#"])
+
+module_obj = []
+
+env_motion_matching.add_source_files(module_obj, "register_types.cpp")
+env_motion_matching.add_source_files(module_obj, "src/*.cpp")
+env_motion_matching.add_source_files(module_obj, "src/algo/*.cpp")
+env_motion_matching.add_source_files(module_obj, "src/features/*.cpp")
+env_motion_matching.add_source_files(module_obj, "src/modifiers/*.cpp")
+env_motion_matching.add_source_files(module_obj, "src/synchronizers/*.cpp")
+
+if env.editor_build:
+    env_motion_matching.add_source_files(module_obj, "src/editor/animation_post_import_plugin.cpp")
+    env_motion_matching.add_source_files(module_obj, "src/editor/animation_tree_handler_plugin.cpp")
+    env_motion_matching.add_source_files(module_obj, "src/editor/mm_data_tab.cpp")
+    env_motion_matching.add_source_files(module_obj, "src/editor/mm_editor.cpp")
+    env_motion_matching.add_source_files(module_obj, "src/editor/mm_editor_gizmo_plugin.cpp")
+    env_motion_matching.add_source_files(module_obj, "src/editor/mm_editor_plugin.cpp")
+    env_motion_matching.add_source_files(module_obj, "src/editor/mm_visualization_tab.cpp")
+
+env.modules_sources += module_obj
