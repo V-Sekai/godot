@@ -93,17 +93,21 @@ typedef CARD32 VisualID;
 typedef CARD32 Time;
 #endif
 
-typedef XID Window;
+typedef XID X11Window;
 typedef XID Drawable;
 #ifndef _XTYPEDEF_FONT
 #  define _XTYPEDEF_FONT
-typedef XID Font;
+typedef XID X11Font;
 #endif
 typedef XID Pixmap;
 typedef XID Cursor;
 typedef XID Colormap;
 typedef XID GContext;
 typedef XID KeySym;
+
+/* Rename X11 typedefs to avoid conflicts with Godot classes */
+#define Window X11Window
+#define Font X11Font
 
 typedef unsigned char KeyCode;
 
