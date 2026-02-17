@@ -678,8 +678,10 @@ void BaseMaterial3D::finish_shaders() {
 
 	dirty_materials.clear();
 
-	memdelete(shader_names);
-	shader_names = nullptr;
+	if (shader_names) {
+		memdelete(shader_names);
+		shader_names = nullptr;
+	}
 }
 
 void BaseMaterial3D::_update_shader() {
@@ -1223,6 +1225,15 @@ void vertex() {)";
 				pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)),
 				COLOR.rgb * (1.0 / 12.92),
 				lessThan(COLOR.rgb, vec3(0.04045)));
+	}
+)";
+	} else {
+		code += R"(
+	if (OUTPUT_IS_SRGB) {
+		COLOR.rgb = mix(
+				(pow(COLOR.rgb, vec3(1.0 / 2.4)) * (1.0 + 0.055)) - vec3(0.055),
+				COLOR.rgb * 12.92,
+				lessThan(COLOR.rgb, vec3(0.0031308)));
 	}
 )";
 	}

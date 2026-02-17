@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  file_dialog.compat.inc                                                */
+/*  HybridAppUtils.kt                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,14 +28,54 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DISABLE_DEPRECATED
+/**
+ * Contains utility methods and constants for hybrid apps.
+ */
+@file:JvmName("HybridAppUtils")
 
-void FileDialog::_add_filter_bind_compat_111439(const String &p_filter, const String &p_description) {
-	add_filter(p_filter, p_description, "");
+package org.godotengine.godot.xr
+
+import android.util.Log
+import org.godotengine.godot.GodotLib
+
+private const val TAG = "HybridAppUtils"
+
+enum class HybridMode(private val nativeValue: Int) {
+	NONE( -1),
+	IMMERSIVE(0),
+	PANEL(1);
+
+	companion object {
+		fun fromNative(nativeValue: Int): HybridMode {
+			for (mode in HybridMode.entries) {
+				if (mode.nativeValue == nativeValue) {
+					return mode
+				}
+			}
+			return NONE
+		}
+	}
 }
 
-void FileDialog::_bind_compatibility_methods() {
-	ClassDB::bind_compatibility_method(D_METHOD("add_filter", "filter", "description"), &FileDialog::_add_filter_bind_compat_111439, DEFVAL(""));
-}
+const val HYBRID_APP_FEATURE = "godot_openxr_hybrid_app"
+const val HYBRID_APP_PANEL_FEATURE = "godot_openxr_panel_app"
+const val HYBRID_APP_PANEL_CATEGORY = "org.godotengine.xr.hybrid.PANEL"
+const val HYBRID_APP_IMMERSIVE_CATEGORY = "org.godotengine.xr.hybrid.IMMERSIVE"
 
-#endif
+// TODO Check GodotLib.getInstance() fix
+fun isHybridAppEnabled() = GodotLib.getInstance().getGlobal("xr/hybrid_app/enabled").toBoolean()
+
+fun getHybridAppLaunchMode(): HybridMode {
+	if (!isHybridAppEnabled()) {
+		return HybridMode.NONE
+	}
+
+	try {
+		// TODO Check GodotLib.getInstance() fix
+		val launchModeValue = GodotLib.getInstance().getGlobal("xr/hybrid_app/launch_mode").toInt()
+		return HybridMode.fromNative(launchModeValue)
+	} catch (e: Exception) {
+		Log.w(TAG, "Unable to retrieve 'xr/hybrid_app/launch_mode' project setting", e)
+		return HybridMode.NONE
+	}
+}

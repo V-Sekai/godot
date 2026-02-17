@@ -291,6 +291,8 @@ void ProceduralSkyMaterial::cleanup_shader() {
 			RS::get_singleton()->free_rid(shader_cache[i]);
 		}
 	}
+	shader_cache[0] = RID();
+	shader_cache[1] = RID();
 }
 
 void ProceduralSkyMaterial::_update_shader(bool p_use_debanding, bool p_use_sky_cover) {
@@ -481,6 +483,8 @@ void PanoramaSkyMaterial::cleanup_shader() {
 			RS::get_singleton()->free_rid(shader_cache[i]);
 		}
 	}
+	shader_cache[0] = RID();
+	shader_cache[1] = RID();
 }
 
 void PanoramaSkyMaterial::_update_shader(bool p_filter) {
@@ -718,11 +722,13 @@ void PhysicalSkyMaterial::_bind_methods() {
 }
 
 void PhysicalSkyMaterial::cleanup_shader() {
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 2; i++) {
 		if (shader_cache[i].is_valid()) {
 			RS::get_singleton()->free_rid(shader_cache[i]);
 		}
 	}
+	shader_cache[0] = RID();
+	shader_cache[1] = RID();
 }
 
 void PhysicalSkyMaterial::_update_shader(bool p_use_debanding, bool p_use_night_sky) {
