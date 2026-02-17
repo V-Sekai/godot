@@ -169,6 +169,7 @@ public:
 	void update_graph();
 
 	AnimationNodeBlendTreeEditor();
+	~AnimationNodeBlendTreeEditor();
 };
 
 // EditorPluginAnimationNodeAnimation

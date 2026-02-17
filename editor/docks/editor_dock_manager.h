@@ -160,6 +160,7 @@ public:
 	void remove_dock(EditorDock *p_dock);
 
 	EditorDockManager();
+	~EditorDockManager();
 };
 
 class EditorDockDragHint : public Control {
