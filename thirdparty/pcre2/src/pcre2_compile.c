@@ -7474,7 +7474,7 @@ for (;; pptr++)
         if (lengthptr != NULL)
           {
           PCRE2_SIZE delta;
-          if (PRIV(ckd_smul)(&delta, replicate, (int)length_prevgroup) ||
+          if (PCRE2_SUFFIX(_pcre2_ckd_smul)(&delta, replicate, (int)length_prevgroup) ||
               OFLOW_MAX - *lengthptr < delta)
             {
             *errorcodeptr = ERR20;
@@ -7644,7 +7644,7 @@ for (;; pptr++)
             if (lengthptr != NULL)
               {
               PCRE2_SIZE delta;
-              if (PRIV(ckd_smul)(&delta, repeat_min - 1,
+              if (PCRE2_SUFFIX(_pcre2_ckd_smul)(&delta, repeat_min - 1,
                                  (int)length_prevgroup) ||
                   OFLOW_MAX - *lengthptr < delta)
                 {
@@ -7694,7 +7694,7 @@ for (;; pptr++)
           if (lengthptr != NULL && repeat_max > 0)
             {
             PCRE2_SIZE delta;
-            if (PRIV(ckd_smul)(&delta, repeat_max,
+            if (PCRE2_SUFFIX(_pcre2_ckd_smul)(&delta, repeat_max,
                                (int)length_prevgroup + 1 + 2 + 2*LINK_SIZE) ||
                 OFLOW_MAX + (2 + 2*LINK_SIZE) - *lengthptr < delta)
               {

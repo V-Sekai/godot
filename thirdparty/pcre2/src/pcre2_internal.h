@@ -2346,6 +2346,8 @@ extern BOOL         _pcre2_eclass(uint32_t, PCRE2_SPTR, PCRE2_SPTR,
 
 #endif  /* PCRE2_CODE_UNIT_WIDTH */
 
+extern BOOL         PCRE2_SUFFIX(_pcre2_ckd_smul)(PCRE2_SIZE *, int, int);
+
 #include "pcre2_util.h"
 
 #endif  /* PCRE2_INTERNAL_H_IDEMPOTENT_GUARD */

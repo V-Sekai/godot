@@ -130,7 +130,6 @@ env.__class__.use_windows_spawn_fix = methods.use_windows_spawn_fix
 
 env.__class__.add_shared_library = methods.add_shared_library
 env.__class__.add_library = methods.add_library
-env.__class__.add_program = methods.add_program
 env.__class__.CommandNoCache = methods.CommandNoCache
 env.__class__.Run = methods.Run
 env.__class__.disable_warnings = methods.disable_warnings
@@ -225,6 +224,15 @@ opts.Add(
 
 
 # Advanced options
+opts.Add(
+    EnumVariable(
+        "library_type",
+        "Build library type",
+        "executable",
+        ("executable", "static_library", "shared_library"),
+    )
+)
+opts.Add(BoolVariable("external_target", "Enable external target rendering", False))
 opts.Add(
     BoolVariable(
         "dev_mode", "Alias for dev options: verbose=yes warnings=extra werror=yes tests=yes strict_checks=yes", False
@@ -372,6 +380,19 @@ if env["import_env_vars"]:
 
 # Platform selection: validate input, and add options.
 
+if env["external_target"]:
+    env.Append(CPPDEFINES=["EXTERNAL_TARGET_ENABLED"])
+
+if env["library_type"] == "static_library":
+    env.Append(CPPDEFINES=["LIBGODOT_ENABLED"])
+elif env["library_type"] == "shared_library":
+    env.Append(CPPDEFINES=["LIBGODOT_ENABLED"])
+    env.Append(CCFLAGS=["-fPIC"])
+    # SCons expects this to be a boolean env var, not an appended list.
+    env["STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME"] = True
+else:
+    env.__class__.add_program = methods.add_program
+
 if not env["platform"]:
     # Missing `platform` argument, try to detect platform automatically
     if (
@@ -510,6 +531,7 @@ for tool in custom_tools:
 
 # Add default include paths.
 env.Prepend(CPPPATH=["#"])
+env.Prepend(CPPPATH=["#thirdparty/linuxbsd_headers"])
 
 # configure ENV for platform
 env.platform_exporters = platform_exporters
