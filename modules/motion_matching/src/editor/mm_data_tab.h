@@ -51,6 +51,6 @@ private:
 	void _clear_data();
 
 	// Data
-	GridContainer *_motion_data_container;
-	GridContainer *_stats_data_container;
+	GridContainer *_motion_data_container = nullptr;
+	GridContainer *_stats_data_container = nullptr;
 };

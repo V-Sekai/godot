@@ -64,9 +64,9 @@ private:
 	Ref<MMAnimationLibrary> _current_animation_library;
 
 	// Visualization
-	Label *_warning_label;
-	VBoxContainer *_visualization_vbox;
-	OptionButton *_viz_animation_option_button;
-	HSlider *_viz_time_slider;
+	Label *_warning_label = nullptr;
+	VBoxContainer *_visualization_vbox = nullptr;
+	OptionButton *_viz_animation_option_button = nullptr;
+	HSlider *_viz_time_slider = nullptr;
 	int _selected_animation_index = -1;
 };

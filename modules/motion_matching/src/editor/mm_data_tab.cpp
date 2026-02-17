@@ -38,6 +38,9 @@ void MMDataTab::set_animation_library(Ref<MMAnimationLibrary> p_library) {
 	if (p_library.is_null()) {
 		return;
 	}
+	if (_stats_data_container == nullptr) {
+		return; // UI not built yet (ENTER_TREE not run).
+	}
 
 	_clear_data();
 
@@ -98,6 +101,10 @@ void MMDataTab::_bind_methods() {
 void MMDataTab::_notification(int p_notification) {
 	switch (p_notification) {
 		case NOTIFICATION_ENTER_TREE: {
+			// Build UI only once; ENTER_TREE can run again when switching tabs.
+			if (_stats_data_container != nullptr) {
+				return;
+			}
 			set_name("Data");
 
 			ScrollContainer *scroll_container = memnew(ScrollContainer);
@@ -121,6 +128,9 @@ void MMDataTab::_notification(int p_notification) {
 }
 
 void MMDataTab::_clear_data() {
+	if (_stats_data_container == nullptr) {
+		return;
+	}
 	TypedArray<Node> stat_cells = _stats_data_container->get_children();
 	for (int i = 0; i < stat_cells.size(); i++) {
 		Node *cell = Object::cast_to<Node>(stat_cells[i]);

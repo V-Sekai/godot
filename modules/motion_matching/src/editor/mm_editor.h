@@ -65,13 +65,13 @@ private:
 
 	void _emit_animation_viz_request(String p_animation_lib, String p_animation_name, int32_t p_pose_index);
 
-	MMCharacter *_current_controller;
+	MMCharacter *_current_controller = nullptr;
 	String _current_animation_library_name;
 	String _current_animation_name;
 
-	OptionButton *_library_selector;
-	Button *_bake_button;
+	OptionButton *_library_selector = nullptr;
+	Button *_bake_button = nullptr;
 
-	MMVisualizationTab *_visualization_tab;
-	MMDataTab *_data_tab;
+	MMVisualizationTab *_visualization_tab = nullptr;
+	MMDataTab *_data_tab = nullptr;
 };

@@ -45,6 +45,10 @@ void MMEditor::_bind_methods() {
 void MMEditor::_notification(int p_notification) {
 	switch (p_notification) {
 		case NOTIFICATION_ENTER_TREE: {
+			// Build UI only once; ENTER_TREE can run again when switching panels.
+			if (_library_selector != nullptr) {
+				return;
+			}
 			HSplitContainer *main_container = memnew(HSplitContainer);
 			main_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 			add_child(main_container);

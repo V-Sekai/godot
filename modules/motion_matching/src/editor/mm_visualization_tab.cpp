@@ -31,6 +31,9 @@
 #include "mm_visualization_tab.h"
 
 void MMVisualizationTab::set_enabled(bool p_enabled) {
+	if (_warning_label == nullptr || _viz_animation_option_button == nullptr || _viz_time_slider == nullptr) {
+		return;
+	}
 	if (p_enabled) {
 		_warning_label->hide();
 	} else {
@@ -48,6 +51,10 @@ void MMVisualizationTab::_bind_methods() {
 void MMVisualizationTab::_notification(int p_notification) {
 	switch (p_notification) {
 		case NOTIFICATION_ENTER_TREE: {
+			// Build UI only once; ENTER_TREE can run again when switching tabs.
+			if (_visualization_vbox != nullptr) {
+				return;
+			}
 			set_name("Visualization");
 
 			_visualization_vbox = memnew(VBoxContainer);
@@ -102,7 +109,7 @@ void MMVisualizationTab::_viz_time_changed(float p_value) {
 void MMVisualizationTab::_viz_anim_selected(int p_index) {
 	_selected_animation_index = p_index;
 
-	if (_current_animation_library.is_null()) {
+	if (_current_animation_library.is_null() || _viz_time_slider == nullptr) {
 		return;
 	}
 
@@ -127,7 +134,9 @@ void MMVisualizationTab::_emit_animation_viz_request(String p_animation_lib, Str
 
 void MMVisualizationTab::refresh() {
 	clear();
-
+	if (_viz_animation_option_button == nullptr) {
+		return; // UI not built yet (ENTER_TREE not run).
+	}
 	if (_current_animation_library.is_null()) {
 		return;
 	}
@@ -150,8 +159,9 @@ void MMVisualizationTab::refresh() {
 
 void MMVisualizationTab::clear() {
 	_selected_animation_index = -1;
-	_viz_animation_option_button->clear();
-	_viz_animation_option_button->select(-1);
-
+	if (_viz_animation_option_button != nullptr) {
+		_viz_animation_option_button->clear();
+		_viz_animation_option_button->select(-1);
+	}
 	set_enabled(false);
 }
