@@ -98,7 +98,6 @@ void MMAnimationLibrary::bake_data(const MMCharacter *p_character, const Animati
 			data.append_array(pose_data);
 			db_anim_index.push_back(animation_index);
 			db_time_index.push_back(time);
-			pose_count++;
 		}
 		animation_index++;
 	}
