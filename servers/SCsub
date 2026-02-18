@@ -6,6 +6,8 @@ Import("env")
 env.servers_sources = []
 
 env.add_source_files(env.servers_sources, "register_server_types.cpp")
+env.add_source_files(env.servers_sources, "display_server_embedded.cpp")
+env.add_source_files(env.servers_sources, "display_server_embedded_host_interface.cpp")
 
 SConscript("audio/SCsub")
 SConscript("camera/SCsub")

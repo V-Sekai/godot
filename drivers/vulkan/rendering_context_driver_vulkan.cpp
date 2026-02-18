@@ -32,9 +32,7 @@
 
 #include "rendering_context_driver_vulkan.h"
 #include "rendering_native_surface_vulkan.h"
-#ifdef EXTERNAL_TARGET_ENABLED
 #include "servers/rendering/rendering_native_surface_external_target.h"
-#endif
 
 #include "vk_enum_string_helper.h"
 

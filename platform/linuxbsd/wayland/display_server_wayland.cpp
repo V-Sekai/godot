@@ -1212,6 +1212,11 @@ Size2i DisplayServerWayland::window_get_size_with_decorations(DisplayServer::Win
 	return windows[p_window_id].rect.size;
 }
 
+float DisplayServerWayland::window_get_scale(DisplayServer::WindowID p_window_id) const {
+	int screen = window_get_current_screen(p_window_id);
+	return screen_get_scale(screen);
+}
+
 void DisplayServerWayland::window_set_mode(WindowMode p_mode, DisplayServer::WindowID p_window_id) {
 	MutexLock mutex_lock(wayland_thread.mutex);
 
@@ -1505,6 +1510,22 @@ bool DisplayServerWayland::get_swap_cancel_ok() {
 	return swap_cancel_ok;
 }
 
+Error DisplayServerWayland::embed_process(WindowID p_window, OS::ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) {
+	return DisplayServer::embed_process(p_window, p_pid, p_rect, p_visible, p_grab_focus);
+}
+
+Error DisplayServerWayland::request_close_embedded_process(OS::ProcessID p_pid) {
+	return DisplayServer::request_close_embedded_process(p_pid);
+}
+
+Error DisplayServerWayland::remove_embedded_process(OS::ProcessID p_pid) {
+	return DisplayServer::remove_embedded_process(p_pid);
+}
+
+OS::ProcessID DisplayServerWayland::get_focused_process_id() {
+	return DisplayServer::get_focused_process_id();
+}
+
 int DisplayServerWayland::keyboard_get_layout_count() const {
 	MutexLock mutex_lock(wayland_thread.mutex);
 
@@ -1560,6 +1581,11 @@ Key DisplayServerWayland::keyboard_get_keycode_from_physical(Key p_keycode) cons
 	return key;
 }
 
+Key DisplayServerWayland::keyboard_get_label_from_physical(Key p_keycode) const {
+	MutexLock mutex_lock(wayland_thread.mutex);
+	return wayland_thread.keyboard_get_label_from_physical(p_keycode);
+}
+
 bool DisplayServerWayland::color_picker(const Callable &p_callback) {
 #ifdef DBUS_ENABLED
 	if (!portal_desktop) {
@@ -1573,6 +1599,10 @@ bool DisplayServerWayland::color_picker(const Callable &p_callback) {
 #else
 	return false;
 #endif
+}
+
+void DisplayServerWayland::set_icon(const Ref<Image> &p_icon) {
+	wayland_thread.set_icon(p_icon);
 }
 
 void DisplayServerWayland::try_suspend() {

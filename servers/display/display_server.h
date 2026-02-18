@@ -36,6 +36,7 @@
 #include "core/os/os.h"
 #include "core/variant/callable.h"
 #include "servers/display/native_menu.h"
+#include "servers/rendering/rendering_native_surface.h"
 
 class Texture2D;
 class AccessibilityDriver;
@@ -84,6 +85,7 @@ public:
 		OPENGL_CONTEXT,
 		EGL_DISPLAY,
 		EGL_CONFIG,
+		OPENGL_FBO,
 	};
 
 	enum Context {
@@ -169,6 +171,7 @@ public:
 		FEATURE_NATIVE_COLOR_PICKER,
 		FEATURE_SELF_FITTING_WINDOWS,
 		FEATURE_ACCESSIBILITY_SCREEN_READER,
+		FEATURE_NATIVE_WINDOWS,
 	};
 
 	virtual bool has_feature(Feature p_feature) const = 0;
@@ -438,11 +441,16 @@ public:
 	virtual void show_window(WindowID p_id);
 	virtual void delete_sub_window(WindowID p_id);
 
+	virtual WindowID create_native_window(Ref<RenderingNativeSurface> p_native_surface) { return INVALID_WINDOW_ID; }
+	virtual bool is_native_window(WindowID p_id) { return false; }
+	virtual void delete_native_window(WindowID p_id) {}
+
 	virtual WindowID window_get_active_popup() const { return INVALID_WINDOW_ID; }
 	virtual void window_set_popup_safe_rect(WindowID p_window, const Rect2i &p_rect) {}
 	virtual Rect2i window_get_popup_safe_rect(WindowID p_window) const { return Rect2i(); }
 
 	virtual int64_t window_get_native_handle(HandleType p_handle_type, WindowID p_window = MAIN_WINDOW_ID) const;
+	virtual uint64_t get_native_window_id(WindowID p_id = MAIN_WINDOW_ID) const { return 0; }
 
 	virtual WindowID get_window_at_screen_position(const Point2i &p_position) const = 0;
 
@@ -764,6 +772,9 @@ public:
 	// necessary for GL focus, may be able to use one of the existing functions for this, not sure yet
 	virtual void gl_window_make_current(DisplayServer::WindowID p_window_id);
 
+	virtual void pre_draw_viewport(RID p_render_target) {}
+	virtual void post_draw_viewport(RID p_render_target) {}
+
 	virtual Point2i ime_get_selection() const;
 	virtual String ime_get_text() const;
 
@@ -861,6 +872,13 @@ public:
 
 	virtual void release_rendering_thread();
 	virtual void swap_buffers();
+
+	virtual void mouse_button(int p_x, int p_y, MouseButton p_mouse_button_index, bool p_pressed, bool p_double_click, bool p_cancelled, WindowID p_window) {}
+	virtual void mouse_motion(int p_prev_x, int p_prev_y, int p_x, int p_y, WindowID p_window) {}
+	virtual void touch_press(int p_idx, int p_x, int p_y, bool p_pressed, bool p_double_click, WindowID p_window) {}
+	virtual void touch_drag(int p_idx, int p_prev_x, int p_prev_y, int p_x, int p_y, float p_pressure, Vector2 p_tilt, WindowID p_window) {}
+	virtual void key(Key p_key, char32_t p_char, Key p_unshifted, Key p_physical, BitField<KeyModifierMask> p_modifiers, bool p_pressed, WindowID p_window) {}
+
 
 	virtual void set_native_icon(const String &p_filename);
 	virtual void set_icon(const Ref<Image> &p_icon);

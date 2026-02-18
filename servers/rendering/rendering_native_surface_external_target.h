@@ -37,9 +37,9 @@
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/vulkan/rendering_context_driver_vulkan.h"
 #include "servers/display/display_server.h"
+#include "servers/rendering/gl_manager.h"
 
 #ifdef EXTERNAL_TARGET_ENABLED
-#include "servers/rendering/gl_manager.h"
 
 class GLManagerExternal;
 
