@@ -60,7 +60,7 @@
 
 void initialize_motion_matching_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_VIRTUAL_CLASS(MMFeature);
+		GDREGISTER_ABSTRACT_CLASS(MMFeature);
 		GDREGISTER_CLASS(MMTrajectoryFeature);
 		GDREGISTER_CLASS(MMBoneDataFeature);
 
@@ -71,7 +71,7 @@ void initialize_motion_matching_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(MMCharacter);
 
 		GDREGISTER_CLASS(DampedSkeletonModifier);
-		GDREGISTER_VIRTUAL_CLASS(MMSynchronizer);
+		GDREGISTER_ABSTRACT_CLASS(MMSynchronizer);
 		GDREGISTER_CLASS(MMClampSynchronizer);
 		GDREGISTER_CLASS(MMRootMotionSynchronizer);
 		GDREGISTER_CLASS(MMMixSynchronizer);

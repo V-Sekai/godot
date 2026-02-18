@@ -32,8 +32,5 @@
 
 #include "mm_synchronizer.h"
 
-void MMSynchronizer::sync(MMCharacter *p_controller, Node3D *p_character, float delta_time) {
-}
-
 void MMSynchronizer::_bind_methods() {
 }

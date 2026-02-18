@@ -60,11 +60,11 @@ public:
 
 	virtual void setup_for_animation(Ref<Animation> animation) {}
 
-	virtual int64_t get_dimension_count() const;
+	virtual int64_t get_dimension_count() const = 0;
 
-	virtual PackedFloat32Array bake_animation_pose(Ref<Animation> p_animation, double time) const;
+	virtual PackedFloat32Array bake_animation_pose(Ref<Animation> p_animation, double time) const = 0;
 
-	virtual PackedFloat32Array evaluate_runtime_data(const MMQueryInput &p_query_input) const;
+	virtual PackedFloat32Array evaluate_runtime_data(const MMQueryInput &p_query_input) const = 0;
 
 #ifdef TOOLS_ENABLED
 	virtual void display_data(const Ref<EditorNode3DGizmo> &p_gizmo, const Transform3D &p_transform, const float *p_data) const {}

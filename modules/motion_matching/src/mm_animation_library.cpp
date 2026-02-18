@@ -356,7 +356,8 @@ MMQueryOutput MMAnimationLibrary::_search_kd_tree(const PackedFloat32Array &p_qu
 }
 
 void MMAnimationLibrary::_bind_methods() {
-	BINDER_PROPERTY_PARAMS(MMAnimationLibrary, Variant::ARRAY, features, PROPERTY_HINT_TYPE_STRING, "17/17:MMFeature");
+	// Use "Resource" so C# glue resolves (MMFeature is abstract); avoids extra instantiable classes that trigger LeakSanitizer in regression test.
+	BINDER_PROPERTY_PARAMS(MMAnimationLibrary, Variant::ARRAY, features, PROPERTY_HINT_ARRAY_TYPE, "Resource");
 	BINDER_PROPERTY_PARAMS(MMAnimationLibrary, Variant::FLOAT, sampling_rate);
 	BINDER_PROPERTY_PARAMS(MMAnimationLibrary, Variant::BOOL, include_cost_results);
 	BINDER_PROPERTY_PARAMS(MMAnimationLibrary, Variant::PACKED_FLOAT32_ARRAY, motion_data, PROPERTY_HINT_NONE, "", DEBUG_PROPERTY_STORAGE_FLAG);
