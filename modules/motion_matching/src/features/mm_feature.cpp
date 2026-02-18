@@ -38,6 +38,18 @@ MMFeature::MMFeature() {
 MMFeature::~MMFeature() {
 }
 
+int64_t MMFeature::get_dimension_count() const {
+	return 0;
+}
+
+PackedFloat32Array MMFeature::bake_animation_pose(Ref<Animation> p_animation, double time) const {
+	return PackedFloat32Array();
+}
+
+PackedFloat32Array MMFeature::evaluate_runtime_data(const MMQueryInput &p_query_input) const {
+	return PackedFloat32Array();
+}
+
 void MMFeature::normalize(float *p_data) const {
 	if (!p_data) {
 		ERR_PRINT_ONCE("Invalid data provided in normalize.");

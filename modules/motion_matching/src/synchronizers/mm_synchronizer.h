@@ -41,7 +41,7 @@ class MMSynchronizer : public Resource {
 
 public:
 	// TODO: This API isn't great and will change, and should be improved to better support GD Script
-	virtual void sync(MMCharacter *p_controller, Node3D *p_character, float delta_time) = 0;
+	virtual void sync(MMCharacter *p_controller, Node3D *p_character, float delta_time);
 
 protected:
 	static void _bind_methods();
