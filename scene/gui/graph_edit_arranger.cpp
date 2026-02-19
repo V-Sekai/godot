@@ -125,15 +125,21 @@ void GraphEditArranger::arrange_nodes() {
 		}
 	}
 
+	Vector<StringName> block_heads_list;
+	for (const StringName &E : block_heads) {
+		block_heads_list.push_back(E);
+	}
+	block_heads_list.sort_custom<StringName::AlphCompare>();
+
 	_calculate_inner_shifts(inner_shift, root, node_names, align, block_heads, port_info);
 
-	for (const StringName &E : block_heads) {
+	for (const StringName &E : block_heads_list) {
 		_place_block(E, gap_v, layers, root, align, node_names, inner_shift, sink, shift, new_positions);
 	}
 	origin.y = Object::cast_to<GraphNode>(node_names[layers[0][0]])->get_position_offset().y - (new_positions[layers[0][0]].y + (float)inner_shift[layers[0][0]]);
 	origin.x = Object::cast_to<GraphNode>(node_names[layers[0][0]])->get_position_offset().x;
 
-	for (const StringName &E : block_heads) {
+	for (const StringName &E : block_heads_list) {
 		StringName u = E;
 		float start_from = origin.y + new_positions[E].y;
 		do {
@@ -286,6 +292,10 @@ HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<Stri
 		selected = false;
 	}
 
+	// Sort each layer by node name so layout is deterministic.
+	for (KeyValue<int, Vector<StringName>> &kv : l) {
+		kv.value.sort_custom<StringName::AlphCompare>();
+	}
 	return l;
 }
 
@@ -294,7 +304,7 @@ Vector<StringName> GraphEditArranger::_split(const Vector<StringName> &r_layer, 
 		return Vector<StringName>();
 	}
 
-	const StringName &p = r_layer[Math::random(0, (int)(r_layer.size() - 1))];
+	const StringName &p = r_layer[(int)(r_layer.size() - 1) / 2];
 	Vector<StringName> left;
 	Vector<StringName> right;
 
@@ -317,7 +327,12 @@ Vector<StringName> GraphEditArranger::_split(const Vector<StringName> &r_layer, 
 }
 
 void GraphEditArranger::_horizontal_alignment(Dictionary &r_root, Dictionary &r_align, const HashMap<int, Vector<StringName>> &r_layers, const HashMap<StringName, HashSet<StringName>> &r_upper_neighbours, const HashSet<StringName> &r_selected_nodes) {
+	Vector<StringName> selected_sorted;
 	for (const StringName &E : r_selected_nodes) {
+		selected_sorted.push_back(E);
+	}
+	selected_sorted.sort_custom<StringName::AlphCompare>();
+	for (const StringName &E : selected_sorted) {
 		r_root[E] = E;
 		r_align[E] = E;
 	}
@@ -398,7 +413,12 @@ void GraphEditArranger::_crossing_minimisation(HashMap<int, Vector<StringName>> 
 }
 
 void GraphEditArranger::_calculate_inner_shifts(Dictionary &r_inner_shifts, const Dictionary &r_root, const Dictionary &r_node_names, const Dictionary &r_align, const HashSet<StringName> &r_block_heads, const HashMap<StringName, Pair<int, int>> &r_port_info) {
+	Vector<StringName> block_heads_sorted;
 	for (const StringName &E : r_block_heads) {
+		block_heads_sorted.push_back(E);
+	}
+	block_heads_sorted.sort_custom<StringName::AlphCompare>();
+	for (const StringName &E : block_heads_sorted) {
 		real_t left = 0;
 		StringName u = E;
 		StringName v = r_align[u];
