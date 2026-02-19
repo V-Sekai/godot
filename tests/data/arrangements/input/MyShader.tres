@@ -1,0 +1,109 @@
+[gd_resource type="VisualShader" format=3 uid="uid://dtxyp8flgl23h"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_3v502"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_dolai"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_qmqnp"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_e2umw"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_6trf0"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_bbqht"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_vrhxj"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_l5gui"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_7gvb7"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_vs4fu"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_qyn4r"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_21kgd"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_lcadu"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_xuypk"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_8adyw"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_5l0ao"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_slnar"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_cn7ie"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_gniak"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_ivy45"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_j5obw"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_tm5pv"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_3sinw"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_0teia"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_8jbba"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_2emyj"]
+
+[resource]
+nodes/vertex/0/position = Vector2(1936, 1040)
+nodes/vertex/2/node = SubResource("VisualShaderNodeCompare_qyn4r")
+nodes/vertex/2/position = Vector2(1120, 880)
+nodes/vertex/3/node = SubResource("VisualShaderNodeCompare_ivy45")
+nodes/vertex/3/position = Vector2(-816, -1136)
+nodes/vertex/4/node = SubResource("VisualShaderNodeCompare_j5obw")
+nodes/vertex/4/position = Vector2(832, 912)
+nodes/vertex/5/node = SubResource("VisualShaderNodeCompare_tm5pv")
+nodes/vertex/5/position = Vector2(288, 1248)
+nodes/vertex/6/node = SubResource("VisualShaderNodeCompare_3sinw")
+nodes/vertex/6/position = Vector2(16, 1248)
+nodes/vertex/7/node = SubResource("VisualShaderNodeCompare_0teia")
+nodes/vertex/7/position = Vector2(-272, 1248)
+nodes/vertex/8/node = SubResource("VisualShaderNodeCompare_8jbba")
+nodes/vertex/8/position = Vector2(-544, 32)
+nodes/vertex/9/node = SubResource("VisualShaderNodeCompare_2emyj")
+nodes/vertex/9/position = Vector2(-544, 336)
+nodes/vertex/10/node = SubResource("VisualShaderNodeCompare_3v502")
+nodes/vertex/10/position = Vector2(1664, 1216)
+nodes/vertex/11/node = SubResource("VisualShaderNodeCompare_dolai")
+nodes/vertex/11/position = Vector2(832, 1216)
+nodes/vertex/12/node = SubResource("VisualShaderNodeCompare_qmqnp")
+nodes/vertex/12/position = Vector2(1120, 1216)
+nodes/vertex/13/node = SubResource("VisualShaderNodeCompare_e2umw")
+nodes/vertex/13/position = Vector2(1392, 1216)
+nodes/vertex/14/node = SubResource("VisualShaderNodeCompare_6trf0")
+nodes/vertex/14/position = Vector2(-816, -848)
+nodes/vertex/15/node = SubResource("VisualShaderNodeCompare_bbqht")
+nodes/vertex/15/position = Vector2(-816, -560)
+nodes/vertex/16/node = SubResource("VisualShaderNodeCompare_vrhxj")
+nodes/vertex/16/position = Vector2(-544, 624)
+nodes/vertex/17/node = SubResource("VisualShaderNodeCompare_l5gui")
+nodes/vertex/17/position = Vector2(-272, 624)
+nodes/vertex/18/node = SubResource("VisualShaderNodeCompare_7gvb7")
+nodes/vertex/18/position = Vector2(16, 624)
+nodes/vertex/19/node = SubResource("VisualShaderNodeCompare_vs4fu")
+nodes/vertex/19/position = Vector2(288, 624)
+nodes/vertex/20/node = SubResource("VisualShaderNodeCompare_21kgd")
+nodes/vertex/20/position = Vector2(560, 912)
+nodes/vertex/21/node = SubResource("VisualShaderNodeCompare_lcadu")
+nodes/vertex/21/position = Vector2(288, 912)
+nodes/vertex/22/node = SubResource("VisualShaderNodeCompare_xuypk")
+nodes/vertex/22/position = Vector2(-816, -256)
+nodes/vertex/23/node = SubResource("VisualShaderNodeCompare_8adyw")
+nodes/vertex/23/position = Vector2(-816, 32)
+nodes/vertex/24/node = SubResource("VisualShaderNodeCompare_5l0ao")
+nodes/vertex/24/position = Vector2(-272, 944)
+nodes/vertex/25/node = SubResource("VisualShaderNodeCompare_slnar")
+nodes/vertex/25/position = Vector2(16, 944)
+nodes/vertex/26/node = SubResource("VisualShaderNodeCompare_cn7ie")
+nodes/vertex/26/position = Vector2(-816, 944)
+nodes/vertex/27/node = SubResource("VisualShaderNodeCompare_gniak")
+nodes/vertex/27/position = Vector2(-544, 944)
+nodes/vertex/connections = PackedInt32Array(2, 0, 0, 0, 5, 0, 2, 0, 3, 0, 2, 2, 4, 0, 2, 1, 7, 0, 6, 0, 6, 0, 5, 0, 13, 0, 10, 0, 8, 0, 10, 2, 9, 0, 10, 1, 11, 0, 12, 0, 12, 0, 13, 0, 10, 0, 0, 7, 18, 0, 19, 0, 14, 0, 19, 2, 15, 0, 19, 1, 16, 0, 17, 0, 17, 0, 18, 0, 19, 0, 0, 5, 21, 0, 20, 0, 20, 0, 11, 1, 20, 0, 4, 0, 22, 0, 16, 0, 22, 0, 12, 1, 23, 0, 8, 0, 23, 0, 9, 0, 24, 0, 25, 0, 26, 0, 27, 0, 27, 0, 24, 0, 25, 0, 21, 1, 27, 0, 7, 0)

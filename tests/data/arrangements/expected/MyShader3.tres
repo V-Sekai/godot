@@ -1,0 +1,43 @@
+[gd_resource type="VisualShader" format=3 uid="uid://c7r4nrtl2tt0u"]
+
+[sub_resource type="VisualShaderNodeColorFunc" id="VisualShaderNodeColorFunc_4vpfo"]
+function = 1
+
+[sub_resource type="VisualShaderNodeColorFunc" id="VisualShaderNodeColorFunc_fi61y"]
+function = 1
+
+[sub_resource type="VisualShaderNodeColorFunc" id="VisualShaderNodeColorFunc_n0wkc"]
+function = 1
+
+[sub_resource type="VisualShaderNodeColorFunc" id="VisualShaderNodeColorFunc_cxld3"]
+function = 1
+
+[sub_resource type="VisualShaderNodeColorFunc" id="VisualShaderNodeColorFunc_suxtm"]
+function = 1
+
+[sub_resource type="VisualShaderNodeColorFunc" id="VisualShaderNodeColorFunc_ceutd"]
+function = 1
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_gedbu"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_vrhxj"]
+
+[resource]
+nodes/vertex/0/position = Vector2(1900, 3080)
+nodes/vertex/9/node = SubResource("VisualShaderNodeCompare_vrhxj")
+nodes/vertex/9/position = Vector2(1040, 3180)
+nodes/vertex/10/node = SubResource("VisualShaderNodeColorFunc_4vpfo")
+nodes/vertex/10/position = Vector2(1400, 3120)
+nodes/vertex/14/node = SubResource("VisualShaderNodeColorFunc_fi61y")
+nodes/vertex/14/position = Vector2(1400, 3540)
+nodes/vertex/15/node = SubResource("VisualShaderNodeColorFunc_n0wkc")
+nodes/vertex/15/position = Vector2(1400, 3360)
+nodes/vertex/17/node = SubResource("VisualShaderNodeColorFunc_cxld3")
+nodes/vertex/17/position = Vector2(1400, 2940)
+nodes/vertex/18/node = SubResource("VisualShaderNodeColorFunc_suxtm")
+nodes/vertex/18/position = Vector2(560, 3240)
+nodes/vertex/19/node = SubResource("VisualShaderNodeColorFunc_ceutd")
+nodes/vertex/19/position = Vector2(560, 3060)
+nodes/vertex/20/node = SubResource("VisualShaderNodeCompare_gedbu")
+nodes/vertex/20/position = Vector2(1040, 2860)
+nodes/vertex/connections = PackedInt32Array(15, 0, 0, 8, 9, 0, 10, 0, 10, 0, 0, 6, 9, 0, 0, 5, 14, 0, 0, 9, 20, 0, 17, 0, 19, 0, 20, 0, 18, 0, 20, 2, 9, 0, 0, 0, 17, 0, 0, 2)

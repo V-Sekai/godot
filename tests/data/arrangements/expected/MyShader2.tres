@@ -1,0 +1,53 @@
+[gd_resource type="VisualShader" format=3 uid="uid://c2mjhoumndkgb"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_jf8fi"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_imryv"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_45bi3"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_kjl21"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_7m3yc"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_k1i1r"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_1vn5t"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_de208"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_e61eo"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_otlk3"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_04fo6"]
+
+[sub_resource type="VisualShaderNodeCompare" id="VisualShaderNodeCompare_j8euf"]
+
+[resource]
+nodes/vertex/0/position = Vector2(1460, 960)
+nodes/vertex/2/node = SubResource("VisualShaderNodeCompare_7m3yc")
+nodes/vertex/2/position = Vector2(-520, 1280)
+nodes/vertex/3/node = SubResource("VisualShaderNodeCompare_k1i1r")
+nodes/vertex/3/position = Vector2(-120, 1120)
+nodes/vertex/4/node = SubResource("VisualShaderNodeCompare_1vn5t")
+nodes/vertex/4/position = Vector2(260, 1280)
+nodes/vertex/5/node = SubResource("VisualShaderNodeCompare_de208")
+nodes/vertex/5/position = Vector2(260, 960)
+nodes/vertex/6/node = SubResource("VisualShaderNodeCompare_e61eo")
+nodes/vertex/6/position = Vector2(1060, 960)
+nodes/vertex/7/node = SubResource("VisualShaderNodeCompare_otlk3")
+nodes/vertex/7/position = Vector2(660, 800)
+nodes/vertex/8/node = SubResource("VisualShaderNodeCompare_04fo6")
+nodes/vertex/8/position = Vector2(660, 1120)
+nodes/vertex/9/node = SubResource("VisualShaderNodeCompare_j8euf")
+nodes/vertex/9/position = Vector2(660, 480)
+nodes/vertex/10/node = SubResource("VisualShaderNodeCompare_jf8fi")
+nodes/vertex/10/position = Vector2(1060, 640)
+nodes/vertex/11/node = SubResource("VisualShaderNodeCompare_imryv")
+nodes/vertex/11/position = Vector2(1460, 640)
+nodes/vertex/12/node = SubResource("VisualShaderNodeCompare_45bi3")
+nodes/vertex/12/position = Vector2(-520, 960)
+nodes/vertex/13/node = SubResource("VisualShaderNodeCompare_kjl21")
+nodes/vertex/13/position = Vector2(-120, 800)
+nodes/vertex/connections = PackedInt32Array(2, 0, 4, 0, 5, 0, 7, 0, 4, 0, 7, 1, 5, 0, 8, 0, 5, 0, 9, 1, 6, 0, 0, 2, 9, 0, 10, 0, 10, 0, 11, 0, 9, 0, 6, 0, 7, 0, 6, 1, 12, 0, 3, 0, 2, 0, 3, 1, 12, 0, 13, 0, 13, 0, 5, 0, 3, 0, 5, 1)
