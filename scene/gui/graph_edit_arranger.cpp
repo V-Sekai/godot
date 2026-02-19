@@ -259,7 +259,7 @@ HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<Stri
 	while (!_set_operations(GraphEditArranger::IS_EQUAL, q, u)) {
 		_set_operations(GraphEditArranger::DIFFERENCE, p, u);
 		for (const StringName &E : p) {
-			HashSet<StringName> n(r_upper_neighbours[E]);
+			HashSet<StringName> n((HashSet<StringName>(r_upper_neighbours[E])));
 			if (_set_operations(GraphEditArranger::IS_SUBSET, n, z)) {
 				Vector<StringName> t;
 				t.push_back(E);
@@ -283,7 +283,10 @@ HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<Stri
 				while (!remaining.is_empty()) {
 					Vector<StringName> layer;
 					for (const StringName &E : remaining) {
-						HashSet<StringName> preds(r_upper_neighbours.has(E) ? r_upper_neighbours[E] : HashSet<StringName>());
+						HashSet<StringName> preds;
+						if (r_upper_neighbours.has(E)) {
+							preds = HashSet<StringName>(r_upper_neighbours[E]);
+						}
 						if (_set_operations(GraphEditArranger::IS_SUBSET, preds, placed)) {
 							layer.push_back(E);
 						}
@@ -547,13 +550,13 @@ float GraphEditArranger::_calculate_threshold(const StringName &p_v, const Strin
 
 void GraphEditArranger::_place_block(const StringName &p_v, float p_delta, const HashMap<int, Vector<StringName>> &r_layers, const Dictionary &r_root, const Dictionary &r_align, const Dictionary &r_node_name, const Dictionary &r_inner_shift, Dictionary &r_sink, Dictionary &r_shift, HashMap<StringName, Vector2> &r_node_positions) {
 #define PRED(node, layers) \
+	predecessor = StringName(); \
 	for (unsigned int i = 0; i < layers.size(); i++) { \
 		int index = layers[i].find(node); \
-		if (index > 0) { \
-			predecessor = layers[i][index - 1]; \
+		if (index >= 0) { \
+			predecessor = (index > 0) ? layers[i][index - 1] : StringName(); \
 			break; \
 		} \
-		predecessor = StringName(); \
 	}
 
 	StringName predecessor;
