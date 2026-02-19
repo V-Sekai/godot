@@ -103,7 +103,7 @@ void GraphEditArranger::arrange_nodes() {
 		return;
 	}
 
-	// Preferred layout: right side (near output) fatter with more nodes per column and shorter connections; sources left, sinks right.
+	// Preferred layout: jellyfish-style with long stingers (elongated chains); avoid a large cap on the left. Sources left, sinks right; cycle handling avoids piling nodes in the first column.
 	HashMap<int, Vector<StringName>> layers = _layering(selected_nodes, upper_neighbours);
 	_crossing_minimisation(layers, upper_neighbours);
 
@@ -278,14 +278,30 @@ HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<Stri
 			_set_operations(GraphEditArranger::UNION, z, u);
 			if (z.size() == previous_size_z) {
 				WARN_PRINT("Graph contains cycle(s). The cycle(s) will not be rearranged accurately.");
-				Vector<StringName> t;
-				if (l.has(0)) {
-					t.append_array(l[0]);
+				HashSet<StringName> placed(z);
+				HashSet<StringName> remaining(p);
+				while (!remaining.is_empty()) {
+					Vector<StringName> layer;
+					for (const StringName &E : remaining) {
+						HashSet<StringName> preds(r_upper_neighbours.has(E) ? r_upper_neighbours[E] : HashSet<StringName>());
+						if (_set_operations(GraphEditArranger::IS_SUBSET, preds, placed)) {
+							layer.push_back(E);
+						}
+					}
+					if (layer.is_empty()) {
+						for (const StringName &E : remaining) {
+							layer.push_back(E);
+						}
+						l.insert(current_layer, layer);
+						break;
+					}
+					for (const StringName &E : layer) {
+						placed.insert(E);
+						remaining.erase(E);
+					}
+					l.insert(current_layer, layer);
+					current_layer++;
 				}
-				for (const StringName &E : p) {
-					t.push_back(E);
-				}
-				l.insert(0, t);
 				break;
 			}
 		}
