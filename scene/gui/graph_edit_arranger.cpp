@@ -246,6 +246,34 @@ int GraphEditArranger::_set_operations(SET_OPERATIONS p_operation, HashSet<Strin
 	return -1;
 }
 
+struct _LayerOrderCompare {
+	_FORCE_INLINE_ bool operator()(const Pair<int, StringName> &p_a, const Pair<int, StringName> &p_b) const {
+		if (p_a.first != p_b.first) {
+			return p_a.first < p_b.first;
+		}
+		return StringName::AlphCompare::compare(p_a.second, p_b.second);
+	}
+};
+
+static int _median_upper_index(const StringName &p_node, const Vector<StringName> &r_upper_layer, const HashMap<StringName, HashSet<StringName>> &r_upper_neighbours) {
+	if (!r_upper_neighbours.has(p_node)) {
+		return (int)(r_upper_layer.size() - 1) / 2;
+	}
+	const HashSet<StringName> &neighbours = r_upper_neighbours[p_node];
+	Vector<int> indices;
+	for (const StringName &n : neighbours) {
+		int idx = r_upper_layer.find(n);
+		if (idx >= 0) {
+			indices.push_back(idx);
+		}
+	}
+	if (indices.is_empty()) {
+		return (int)(r_upper_layer.size() - 1) / 2;
+	}
+	indices.sort();
+	return indices[indices.size() / 2];
+}
+
 HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<StringName> &r_selected_nodes, const HashMap<StringName, HashSet<StringName>> &r_upper_neighbours) {
 	HashMap<int, Vector<StringName>> l;
 
@@ -311,14 +339,29 @@ HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<Stri
 		selected = false;
 	}
 
-	// Sort each layer by node name so layout is deterministic.
+	// Sort each layer to prioritize connection length (barycenter), then determinism (node name).
 	for (KeyValue<int, Vector<StringName>> &kv : l) {
-		kv.value.sort_custom<StringName::AlphCompare>();
+		int layer_idx = kv.key;
+		Vector<StringName> &layer = kv.value;
+		if (layer_idx == 0) {
+			layer.sort_custom<StringName::AlphCompare>();
+			continue;
+		}
+		const Vector<StringName> &upper = l[layer_idx - 1];
+		Vector<Pair<int, StringName>> order;
+		for (const StringName &E : layer) {
+			order.push_back(Pair<int, StringName>(_median_upper_index(E, upper, r_upper_neighbours), E));
+		}
+		order.sort_custom<_LayerOrderCompare>();
+		layer.clear();
+		for (const Pair<int, StringName> &p : order) {
+			layer.push_back(p.second);
+		}
 	}
 	return l;
 }
 
-Vector<StringName> GraphEditArranger::_split(const Vector<StringName> &r_layer, const HashMap<StringName, Dictionary> &r_crossings) {
+Vector<StringName> GraphEditArranger::_split(const Vector<StringName> &r_layer, const HashMap<StringName, Dictionary> &r_crossings, const Vector<StringName> &r_upper_layer, const HashMap<StringName, HashSet<StringName>> &r_upper_neighbours) {
 	if (!r_layer.size()) {
 		return Vector<StringName>();
 	}
@@ -327,12 +370,24 @@ Vector<StringName> GraphEditArranger::_split(const Vector<StringName> &r_layer, 
 	Vector<StringName> left;
 	Vector<StringName> right;
 
+	int median_p = _median_upper_index(p, r_upper_layer, r_upper_neighbours);
+
 	for (int i = 0; i < r_layer.size(); i++) {
 		if (p != r_layer[i]) {
 			const StringName &q = r_layer[i];
 			int cross_pq = r_crossings[p][q];
 			int cross_qp = r_crossings[q][p];
+			bool put_left;
 			if (cross_pq > cross_qp) {
+				put_left = true;
+			} else if (cross_pq < cross_qp) {
+				put_left = false;
+			} else {
+				// Tie: prefer order that shortens connection length (place q near its upper neighbours).
+				int median_q = _median_upper_index(q, r_upper_layer, r_upper_neighbours);
+				put_left = (median_q < median_p);
+			}
+			if (put_left) {
 				left.push_back(q);
 			} else {
 				right.push_back(q);
@@ -427,7 +482,7 @@ void GraphEditArranger::_crossing_minimisation(HashMap<int, Vector<StringName>> 
 			c.insert(p, d);
 		}
 
-		r_layers.insert(i, _split(lower_layer, c));
+		r_layers.insert(i, _split(lower_layer, c, upper_layer, r_upper_neighbours));
 	}
 }
 
