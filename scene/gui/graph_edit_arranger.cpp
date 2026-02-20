@@ -151,7 +151,7 @@ void GraphEditArranger::arrange_nodes() {
 	}
 
 	// Compute horizontal coordinates: place each node at column start or just right of its predecessor(s).
-	// Literature: preserve layer order (from crossing minimisation) and enforce minimum gap so nodes do not overlap (Brandes & Köpf).
+	// Literature: preserve layer order (from crossing minimization) and enforce minimum gap so nodes do not overlap (Brandes & Köpf).
 	const float gap_h_short = gap_h * 0.2f;
 	float start_from = origin.x;
 	float largest_node_size = 0.0f;
@@ -275,9 +275,9 @@ static int _median_upper_index(const StringName &p_node, const Vector<StringName
 	if (!r_upper_neighbours.has(p_node)) {
 		return (int)(r_upper_layer.size() - 1) / 2;
 	}
-	const HashSet<StringName> &neighbours = r_upper_neighbours[p_node];
+	const HashSet<StringName> &neighbors = r_upper_neighbours[p_node];
 	Vector<int> indices;
-	for (const StringName &n : neighbours) {
+	for (const StringName &n : neighbors) {
 		int idx = r_upper_layer.find(n);
 		if (idx >= 0) {
 			indices.push_back(idx);
@@ -399,7 +399,7 @@ Vector<StringName> GraphEditArranger::_split(const Vector<StringName> &r_layer, 
 			} else if (cross_pq < cross_qp) {
 				put_left = false;
 			} else {
-				// Tie: prefer order that shortens connection length (place q near its upper neighbours).
+				// Tie: prefer order that shortens connection length (place q near its upper neighbors).
 				int median_q = _median_upper_index(q, r_upper_layer, r_upper_neighbours);
 				put_left = (median_q < median_p);
 			}
