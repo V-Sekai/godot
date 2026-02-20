@@ -33,6 +33,21 @@
 #include "core/math/math_funcs.h"
 #include "scene/gui/graph_edit.h"
 
+static float _median_neighbor_x(const HashSet<StringName> &r_neighbors, const HashMap<StringName, float> &r_run_x) {
+	Vector<float> xs;
+	for (HashSet<StringName>::Iterator it = r_neighbors.begin(); it; ++it) {
+		if (r_run_x.has(*it)) {
+			xs.push_back(r_run_x[*it]);
+		}
+	}
+	if (xs.is_empty()) {
+		return 0.0f;
+	}
+	xs.sort();
+	int n = xs.size();
+	return (xs[(n - 1) / 2] + xs[n / 2]) * 0.5f;
+}
+
 void GraphEditArranger::arrange_nodes() {
 	ERR_FAIL_NULL(graph_edit);
 
@@ -150,54 +165,51 @@ void GraphEditArranger::arrange_nodes() {
 		} while (u != E);
 	}
 
-	// Compute horizontal coordinates: place each node at column start or just right of its predecessor(s).
-	// Literature: preserve layer order (from crossing minimization) and enforce minimum gap so nodes do not overlap (Brandes & Köpf).
 	const float gap_h_short = gap_h * 0.2f;
+	HashMap<StringName, float> run_x;
 	float start_from = origin.x;
+	float rightmost_x = start_from;
+	bool first_small_done = false;
 	float largest_node_size = 0.0f;
-
 	for (unsigned int i = 0; i < layers.size(); i++) {
-		Vector<StringName> layer = layers[i];
-		for (int j = 0; j < layer.size(); j++) {
-			float current_node_size = Object::cast_to<GraphNode>(node_names[layer[j]])->get_size().x;
-			largest_node_size = MAX(largest_node_size, current_node_size);
+		const Vector<StringName> &l = layers[i];
+		largest_node_size = 0.0f;
+		for (int j = 0; j < l.size(); j++) {
+			largest_node_size = MAX(largest_node_size, Object::cast_to<GraphNode>(node_names[l[j]])->get_size().x);
 		}
-
-		float rightmost_x = start_from;
-		for (int j = 0; j < layer.size(); j++) {
-			const StringName &node_name = layer[j];
-			float current_node_size = Object::cast_to<GraphNode>(node_names[node_name])->get_size().x;
-			Vector2 cal_pos = new_positions[node_name];
-
+		rightmost_x = start_from;
+		for (int j = 0; j < l.size(); j++) {
+			const StringName &node_name = l[j];
+			float w = Object::cast_to<GraphNode>(node_names[node_name])->get_size().x;
 			float desired_x = start_from;
 			if (i > 0 && upper_neighbours.has(node_name)) {
-				const HashSet<StringName> &preds = upper_neighbours[node_name];
-				for (HashSet<StringName>::Iterator it = preds.begin(); it; ++it) {
-					const StringName &pred = *it;
-					float pred_w = Object::cast_to<GraphNode>(node_names[pred])->get_size().x;
-					float pred_right = new_positions[pred].x + pred_w;
-					desired_x = MAX(desired_x, pred_right + gap_h_short);
+				float med = _median_neighbor_x(upper_neighbours[node_name], run_x);
+				if (med > 0.0f) {
+					desired_x = med;
 				}
 			}
 			if (desired_x <= start_from) {
-				if (current_node_size == largest_node_size) {
+				if (w == largest_node_size) {
 					desired_x = start_from;
 				} else {
-					if (current_node_size < largest_node_size / 2 && !(i || j)) {
-						start_from -= (largest_node_size - current_node_size);
+					if (!first_small_done && w < largest_node_size * 0.5f && i == 0 && j == 0) {
+						start_from -= (largest_node_size - w);
 						rightmost_x = start_from;
+						first_small_done = true;
 					}
-					desired_x = start_from + largest_node_size - current_node_size;
+					desired_x = start_from + largest_node_size - w;
 				}
 			}
-
-			cal_pos.x = MAX(desired_x, rightmost_x);
-			rightmost_x = cal_pos.x + current_node_size + gap_h_short;
-			new_positions.insert(node_name, cal_pos);
+			float x = MAX(desired_x, rightmost_x);
+			run_x.insert(node_name, x);
+			rightmost_x = x + w + gap_h_short;
 		}
-
 		start_from = rightmost_x - gap_h_short + gap_h;
-		largest_node_size = 0.0f;
+	}
+	for (const StringName &E : selected_nodes) {
+		Vector2 cal_pos = new_positions[E];
+		cal_pos.x = run_x.has(E) ? run_x[E] : origin.x;
+		new_positions.insert(E, cal_pos);
 	}
 
 	graph_edit->emit_signal(SNAME("begin_node_move"));
@@ -356,9 +368,14 @@ HashMap<int, Vector<StringName>> GraphEditArranger::_layering(const HashSet<Stri
 	}
 
 	// Sort each layer to prioritize connection length (barycenter), then determinism (node name).
+	// Iterate layers in key order (0, 1, 2, ...) so layer i uses sorted layer i-1; HashMap iteration order is undefined.
+	Vector<int> layer_indices;
 	for (KeyValue<int, Vector<StringName>> &kv : l) {
-		int layer_idx = kv.key;
-		Vector<StringName> &layer = kv.value;
+		layer_indices.push_back(kv.key);
+	}
+	layer_indices.sort();
+	for (int layer_idx : layer_indices) {
+		Vector<StringName> &layer = l[layer_idx];
 		if (layer_idx == 0) {
 			layer.sort_custom<StringName::AlphCompare>();
 			continue;
