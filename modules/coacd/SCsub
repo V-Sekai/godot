@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_coacd = env_modules.Clone()
+
+# CoACD and CDT require C++20 and exceptions (Godot default is -fno-exceptions).
+env_coacd.Append(CPPDEFINES=["DISABLE_SPDLOG", "WITH_3RD_PARTY_LIBS=0"])
+if env_coacd["CXXFLAGS"]:
+	env_coacd["CXXFLAGS"] = [f for f in env_coacd["CXXFLAGS"] if "-fno-exceptions" not in str(f) and "/EHs-c" not in str(f)]
+if env_coacd["CCFLAGS"]:
+	env_coacd["CCFLAGS"] = [f for f in env_coacd["CCFLAGS"] if "-fno-exceptions" not in str(f) and "/EHs-c" not in str(f)]
+env_coacd.Append(CXXFLAGS=["-fexceptions", "-std=c++20"] if not env_coacd["platform"] == "windows" else ["/EHsc", "/std:c++20"])
+env_coacd.Append(CPPPATH=["#thirdparty/manifold/include", "#thirdparty/coacd/public", "#thirdparty/coacd/src", "#thirdparty/coacd/3rd/cdt/CDT"])
+env_coacd.Append(CPPDEFINES=[("MANIFOLD_PAR", -1)])
+
+# Manifold is built by the CSG module; we only need the include path for register_types.cpp.
+
+# Thirdparty: CoACD (no preprocess - we use Manifold for preprocessing)
+thirdparty_dir_coacd = "#thirdparty/coacd/"
+coacd_sources = [
+	"src/bvh.cpp",
+	"src/clip.cpp",
+	"src/cost.cpp",
+	"src/io.cpp",
+	"src/logger.cpp",
+	"src/mcts.cpp",
+	"src/model_obj.cpp",
+	"src/preprocess_stub.cpp",
+	"src/process.cpp",
+	"src/shape.cpp",
+	"src/sobol.cpp",
+	"public/coacd.cpp",
+]
+coacd_sources = [thirdparty_dir_coacd + f for f in coacd_sources]
+# CDT (Constrained Delaunay Triangulation) - required by CoACD
+coacd_sources.append(thirdparty_dir_coacd + "3rd/cdt/CDT/src/CDT.cpp")
+
+thirdparty_obj = []
+env_coacd_thirdparty = env_coacd.Clone()
+env_coacd_thirdparty.disable_warnings()
+env_coacd_thirdparty.add_source_files(thirdparty_obj, coacd_sources)
+env.modules_sources += thirdparty_obj
+
+# Module source
+module_obj = []
+env_coacd.add_source_files(module_obj, "*.cpp")
+env.modules_sources += module_obj
+
+env.Depends(module_obj, thirdparty_obj)

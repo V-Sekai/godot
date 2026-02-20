@@ -196,6 +196,11 @@ public:
 	typedef Vector<Vector<Vector3>> (*ConvexDecompositionFunc)(const real_t *p_vertices, int p_vertex_count, const uint32_t *p_triangles, int p_triangle_count, const Ref<MeshConvexDecompositionSettings> &p_settings, Vector<Vector<uint32_t>> *r_convex_indices);
 
 	static ConvexDecompositionFunc convex_decomposition_function;
+	static ConvexDecompositionFunc convex_decomposition_func_vhacd;
+	static ConvexDecompositionFunc convex_decomposition_func_coacd;
+
+	static void register_convex_decomposition_backend(int p_backend_id, ConvexDecompositionFunc p_func);
+	static void unregister_convex_decomposition_backend(int p_backend_id);
 
 	Vector<Ref<Shape3D>> convex_decompose(const Ref<MeshConvexDecompositionSettings> &p_settings) const;
 	Ref<ConvexPolygonShape3D> create_convex_shape(bool p_clean = true, bool p_simplify = false) const;
@@ -214,12 +219,18 @@ class MeshConvexDecompositionSettings : public RefCounted {
 	GDCLASS(MeshConvexDecompositionSettings, RefCounted);
 
 public:
+	enum Backend : int {
+		CONVEX_DECOMPOSITION_BACKEND_VHACD = 0,
+		CONVEX_DECOMPOSITION_BACKEND_COACD = 1
+	};
+
 	enum Mode : int {
 		CONVEX_DECOMPOSITION_MODE_VOXEL = 0,
 		CONVEX_DECOMPOSITION_MODE_TETRAHEDRON = 1
 	};
 
 private:
+	Backend backend = CONVEX_DECOMPOSITION_BACKEND_VHACD;
 	Mode mode = CONVEX_DECOMPOSITION_MODE_VOXEL;
 
 	/// Maximum concavity. [Range: 0.0 -> 1.0]
@@ -289,8 +300,12 @@ public:
 
 	void set_project_hull_vertices(bool p_project_hull_vertices);
 	bool get_project_hull_vertices() const;
+
+	void set_backend(Backend p_backend);
+	Backend get_backend() const;
 };
 
+VARIANT_ENUM_CAST(MeshConvexDecompositionSettings::Backend);
 VARIANT_ENUM_CAST(MeshConvexDecompositionSettings::Mode);
 
 class ArrayMesh : public Mesh {

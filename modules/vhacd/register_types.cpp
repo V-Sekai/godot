@@ -96,6 +96,7 @@ void initialize_vhacd_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 
+	Mesh::register_convex_decomposition_backend(MeshConvexDecompositionSettings::CONVEX_DECOMPOSITION_BACKEND_VHACD, convex_decompose);
 	Mesh::convex_decomposition_function = convex_decompose;
 }
 
@@ -104,5 +105,6 @@ void uninitialize_vhacd_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 
+	Mesh::unregister_convex_decomposition_backend(MeshConvexDecompositionSettings::CONVEX_DECOMPOSITION_BACKEND_VHACD);
 	Mesh::convex_decomposition_function = nullptr;
 }

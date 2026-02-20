@@ -9,6 +9,9 @@
 	<tutorials>
 	</tutorials>
 	<members>
+		<member name="backend" type="int" setter="set_backend" getter="get_backend" enum="MeshConvexDecompositionSettings.Backend" default="0">
+			Which convex decomposition implementation to use. V-HACD is the default; CoACD is available when the CoACD module is enabled.
+		</member>
 		<member name="convex_hull_approximation" type="bool" setter="set_convex_hull_approximation" getter="get_convex_hull_approximation" default="true">
 			If [code]true[/code], uses approximation for computing convex hulls.
 		</member>
@@ -50,6 +53,12 @@
 		</member>
 	</members>
 	<constants>
+		<constant name="CONVEX_DECOMPOSITION_BACKEND_VHACD" value="0" enum="Backend">
+			Use the V-HACD convex decomposition backend (default).
+		</constant>
+		<constant name="CONVEX_DECOMPOSITION_BACKEND_COACD" value="1" enum="Backend">
+			Use the CoACD convex decomposition backend (when the CoACD module is built).
+		</constant>
 		<constant name="CONVEX_DECOMPOSITION_MODE_VOXEL" value="0" enum="Mode">
 			Constant for voxel-based approximate convex decomposition.
 		</constant>

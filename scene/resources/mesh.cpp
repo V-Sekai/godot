@@ -183,6 +183,10 @@ void MeshConvexDecompositionSettings::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_project_hull_vertices", "project_hull_vertices"), &MeshConvexDecompositionSettings::set_project_hull_vertices);
 	ClassDB::bind_method(D_METHOD("get_project_hull_vertices"), &MeshConvexDecompositionSettings::get_project_hull_vertices);
 
+	ClassDB::bind_method(D_METHOD("set_backend", "backend"), &MeshConvexDecompositionSettings::set_backend);
+	ClassDB::bind_method(D_METHOD("get_backend"), &MeshConvexDecompositionSettings::get_backend);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "backend", PROPERTY_HINT_ENUM, "V-HACD,CoACD"), "set_backend", "get_backend");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max_concavity", PROPERTY_HINT_RANGE, "0.001,1.0,0.001"), "set_max_concavity", "get_max_concavity");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "symmetry_planes_clipping_bias", PROPERTY_HINT_RANGE, "0.0,1.0,0.01"), "set_symmetry_planes_clipping_bias", "get_symmetry_planes_clipping_bias");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "revolution_axes_clipping_bias", PROPERTY_HINT_RANGE, "0.0,1.0,0.01"), "set_revolution_axes_clipping_bias", "get_revolution_axes_clipping_bias");
@@ -199,10 +203,32 @@ void MeshConvexDecompositionSettings::_bind_methods() {
 
 	BIND_ENUM_CONSTANT(CONVEX_DECOMPOSITION_MODE_VOXEL);
 	BIND_ENUM_CONSTANT(CONVEX_DECOMPOSITION_MODE_TETRAHEDRON);
+
+	BIND_ENUM_CONSTANT(CONVEX_DECOMPOSITION_BACKEND_VHACD);
+	BIND_ENUM_CONSTANT(CONVEX_DECOMPOSITION_BACKEND_COACD);
 }
 
 #ifndef PHYSICS_3D_DISABLED
 Mesh::ConvexDecompositionFunc Mesh::convex_decomposition_function = nullptr;
+Mesh::ConvexDecompositionFunc Mesh::convex_decomposition_func_vhacd = nullptr;
+Mesh::ConvexDecompositionFunc Mesh::convex_decomposition_func_coacd = nullptr;
+
+void Mesh::register_convex_decomposition_backend(int p_backend_id, ConvexDecompositionFunc p_func) {
+	switch (p_backend_id) {
+		case MeshConvexDecompositionSettings::CONVEX_DECOMPOSITION_BACKEND_VHACD:
+			convex_decomposition_func_vhacd = p_func;
+			break;
+		case MeshConvexDecompositionSettings::CONVEX_DECOMPOSITION_BACKEND_COACD:
+			convex_decomposition_func_coacd = p_func;
+			break;
+		default:
+			break;
+	}
+}
+
+void Mesh::unregister_convex_decomposition_backend(int p_backend_id) {
+	register_convex_decomposition_backend(p_backend_id, nullptr);
+}
 #endif // PHYSICS_3D_DISABLED
 
 int Mesh::get_surface_count() const {
@@ -916,7 +942,26 @@ void Mesh::clear_cache() const {
 
 #ifndef PHYSICS_3D_DISABLED
 Vector<Ref<Shape3D>> Mesh::convex_decompose(const Ref<MeshConvexDecompositionSettings> &p_settings) const {
-	ERR_FAIL_NULL_V(convex_decomposition_function, Vector<Ref<Shape3D>>());
+	ConvexDecompositionFunc func = nullptr;
+	if (p_settings.is_valid()) {
+		switch (p_settings->get_backend()) {
+			case MeshConvexDecompositionSettings::CONVEX_DECOMPOSITION_BACKEND_VHACD:
+				func = convex_decomposition_func_vhacd;
+				break;
+			case MeshConvexDecompositionSettings::CONVEX_DECOMPOSITION_BACKEND_COACD:
+				func = convex_decomposition_func_coacd;
+				if (!func) {
+					func = convex_decomposition_func_vhacd;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	if (!func) {
+		func = convex_decomposition_function;
+	}
+	ERR_FAIL_NULL_V(func, Vector<Ref<Shape3D>>());
 
 	Ref<TriangleMesh> tm = generate_triangle_mesh();
 	ERR_FAIL_COND_V(tm.is_null(), Vector<Ref<Shape3D>>());
@@ -938,7 +983,7 @@ Vector<Ref<Shape3D>> Mesh::convex_decompose(const Ref<MeshConvexDecompositionSet
 	const Vector<Vector3> &vertices = tm->get_vertices();
 	int vertex_count = vertices.size();
 
-	Vector<Vector<Vector3>> decomposed = convex_decomposition_function((real_t *)vertices.ptr(), vertex_count, indices.ptr(), triangle_count, p_settings, nullptr);
+	Vector<Vector<Vector3>> decomposed = func((real_t *)vertices.ptr(), vertex_count, indices.ptr(), triangle_count, p_settings, nullptr);
 
 	Vector<Ref<Shape3D>> ret;
 
