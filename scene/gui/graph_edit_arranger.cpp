@@ -150,7 +150,9 @@ void GraphEditArranger::arrange_nodes() {
 		} while (u != E);
 	}
 
-	// Compute horizontal coordinates individually for layers to get uniform gap.
+	// Compute horizontal coordinates: place each node at column start or just right of its predecessor(s).
+	// Literature: preserve layer order (from crossing minimisation) and enforce minimum gap so nodes do not overlap (Brandes & Köpf).
+	const float gap_h_short = gap_h * 0.2f;
 	float start_from = origin.x;
 	float largest_node_size = 0.0f;
 
@@ -161,26 +163,40 @@ void GraphEditArranger::arrange_nodes() {
 			largest_node_size = MAX(largest_node_size, current_node_size);
 		}
 
+		float rightmost_x = start_from;
 		for (int j = 0; j < layer.size(); j++) {
-			float current_node_size = Object::cast_to<GraphNode>(node_names[layer[j]])->get_size().x;
-			Vector2 cal_pos = new_positions[layer[j]];
+			const StringName &node_name = layer[j];
+			float current_node_size = Object::cast_to<GraphNode>(node_names[node_name])->get_size().x;
+			Vector2 cal_pos = new_positions[node_name];
 
-			if (current_node_size == largest_node_size) {
-				cal_pos.x = start_from;
-			} else {
-				float current_node_start_pos = start_from;
-				if (current_node_size < largest_node_size / 2) {
-					if (!(i || j)) {
-						start_from -= (largest_node_size - current_node_size);
-					}
-					current_node_start_pos = start_from + largest_node_size - current_node_size;
+			float desired_x = start_from;
+			if (i > 0 && upper_neighbours.has(node_name)) {
+				const HashSet<StringName> &preds = upper_neighbours[node_name];
+				for (HashSet<StringName>::Iterator it = preds.begin(); it; ++it) {
+					const StringName &pred = *it;
+					float pred_w = Object::cast_to<GraphNode>(node_names[pred])->get_size().x;
+					float pred_right = new_positions[pred].x + pred_w;
+					desired_x = MAX(desired_x, pred_right + gap_h_short);
 				}
-				cal_pos.x = current_node_start_pos;
 			}
-			new_positions.insert(layer[j], cal_pos);
+			if (desired_x <= start_from) {
+				if (current_node_size == largest_node_size) {
+					desired_x = start_from;
+				} else {
+					if (current_node_size < largest_node_size / 2 && !(i || j)) {
+						start_from -= (largest_node_size - current_node_size);
+						rightmost_x = start_from;
+					}
+					desired_x = start_from + largest_node_size - current_node_size;
+				}
+			}
+
+			cal_pos.x = MAX(desired_x, rightmost_x);
+			rightmost_x = cal_pos.x + current_node_size + gap_h_short;
+			new_positions.insert(node_name, cal_pos);
 		}
 
-		start_from += largest_node_size + gap_h;
+		start_from = rightmost_x - gap_h_short + gap_h;
 		largest_node_size = 0.0f;
 	}
 
