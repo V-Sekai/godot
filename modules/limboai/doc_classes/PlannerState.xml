@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerState" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Unified knowledge representation for planning problems using predicate-subject-object triples with metadata.
+	</brief_description>
+	<description>
+		[PlannerState] represents the complete state of the world in a planning problem using a unified Predicate-Subject-Object (PSO) knowledge representation system. Each piece of knowledge is stored as a triple, along with optional metadata for information asymmetry and belief management.
+
+		[b]Structure: Predicate-Subject-Object (PSO) Triples[/b]
+		- [code]Predicate[/code] (String): The attribute or relationship identifier (e.g., "is_open").
+		- [code]Subject[/code] (String): The entity being described (e.g., "door_1").
+		- Object (Variant): The value or target of the relationship (e.g., [code]true[/code], [code]Vector3(1,0,0)[/code]).
+		- [code]Metadata[/code] (Dictionary): Context info like confidence, timestamp, source (Persona ID), and type ("fact", "belief").
+
+		The triple system supports different types of knowledge:
+		- [b]Facts[/b]: Ground truth statements about the world (type: "fact")
+		- [b]Beliefs[/b]: Persona-specific beliefs with confidence and timestamps (type: "belief")
+		- [b]States[/b]: Current state information (type: "state")
+
+		Metadata can include:
+		- [code]type[/code]: "fact", "belief", or "state"
+		- [code]source[/code]: Persona ID or "allocentric" for shared knowledge
+		- [code]confidence[/code]: Float value (0.0-1.0) for belief certainty
+		- [code]timestamp[/code]: Integer timestamp for temporal ordering
+		- [code]accessibility[/code]: "public", "private", or "restricted"
+
+		This unified representation enables belief-immersed planning where different personas can have different beliefs about the same facts, with information asymmetry enforced through metadata filtering. The [PlannerState] API provides semantic accessors ([method get_predicate], [method set_predicate]) abstracting the internal storage.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_public_event">
+			<return type="void" />
+			<param index="0" name="event_id" type="String" />
+			<param index="1" name="event_data" type="Dictionary" />
+			<description>
+				Adds a public event that can be observed by all personas.
+			</description>
+		</method>
+		<method name="add_shared_object">
+			<return type="void" />
+			<param index="0" name="object_id" type="String" />
+			<param index="1" name="object_data" type="Dictionary" />
+			<description>
+				Adds a shared object that can be observed by all personas.
+			</description>
+		</method>
+		<method name="clear_allocentric_facts">
+			<return type="void" />
+			<description>
+				Clears all allocentric (shared) facts including terrain, shared objects, and public events.
+			</description>
+		</method>
+		<method name="get_all_entities" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an array of all entity IDs that have capabilities or positions defined.
+			</description>
+		</method>
+		<method name="get_all_entity_capabilities" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all entity capabilities organized by entity ID.
+			</description>
+		</method>
+		<method name="get_all_entity_capabilities_public" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all public entity capabilities organized by entity ID.
+			</description>
+		</method>
+		<method name="get_all_entity_positions" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all entity positions organized by entity ID.
+			</description>
+		</method>
+		<method name="get_all_public_event_ids" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an array of all public event IDs.
+			</description>
+		</method>
+		<method name="get_all_public_events" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all public events organized by event ID.
+			</description>
+		</method>
+		<method name="get_all_shared_object_ids" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an array of all shared object IDs.
+			</description>
+		</method>
+		<method name="get_all_shared_objects" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all shared objects organized by object ID.
+			</description>
+		</method>
+		<method name="get_all_terrain_facts" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all terrain facts organized by location.
+			</description>
+		</method>
+		<method name="get_belief_confidence" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<description>
+				Returns the confidence level (0.0-1.0) of a persona's belief about a target's predicate. Returns 0.0 if no belief exists.
+			</description>
+		</method>
+		<method name="get_belief_timestamp" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<description>
+				Returns the timestamp of when a persona's belief about a target's predicate was last updated. Returns 0 if no belief exists.
+			</description>
+		</method>
+		<method name="get_beliefs_about" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<description>
+				Returns all beliefs held by a persona about a specific target, organized by predicate.
+			</description>
+		</method>
+		<method name="get_entity_capabilities" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="entity_id" type="String" />
+			<description>
+				Returns all capabilities for an entity as a dictionary mapping capability names to values.
+			</description>
+		</method>
+		<method name="get_entity_capability" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<description>
+				Returns the capability value for an entity. This is a convenience method that queries triples with subject=entity_id and predicate="capability/"+capability.
+			</description>
+		</method>
+		<method name="get_entity_capability_public" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<description>
+				Returns a public capability value for an entity.
+			</description>
+		</method>
+		<method name="get_entity_position" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="entity_id" type="String" />
+			<description>
+				Returns the position of an entity. Returns [code]null[/code] if no position is set.
+			</description>
+		</method>
+		<method name="get_predicate" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<description>
+				Returns the object value of the first triple matching the given subject and predicate. Returns [code]null[/code] if no matching triple exists. For belief queries, this returns the most recent belief.
+			</description>
+		</method>
+		<method name="get_public_event" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="event_id" type="String" />
+			<description>
+				Returns the data for a public event. Returns an empty dictionary if the event doesn't exist.
+			</description>
+		</method>
+		<method name="get_shared_object" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="object_id" type="String" />
+			<description>
+				Returns the data for a shared object. Returns an empty dictionary if the object doesn't exist.
+			</description>
+		</method>
+		<method name="get_subject_predicate_list" qualifiers="const">
+			<return type="String[]" />
+			<description>
+				Returns an array of all unique subject-predicate pairs in the state. Each element is a dictionary with "subject" and "predicate" keys.
+			</description>
+		</method>
+		<method name="get_terrain_fact" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="location" type="String" />
+			<param index="1" name="fact_key" type="String" />
+			<description>
+				Returns a terrain fact value for a location. Returns [code]null[/code] if the fact doesn't exist.
+			</description>
+		</method>
+		<method name="get_triples_as_array" qualifiers="const">
+			<return type="Dictionary[]" />
+			<description>
+				Returns all knowledge triples as an array of dictionaries, where each dictionary contains "subject", "predicate", "object", and "metadata" keys.
+			</description>
+		</method>
+		<method name="has_entity" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_id" type="String" />
+			<description>
+				Returns [code]true[/code] if the entity has any capabilities or position information stored, [code]false[/code] otherwise.
+			</description>
+		</method>
+		<method name="has_entity_capability_public" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<description>
+				Returns [code]true[/code] if the entity has the specified public capability.
+			</description>
+		</method>
+		<method name="has_entity_position" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_id" type="String" />
+			<description>
+				Returns [code]true[/code] if the entity has a position set.
+			</description>
+		</method>
+		<method name="has_predicate" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<description>
+				Returns [code]true[/code] if a triple exists with the given subject and predicate, [code]false[/code] otherwise.
+			</description>
+		</method>
+		<method name="has_public_event" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="event_id" type="String" />
+			<description>
+				Returns [code]true[/code] if a public event with the given ID exists.
+			</description>
+		</method>
+		<method name="has_shared_object" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="object_id" type="String" />
+			<description>
+				Returns [code]true[/code] if a shared object with the given ID exists.
+			</description>
+		</method>
+		<method name="has_subject_variable" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="variable" type="String" />
+			<description>
+				Returns [code]true[/code] if the subject exists in any triple, [code]false[/code] otherwise.
+			</description>
+		</method>
+		<method name="has_terrain_fact" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="location" type="String" />
+			<param index="1" name="fact_key" type="String" />
+			<description>
+				Returns [code]true[/code] if a terrain fact exists for the given location and key.
+			</description>
+		</method>
+		<method name="observe_entity_capabilities" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all public entity capabilities that can be observed.
+			</description>
+		</method>
+		<method name="observe_entity_positions" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all entity positions that can be observed.
+			</description>
+		</method>
+		<method name="observe_public_events" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns all public events that can be observed.
+			</description>
+		</method>
+		<method name="observe_shared_objects" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="location" type="String" />
+			<description>
+				Returns shared objects observable at a specific location.
+			</description>
+		</method>
+		<method name="observe_terrain" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="location" type="String" />
+			<description>
+				Returns all terrain facts observable at a specific location.
+			</description>
+		</method>
+		<method name="remove_public_event">
+			<return type="void" />
+			<param index="0" name="event_id" type="String" />
+			<description>
+				Removes a public event from the state.
+			</description>
+		</method>
+		<method name="remove_shared_object">
+			<return type="void" />
+			<param index="0" name="object_id" type="String" />
+			<description>
+				Removes a shared object from the state.
+			</description>
+		</method>
+		<method name="set_belief_about">
+			<return type="void" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<param index="3" name="value" type="Variant" />
+			<param index="4" name="metadata" type="Dictionary" default="{}" />
+			<description>
+				Sets a belief held by a persona about a target. The metadata should include confidence and timestamp information.
+			</description>
+		</method>
+		<method name="set_entity_capability">
+			<return type="void" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				Sets a capability for an entity by storing it as a triple with subject=entity_id and predicate="capability/"+capability.
+			</description>
+		</method>
+		<method name="set_entity_capability_public">
+			<return type="void" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				Sets a public capability for an entity that can be observed by all personas.
+			</description>
+		</method>
+		<method name="set_entity_position">
+			<return type="void" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="position" type="Variant" />
+			<description>
+				Sets the position of an entity in the world.
+			</description>
+		</method>
+		<method name="set_predicate">
+			<return type="void" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<param index="2" name="value" type="Variant" />
+			<param index="3" name="metadata" type="Dictionary" default="{}" />
+			<description>
+				Sets a predicate value by adding or updating a triple. The metadata parameter allows specifying belief type, confidence, source persona, and accessibility level for information asymmetry.
+			</description>
+		</method>
+		<method name="set_terrain_fact">
+			<return type="void" />
+			<param index="0" name="location" type="String" />
+			<param index="1" name="fact_key" type="String" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				Sets a terrain fact for a location. Terrain facts are allocentric (shared) knowledge about the environment.
+			</description>
+		</method>
+		<method name="update_belief_confidence">
+			<return type="void" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="target" type="String" />
+			<param index="2" name="predicate" type="String" />
+			<param index="3" name="confidence" type="float" />
+			<description>
+				Updates the confidence level of an existing belief held by a persona.
+			</description>
+		</method>
+	</methods>
+</class>

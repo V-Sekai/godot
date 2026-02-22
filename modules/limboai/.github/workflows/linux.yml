@@ -1,0 +1,281 @@
+name: 🐧 Linux builds
+on:
+  workflow_call:
+    inputs:
+      godot-ref:
+        description: A tag, branch or commit hash in the Godot repository.
+        type: string
+        default: master
+      test-build:
+        description: Limit to pre-defined test builds
+        type: boolean
+        default: false
+
+  workflow_dispatch:
+    inputs:
+      godot-ref:
+        description: A tag, branch or commit hash in the Godot repository.
+        type: string
+        default: master
+      test-build:
+        description: Limit to pre-defined test builds
+        type: boolean
+        default: false
+
+# Global Settings
+env:
+  SCONSFLAGS: production=yes verbose=yes warnings=extra
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CACHE_LIMIT: 4
+
+jobs:
+  linux-builds:
+    runs-on: "ubuntu-22.04"
+    name: ${{ matrix.opts.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        opts:
+          # * Standard x86_64
+
+          - name: Editor (x86_64, release)
+            target: editor
+            arch: x86_64
+            dotnet: false
+            should-build: true
+
+          - name: Template (x86_64, release)
+            target: template_release
+            arch: x86_64
+            dotnet: false
+            should-build: true
+
+          - name: Template (x86_64, debug)
+            target: template_debug
+            arch: x86_64
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          # * Standard x86_32
+
+          # - name: Editor (x86_32, release)
+          #   target: editor
+          #   arch: x86_32
+          #   dotnet: false
+          #   should-build: ${{ !inputs.test-build }}
+
+          - name: Template (x86_32, release)
+            target: template_release
+            arch: x86_32
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template (x86_32, debug)
+            target: template_debug
+            arch: x86_32
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          # * Standard arm64
+
+          - name: Editor (arm64, release)
+            target: editor
+            arch: arm64
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template (arm64, release)
+            target: template_release
+            arch: arm64
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template (arm64, debug)
+            target: template_debug
+            arch: arm64
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          # * Standard arm32
+
+          - name: Template (arm32, release)
+            target: template_release
+            arch: arm32
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template (arm32, debug)
+            target: template_debug
+            arch: arm32
+            dotnet: false
+            should-build: ${{ !inputs.test-build }}
+
+          # * .NET x86_64
+
+          - name: Editor .NET (x86_64, release)
+            target: editor
+            arch: x86_64
+            dotnet: true
+            should-build: true
+
+          - name: Template .NET (x86_64, release)
+            target: template_release
+            arch: x86_64
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template .NET (x86_64, debug)
+            target: template_debug
+            arch: x86_64
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          # * .NET x86_32
+
+          # - name: Editor .NET (x86_32, release)
+          #   target: editor
+          #   arch: x86_32
+          #   dotnet: true
+          #   should-build: ${{ !inputs.test-build }}
+
+          - name: Template .NET (x86_32, release)
+            target: template_release
+            arch: x86_32
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template .NET (x86_32, debug)
+            target: template_debug
+            arch: x86_32
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          # * .NET arm64
+
+          # ! FIXME: Needs a separate job for .NET glue generation since we can't execute arm64 binaries on x86_64.
+          # !        Alternatively, solution generation can be done as post-process job, taking the glue from x86_64, after all builds complete.
+          # - name: Editor .NET (arm64, release)
+          #   target: editor
+          #   arch: arm64
+          #   dotnet: true
+          #   should-build: ${{ !inputs.test-build }}
+
+          - name: Template .NET (arm64, release)
+            target: template_release
+            arch: arm64
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template .NET (arm64, debug)
+            target: template_debug
+            arch: arm64
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          # * .NET arm32
+
+          - name: Template .NET (arm32, release)
+            target: template_release
+            arch: arm32
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+          - name: Template .NET (arm32, debug)
+            target: template_debug
+            arch: arm32
+            dotnet: true
+            should-build: ${{ !inputs.test-build }}
+
+        exclude:
+          - { opts: { should-build: false } }
+
+    env:
+      BIN: godot.linuxbsd.${{matrix.opts.target}}.${{matrix.opts.arch}}${{  matrix.opts.dotnet == true && '.mono' || ''  }}
+
+    steps:
+      - name: Clone Godot
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: ${{ inputs.godot-ref }}
+
+      - name: Clone LimboAI module
+        uses: actions/checkout@v4
+        with:
+          path: modules/limboai
+
+      # Init version environment variables.
+      - uses: ./modules/limboai/.github/actions/init-version
+
+      - name: Set up Linux toolchain
+        uses: ./modules/limboai/.github/actions/setup-linux-toolchain
+        with:
+          arch: ${{matrix.opts.arch}}
+
+      - name: Set up Wayland deps
+        run: |
+          sudo apt-get install libwayland-dev
+
+      - name: Set up scons cache
+        if: inputs.test-build # ! Only cache test/PR builds
+        uses: actions/cache@v4
+        with:
+          path: ${{github.workspace}}/.scons_cache/
+          key: ${{env.BIN}}-${{inputs.godot-ref}}-${{github.ref}}-${{env.LIMBOAI_VERSION}}
+          restore-keys: |
+            ${{env.BIN}}-${{inputs.godot-ref}}-${{github.ref}}-${{env.LIMBOAI_VERSION}}
+            ${{env.BIN}}-${{inputs.godot-ref}}-${{github.ref}}
+            ${{env.BIN}}-${{inputs.godot-ref}}
+
+      - name: Compilation
+        env:
+          SCONS_CACHE: ${{github.workspace}}/.scons_cache/
+        run: |
+          PATH=${GITHUB_WORKSPACE}/buildroot/bin:$PATH
+          scons platform=linuxbsd target=${{matrix.opts.target}} arch=${{matrix.opts.arch}} module_mono_enabled=${{matrix.opts.dotnet}} ${{env.SCONSFLAGS}} cache_path=${{github.workspace}}/.scons_cache/ cache_limit=${{env.CACHE_LIMIT}}
+
+      - name: Build .NET assemblies
+        if: matrix.opts.dotnet && matrix.opts.target == 'editor'
+        uses: ./modules/limboai/.github/actions/build-dotnet-assemblies
+        with:
+          platform: linuxbsd
+          bin: ${{env.BIN}}
+
+      - name: Prepare artifact
+        env:
+          OUTDIR: ${{ startsWith(matrix.opts.target, 'template') && 'out/templates' || 'out/' }}
+        run: |
+          chmod +x ./bin/godot.*
+          rm -rf bin/obj/
+          mkdir -p ${{env.OUTDIR}}
+          mv bin/* ${{env.OUTDIR}}
+          ls -R out/
+
+      # Zipping the editor artifact to retain executable bit;
+      # workaround for: https://github.com/actions/upload-artifact/issues/38
+      - name: Zip the editor artifact
+        if: matrix.opts.target == 'editor'
+        shell: bash
+        run: |
+          pushd out/
+          zip -r godot-limboai.editor.linux.zip *
+          rm godot.*
+          rm -rf GodotSharp/
+          echo -e "## Why another ZIP inside?\n\nWorkaround for: https://github.com/actions/upload-artifact/issues/38\n" > README.md
+          popd
+
+      - name: Rename templates
+        if: startsWith(matrix.opts.target, 'template')
+        env:
+          BUILD_TYPE: ${{ endsWith(matrix.opts.target, 'release') && 'release' || 'debug' }}
+        run: |
+          mv out/templates/${BIN} out/templates/linux_${BUILD_TYPE}.${{matrix.opts.arch}}
+          echo "${GODOT_VERSION}.limboai+${LIMBOAI_VERSION}${{matrix.opts.dotnet == true && '.mono' || ''}}" > out/templates/version.txt
+          ls -R out/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.NAME_PREFIX}}${{matrix.opts.dotnet == true && '.dotnet' || ''}}.${{matrix.opts.target}}.linux.${{matrix.opts.arch}}
+          path: out/*

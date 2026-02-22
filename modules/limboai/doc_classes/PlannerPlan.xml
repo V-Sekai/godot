@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerPlan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Manages and executes tasks within a specified domain.
+	</brief_description>
+	<description>
+		The [PlannerPlan] class provides methods for declaring commands, goals, [PlannerMultigoal], and tasks. It also facilitates the process of finding and executing plans to achieve those goals within a specific [PlannerDomain].
+		[PlannerPlan] represents a totally-ordered version of Goal-Task-Network (GTN) planning. However, it does not support sharing and task insertion.
+		[PlannerPlan] supports optional temporal constraints through temporal metadata. Commands, tasks, and goals can include temporal constraints specifying start_time, end_time, and/or duration. These values are stored as int64_t representing absolute time in microseconds since Unix epoch. Commands without temporal metadata can occur at any time and are not constrained by the Simple Temporal Network (STN). Commands with temporal metadata are added to the STN and their timing constraints are validated for consistency.
+
+		[b]Planning Algorithm:[/b]
+		The planner uses an iterative Depth-First Search (DFS) with backtracking, protected by resource limits.
+		1. Inputs: Initial State, Task Agenda (todo_list), Domain.
+		2. Process: Pops the current task/command from the Task Agenda.
+		   - If Command: Checks preconditions, validates against blacklist, and updates state.
+		   - If Compound Task: Selects best Method using VSIDS-like scoring, decomposes into subtasks, and pushes to Agenda.
+		3. Termination: Success if Agenda is empty; Failure if no applicable methods/commands found (backtracks).
+
+		[b]Method Selection (VSIDS-like):[/b]
+		Methods are scored dynamically based on activity and history. Successful applications increase activity, which decays over time to prioritize recent effective strategies.
+
+		[b]Replanning &amp; Failure Handling:[/b]
+		Compatible with IPyHOP's "Replanning from the Middle". When a node fails, it is blacklisted, and planning resumes from the nearest open ancestor.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="attach_metadata">
+			<return type="Variant" />
+			<param index="0" name="item" type="Variant" />
+			<param index="1" name="temporal_constraints" type="Dictionary" default="{}" />
+			<param index="2" name="entity_constraints" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="blacklist_command">
+			<return type="void" />
+			<param index="0" name="command" type="Variant" />
+			<description>
+				Adds a command (command, task, or method result array) to the blacklist, preventing it from being used during planning. This is useful for excluding specific commands or method combinations that are known to fail or are undesirable. Blacklisted commands are checked during planning and will cause the planner to skip them and try alternative methods.
+			</description>
+		</method>
+		<method name="find_plan">
+			<return type="PlannerResult" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<description>
+				Finds a plan to accomplish the todo list from the provided state.
+				The todo list is an array of goals, [PlannerMultigoal], tasks, and commands.
+				A goal is defined as one predicate-subject-object triple.
+				A [PlannerMultigoal] is a state [Dictionary] of predicate-subject-object triples.
+				Tasks can accept any number of arguments but only return either false or a series of goals, [PlannerMultigoal], tasks, and commands.
+				Commands can accept any number of arguments but only return the state of predicate-subject-object triples.
+				The return value is a [PlannerResult] containing the final state, solution graph, success status, and methods to extract the plan.
+				[b]Temporal Constraints:[/b] Commands, tasks, and goals in the todo_list can include optional temporal metadata. This metadata is provided as a [Dictionary] with keys "temporal_constraints" containing "start_time", "end_time", and/or "duration" as int64_t values representing absolute time in microseconds since Unix epoch. Commands without temporal metadata can occur at any time and are not added to the Simple Temporal Network (STN). Commands with temporal metadata are added to the STN and their timing constraints are validated for consistency. If temporal constraints are inconsistent, planning fails and returns a [PlannerResult] with success=false.
+
+				[b]Entity Requirements:[/b] Commands, tasks, and goals can also include entity requirements specifying which entities (by type and capabilities) are needed for execution. The planner will match available entities from the state and ensure requirements are met before executing planner elements.
+			</description>
+		</method>
+		<method name="get_iterations" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the maximum number of planning iterations that occurred during the last planning operation. This can be useful for debugging and performance analysis. The iteration count is reset at the start of each planning method call.
+			</description>
+		</method>
+		<method name="get_method_activities" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns a [Dictionary] of VSIDS activity scores for all methods that have been used during planning. The dictionary maps method IDs (as [String]) to activity scores (as [float]). Higher scores indicate methods that have been more frequently used or involved in conflicts. This is useful for debugging and understanding which methods are being prioritized by the planner.
+			</description>
+		</method>
+		<method name="get_time_range_dict" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="load_solution_graph">
+			<return type="void" />
+			<param index="0" name="graph" type="Dictionary" />
+			<description>
+				Loads a solution graph from a [Dictionary] into the planner's internal state. This is used internally by [method simulate] and [method replan] to restore a solution graph from a [PlannerResult]. The graph dictionary should contain node IDs as keys and node dictionaries as values.
+			</description>
+		</method>
+		<method name="replan">
+			<return type="PlannerResult" />
+			<param index="0" name="result" type="PlannerResult" />
+			<param index="1" name="state" type="Dictionary" />
+			<param index="2" name="fail_node_id" type="int" />
+			<description>
+				Re-plans from a failure point in a previous plan. This method loads the solution graph from the provided [PlannerResult], marks nodes from root to the failure point as "old", reopens them, and continues planning from the failure point. Only commands tagged as "new" are included in the returned plan. This is useful for handling execution failures and generating alternative plans.
+				Use [method PlannerResult.find_failed_nodes] to identify which nodes failed, then pass one of those node IDs to this method.
+			</description>
+		</method>
+		<method name="reset">
+			<return type="void" />
+			<description>
+				Resets all planner state to defaults, including clearing the solution graph, blacklisted commands, VSIDS activity scores, and iteration count. This is useful for complete test isolation or starting a fresh planning session.
+			</description>
+		</method>
+		<method name="reset_vsids_activity">
+			<return type="void" />
+			<description>
+				Resets all VSIDS activity scores to zero, clearing the activity tracking dictionary. This allows the planner to start fresh with activity-based method selection without the influence of previous planning sessions.
+			</description>
+		</method>
+		<method name="run_lazy_lookahead">
+			<return type="PlannerResult" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<param index="2" name="max_tries" type="int" default="10" />
+			<description>
+				Initiates a lazy lookahead search to find a plan, attempting up to max_tries times. This method executes commands as they are planned, allowing for immediate feedback and state changes. If a command fails during execution, the planner backtracks and tries alternative methods. The return value is a [PlannerResult] containing the final state, solution graph, and success status. Use [method PlannerResult.extract_plan] to get the partially executed plan (commands that were successfully executed).
+
+				[b]Temporal Constraints:[/b] Supports STN temporal constraints and entity-capability requirements, same as [method find_plan].
+			</description>
+		</method>
+		<method name="run_lazy_refineahead">
+			<return type="PlannerResult" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<description>
+				Executes graph-based lazy refinement planning to accomplish the todo list from the provided state. This method uses a solution graph for explicit backtracking and supports temporal constraints through the Simple Temporal Network (STN). The origin time point is anchored to the current time at plan start. Commands without temporal metadata can occur at any time and are not constrained by the STN. The return value is a [PlannerResult] containing the final state, solution graph, and success status.
+
+				[b]Temporal Constraints:[/b] Supports STN temporal constraints and entity-capability requirements, same as [method find_plan].
+			</description>
+		</method>
+		<method name="set_time_range_dict">
+			<return type="void" />
+			<param index="0" name="time_range" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="simulate">
+			<return type="Array" />
+			<param index="0" name="result" type="PlannerResult" />
+			<param index="1" name="state" type="Dictionary" />
+			<param index="2" name="start_ind" type="int" default="0" />
+			<description>
+				Simulates the execution of a plan from a [PlannerResult], starting from the command at start_ind. Returns an [Array] of state [Dictionary] objects, one for each command execution. The first element is the initial state, and each subsequent element is the state after executing the corresponding command. If a command fails during simulation, the array stops at that point. This is useful for previewing plan execution without actually modifying the world state.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="belief_manager" type="PlannerBeliefManager" setter="set_belief_manager" getter="get_belief_manager">
+			The belief manager that handles belief formation and updating across personas. Used in belief-immersed planning architecture.
+		</member>
+		<member name="current_domain" type="PlannerDomain" setter="set_current_domain" getter="get_current_domain">
+			The active [PlannerDomain] in which the [PlannerPlan] is operating.
+		</member>
+		<member name="current_persona" type="PlannerPersona" setter="set_current_persona" getter="get_current_persona">
+			The current persona for ego-centric planning. Used in belief-immersed planning architecture.
+		</member>
+		<member name="max_depth" type="int" setter="set_max_depth" getter="get_max_depth" default="10">
+			The maximum recursion depth to prevent infinite loops during planning. If planning exceeds this depth, it will fail.
+		</member>
+		<member name="max_iterations" type="int" setter="set_max_iterations" getter="get_max_iterations" default="50000">
+			The maximum number of planning loop iterations to prevent infinite loops. The actual limit used is the minimum of (max_depth * 1000) and max_iterations. This provides a safety bound to prevent excessive memory usage even with very high max_depth values.
+		</member>
+		<member name="max_stack_size" type="int" setter="set_max_stack_size" getter="get_max_stack_size" default="10000">
+			The maximum size of the planning stack to prevent excessive memory usage. If the stack grows beyond this size, planning will abort to prevent memory exhaustion.
+		</member>
+		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
+			The verbosity level of the [PlannerPlan]'s output. This is useful for debugging and understanding the plan's execution. Level 0 is off, levels 1 to 3 show increasing verbosity with 3 being the maximum.
+		</member>
+	</members>
+</class>

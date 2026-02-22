@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerBeliefManager" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Manages multiple personas and coordinates belief updates in belief-immersed planning.
+	</brief_description>
+	<description>
+		[PlannerBeliefManager] is the central coordinator for multi-persona planning scenarios. It manages a collection of [PlannerPersona] objects and handles the complex interactions between them, including belief formation, observation processing, and information asymmetry enforcement.
+
+		[b]Belief-Immersed Architecture:[/b]
+		Entities have subjective views ("Beliefs") distinct from objective simulation state ("Facts").
+		- The Manager orchestrates the merging of "Ego-Centric" beliefs (what the agent knows) with "Allocentric" facts (true world state) only when resolving specific sensory commands.
+
+		The belief manager ensures that:
+		- Personas can only access information they're allowed to see based on their capabilities and relationships
+		- Observations are properly distributed to relevant personas
+		- Belief updates are coordinated across the system
+		- Information asymmetry is maintained between personas
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_persona">
+			<return type="PlannerPersona" />
+			<param index="0" name="persona_id" type="String" />
+			<description>
+				Returns the persona with the specified ID. Returns [code]null[/code] if no persona with that ID exists.
+			</description>
+		</method>
+		<method name="get_planner_state">
+			<return type="Dictionary" />
+			<param index="0" name="target_persona_id" type="String" />
+			<param index="1" name="requester_persona_id" type="String" />
+			<description>
+				Returns the planner state of a target persona as visible to a requesting persona. This method enforces information asymmetry - personas can only see what they're allowed to observe about others. The returned dictionary contains triples with appropriate metadata filtering applied.
+			</description>
+		</method>
+		<method name="has_persona" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="persona_id" type="String" />
+			<description>
+				Returns [code]true[/code] if a persona with the specified ID is registered with this belief manager.
+			</description>
+		</method>
+		<method name="process_observation_for_persona">
+			<return type="void" />
+			<param index="0" name="persona_id" type="String" />
+			<param index="1" name="observation" type="Dictionary" />
+			<description>
+				Processes an observation for a specific persona, updating their beliefs accordingly. The observation dictionary should contain information about what the persona observed, which may lead to belief updates about other personas or the world state.
+			</description>
+		</method>
+		<method name="register_persona">
+			<return type="void" />
+			<param index="0" name="persona" type="PlannerPersona" />
+			<description>
+				Registers a persona with the belief manager. The persona will be accessible by its ID and can participate in multi-persona planning scenarios. If a persona with the same ID already exists, it will be replaced.
+			</description>
+		</method>
+	</methods>
+</class>

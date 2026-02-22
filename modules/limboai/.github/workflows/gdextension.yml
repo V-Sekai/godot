@@ -1,0 +1,413 @@
+name: 🔌 GDExtension
+on:
+  workflow_call:
+    inputs:
+      test-build:
+        description: Limit to pre-defined test builds
+        type: boolean
+        default: false
+      debug-symbols:
+        description: Build with debug symbols
+        type: boolean
+        default: false
+
+  workflow_dispatch:
+    inputs:
+      test-build:
+        description: Limit to pre-defined test builds
+        type: boolean
+        default: false
+      debug-symbols:
+        description: Build with debug symbols
+        type: boolean
+        default: false
+
+# Global Settings
+env:
+  SCONS_CACHE_LIMIT: 4096
+  SCONSFLAGS: use_mingw=yes dev_build=no
+  GODOT_REPO: godotengine/godot-builds
+
+jobs:
+  gdextension:
+    runs-on: ${{ matrix.opts.runner }}
+    name: ${{ matrix.opts.name }}
+    outputs:
+      name-prefix: ${{ steps.output-version-vars.outputs.name-prefix }}
+      godot-version: ${{ steps.output-version-vars.outputs.godot-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        opts:
+          - name: 🐧 Linux (x86_64, release)
+            runner: ubuntu-22.04
+            platform: linux
+            target: template_release
+            arch: x86_64
+            should-build: true
+
+          - name: 🐧 Linux (x86_64, debug)
+            runner: ubuntu-22.04
+            platform: linux
+            target: editor
+            arch: x86_64
+            should-build: true
+
+          - name: 🐧 Linux (arm64, release)
+            runner: ubuntu-22.04
+            platform: linux
+            target: template_release
+            arch: arm64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🐧 Linux (arm64, debug)
+            runner: ubuntu-22.04
+            platform: linux
+            target: editor
+            arch: arm64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🪟 Windows (x86_64, release)
+            runner: windows-latest
+            platform: windows
+            target: template_release
+            arch: x86_64
+            should-build: true
+
+          - name: 🪟 Windows (x86_64, debug)
+            runner: windows-latest
+            platform: windows
+            target: editor
+            arch: x86_64
+            should-build: true
+
+          - name: 🍎 macOS (universal, release)
+            runner: macos-latest
+            platform: macos
+            target: template_release
+            arch: universal
+            should-build: true
+
+          - name: 🍎 macOS (universal, debug)
+            runner: macos-latest
+            platform: macos
+            target: editor
+            arch: universal
+            should-build: true
+
+          - name: 🌐 Web (wasm32, threads, release)
+            runner: ubuntu-22.04
+            platform: web
+            target: template_release
+            arch: wasm32
+            threads: yes
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🌐 Web (wasm32, threads, debug)
+            runner: ubuntu-22.04
+            platform: web
+            target: editor
+            arch: wasm32
+            threads: yes
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🌐 Web (wasm32, nothreads, release)
+            runner: ubuntu-22.04
+            platform: web
+            target: template_release
+            arch: wasm32
+            threads: no
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🌐 Web (wasm32, nothreads, debug)
+            runner: ubuntu-22.04
+            platform: web
+            target: editor
+            arch: wasm32
+            threads: no
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (arm64, release)
+            runner: ubuntu-22.04
+            platform: android
+            target: template_release
+            arch: arm64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (arm64, debug)
+            runner: ubuntu-22.04
+            platform: android
+            target: editor
+            arch: arm64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (arm32, release)
+            runner: ubuntu-22.04
+            platform: android
+            target: template_release
+            arch: arm32
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (arm32, debug)
+            runner: ubuntu-22.04
+            platform: android
+            target: editor
+            arch: arm32
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (x86_64, release)
+            runner: ubuntu-22.04
+            platform: android
+            target: template_release
+            arch: x86_64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (x86_64, debug)
+            runner: ubuntu-22.04
+            platform: android
+            target: editor
+            arch: x86_64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (x86_32, release)
+            runner: ubuntu-22.04
+            platform: android
+            target: template_release
+            arch: x86_32
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🤖 Android (x86_32, debug)
+            runner: ubuntu-22.04
+            platform: android
+            target: editor
+            arch: x86_32
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🍏 iOS (arm64, release)
+            runner: macos-latest
+            platform: ios
+            target: template_release
+            arch: arm64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🍏 iOS (arm64, debug)
+            runner: macos-latest
+            platform: ios
+            target: editor
+            arch: arm64
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🍏 iOS (simulator, release)
+            runner: macos-latest
+            platform: ios
+            target: template_release
+            arch: universal
+            scons-flags: ios_simulator=yes
+            should-build: ${{ !inputs.test-build }}
+
+          - name: 🍏 iOS (simulator, debug)
+            runner: macos-latest
+            platform: ios
+            target: editor
+            arch: universal
+            scons-flags: ios_simulator=yes
+            should-build: ${{ !inputs.test-build }}
+
+        exclude:
+          - { opts: { should-build: false } }
+
+    env:
+      BIN: liblimboai.${{matrix.opts.platform}}.${{matrix.opts.target}}.${{matrix.opts.arch}}${{ matrix.opts.threads == 'no' && '.nothreads' || '' }}
+      EM_CACHE_FOLDER: "emsdk-cache"
+
+    steps:
+      - name: Clone LimboAI module
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          ref: ${{ github.ref }}
+
+      # Init version environment variables.
+      - uses: ./.github/actions/init-version
+
+      - name: Clone godot-cpp
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot-cpp
+          fetch-tags: true
+          path: godot-cpp
+          ref: ${{ env.GODOT_CPP_REF }}
+
+      - name: Output version vars
+        id: output-version-vars
+        run: |
+          echo "name-prefix=${NAME_PREFIX}" >> $GITHUB_OUTPUT
+          echo "godot-version=${GODOT_VERSION_FOR_EXPORT}" >> $GITHUB_OUTPUT
+
+      - name: Setup Linux toolchain
+        if: matrix.opts.platform == 'linux'
+        uses: ./.github/actions/setup-linux-toolchain
+        with:
+          arch: ${{matrix.opts.arch}}
+
+      - name: Set up Python 3.x
+        if: matrix.opts.platform == 'windows' || matrix.opts.platform == 'macos'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          architecture: "x64"
+
+      - name: Set up Emscripten cache
+        if: matrix.opts.platform == 'web'
+        uses: actions/cache@v4
+        with:
+          path: ${{env.EM_CACHE_FOLDER}}
+          key: ${{env.EM_VERSION}}-${{runner.os}}-libs
+
+      - name: Set up Emscripten
+        if: matrix.opts.platform == 'web'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{env.EM_VERSION}}
+          actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
+
+      - name: Verify Emscripten setup
+        if: matrix.opts.platform == 'web'
+        run: |
+          emcc -v
+
+      - name: Set up scons
+        if: matrix.opts.platform != 'linux'
+        shell: bash
+        run: |
+          python -c "import sys; print(sys.version)"
+          python -m pip install scons=="${{env.SCONS_VERSION}}"
+          python --version
+          scons --version
+
+      - name: Set up Java 17
+        if: matrix.opts.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: nttld/setup-ndk@v1
+        if: matrix.opts.platform == 'android'
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          link-to-sdk: true
+
+      - name: Set up MSVC problem matcher on Windows
+        if: matrix.opts.platform == 'windows'
+        uses: ammaraskar/msvc-problem-matcher@master
+
+      - name: Set up scons cache
+        if: inputs.test-build # ! Only cache test/PR builds
+        uses: actions/cache@v4
+        with:
+          path: ${{github.workspace}}/.scons_cache/
+          key: ${{env.BIN}}-${{inputs.debug-symbols}}-${{env.GODOT_CPP_REF}}-${{github.ref}}-${{env.LIMBOAI_VERSION}}
+          restore-keys: |
+            ${{env.BIN}}-${{inputs.debug-symbols}}-${{env.GODOT_CPP_REF}}-${{github.ref}}-${{env.LIMBOAI_VERSION}}
+            ${{env.BIN}}-${{inputs.debug-symbols}}-${{env.GODOT_CPP_REF}}-${{github.ref}}
+            ${{env.BIN}}-${{inputs.debug-symbols}}-${{env.GODOT_CPP_REF}}
+
+      - name: Compilation
+        shell: bash
+        env:
+          SCONS_CACHE: ${{github.workspace}}/.scons_cache/
+          DEBUG_FLAGS: ${{ inputs.debug-symbols && 'debug_symbols=yes symbols_visibility=visible' || 'debug_symbols=no' }}
+        run: |
+          PATH=${GITHUB_WORKSPACE}/buildroot/bin:$PATH
+          scons platform=${{matrix.opts.platform}} \
+              target=${{matrix.opts.target}} \
+              arch=${{matrix.opts.arch}} \
+              ${{ matrix.opts.threads == 'no' && 'threads=no' || '' }} \
+              api_version=${{env.GODOT_CPP_API_VERSION}} \
+              ndk_version=${{env.NDK_FULL_VERSION}} \
+              ${{env.DEBUG_FLAGS}} \
+              ${{matrix.opts.scons-flags}} \
+              ${{env.SCONSFLAGS}}
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          ls -R demo/addons/limboai/
+          mkdir out
+          mv demo/addons/ out/
+          cp {README,LICENSE,LOGO_LICENSE}.md out/addons/limboai/
+          cp -R demo/demo/ out/demo/
+          cp demo/LICENSE_ASSETS.md out/demo/
+          rm -f out/addons/limboai/bin/*.{exp,lib,pdb,a}
+          echo "${LIMBOAI_VERSION}" > out/addons/limboai/version.txt
+          echo "---"
+          ls -R out/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        env:
+          NAME: tmp-gdextension.${{matrix.opts.platform}}.${{matrix.opts.target}}.${{matrix.opts.arch}}${{ matrix.opts.threads == 'no' && '.nothreads' || '' }}
+        with:
+          name: ${{ env.NAME }}
+          path: out/*
+
+  package-extension:
+    name: 📦 Package extension
+    runs-on: ubuntu-latest
+    needs: gdextension
+
+    steps:
+      - name: Merge artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          name: ${{needs.gdextension.outputs.name-prefix}}
+          pattern: tmp-gdextension.*
+          delete-merged: true
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{needs.gdextension.outputs.name-prefix}}
+          path: out/
+
+      - name: Setup Godot
+        shell: bash
+        run: |
+          GODOT_VERSION="${{ needs.gdextension.outputs.godot-version }}"
+          echo "Downloading Godot ${GODOT_VERSION}"
+          mkdir bin
+          cd bin
+          wget "https://github.com/${GODOT_REPO}/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" -O godot.zip
+          unzip godot.zip
+          rm godot.zip
+          mv Godot_* godot
+          chmod u+x godot
+          ls -l
+          cd ..
+          ./bin/godot --version
+
+      - name: Generate icon .import files
+        shell: bash
+        run: |
+          touch out/project.godot
+          timeout 20s ./bin/godot --headless --editor --path ./out/ || /bin/true
+          rm out/project.godot
+          rm -rf out/.godot/
+
+      - name: Change editor icon import settings
+        shell: bash
+        run: |
+          echo "--- Listing icons dir:"
+          ls out/addons/limboai/icons/
+          echo "--- (end of listing)"
+          sed -i 's|editor/scale_with_editor_scale=false|editor/scale_with_editor_scale=true|' out/addons/limboai/icons/*.import
+          sed -i 's|editor/convert_colors_with_editor_theme=false|editor/convert_colors_with_editor_theme=true|' out/addons/limboai/icons/*.import
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{needs.gdextension.outputs.name-prefix}}
+          path: out/*
+          overwrite: true
