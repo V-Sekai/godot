@@ -38,6 +38,8 @@
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
 
+class Blackboard;
+
 struct KnowledgeTriple {
 	String predicate;
 	String subject;
@@ -51,7 +53,7 @@ struct KnowledgeTriple {
 class PlannerState : public Resource {
 	GDCLASS(PlannerState, Resource);
 
-	Vector<KnowledgeTriple> triples;
+	Ref<Blackboard> blackboard;
 
 protected:
 	static void _bind_methods();
@@ -60,11 +62,17 @@ public:
 	PlannerState();
 	~PlannerState();
 
-	// Triple-based knowledge representation
+	void set_blackboard(const Ref<Blackboard> &p_blackboard);
+	Ref<Blackboard> get_blackboard() const;
+
+	Dictionary to_plan_dictionary() const;
+	void apply_plan_state(const Dictionary &p_state);
+
+	// Triple-based knowledge representation (backed by Blackboard)
 	Variant get_predicate(const String &p_subject, const String &p_predicate) const;
 	void set_predicate(const String &p_subject, const String &p_predicate, const Variant &p_value, const Dictionary &p_metadata = Dictionary());
 	TypedArray<Dictionary> get_triples_as_array() const;
-	const Vector<KnowledgeTriple> &get_triples() const { return triples; }
+	Vector<KnowledgeTriple> get_triples() const;
 
 	// Legacy Dictionary-based interface for backward compatibility
 	TypedArray<String> get_subject_predicate_list() const;

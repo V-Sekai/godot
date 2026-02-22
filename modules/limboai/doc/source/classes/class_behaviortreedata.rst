@@ -10,7 +10,7 @@
 BehaviorTreeData
 ================
 
-**Inherits:** 
+**Inherits:**
 
 Represents current state of a :ref:`BehaviorTree<class_BehaviorTree>` instance.
 

@@ -10,7 +10,7 @@
 LimboState
 ==========
 
-**Inherits:** 
+**Inherits:**
 
 **Inherited By:** :ref:`BTState<class_BTState>`, :ref:`LimboHSM<class_LimboHSM>`
 

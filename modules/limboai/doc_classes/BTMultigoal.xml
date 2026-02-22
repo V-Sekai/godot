@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BTMultigoal" inherits="BTAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Adds a multigoal (array of goals) to the todo list and runs the planner.
+	</brief_description>
+	<description>
+		Uses [member goals] or blackboard variable [member goals_var] as the multigoal. Sets the todo list to that multigoal, runs [method PlannerPlan.find_plan], and on success writes the plan to the blackboard. Does not modify state directly; execution is via [BTExecutePlan]. Aligns with [PlannerMultigoal].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="goals" type="Array" setter="set_goals" getter="get_goals" default="[]">
+			Array of unigoals (each unigoal: predicate, subject, value).
+		</member>
+		<member name="goals_var" type="StringName" setter="set_goals_var" getter="get_goals_var" default="&amp;&quot;goals&quot;">
+			Blackboard variable for the multigoal array; overrides [member goals] if set.
+		</member>
+		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
+			The [PlannerPlan] to use.
+		</member>
+		<member name="planner_state" type="PlannerState" setter="set_planner_state" getter="get_planner_state">
+			Optional [PlannerState] bound to the blackboard.
+		</member>
+		<member name="todo_list_var" type="StringName" setter="set_todo_list_var" getter="get_todo_list_var" default="&amp;&quot;todo_list&quot;">
+			Blackboard variable for the todo list.
+		</member>
+	</members>
+</class>

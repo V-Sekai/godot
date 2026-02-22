@@ -10,7 +10,7 @@
 BehaviorTree
 ============
 
-**Inherits:** 
+**Inherits:**
 
 Contains Behavior Tree data.
 

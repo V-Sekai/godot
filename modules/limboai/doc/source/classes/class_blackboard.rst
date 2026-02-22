@@ -10,7 +10,7 @@
 Blackboard
 ==========
 
-**Inherits:** 
+**Inherits:**
 
 A key/value storage for sharing among :ref:`LimboHSM<class_LimboHSM>` states and :ref:`BehaviorTree<class_BehaviorTree>` tasks.
 

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BTCommand" inherits="BTAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Runs a single planner command by name and args and writes the plan to the blackboard.
+	</brief_description>
+	<description>
+		Invokes domain command with state from blackboard. Args from node or args_var.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="args_var" type="StringName" setter="set_args_var" getter="get_args_var" default="&amp;&quot;command_args&quot;">
+			Blackboard variable for command args.
+		</member>
+		<member name="command_args" type="Array" setter="set_command_args" getter="get_command_args" default="[]">
+			Default command arguments.
+		</member>
+		<member name="command_name" type="String" setter="set_command_name" getter="get_command_name" default="&quot;&quot;">
+			Name of the domain command.
+		</member>
+		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
+			The [PlannerPlan] to use.
+		</member>
+		<member name="planner_state" type="PlannerState" setter="set_planner_state" getter="get_planner_state">
+			Optional [PlannerState] bound to the blackboard.
+		</member>
+	</members>
+</class>

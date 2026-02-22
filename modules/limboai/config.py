@@ -120,4 +120,10 @@ def get_doc_classes():
         "PlannerPlan",
         "PlannerResult",
         "PlannerState",
+        "BTRunPlanner",
+        "BTExecutePlan",
+        "BTCommand",
+        "BTCompoundTask",
+        "BTGoal",
+        "BTMultigoal",
     ]

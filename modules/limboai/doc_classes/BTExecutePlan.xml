@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BTExecutePlan" inherits="BTAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Executes one step of the plan and writes the plan to the blackboard.
+	</brief_description>
+	<description>
+		Reads plan and plan_index from blackboard, runs current command, applies state. Returns RUNNING/SUCCESS/FAILURE.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="plan_index_var" type="StringName" setter="set_plan_index_var" getter="get_plan_index_var" default="&amp;&quot;plan_index&quot;">
+			Blackboard variable for current step index.
+		</member>
+		<member name="plan_var" type="StringName" setter="set_plan_var" getter="get_plan_var" default="&amp;&quot;plan&quot;">
+			Blackboard variable for the plan array.
+		</member>
+		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
+			The [PlannerPlan] to use.
+		</member>
+		<member name="planner_state" type="PlannerState" setter="set_planner_state" getter="get_planner_state">
+			Optional [PlannerState] bound to the blackboard.
+		</member>
+	</members>
+</class>

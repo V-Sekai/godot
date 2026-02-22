@@ -10,7 +10,7 @@
 BTInstance
 ==========
 
-**Inherits:** 
+**Inherits:**
 
 Represents a runtime instance of a :ref:`BehaviorTree<class_BehaviorTree>` resource.
 

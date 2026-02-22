@@ -25,6 +25,8 @@
 		- [code]accessibility[/code]: "public", "private", or "restricted"
 
 		This unified representation enables belief-immersed planning where different personas can have different beliefs about the same facts, with information asymmetry enforced through metadata filtering. The [PlannerState] API provides semantic accessors ([method get_predicate], [method set_predicate]) abstracting the internal storage.
+
+		[b]LimboAI Blackboard backend:[/b] [PlannerState] uses a [Blackboard] as its only backing store (no in-memory triple storage). You must call [method set_blackboard] with the same Blackboard used by your [BTPlayer] so that plan state is read and written correctly. When the blackboard is null, getters return default/empty and setters no-op. Use [method to_plan_dictionary] to build the state dictionary for [method PlannerPlan.find_plan], and [method apply_plan_state] to write the planner's final state back to the Blackboard.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -43,6 +45,13 @@
 			<param index="1" name="object_data" type="Dictionary" />
 			<description>
 				Adds a shared object that can be observed by all personas.
+			</description>
+		</method>
+		<method name="apply_plan_state">
+			<return type="void" />
+			<param index="0" name="state" type="Dictionary" />
+			<description>
+				Writes the planner's final state dictionary back into the Blackboard. No-op if blackboard is null.
 			</description>
 		</method>
 		<method name="clear_allocentric_facts">
@@ -129,6 +138,12 @@
 			<param index="1" name="target" type="String" />
 			<description>
 				Returns all beliefs held by a persona about a specific target, organized by predicate.
+			</description>
+		</method>
+		<method name="get_blackboard" qualifiers="const">
+			<return type="Blackboard" />
+			<description>
+				Returns the Blackboard used as backing store. Returns null if not set.
 			</description>
 		</method>
 		<method name="get_entity_capabilities" qualifiers="const">
@@ -319,6 +334,13 @@
 				Sets a belief held by a persona about a target. The metadata should include confidence and timestamp information.
 			</description>
 		</method>
+		<method name="set_blackboard">
+			<return type="void" />
+			<param index="0" name="blackboard" type="Blackboard" />
+			<description>
+				Sets the Blackboard as the only backing store for triples. Required for normal use; use the same Blackboard as your BTPlayer.
+			</description>
+		</method>
 		<method name="set_entity_capability">
 			<return type="void" />
 			<param index="0" name="entity_id" type="String" />
@@ -362,6 +384,12 @@
 			<param index="2" name="value" type="Variant" />
 			<description>
 				Sets a terrain fact for a location. Terrain facts are allocentric (shared) knowledge about the environment.
+			</description>
+		</method>
+		<method name="to_plan_dictionary" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Builds the nested Dictionary expected by [method PlannerPlan.find_plan] from the Blackboard. Returns empty Dictionary when blackboard is null.
 			</description>
 		</method>
 		<method name="update_belief_confidence">

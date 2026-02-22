@@ -19,7 +19,7 @@ BT composite that executes all of its child tasks simultaneously.
 Description
 -----------
 
-BTParallel executes all of its child tasks simultaneously. Note that BTParallel doesn't involve multithreading. It processes each task sequentially, from first to last, in the same tick before returning a result. If one of the abort criterea is met, any tasks currently ``RUNNING`` will be terminated, and the result will be either ``FAILURE`` or ``SUCCESS``. The :ref:`num_failures_required<class_BTParallel_property_num_failures_required>` determines when BTParallel fails and :ref:`num_successes_required<class_BTParallel_property_num_successes_required>` when it succeeds. When both are fullfilled, it gives priority to :ref:`num_failures_required<class_BTParallel_property_num_failures_required>`.
+BTParallel executes all of its child tasks simultaneously. Note that BTParallel doesn't involve multithreading. It processes each task sequentially, from first to last, in the same tick before returning a result. If one of the abort criteria is met, any tasks currently ``RUNNING`` will be terminated, and the result will be either ``FAILURE`` or ``SUCCESS``. The :ref:`num_failures_required<class_BTParallel_property_num_failures_required>` determines when BTParallel fails and :ref:`num_successes_required<class_BTParallel_property_num_successes_required>` when it succeeds. When both are fulfilled, it gives priority to :ref:`num_failures_required<class_BTParallel_property_num_failures_required>`.
 
 If set to :ref:`repeat<class_BTParallel_property_repeat>`, all child tasks will be re-executed each tick, regardless of whether they previously resulted in ``SUCCESS`` or ``FAILURE``.
 
@@ -27,7 +27,7 @@ Returns ``FAILURE`` when the required number of child tasks result in ``FAILURE`
 
 Returns ``SUCCESS`` when the required number of child tasks result in ``SUCCESS``.
 
-Returns ``RUNNING`` if none of the criterea were fulfilled, and either :ref:`repeat<class_BTParallel_property_repeat>` is set to ``true`` or a child task resulted in ``RUNNING``.
+Returns ``RUNNING`` if none of the criteria were fulfilled, and either :ref:`repeat<class_BTParallel_property_repeat>` is set to ``true`` or a child task resulted in ``RUNNING``.
 
 .. rst-class:: classref-reftable-group
 

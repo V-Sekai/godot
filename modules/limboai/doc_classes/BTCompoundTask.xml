@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BTCompoundTask" inherits="BTAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Sets todo to a compound task and runs the planner and writes the plan to the blackboard.
+	</brief_description>
+	<description>
+		Sets todo_list to task_name + task_args, runs find_plan, writes plan to blackboard. Execute via BTExecutePlan.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
+			The [PlannerPlan] to use.
+		</member>
+		<member name="planner_state" type="PlannerState" setter="set_planner_state" getter="get_planner_state">
+			Optional [PlannerState] bound to the blackboard.
+		</member>
+		<member name="task_args" type="Array" setter="set_task_args" getter="get_task_args" default="[]">
+			Task arguments.
+		</member>
+		<member name="task_name" type="String" setter="set_task_name" getter="get_task_name" default="&quot;Compound Task&quot;">
+			Compound task name.
+		</member>
+		<member name="todo_list_var" type="StringName" setter="set_todo_list_var" getter="get_todo_list_var" default="&amp;&quot;todo_list&quot;">
+			Blackboard variable for todo list.
+		</member>
+	</members>
+</class>

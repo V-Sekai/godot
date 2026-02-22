@@ -69,8 +69,6 @@ def generate_module_version_header():
 #define LIMBOAI_VERSION_DOC_URL "https://limboai.readthedocs.io/en/" LIMBOAI_VERSION_DOC_BRANCH "/"
 
 #endif // LIMBOAI_VERSION_GEN_H
-""".format(
-            **version_info
-        )
+""".format(**version_info)
     )
     f.close()

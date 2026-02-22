@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BTRunPlanner" inherits="BTAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Runs the temporal goal task planner and writes the plan to the blackboard.
+	</brief_description>
+	<description>
+		Reads state from the Blackboard (via optional PlannerState), gets the todo list from [member todo_list_var], and calls PlannerPlan.find_plan. On success writes plan, plan_index, and solution_graph to the blackboard.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
+			The [PlannerPlan] to use.
+		</member>
+		<member name="planner_state" type="PlannerState" setter="set_planner_state" getter="get_planner_state">
+			Optional [PlannerState] bound to the blackboard.
+		</member>
+		<member name="todo_list_var" type="StringName" setter="set_todo_list_var" getter="get_todo_list_var" default="&amp;&quot;todo_list&quot;">
+			Blackboard variable name for the todo list.
+		</member>
+	</members>
+</class>

@@ -31,13 +31,13 @@ Note: BTSubTree is designed as a simpler loader, and does not support updating :
 
    extends BTDecorator
    ## MyCustomBranch
-   
+
    func _setup() -> void:
        var bt: BehaviorTree = load("res://...")
        var my_branch: BTTask = bt.get_root_task().clone()
        my_branch.initialize(agent, blackboard)
        add_child(my_branch)
-   
+
    func _tick(delta) -> Status:
        var child: BTTask = get_child(0)
        return child.execute(delta)

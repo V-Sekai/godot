@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  behavior_tree_data.cpp                                                */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 /**
  * behavior_tree_data.cpp
  * =============================================================================
@@ -49,6 +79,7 @@ Array BehaviorTreeData::serialize(const Ref<BTInstance> &p_instance) {
 		arr.push_back(task->get_elapsed_time());
 		arr.push_back(task->get_class());
 		arr.push_back(script_path);
+		arr.push_back(task->get_debug_plan_detail());
 	}
 
 	return arr;
@@ -67,7 +98,7 @@ Ref<BehaviorTreeData> BehaviorTreeData::deserialize(const Array &p_array) {
 
 	int idx = 3;
 	while (p_array.size() > idx + 1) {
-		ERR_FAIL_COND_V(p_array.size() < idx + 7, nullptr);
+		ERR_FAIL_COND_V(p_array.size() < idx + 8, nullptr);
 		ERR_FAIL_COND_V(p_array[idx].get_type() != Variant::INT, nullptr);
 		ERR_FAIL_COND_V(p_array[idx + 1].get_type() != Variant::STRING, nullptr);
 		ERR_FAIL_COND_V(p_array[idx + 2].get_type() != Variant::BOOL, nullptr);
@@ -76,8 +107,12 @@ Ref<BehaviorTreeData> BehaviorTreeData::deserialize(const Array &p_array) {
 		ERR_FAIL_COND_V(p_array[idx + 5].get_type() != Variant::FLOAT, nullptr);
 		ERR_FAIL_COND_V(p_array[idx + 6].get_type() != Variant::STRING, nullptr);
 		ERR_FAIL_COND_V(p_array[idx + 7].get_type() != Variant::STRING, nullptr);
-		data->tasks.push_back(TaskData(p_array[idx], p_array[idx + 1], p_array[idx + 2], p_array[idx + 3], p_array[idx + 4], p_array[idx + 5], p_array[idx + 6], p_array[idx + 7]));
-		idx += 8;
+		Dictionary debug_detail;
+		if (p_array.size() > idx + 8 && p_array[idx + 8].get_type() == Variant::DICTIONARY) {
+			debug_detail = p_array[idx + 8];
+		}
+		data->tasks.push_back(TaskData(p_array[idx], p_array[idx + 1], p_array[idx + 2], p_array[idx + 3], p_array[idx + 4], p_array[idx + 5], p_array[idx + 6], p_array[idx + 7], debug_detail));
+		idx += 9;
 	}
 
 	return data;
@@ -118,7 +153,8 @@ Ref<BehaviorTreeData> BehaviorTreeData::create_from_bt_instance(const Ref<BTInst
 				task->get_status(),
 				task->get_elapsed_time(),
 				task->get_class(),
-				script_path));
+				script_path,
+				task->get_debug_plan_detail()));
 	}
 	return data;
 }

@@ -1595,6 +1595,8 @@
 			The [JavaScriptBridge] singleton.
 			[b]Note:[/b] Only implemented on the Web platform.
 		</member>
+		<member name="LimboUtility" type="LimboUtility" setter="" getter="">
+		</member>
 		<member name="Marshalls" type="Marshalls" setter="" getter="">
 			The [Marshalls] singleton.
 		</member>

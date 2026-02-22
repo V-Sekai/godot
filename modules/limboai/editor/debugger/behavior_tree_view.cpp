@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  behavior_tree_view.cpp                                                */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 /**
  * behavior_tree_view.cpp
  * =============================================================================
@@ -224,10 +254,73 @@ void BehaviorTreeView::_update_tree(const Ref<BehaviorTreeData> &p_data) {
 				item->set_collapsed(true);
 			}
 
+			if (task_data.debug_plan_detail.size() > 0) {
+				_add_debug_plan_children(item, task_data.debug_plan_detail);
+			}
+
 			// Add in front of parents stack if children are expected.
 			if (task_data.num_children) {
 				parents.push_front(Pair<TreeItem *, int>(item, task_data.num_children));
 			}
+		}
+	}
+}
+
+void BehaviorTreeView::_add_debug_plan_children(TreeItem *p_item, const Dictionary &p_detail) {
+	if (p_detail.has("plan")) {
+		Array plan = p_detail["plan"];
+		int plan_index = p_detail.get("plan_index", 0);
+		TreeItem *plan_row = tree->create_item(p_item);
+		plan_row->set_metadata(0, 0);
+		plan_row->set_text(0, vformat("Plan (%d steps, current: %d)", plan.size(), plan_index));
+		for (int i = 0; i < plan.size(); i++) {
+			TreeItem *step_row = tree->create_item(plan_row);
+			step_row->set_metadata(0, 0);
+			Variant step = plan[i];
+			String step_str;
+			if (step.get_type() == Variant::ARRAY) {
+				Array arr = step;
+				step_str = String("Step ") + itos(i) + ": " + (arr.size() > 0 ? String(arr[0]) : "");
+				for (int j = 1; j < arr.size(); j++) {
+					step_str += " " + String(arr[j]);
+				}
+			} else if (step.get_type() == Variant::DICTIONARY) {
+				Dictionary d = step;
+				step_str = "Step " + itos(i) + ": " + (d.has("item") ? String(d["item"]) : String(step));
+			} else {
+				step_str = "Step " + itos(i) + ": " + String(step);
+			}
+			step_row->set_text(0, step_str);
+		}
+	}
+	if (p_detail.has("solution_graph")) {
+		Dictionary graph = p_detail["solution_graph"];
+		TreeItem *graph_row = tree->create_item(p_item);
+		graph_row->set_metadata(0, 0);
+		Variant graph_val = p_detail["solution_graph"];
+		if (graph_val.get_type() == Variant::DICTIONARY) {
+			Dictionary graph_dict = graph_val;
+			Array keys = graph_dict.keys();
+			graph_row->set_text(0, vformat("Solution graph (%d nodes)", keys.size()));
+			for (int i = 0; i < keys.size(); i++) {
+				Variant k = keys[i];
+				TreeItem *node_row = tree->create_item(graph_row);
+				node_row->set_metadata(0, 0);
+				Variant node_v = graph_dict[k];
+				String node_str = "Node " + String(k);
+				if (node_v.get_type() == Variant::DICTIONARY) {
+					Dictionary node = node_v;
+					if (node.has("type")) {
+						node_str += " type=" + String(node["type"]);
+					}
+					if (node.has("info")) {
+						node_str += " " + String(node["info"]);
+					}
+				}
+				node_row->set_text(0, node_str);
+			}
+		} else {
+			graph_row->set_text(0, "Solution graph");
 		}
 	}
 }

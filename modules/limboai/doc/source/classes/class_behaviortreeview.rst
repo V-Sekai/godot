@@ -10,7 +10,7 @@
 BehaviorTreeView
 ================
 
-**Inherits:** 
+**Inherits:**
 
 Visualizes the current state of a :ref:`BehaviorTree<class_BehaviorTree>` instance.
 

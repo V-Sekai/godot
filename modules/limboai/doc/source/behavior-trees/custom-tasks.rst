@@ -188,4 +188,3 @@ You can use the following script template for custom tasks:
             return Array.Empty<string>();
         }
     }
-

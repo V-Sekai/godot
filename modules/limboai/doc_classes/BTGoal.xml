@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BTGoal" inherits="BTAction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Adds a single goal (unigoal) to the todo list and runs the planner.
+	</brief_description>
+	<description>
+		Builds a unigoal from [member predicate], [member subject], and [member value] (or from blackboard [member goal_var] if set). Sets the todo list to that goal, runs [method PlannerPlan.find_plan], and on success writes the plan to the blackboard. Does not modify state directly; execution is via [BTExecutePlan].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="goal_var" type="StringName" setter="set_goal_var" getter="get_goal_var" default="&amp;&quot;goal&quot;">
+			Blackboard variable for goal (Array of predicate, subject, value); overrides the node properties if set.
+		</member>
+		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
+			The [PlannerPlan] to use.
+		</member>
+		<member name="planner_state" type="PlannerState" setter="set_planner_state" getter="get_planner_state">
+			Optional [PlannerState] bound to the blackboard.
+		</member>
+		<member name="predicate" type="String" setter="set_predicate" getter="get_predicate" default="&quot;&quot;">
+			Goal predicate.
+		</member>
+		<member name="subject" type="String" setter="set_subject" getter="get_subject" default="&quot;&quot;">
+			Goal subject.
+		</member>
+		<member name="value" type="Variant" setter="set_value" getter="get_value" default="null">
+			Goal value.
+		</member>
+	</members>
+</class>
