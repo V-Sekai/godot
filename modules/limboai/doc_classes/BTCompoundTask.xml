@@ -4,11 +4,14 @@
 		Sets todo to a compound task and runs the planner and writes the plan to the blackboard.
 	</brief_description>
 	<description>
-		Sets todo_list to task_name + task_args, runs find_plan, writes plan to blackboard. Execute via BTExecutePlan.
+		Sets todo_list to [member compound_task_name] plus [member task_args], runs find_plan, writes plan to blackboard. Execute via [BTExecutePlan].
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
+		<member name="compound_task_name" type="String" setter="set_compound_task_name" getter="get_compound_task_name" default="&quot;&quot;">
+			Domain compound task name (identifier).
+		</member>
 		<member name="planner_plan" type="PlannerPlan" setter="set_planner_plan" getter="get_planner_plan">
 			The [PlannerPlan] to use.
 		</member>
@@ -17,9 +20,6 @@
 		</member>
 		<member name="task_args" type="Array" setter="set_task_args" getter="get_task_args" default="[]">
 			Task arguments.
-		</member>
-		<member name="task_name" type="String" setter="set_task_name" getter="get_task_name" default="&quot;Compound Task&quot;">
-			Compound task name.
 		</member>
 		<member name="todo_list_var" type="StringName" setter="set_todo_list_var" getter="get_todo_list_var" default="&amp;&quot;todo_list&quot;">
 			Blackboard variable for todo list.

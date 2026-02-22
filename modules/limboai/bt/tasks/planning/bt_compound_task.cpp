@@ -40,15 +40,15 @@ void BTCompoundTask::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_planner_plan"), &BTCompoundTask::get_planner_plan);
 	ClassDB::bind_method(D_METHOD("set_planner_state", "state"), &BTCompoundTask::set_planner_state);
 	ClassDB::bind_method(D_METHOD("get_planner_state"), &BTCompoundTask::get_planner_state);
-	ClassDB::bind_method(D_METHOD("set_task_name", "name"), &BTCompoundTask::set_task_name);
-	ClassDB::bind_method(D_METHOD("get_task_name"), &BTCompoundTask::get_task_name);
+	ClassDB::bind_method(D_METHOD("set_compound_task_name", "name"), &BTCompoundTask::set_compound_task_name);
+	ClassDB::bind_method(D_METHOD("get_compound_task_name"), &BTCompoundTask::get_compound_task_name);
 	ClassDB::bind_method(D_METHOD("set_task_args", "args"), &BTCompoundTask::set_task_args);
 	ClassDB::bind_method(D_METHOD("get_task_args"), &BTCompoundTask::get_task_args);
 	ClassDB::bind_method(D_METHOD("set_todo_list_var", "var"), &BTCompoundTask::set_todo_list_var);
 	ClassDB::bind_method(D_METHOD("get_todo_list_var"), &BTCompoundTask::get_todo_list_var);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "planner_plan", PROPERTY_HINT_RESOURCE_TYPE, "PlannerPlan"), "set_planner_plan", "get_planner_plan");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "planner_state", PROPERTY_HINT_RESOURCE_TYPE, "PlannerState"), "set_planner_state", "get_planner_state");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "task_name"), "set_task_name", "get_task_name");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "compound_task_name"), "set_compound_task_name", "get_compound_task_name");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "task_args"), "set_task_args", "get_task_args");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "todo_list_var"), "set_todo_list_var", "get_todo_list_var");
 }
@@ -65,8 +65,8 @@ void BTCompoundTask::set_planner_state(const Ref<PlannerState> &p_state) {
 	planner_state = p_state;
 	emit_changed();
 }
-void BTCompoundTask::set_task_name(const String &p_name) {
-	task_name = p_name;
+void BTCompoundTask::set_compound_task_name(const String &p_name) {
+	compound_task_name = p_name;
 	emit_changed();
 }
 void BTCompoundTask::set_task_args(const Array &p_args) {
@@ -82,13 +82,13 @@ PackedStringArray BTCompoundTask::get_configuration_warnings() {
 	PackedStringArray w = BTAction::get_configuration_warnings();
 	if (planner_plan.is_null())
 		w.append("PlannerPlan is not set.");
-	if (task_name.is_empty())
-		w.append("Task name is not set.");
+	if (compound_task_name.is_empty())
+		w.append("Compound task name is not set.");
 	return w;
 }
 
 String BTCompoundTask::_generate_name() {
-	return task_name.is_empty() ? "Compound Task" : String("Task: ") + task_name;
+	return compound_task_name.is_empty() ? "Compound Task" : String("Task: ") + compound_task_name;
 }
 
 BTTask::Status BTCompoundTask::_tick(double p_delta) {
@@ -107,7 +107,7 @@ BTTask::Status BTCompoundTask::_tick(double p_delta) {
 		state->set_blackboard(bb);
 	}
 	Array todo_list;
-	todo_list.push_back(task_name);
+	todo_list.push_back(compound_task_name);
 	todo_list.append_array(task_args);
 	Dictionary state_dict = state->to_plan_dictionary();
 	Ref<PlannerResult> result = planner_plan->find_plan(state_dict, todo_list);

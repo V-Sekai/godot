@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#pragma once
+
 /**
  * test_bt_player.h
  * =============================================================================
@@ -38,8 +40,6 @@
  * https://opensource.org/licenses/MIT.
  * =============================================================================
  */
-
-#pragma once
 
 #include "lambda_callable.h"
 #include "limbo_test.h"

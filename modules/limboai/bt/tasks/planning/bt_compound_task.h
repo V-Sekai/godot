@@ -42,7 +42,7 @@ class BTCompoundTask : public BTAction {
 private:
 	Ref<PlannerPlan> planner_plan;
 	Ref<PlannerState> planner_state;
-	String task_name;
+	String compound_task_name;
 	Array task_args;
 	StringName todo_list_var;
 
@@ -57,8 +57,8 @@ public:
 	Ref<PlannerPlan> get_planner_plan() const { return planner_plan; }
 	void set_planner_state(const Ref<PlannerState> &p_state);
 	Ref<PlannerState> get_planner_state() const { return planner_state; }
-	void set_task_name(const String &p_name);
-	String get_task_name() const { return task_name; }
+	void set_compound_task_name(const String &p_name);
+	String get_compound_task_name() const { return compound_task_name; }
 	void set_task_args(const Array &p_args);
 	Array get_task_args() const { return task_args; }
 	void set_todo_list_var(const StringName &p_var);

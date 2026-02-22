@@ -32,7 +32,7 @@ def _git_hash(short: bool = False):
             cmd = ["git", "rev-parse", "HEAD"]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         ret = proc.communicate()[0].strip().decode("utf-8")
-    except:
+    except Exception:
         pass
     return ret
 
