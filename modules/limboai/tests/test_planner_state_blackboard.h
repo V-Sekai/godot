@@ -100,6 +100,17 @@ TEST_CASE("[Modules][LimboAI][Planner] PlannerState with Blackboard - set/get an
 		int found = 0;
 		for (int i = 0; i < triples.size(); i++) {
 			Dictionary t = triples[i];
+			// Canonical key order: predicate, subject, object, metadata.
+			CHECK(t.has("predicate"));
+			CHECK(t.has("subject"));
+			CHECK(t.has("object"));
+			CHECK(t.has("metadata"));
+			Array keys = t.keys();
+			CHECK(keys.size() >= 4);
+			CHECK(keys[0] == Variant("predicate"));
+			CHECK(keys[1] == Variant("subject"));
+			CHECK(keys[2] == Variant("object"));
+			CHECK(keys[3] == Variant("metadata"));
 			String subj = t["subject"];
 			String pred = t["predicate"];
 			Variant obj = t["object"];

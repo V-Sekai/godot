@@ -215,7 +215,7 @@
 		<method name="get_triples_as_array" qualifiers="const">
 			<return type="Dictionary[]" />
 			<description>
-				Returns all knowledge triples as an array of dictionaries, where each dictionary contains "subject", "predicate", "object", and "metadata" keys.
+				Returns all knowledge triples as an array of dictionaries. Each dictionary uses the canonical key order: [code]predicate[/code], [code]subject[/code], [code]object[/code], [code]metadata[/code].
 			</description>
 		</method>
 		<method name="has_entity" qualifiers="const">

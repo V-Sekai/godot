@@ -34,6 +34,7 @@
 #include "core/error/error_macros.h"
 #include "core/object/class_db.h"
 #include "core/os/os.h"
+#include "core/templates/local_vector.h"
 #include "core/templates/vector.h"
 #include "core/variant/variant.h"
 
@@ -69,15 +70,19 @@ static void set_meta_sub(const Ref<Blackboard> &bb, const StringName &sub_key, c
 	bb->set_var(_BB_PLANNER_METADATA, meta);
 }
 
-struct KnowledgeTriple {
-	String predicate;
+struct TripleEntry {
 	String subject;
+	String predicate;
 	Variant object;
 	Dictionary metadata;
 };
 
-Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
-	Vector<KnowledgeTriple> result;
+static void push_triple(LocalVector<TripleEntry> &result, const String &subject, const String &predicate, const Variant &object, const Dictionary &metadata) {
+	result.push_back({ subject, predicate, object, metadata });
+}
+
+static LocalVector<TripleEntry> collect_triples(const PlannerState *state) {
+	LocalVector<TripleEntry> result;
 	Ref<Blackboard> blackboard = state->get_blackboard();
 	if (!blackboard.is_valid()) {
 		return result;
@@ -100,12 +105,7 @@ Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
 		for (int j = 0; j < subj_keys.size(); j++) {
 			Variant subj = subj_keys[j];
 			String subj_str = subj;
-			KnowledgeTriple t;
-			t.predicate = String(k);
-			t.subject = subj_str;
-			t.object = dict[subj];
-			t.metadata = pred_meta.has(subj_str) ? Dictionary(pred_meta[subj_str]) : Dictionary();
-			result.push_back(t);
+			push_triple(result, subj_str, String(k), dict[subj], pred_meta.has(subj_str) ? Dictionary(pred_meta[subj_str]) : Dictionary());
 		}
 	}
 	// Entity capabilities (state)
@@ -117,13 +117,10 @@ Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
 		Array cap_keys = caps.keys();
 		for (int j = 0; j < cap_keys.size(); j++) {
 			String cap = cap_keys[j];
-			KnowledgeTriple t;
-			t.subject = "entity_" + eid;
-			t.predicate = "capability_" + cap;
-			t.object = caps[cap];
-			t.metadata["type"] = "state";
-			t.metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
-			result.push_back(t);
+			Dictionary meta;
+			meta["type"] = "state";
+			meta["timestamp"] = OS::get_singleton()->get_ticks_usec();
+			push_triple(result, "entity_" + eid, "capability_" + cap, caps[cap], meta);
 		}
 	}
 	// Entity capabilities (public/fact) — stored under planner_metadata
@@ -135,13 +132,10 @@ Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
 		Array cap_keys = caps.keys();
 		for (int j = 0; j < cap_keys.size(); j++) {
 			String cap = cap_keys[j];
-			KnowledgeTriple t;
-			t.subject = "entity_" + eid;
-			t.predicate = "capability_" + cap;
-			t.object = caps[cap];
-			t.metadata["type"] = "fact";
-			t.metadata["accessibility"] = "public";
-			result.push_back(t);
+			Dictionary meta;
+			meta["type"] = "fact";
+			meta["accessibility"] = "public";
+			push_triple(result, "entity_" + eid, "capability_" + cap, caps[cap], meta);
 		}
 	}
 	// Terrain facts
@@ -152,51 +146,39 @@ Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
 		Dictionary facts = terrain[keys[i]];
 		Array fk = facts.keys();
 		for (int j = 0; j < fk.size(); j++) {
-			KnowledgeTriple t;
-			t.subject = "terrain_" + loc;
-			t.predicate = fk[j];
-			t.object = facts[fk[j]];
-			t.metadata["type"] = "fact";
-			t.metadata["source"] = "allocentric";
-			t.metadata["accessibility"] = "public";
-			result.push_back(t);
+			Dictionary meta;
+			meta["type"] = "fact";
+			meta["source"] = "allocentric";
+			meta["accessibility"] = "public";
+			push_triple(result, "terrain_" + loc, String(fk[j]), facts[fk[j]], meta);
 		}
 	}
 	// Shared objects
 	Dictionary shared = get_meta_sub(blackboard, _META_SHARED_OBJECTS);
 	keys = shared.keys();
 	for (int i = 0; i < keys.size(); i++) {
-		KnowledgeTriple t;
-		t.subject = "shared_object_" + String(keys[i]);
-		t.predicate = "data";
-		t.object = shared[keys[i]];
-		t.metadata["type"] = "fact";
-		t.metadata["accessibility"] = "public";
-		result.push_back(t);
+		Dictionary meta;
+		meta["type"] = "fact";
+		meta["accessibility"] = "public";
+		push_triple(result, "shared_object_" + String(keys[i]), "data", shared[keys[i]], meta);
 	}
 	// Public events
 	Dictionary events = get_meta_sub(blackboard, _META_PUBLIC_EVENTS);
 	keys = events.keys();
 	for (int i = 0; i < keys.size(); i++) {
-		KnowledgeTriple t;
-		t.subject = "public_event_" + String(keys[i]);
-		t.predicate = "data";
-		t.object = events[keys[i]];
-		t.metadata["type"] = "fact";
-		t.metadata["accessibility"] = "public";
-		result.push_back(t);
+		Dictionary meta;
+		meta["type"] = "fact";
+		meta["accessibility"] = "public";
+		push_triple(result, "public_event_" + String(keys[i]), "data", events[keys[i]], meta);
 	}
 	// Entity positions
 	Dictionary positions = get_meta_sub(blackboard, _META_ENTITY_POSITIONS);
 	keys = positions.keys();
 	for (int i = 0; i < keys.size(); i++) {
-		KnowledgeTriple t;
-		t.subject = "entity_" + String(keys[i]);
-		t.predicate = "position";
-		t.object = positions[keys[i]];
-		t.metadata["type"] = "fact";
-		t.metadata["accessibility"] = "public";
-		result.push_back(t);
+		Dictionary meta;
+		meta["type"] = "fact";
+		meta["accessibility"] = "public";
+		push_triple(result, "entity_" + String(keys[i]), "position", positions[keys[i]], meta);
 	}
 	// Beliefs
 	Dictionary beliefs = get_meta_sub(blackboard, _META_BELIEFS);
@@ -214,14 +196,10 @@ Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
 			Array pred_keys = preds.keys();
 			for (int k = 0; k < pred_keys.size(); k++) {
 				String pred = pred_keys[k];
-				KnowledgeTriple t;
-				t.subject = target;
-				t.predicate = pred;
-				t.object = preds[pred];
-				t.metadata = meta_preds.has(pred) ? Dictionary(meta_preds[pred]) : Dictionary();
-				t.metadata["type"] = "belief";
-				t.metadata["source"] = persona_id;
-				result.push_back(t);
+				Dictionary meta = meta_preds.has(pred) ? Dictionary(meta_preds[pred]) : Dictionary();
+				meta["type"] = "belief";
+				meta["source"] = persona_id;
+				push_triple(result, target, pred, preds[pred], meta);
 			}
 		}
 	}
@@ -430,33 +408,35 @@ void PlannerState::set_predicate(const String &p_subject, const String &p_predic
 }
 
 TypedArray<Dictionary> PlannerState::get_triples_as_array() const {
-	TypedArray<Dictionary> result;
-	for (const KnowledgeTriple &triple : collect_triples(this)) {
-		Dictionary dict;
-		dict["subject"] = triple.subject;
-		dict["predicate"] = triple.predicate;
-		dict["object"] = triple.object;
-		dict["metadata"] = triple.metadata;
-		result.push_back(dict);
+	TypedArray<Dictionary> out;
+	const LocalVector<TripleEntry> tr = collect_triples(this);
+	// Canonical triple dict key order: predicate, subject, object, metadata (same order everywhere in LimboAI).
+	for (const TripleEntry &e : tr) {
+		Dictionary d;
+		d["predicate"] = e.predicate;
+		d["subject"] = e.subject;
+		d["object"] = e.object;
+		d["metadata"] = e.metadata;
+		out.push_back(d);
 	}
-	return result;
+	return out;
 }
 
 TypedArray<String> PlannerState::get_subject_predicate_list() const {
 	TypedArray<String> subjects;
-	Vector<KnowledgeTriple> tr = collect_triples(this);
-	for (const auto &triple : tr) {
-		if (!subjects.has(triple.subject)) {
-			subjects.push_back(triple.subject);
+	const LocalVector<TripleEntry> tr = collect_triples(this);
+	for (const TripleEntry &e : tr) {
+		if (!e.subject.is_empty() && !subjects.has(e.subject)) {
+			subjects.push_back(e.subject);
 		}
 	}
 	return subjects;
 }
 
 bool PlannerState::has_subject_variable(const String &p_variable) const {
-	Vector<KnowledgeTriple> tr = collect_triples(this);
-	for (const auto &triple : tr) {
-		if (triple.subject == p_variable) {
+	const LocalVector<TripleEntry> tr = collect_triples(this);
+	for (const TripleEntry &e : tr) {
+		if (e.subject == p_variable) {
 			return true;
 		}
 	}
