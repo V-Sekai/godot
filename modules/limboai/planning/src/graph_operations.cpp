@@ -900,7 +900,7 @@ Dictionary PlannerGraphOperations::execute_solution_graph(PlannerSolutionGraph &
 	}
 
 	Dictionary state = p_initial_state.duplicate(true);
-	Dictionary command_dict = p_domain->command_dictionary;
+	Dictionary command_dict = p_domain->get_command_dictionary();
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
 	TypedArray<int> visited; // Track visited nodes to prevent revisiting

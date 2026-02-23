@@ -23,7 +23,15 @@ module_env.add_source_files(env.modules_sources, "bt/tasks/misc/*.cpp")
 module_env.add_source_files(env.modules_sources, "bt/tasks/scene/*.cpp")
 module_env.add_source_files(env.modules_sources, "bt/tasks/utility/*.cpp")
 module_env.add_source_files(env.modules_sources, "bt/tasks/planning/*.cpp")
-module_env.add_source_files(env.modules_sources, "compat/*.cpp")
+# compat_window_wrapper.cpp needs editor (window_wrapper.h); exclude when building template/web.
+if env.editor_build:
+    module_env.add_source_files(env.modules_sources, "compat/*.cpp")
+else:
+    module_env.add_source_files(env.modules_sources, "compat/editor.cpp")
+    module_env.add_source_files(env.modules_sources, "compat/editor_settings.cpp")
+    module_env.add_source_files(env.modules_sources, "compat/project_settings.cpp")
+    module_env.add_source_files(env.modules_sources, "compat/translation.cpp")
+    module_env.add_source_files(env.modules_sources, "compat/variant.cpp")
 if env.editor_build:
     module_env.add_source_files(env.modules_sources, "editor/*.cpp")
 module_env.add_source_files(env.modules_sources, "editor/debugger/*.cpp")

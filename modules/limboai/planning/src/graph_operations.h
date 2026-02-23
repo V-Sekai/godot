@@ -64,7 +64,7 @@ public:
 	static Array extract_new_commands(PlannerSolutionGraph &p_graph);
 	// Execute commands directly from solution graph, returning final state
 	// Takes initial state and domain, executes commands as it traverses the graph
-	// Uses domain->command_dictionary to look up command callables
+	// Uses domain->get_command_dictionary() to look up command callables
 	static Dictionary execute_solution_graph(PlannerSolutionGraph &p_graph, Dictionary p_initial_state, Ref<PlannerDomain> p_domain);
 
 private:

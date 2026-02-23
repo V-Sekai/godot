@@ -43,9 +43,8 @@ class PlannerDomain : public Resource {
 	GDCLASS(PlannerDomain, Resource);
 	friend PlannerPlan;
 
-public:
-	Dictionary command_dictionary; // Public for testing
 private:
+	Dictionary command_dictionary;
 	Dictionary task_method_dictionary;
 	Dictionary unigoal_method_dictionary; // Internal use only (for multigoal decomposition)
 	TypedArray<Callable> multigoal_method_list;
@@ -65,6 +64,7 @@ public:
 	void add_multigoal_methods(TypedArray<Callable> p_methods);
 
 public:
+	Dictionary get_command_dictionary() const { return command_dictionary; }
 	static Variant method_verify_goal(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth, int verbose);
 
 protected:

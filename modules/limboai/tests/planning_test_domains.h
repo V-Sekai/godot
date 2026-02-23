@@ -68,6 +68,24 @@ static Array unigoal_value_method(Dictionary p_state, String p_subject, Variant 
 	return result;
 }
 
+// Multi-step unigoal: for value 2 return two increments (reusable IPC-style "two step" goal).
+static Array unigoal_value_method_two_steps(Dictionary p_state, String p_subject, Variant p_value) {
+	int target = int(p_value);
+	if (target != 2) {
+		return Array();
+	}
+	Array result;
+	Array a1;
+	a1.push_back("action_increment");
+	a1.push_back(1);
+	result.push_back(a1);
+	Array a2;
+	a2.push_back("action_increment");
+	a2.push_back(1);
+	result.push_back(a2);
+	return result;
+}
+
 // Task method (succeeds)
 static Variant task_increment_succeed(Dictionary p_state) {
 	Array result;
@@ -91,6 +109,9 @@ public:
 	static Array unigoal_value_method(Dictionary p_state, String p_subject, Variant p_value) {
 		return PlanningTestDomains::unigoal_value_method(p_state, p_subject, p_value);
 	}
+	static Array unigoal_value_method_two_steps(Dictionary p_state, String p_subject, Variant p_value) {
+		return PlanningTestDomains::unigoal_value_method_two_steps(p_state, p_subject, p_value);
+	}
 	static Variant task_increment_succeed(Dictionary p_state) {
 		return PlanningTestDomains::task_increment_succeed(p_state);
 	}
@@ -105,6 +126,17 @@ static Ref<PlannerDomain> create_minimal_goal_domain() {
 	domain->add_command("action_increment", callable_mp_static(&PlanningTestDomainsCallable::action_increment));
 	TypedArray<Callable> unigoal_methods;
 	unigoal_methods.push_back(callable_mp_static(&PlanningTestDomainsCallable::unigoal_value_method));
+	domain->add_unigoal_methods("value", unigoal_methods);
+	return domain;
+}
+
+// Two-step goal domain: goal value 2 expands to two actions (reusable for multi-step / plan-length tests).
+static Ref<PlannerDomain> create_two_step_goal_domain() {
+	Ref<PlannerDomain> domain = memnew(PlannerDomain);
+	domain->add_command("action_increment", callable_mp_static(&PlanningTestDomainsCallable::action_increment));
+	TypedArray<Callable> unigoal_methods;
+	unigoal_methods.push_back(callable_mp_static(&PlanningTestDomainsCallable::unigoal_value_method));
+	unigoal_methods.push_back(callable_mp_static(&PlanningTestDomainsCallable::unigoal_value_method_two_steps));
 	domain->add_unigoal_methods("value", unigoal_methods);
 	return domain;
 }

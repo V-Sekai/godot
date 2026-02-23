@@ -35,14 +35,14 @@
 #ifndef COMPAT_WINDOW_WRAPPER_H
 #define COMPAT_WINDOW_WRAPPER_H
 
-#ifdef LIMBOAI_MODULE
+#if defined(LIMBOAI_MODULE) && defined(TOOLS_ENABLED)
 #include "editor/gui/window_wrapper.h"
 
 #define CompatWindowWrapper WindowWrapper
 #define CompatShortcutBin ShortcutBin
 #define CompatScreenSelect ScreenSelect
 
-#endif // LIMBOAI_MODULE
+#endif // LIMBOAI_MODULE && TOOLS_ENABLED
 
 #ifdef LIMBOAI_GDEXTENSION
 

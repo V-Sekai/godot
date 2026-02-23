@@ -117,7 +117,7 @@ BTTask::Status BTExecutePlan::_tick(double p_delta) {
 
 	Dictionary state_dict = state->to_plan_dictionary();
 	Ref<PlannerDomain> domain = planner_plan->get_current_domain();
-	Dictionary command_dict = domain->command_dictionary;
+	Dictionary command_dict = domain->get_command_dictionary();
 
 	Variant action_v = plan[idx];
 	if (action_v.get_type() == Variant::DICTIONARY) {

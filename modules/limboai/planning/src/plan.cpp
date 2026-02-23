@@ -75,7 +75,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		print_line("    state = " + _item_to_string(p_state));
 		print_line("    todo_list = " + _item_to_string(p_todo_list));
 		if (verbose >= 2 && current_domain.is_valid()) {
-			Dictionary command_dict = current_domain->command_dictionary;
+			Dictionary command_dict = current_domain->get_command_dictionary();
 			Array command_keys = command_dict.keys();
 			print_line("    Available commands: " + _item_to_string(command_keys));
 		}
@@ -179,7 +179,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 			solution_graph,
 			parent_node_id,
 			p_todo_list,
-			current_domain->command_dictionary,
+			current_domain->get_command_dictionary(),
 			current_domain->task_method_dictionary,
 			current_domain->unigoal_method_dictionary,
 			current_domain->multigoal_method_list,
@@ -1164,13 +1164,13 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 				}
 				// Safety: extract action name first to avoid multiple array accesses
 				String command_name_str = action[0];
-				if (!current_domain->command_dictionary.has(command_name_str)) {
+				if (!current_domain->get_command_dictionary().has(command_name_str)) {
 					if (verbose >= 1) {
 						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", command_name_str));
 					}
 					continue;
 				}
-				Callable command_name = current_domain->command_dictionary[command_name_str];
+				Callable command_name = current_domain->get_command_dictionary()[command_name_str];
 				if (verbose >= 1) {
 					String action_arguments;
 					Array actions = action.slice(1, action.size());
@@ -1473,7 +1473,7 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 			solution_graph,
 			parent_node_id,
 			p_todo_list,
-			current_domain->command_dictionary,
+			current_domain->get_command_dictionary(),
 			current_domain->task_method_dictionary,
 			current_domain->unigoal_method_dictionary,
 			current_domain->multigoal_method_list,
@@ -1700,7 +1700,7 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 									solution_graph,
 									0,
 									tasks_to_recreate,
-									current_domain->command_dictionary,
+									current_domain->get_command_dictionary(),
 									current_domain->task_method_dictionary,
 									current_domain->unigoal_method_dictionary,
 									current_domain->multigoal_method_list,
@@ -2092,7 +2092,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					solution_graph,
 					p_curr_node_id,
 					subtasks,
-					current_domain->command_dictionary,
+					current_domain->get_command_dictionary(),
 					current_domain->task_method_dictionary,
 					current_domain->unigoal_method_dictionary,
 					current_domain->multigoal_method_list,
@@ -2700,7 +2700,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						solution_graph,
 						p_curr_node_id,
 						subtasks,
-						current_domain->command_dictionary,
+						current_domain->get_command_dictionary(),
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list,
@@ -2808,7 +2808,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						solution_graph,
 						p_curr_node_id,
 						empty_subgoals,
-						current_domain->command_dictionary,
+						current_domain->get_command_dictionary(),
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list,
@@ -2911,7 +2911,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 						solution_graph,
 						p_curr_node_id,
 						subgoals,
-						current_domain->command_dictionary,
+						current_domain->get_command_dictionary(),
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list,
@@ -3227,7 +3227,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 	}
 
 	Dictionary state_copy = p_state.duplicate();
-	Dictionary command_dict = current_domain->command_dictionary;
+	Dictionary command_dict = current_domain->get_command_dictionary();
 
 	// Execute actions starting from p_start_ind
 	for (int i = p_start_ind; i < plan.size(); i++) {

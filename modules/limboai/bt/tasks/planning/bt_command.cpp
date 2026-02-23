@@ -133,7 +133,7 @@ BTTask::Status BTCommand::_tick(double p_delta) {
 	}
 	Dictionary state_dict = state->to_plan_dictionary();
 	Ref<PlannerDomain> domain = plan->get_current_domain();
-	if (!domain->command_dictionary.has(command_name)) {
+	if (!domain->get_command_dictionary().has(command_name)) {
 		return FAILURE;
 	}
 	Variant args_v = bb->has_var(args_var) ? bb->get_var(args_var, Array(), false) : Variant(command_args);
@@ -141,7 +141,7 @@ BTTask::Status BTCommand::_tick(double p_delta) {
 	Array call_args;
 	call_args.push_back(state_dict);
 	call_args.append_array(args);
-	Callable cmd = domain->command_dictionary[command_name];
+	Callable cmd = domain->get_command_dictionary()[command_name];
 	Variant result = cmd.callv(call_args);
 	if (result.get_type() != Variant::DICTIONARY) {
 		return FAILURE;

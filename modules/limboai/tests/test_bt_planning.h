@@ -124,6 +124,39 @@ TEST_CASE("[Modules][LimboAI][Planner] BTRunPlanner goal planning") {
 	memdelete(dummy);
 }
 
+// Reusable test sample: two-step goal domain (IPC-style multi-step goal); exercises plan length and ordering.
+TEST_CASE("[Modules][LimboAI][Planner] BTRunPlanner two-step goal (reusable domain)") {
+	Node *dummy = memnew(Node);
+	Ref<Blackboard> bb = memnew(Blackboard);
+	Ref<PlannerState> state = memnew(PlannerState);
+	state->set_blackboard(bb);
+	// Goal: predicate "value", subject "value", desired value 2 -> plan should have two actions
+	Array todo_list;
+	todo_list.push_back("value");
+	todo_list.push_back("value");
+	todo_list.push_back(2);
+	bb->set_var(StringName("todo_list"), todo_list);
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	plan->set_current_domain(PlanningTestDomains::create_two_step_goal_domain());
+	Ref<BTRunPlanner> run_planner = memnew(BTRunPlanner);
+	run_planner->set_planner_plan(plan);
+	run_planner->set_planner_state(state);
+	run_planner->initialize(dummy, bb, dummy);
+	BTTask::Status status = run_planner->execute(0.0);
+	CHECK(status == BTTask::SUCCESS);
+	Array plan_arr = bb->get_var(StringName("plan"), Array(), false);
+	CHECK_EQ(plan_arr.size(), 2);
+	CHECK_EQ(int(bb->get_var(StringName("plan_index"), 0, false)), 0);
+	for (int i = 0; i < 2; i++) {
+		Variant el = plan_arr[i];
+		CHECK(el.get_type() == Variant::ARRAY);
+		Array cmd = el;
+		CHECK(cmd.size() >= 1);
+		CHECK(String(cmd[0]) == "action_increment");
+	}
+	memdelete(dummy);
+}
+
 TEST_CASE("[Modules][LimboAI][Planner] BTRunPlanner task HTN") {
 	Node *dummy = memnew(Node);
 	Ref<Blackboard> bb = memnew(Blackboard);
