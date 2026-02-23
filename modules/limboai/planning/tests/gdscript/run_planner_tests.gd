@@ -66,6 +66,18 @@ func _run_via_bt_run_planner(bb: Blackboard, state: PlannerState, plan: PlannerP
 	dummy.free()
 	return [status == BTTask.SUCCESS, plan_arr]
 
+# Assert plan matches expected exactly; print plan for visibility. Returns true if match, false and _fail otherwise.
+func _assert_plan_exact(name: String, plan_arr: Array, expected_plan: Array) -> bool:
+	print("  [%s] plan (%d steps): %s" % [name, plan_arr.size(), plan_arr])
+	if plan_arr.size() != expected_plan.size():
+		_fail(name, "expected exactly %d commands, got %d" % [expected_plan.size(), plan_arr.size()])
+		return false
+	for idx in range(plan_arr.size()):
+		if plan_arr[idx] != expected_plan[idx]:
+			_fail(name, "step %d: expected %s, got %s" % [idx, expected_plan[idx], plan_arr[idx]])
+			return false
+	return true
+
 func _test_goal_planning() -> void:
 	var name := "BTRunPlanner goal planning"
 	var state_bb := _make_state_and_bb()
@@ -75,13 +87,14 @@ func _test_goal_planning() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_goal_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() < 1:
-		_fail(name, "plan empty")
+	var expected: Array = [["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	_ok(name)
 
@@ -94,19 +107,15 @@ func _test_two_step_goal() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_two_step_goal_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() != 2:
-		_fail(name, "expected 2 steps, got %d" % plan_arr.size())
+	var expected: Array = [["action_increment", 1], ["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
-	for i in plan_arr.size():
-		var cmd = plan_arr[i]
-		if not cmd is Array or cmd.size() < 1 or str(cmd[0]) != "action_increment":
-			_fail(name, "step %d not action_increment" % i)
-			return
 	_ok(name)
 
 func _test_htn() -> void:
@@ -118,13 +127,14 @@ func _test_htn() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_htn_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() < 1:
-		_fail(name, "plan empty")
+	var expected: Array = [["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	_ok(name)
 
@@ -137,13 +147,14 @@ func _test_backtracking() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_backtracking_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() < 1:
-		_fail(name, "plan empty")
+	var expected: Array = [["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	_ok(name)
 
@@ -159,9 +170,14 @@ func _test_metadata_entity_caps_goal() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_goal_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
+		return
+	var plan_arr: Array = res[1]
+	var expected: Array = [["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	if not state.has_terrain_fact("loc1", "fact_key") or int(state.get_terrain_fact("loc1", "fact_key")) != 100:
 		_fail(name, "terrain fact lost")
@@ -186,9 +202,14 @@ func _test_metadata_entity_caps_htn() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_htn_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
+		return
+	var plan_arr: Array = res[1]
+	var expected: Array = [["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	if not state.has_terrain_fact("loc1", "fact_key") or not state.has_entity("ent2") or not state.has_entity_capability_public("ent1", "speed"):
 		_fail(name, "metadata/entity_caps lost")
@@ -207,9 +228,14 @@ func _test_metadata_entity_caps_backtracking() -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_backtracking_domain())
+	plan.set_verbose(1)
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
+		return
+	var plan_arr: Array = res[1]
+	var expected: Array = [["action_increment", 1]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	if not state.has_terrain_fact("loc1", "fact_key") or not state.has_entity("ent2") or not state.has_entity_capability_public("ent1", "speed"):
 		_fail(name, "metadata/entity_caps lost")
@@ -235,6 +261,7 @@ func _test_academy_get_archive_access() -> void:
 	var todo_list: Array = [["get_archive_access", "student_1"]]
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
+	plan.set_verbose(1)
 	# Use lounge-only domain so the planner picks the method that works (key in lounge).
 	plan.set_current_domain(_domains.create_academy_one_block_domain_get_archive_lounge_only())
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
@@ -242,23 +269,13 @@ func _test_academy_get_archive_access() -> void:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() < 1:
-		_fail(name, "plan empty")
-		return
-	var has_move := false
-	var has_take_or_interact := false
-	var has_use := false
-	for el in plan_arr:
-		if el is Array and el.size() >= 1:
-			var cmd_name := str(el[0])
-			if cmd_name == "action_move":
-				has_move = true
-			elif cmd_name == "action_take" or cmd_name == "action_interact_with":
-				has_take_or_interact = true
-			elif cmd_name == "action_use_object":
-				has_use = true
-	if not has_move or not has_take_or_interact or not has_use:
-		_fail(name, "expected move, take/interact, use_object in plan")
+	var expected: Array = [
+		["action_move", "student_1", "lounge"],
+		["action_take", "student_1", "key"],
+		["action_move", "student_1", "archive_door"],
+		["action_use_object", "student_1", "key"]
+	]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	_ok(name)
 
@@ -281,40 +298,31 @@ func _test_academy_prepare_student() -> void:
 	var todo_list: Array = [["prepare_student", "student_1"]]
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
+	plan.set_verbose(1)
 	plan.set_current_domain(_domains.create_academy_one_block_domain())
 	var res: Array = _run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() != 1:
-		_fail(name, "expected 1 step, got %d" % plan_arr.size())
-		return
-	var cmd = plan_arr[0]
-	if not cmd is Array or cmd.size() < 3 or str(cmd[0]) != "action_equip_garment" or str(cmd[2]) != "apron_of_abundance":
-		_fail(name, "expected action_equip_garment student_1 apron_of_abundance")
+	var expected: Array = [["action_equip_garment", "student_1", "apron_of_abundance"]]
+	if not _assert_plan_exact(name, plan_arr, expected):
 		return
 	_ok(name)
 
+# Planning horizon for a 20-minute game (microseconds). Used as temporal duration and backtracking-depth scale.
+const PLAN_DURATION_20MIN_USEC: int = 20 * 60 * 1_000_000  # 1_200_000_000
+
 func _test_mznc2025_temporal_entity() -> void:
 	var name := "mznc2025 temporal+entity (limboai_gtn)"
-	var instance: Dictionary
-	var f := FileAccess.open("res://thirdparty/mznc2025_probs/limboai_gtn/instance_temporal_entity_01.json", FileAccess.READ)
-	if f:
-		var json := JSON.new()
-		var err := json.parse(f.get_as_text())
-		f.close()
-		if err == OK:
-			instance = json.get_data()
-	# Fallback to embedded instance if file missing or parse failed
-	if not instance.has("todo_list_goal"):
-		instance = {
-			"state": { "value": { "value": 0 } },
-			"entities": [{ "id": "worker_1", "capabilities": { "type": "worker", "skill": "A" } }],
-			"todo_list_goal": ["value", "value", 1],
-			"temporal_constraints": { "duration": 1000000 },
-			"entity_constraints": { "type": "worker", "capabilities": ["skill"] }
-		}
+	# Embedded instance (limboai_gtn-style): temporal + entity-capability, duration/backtracking ratio for 20-min game
+	var instance: Dictionary = {
+		"state": { "value": { "value": 0 } },
+		"entities": [{ "id": "worker_1", "capabilities": { "type": "worker", "skill": "A" } }],
+		"todo_list_goal": ["value", "value", 5],
+		"temporal_constraints": { "duration": PLAN_DURATION_20MIN_USEC },
+		"entity_constraints": { "type": "worker", "capabilities": ["skill"] }
+	}
 	var state_bb := _make_state_and_bb()
 	var state: PlannerState = state_bb[0]
 	var bb: Blackboard = state_bb[1]
@@ -331,8 +339,11 @@ func _test_mznc2025_temporal_entity() -> void:
 				state.set_entity_capability(str(ent_d.get("id")), str(cap_name), caps[cap_name])
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_goal_domain())
-	# Temporal planning requires start horizon (microseconds since epoch)
-	plan.set_time_range_dict({ "start_time": int(Time.get_unix_time_from_system() * 1_000_000) })
+	plan.set_verbose(1)  # Show planner output so we can see the plan
+	plan.set_max_depth(24)  # Allow 5 unigoal steps + verify nodes (default 10 would exceed)
+	# Temporal planning: 20-minute game horizon (start + duration in microseconds)
+	var start_usec: int = int(Time.get_unix_time_from_system() * 1_000_000)
+	plan.set_time_range_dict({ "start_time": start_usec, "duration": PLAN_DURATION_20MIN_USEC })
 	# Goal from instance (use int for numeric value so planner state comparison succeeds)
 	var goal_raw: Array = (instance.get("todo_list_goal", ["value", "value", 1]) as Array)
 	var goal_val: int = int(goal_raw[2]) if goal_raw.size() >= 3 else 1
@@ -343,7 +354,10 @@ func _test_mznc2025_temporal_entity() -> void:
 		_fail(name, "BTRunPlanner execute failed")
 		return
 	var plan_arr: Array = res[1]
-	if plan_arr.size() < 1:
-		_fail(name, "plan empty")
+	# Exact match: minimal goal domain produces one action_increment(1) per goal step
+	var expected_plan: Array = []
+	for _i in range(goal_val):
+		expected_plan.append(["action_increment", 1])
+	if not _assert_plan_exact(name, plan_arr, expected_plan):
 		return
 	_ok(name)
