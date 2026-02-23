@@ -108,9 +108,78 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		p_graph.update_node(p_current_node_id, current_node);
 	}
 
-	// Remove descendants of the failed node and remove it from parent's successors list
-	// This prevents failed nodes from being considered as part of the solution path
-	PlannerGraphOperations::remove_descendants(p_graph, p_current_node_id, true);
+	// When a command fails, remove the entire method expansion (all children of the parent task),
+	// so the task can be retried with the next method. Otherwise we only remove the failed node.
+	if (current_node_type == static_cast<int>(PlannerNodeType::TYPE_COMMAND)) {
+		// Derive method array from parent's successors before removing them (no created_subtasks).
+		Array subtasks_to_blacklist = PlannerGraphOperations::get_successors_info_array(p_graph, p_parent_node_id);
+		PlannerGraphOperations::remove_descendants(p_graph, p_parent_node_id, false);
+		// Early return: retry the parent task (do not run DFS/fallback so we never return root).
+		if (p_verbose >= 2) {
+			print_line(vformat("Backtracking: COMMAND failure, early return with parent_node_id=%d", p_parent_node_id));
+		}
+		Dictionary parent_task_node = p_graph.get_node(p_parent_node_id);
+		TypedArray<Variant> updated_blacklist = p_blacklisted_commands;
+		if (subtasks_to_blacklist.size() > 0) {
+			Array subtasks_copy = subtasks_to_blacklist.duplicate(true);
+			bool already_blacklisted = false;
+			for (int i = 0; i < updated_blacklist.size(); i++) {
+				Variant blacklisted = updated_blacklist[i];
+				if (blacklisted.get_type() == Variant::ARRAY) {
+					Array blacklisted_arr = blacklisted;
+					if (blacklisted_arr.size() == subtasks_copy.size()) {
+						bool match = true;
+						for (int j = 0; j < subtasks_copy.size(); j++) {
+							Variant task_elem = subtasks_copy[j];
+							Variant bl_elem = blacklisted_arr[j];
+							if (task_elem.get_type() == Variant::ARRAY && bl_elem.get_type() == Variant::ARRAY) {
+								Array ta = task_elem;
+								Array ba = bl_elem;
+								if (ta.size() != ba.size()) {
+									match = false;
+									break;
+								}
+								for (int k = 0; k < ta.size(); k++) {
+									if (ta[k] != ba[k]) {
+										match = false;
+										break;
+									}
+								}
+							} else if (task_elem != bl_elem) {
+								match = false;
+								break;
+							}
+						}
+						if (match) {
+							already_blacklisted = true;
+							break;
+						}
+					}
+				}
+			}
+			if (!already_blacklisted) {
+				updated_blacklist.push_back(subtasks_copy);
+				if (p_verbose >= 2) {
+					print_line(vformat("Backtracking: Blacklisted parent task %d method expansion (command failure)", p_parent_node_id));
+				}
+			}
+		}
+		p_graph.set_node_status(p_parent_node_id, PlannerNodeStatus::STATUS_OPEN);
+		parent_task_node["selected_method"] = Variant();
+		parent_task_node["state"] = Dictionary();
+		parent_task_node["stn_snapshot"] = Variant();
+		p_graph.update_node(p_parent_node_id, parent_task_node);
+		BacktrackResult result;
+		result.parent_node_id = p_parent_node_id;
+		result.current_node_id = p_parent_node_id;
+		result.graph = p_graph;
+		result.state = p_state;
+		result.blacklisted_commands = updated_blacklist;
+		return result;
+	} else {
+		// Remove descendants of the failed node and remove it from parent's successors list
+		PlannerGraphOperations::remove_descendants(p_graph, p_current_node_id, true);
+	}
 
 	// IPyHOP-style backtracking: Do reverse DFS from parent to find first CLOSED node
 	// This matches IPyHOP's _backtrack behavior (ipyhop/planner.py lines 401-410)
@@ -208,7 +277,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		if (closed_node_id >= 0) {
 			print_line(vformat("Backtracking: Found CLOSED node %d to retry", closed_node_id));
 		} else {
-			print_line("Backtracking: No CLOSED node found, falling back to parent chain traversal");
+			print_line("Backtracking: No CLOSED node found, returning failure");
 		}
 	}
 
@@ -216,15 +285,13 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		// Found a CLOSED node with available methods, retry it
 		Dictionary closed_node = p_graph.get_node(closed_node_id);
 
-		// CRITICAL: Before reopening, blacklist the method array that this node used
+		// CRITICAL: Before reopening, blacklist the method array that this node used (derive from successors).
 		// This ensures that when the node is reopened, it will skip the method that led to failure
-		// and try the next method instead (TLA+ model insight)
+		// and try the next method instead (TLA+ model insight). No created_subtasks - use graph.
+		Array subtasks_to_blacklist = PlannerGraphOperations::get_successors_info_array(p_graph, closed_node_id);
 		TypedArray<Variant> updated_blacklist = p_blacklisted_commands;
-		if (closed_node.has("created_subtasks")) {
-			Array created_subtasks = closed_node["created_subtasks"];
-			if (created_subtasks.size() > 0) {
-				// Store a deep copy to avoid reference issues
-				Array subtasks_copy = created_subtasks.duplicate(true);
+		if (subtasks_to_blacklist.size() > 0) {
+				Array subtasks_copy = subtasks_to_blacklist.duplicate(true);
 				// Check if not already blacklisted to avoid duplicates (using nested comparison)
 				bool already_blacklisted = false;
 				for (int i = 0; i < updated_blacklist.size(); i++) {
@@ -268,11 +335,10 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 				if (!already_blacklisted) {
 					updated_blacklist.push_back(subtasks_copy);
 					if (p_verbose >= 2) {
-						print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks (size %d)",
+						print_line(vformat("Backtracking: Blacklisted reopened node %d method expansion (size %d)",
 								closed_node_id, subtasks_copy.size()));
 					}
 				}
-			}
 		}
 
 		// Set to OPEN
@@ -283,12 +349,12 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 
 		// Reset selected_method (IPyHOP-style)
 		// Clear state snapshot so we use the current state (with successful actions) instead of restoring old state
-		// This is critical: when reopening to try a different method, we want to preserve progress from previous attempts
+		// Re-fetch node after remove_descendants so we don't overwrite OPEN status with stale closed_node
+		closed_node = p_graph.get_node(closed_node_id);
 		closed_node["selected_method"] = Variant();
-		closed_node["state"] = Dictionary(); // Clear state snapshot - use current state instead
-		closed_node["stn_snapshot"] = Variant(); // Clear STN snapshot too
-		// Clear created_subtasks since we're trying a different method
-		closed_node["created_subtasks"] = Variant();
+		closed_node["state"] = Dictionary();
+		closed_node["stn_snapshot"] = Variant();
+		closed_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
 		p_graph.update_node(closed_node_id, closed_node);
 
 		// Find the predecessor of the closed node to return as parent
@@ -305,153 +371,10 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		return result;
 	}
 
-	// No CLOSED node found in DFS, fall back to parent chain traversal
-	// Find the nearest ancestor that can be retried
-	int new_parent_node_id = p_parent_node_id;
-
-	// Traverse up the tree to find a node that can be retried
-	while (new_parent_node_id >= 0) {
-		Dictionary node = p_graph.get_node(new_parent_node_id);
-		// Validate required dictionary keys exist
-		if (!node.has("type")) {
-			// Invalid node structure, return failure
-			BacktrackResult result;
-			result.parent_node_id = -1;
-			result.current_node_id = -1;
-			result.graph = p_graph;
-			result.state = p_state;
-			result.blacklisted_commands = p_blacklisted_commands;
-			return result;
-		}
-		int node_type = node["type"];
-
-		// Validate available_methods exists before accessing
-		// Some node types may not have available_methods (e.g., ACTION nodes)
-		TypedArray<Callable> available_methods;
-		if (node.has("available_methods")) {
-			Variant methods_var = node["available_methods"];
-			// Try to convert to TypedArray<Callable> - handle both Array and TypedArray
-			if (methods_var.get_type() == Variant::ARRAY) {
-				Array methods_array = methods_var;
-				// Convert to TypedArray and check size after conversion
-				available_methods = TypedArray<Callable>(methods_array);
-			}
-		}
-
-		// Check if this node has alternative methods
-		bool can_retry = false;
-
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
-				node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) ||
-				node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
-			// Check if there are available methods
-			if (available_methods.size() > 0) {
-				can_retry = true;
-			}
-		}
-
-		if (can_retry) {
-			// Found a node with available methods, retry it
-			// CRITICAL: Get node BEFORE modifying status to preserve created_subtasks for blacklisting
-			Dictionary node_to_retry = p_graph.get_node(new_parent_node_id);
-
-			// CRITICAL: Before reopening, blacklist the method array that this node used
-			// This ensures that when the node is reopened, it will skip the method that led to failure
-			// and try the next method instead (same logic as CLOSED node case)
-			TypedArray<Variant> updated_blacklist = p_blacklisted_commands;
-			if (node_to_retry.has("created_subtasks")) {
-				Array created_subtasks = node_to_retry["created_subtasks"];
-				if (created_subtasks.size() > 0) {
-					// Store a deep copy to avoid reference issues
-					Array subtasks_copy = created_subtasks.duplicate(true);
-					// Check if not already blacklisted to avoid duplicates (using nested comparison)
-					bool already_blacklisted = false;
-					for (int i = 0; i < updated_blacklist.size(); i++) {
-						Variant blacklisted = updated_blacklist[i];
-						if (blacklisted.get_type() == Variant::ARRAY) {
-							Array blacklisted_arr = blacklisted;
-							if (blacklisted_arr.size() == subtasks_copy.size()) {
-								bool match = true;
-								for (int j = 0; j < subtasks_copy.size(); j++) {
-									Variant subtask_elem = subtasks_copy[j];
-									Variant blacklisted_elem = blacklisted_arr[j];
-									// Nested array comparison
-									if (subtask_elem.get_type() == Variant::ARRAY && blacklisted_elem.get_type() == Variant::ARRAY) {
-										Array subtask_elem_arr = subtask_elem;
-										Array blacklisted_elem_arr = blacklisted_elem;
-										if (subtask_elem_arr.size() != blacklisted_elem_arr.size()) {
-											match = false;
-											break;
-										}
-										for (int k = 0; k < subtask_elem_arr.size(); k++) {
-											if (subtask_elem_arr[k] != blacklisted_elem_arr[k]) {
-												match = false;
-												break;
-											}
-										}
-										if (!match) {
-											break;
-										}
-									} else if (subtask_elem != blacklisted_elem) {
-										match = false;
-										break;
-									}
-								}
-								if (match) {
-									already_blacklisted = true;
-									break;
-								}
-							}
-						}
-					}
-					if (!already_blacklisted) {
-						updated_blacklist.push_back(subtasks_copy);
-						if (p_verbose >= 2) {
-							print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks (size %d) in parent chain",
-									new_parent_node_id, subtasks_copy.size()));
-						}
-					}
-				}
-			}
-
-			// Set to OPEN (after blacklisting, before clearing created_subtasks)
-			p_graph.set_node_status(new_parent_node_id, PlannerNodeStatus::STATUS_OPEN);
-
-			// Remove old descendants before retrying (like IPyHOP line 406-408)
-			// This ensures old nodes from previous attempts are removed from the graph
-			PlannerGraphOperations::remove_descendants(p_graph, new_parent_node_id);
-
-			// Reset selected_method and clear state snapshot (IPyHOP-style)
-			// Clear state snapshot so we use the current state (with successful actions) instead of restoring old state
-			// This allows the node to try all methods again from the beginning, but with current state
-			// IPyHOP behavior: available_methods = iter(c_node['methods']) - reset iterator
-			// In C++, we retrieve methods fresh from domain each time, so this is already handled
-			// But we need to clear any cached method selection
-			// Use the node we already fetched (node_to_retry) to avoid losing data
-			node_to_retry["selected_method"] = Variant();
-			node_to_retry["state"] = Dictionary(); // Clear state snapshot - use current state instead
-			node_to_retry["stn_snapshot"] = Variant(); // Clear STN snapshot too
-			node_to_retry["created_subtasks"] = Variant(); // Clear created_subtasks
-			p_graph.update_node(new_parent_node_id, node_to_retry);
-
-			BacktrackResult result;
-			// Return the retriable node as parent_node_id so planning can continue from it
-			result.parent_node_id = new_parent_node_id;
-			result.current_node_id = new_parent_node_id;
-			result.graph = p_graph;
-			result.state = p_state;
-			result.blacklisted_commands = updated_blacklist; // Use updated blacklist instead of original
-			return result;
-		} else {
-			// No more methods, this node also fails, continue backtracking
-			p_graph.set_node_status(new_parent_node_id, PlannerNodeStatus::STATUS_FAILED);
-			new_parent_node_id = PlannerGraphOperations::find_predecessor(p_graph, new_parent_node_id);
-		}
-	}
-
-	// Reached root, return failure
+	// No CLOSED node found in DFS: clean tree like IPyHOP (remove all descendants of root), then return failure
+	PlannerGraphOperations::remove_descendants(p_graph, 0, false);
 	if (p_verbose >= 2) {
-		print_line("Backtracking: Reached root, no retriable nodes found, returning failure");
+		print_line("Backtracking: No CLOSED node found, returning failure");
 	}
 	BacktrackResult result;
 	result.parent_node_id = -1;

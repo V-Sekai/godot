@@ -1376,7 +1376,7 @@ void PlannerPlan::reset() {
 	current_domain = Ref<PlannerDomain>();
 
 	// Reset configuration to defaults
-	max_depth = 10; // Default maximum recursion depth
+	max_depth = 20; // Default maximum recursion depth (allow IPyHOP backtracking tests to complete)
 	max_iterations = 50000; // Default maximum planning loop iterations
 	max_stack_size = 10000; // Default maximum stack size
 	verbose = 0; // Default verbosity level
@@ -1577,7 +1577,28 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 		Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, parent_node_id);
 
 		if (open_node_result.get_type() == Variant::NIL) {
-			// No open node found, check if parent is root
+			// No open node found
+			Dictionary parent_node = solution_graph.get_node(parent_node_id);
+			if (!parent_node.is_empty() && parent_node.has("type")) {
+				int parent_type = parent_node["type"];
+				int succ_size = 0;
+				if (parent_node.has("successors")) {
+					TypedArray<int> parent_successors = parent_node["successors"];
+					succ_size = parent_successors.size();
+				}
+				// Task/unigoal with no children after backtrack: retry this node (try next method)
+				if ((parent_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
+							parent_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) &&
+						succ_size == 0) {
+					if (verbose >= 2) {
+						print_line(vformat("Planning: parent node %d (task/unigoal) has no successors after backtrack, retrying it", parent_node_id));
+					}
+					open_node_result = parent_node_id;
+				}
+			}
+		}
+
+		if (open_node_result.get_type() == Variant::NIL) {
 			Dictionary parent_node = solution_graph.get_node(parent_node_id);
 			int parent_type = parent_node["type"];
 
@@ -1760,6 +1781,18 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 		}
 
 		int curr_node_id = open_node_result;
+		// When retrying a task/unigoal that had no successors after backtrack, frame parent may equal current node.
+		// Use the node's actual predecessor so backtracking and DFS find the correct CLOSED ancestor (e.g. put_it when need1 fails).
+		int effective_parent = parent_node_id;
+		if (curr_node_id == parent_node_id) {
+			int pred = PlannerGraphOperations::find_predecessor(solution_graph, curr_node_id);
+			if (pred >= 0) {
+				effective_parent = pred;
+				if (verbose >= 3) {
+					print_line(vformat("Planning: retrying node %d with effective parent %d (was %d)", curr_node_id, effective_parent, parent_node_id));
+				}
+			}
+		}
 		Dictionary curr_node = solution_graph.get_node(curr_node_id);
 
 		if (verbose >= 2) {
@@ -1780,16 +1813,21 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 			solution_graph.update_node(curr_node_id, curr_node);
 		} else {
 			// Node has saved state - this means we're revisiting it
-			// CRITICAL: For task and unigoal nodes, we should NOT restore state when reopening
-			// The state should be preserved from successful actions
-			// Only restore state for actions that failed and we're backtracking
+			// For task/unigoal: restore state when retrying after backtrack (empty successors);
+			// otherwise preserve state so accumulated progress from closed children is kept.
+			// For command nodes that failed: always restore state (Elixir/IPyHOP-style reset).
 			int node_status = curr_node.has("status") ? static_cast<int>(curr_node["status"]) : static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
 			int node_type = curr_node.has("type") ? static_cast<int>(curr_node["type"]) : -1;
+			TypedArray<int> node_successors = curr_node.get("successors", TypedArray<int>());
+			bool task_reopen_after_backtrack = (node_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN) &&
+					(node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
+							node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) &&
+					node_successors.size() == 0);
 			if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN) &&
 					(node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
-							node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL))) {
-				// Task or unigoal node was reopened - preserve current state (includes successful actions)
-				// Don't restore old state, keep the accumulated progress
+							node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) &&
+					!task_reopen_after_backtrack) {
+				// Task or unigoal reopened with existing children - preserve current state
 				if (verbose >= 3) {
 					Array state_keys = state.keys();
 					Array saved_keys = node_state.keys();
@@ -1831,8 +1869,9 @@ Dictionary PlannerPlan::_planning_loop_iterative(int p_parent_node_id, Dictionar
 		// Process node type - this will push new frames to stack or set final_state
 		// We use a helper function to process each node type and determine next action
 		// Pass curr_node by value (copy) to avoid stale reference issues after graph modifications
+		// Use effective_parent so backtracking from this node uses the correct parent (e.g. root when refining need1).
 		Dictionary curr_node_copy = curr_node;
-		bool should_continue = _process_node_iterative(parent_node_id, curr_node_id, curr_node_copy, node_type, state, iter, stack, final_state);
+		bool should_continue = _process_node_iterative(effective_parent, curr_node_id, curr_node_copy, node_type, state, iter, stack, final_state);
 		if (!should_continue) {
 			break; // Final state set, exit loop
 		}
@@ -2033,10 +2072,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					}
 				}
 				if (p_parent_node_id >= 0) {
-					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-					if (parent_node.has("created_subtasks")) {
-						Array parent_subtasks = parent_node["created_subtasks"];
+					Array parent_subtasks = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+					if (parent_subtasks.size() > 0) {
 						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
 							print_line("Blacklisted parent subtasks that led to failure");
@@ -2088,7 +2125,6 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 
 			p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 			p_curr_node["selected_method"] = selected_method;
-			p_curr_node["created_subtasks"] = subtasks;
 			p_curr_node["decision_info"] = decision_info;
 			solution_graph.update_node(p_curr_node_id, p_curr_node);
 
@@ -2121,10 +2157,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 					print_line("Command is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
 				}
 				if (p_parent_node_id >= 0) {
-					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-					if (parent_node.has("created_subtasks")) {
-						Array parent_subtasks = parent_node["created_subtasks"];
+					Array parent_subtasks = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+					if (parent_subtasks.size() > 0) {
 						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
 							print_line("Blacklisted parent method array that contained blacklisted action");
@@ -2303,11 +2337,9 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
-					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-					if (parent_node.has("created_subtasks")) {
-						Array created_subtasks = parent_node["created_subtasks"];
-						_blacklist_command(created_subtasks);
+					Array parent_subtasks = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+					if (parent_subtasks.size() > 0) {
+						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
 							print_line("Blacklisted parent method array that contained failing action");
 						}
@@ -2334,11 +2366,9 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
-					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-					if (parent_node.has("created_subtasks")) {
-						Array created_subtasks = parent_node["created_subtasks"];
-						_blacklist_command(created_subtasks);
+					Array parent_subtasks = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+					if (parent_subtasks.size() > 0) {
+						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
 							print_line("Blacklisted parent method array that contained failing action");
 						}
@@ -2379,37 +2409,7 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				return false;
 			}
 			Dictionary new_state = result;
-			if (new_state.is_empty()) {
-				if (verbose >= 2) {
-					String command_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
-					print_line(vformat("Action '%s' failed (returned empty dictionary), backtracking", command_name));
-				}
-				_bump_conflict_path_activities(p_curr_node_id);
-				if (p_parent_node_id >= 0) {
-					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-					if (parent_node.has("created_subtasks")) {
-						Array created_subtasks = parent_node["created_subtasks"];
-						_blacklist_command(created_subtasks);
-						if (verbose >= 2) {
-							print_line("Blacklisted parent method array that contained failing action");
-						}
-					}
-				}
-				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
-				solution_graph.update_node(p_curr_node_id, p_curr_node);
-				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-						solution_graph, p_parent_node_id, p_curr_node_id, p_state, blacklisted_commands);
-				solution_graph = backtrack_result.graph;
-				blacklisted_commands = backtrack_result.blacklisted_commands;
-				if (backtrack_result.parent_node_id >= 0) {
-					_restore_stn_from_node(backtrack_result.parent_node_id);
-					p_stack.push_back({ backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1 });
-					return true;
-				}
-				p_final_state = p_state;
-				return false;
-			}
+			// Only false and NIL trigger backtrack; empty Dictionary and [] are valid success.
 
 			int64_t action_end_time;
 			if (temporal_metadata.has("end_time")) {
@@ -2539,11 +2539,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 				_bump_conflict_path_activities(p_curr_node_id);
 				if (p_parent_node_id >= 0) {
-					// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-					// But we can still optimize by caching the lookup
-					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-					if (parent_node.has("created_subtasks")) {
-						Array parent_subtasks = parent_node["created_subtasks"];
+					Array parent_subtasks = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+					if (parent_subtasks.size() > 0) {
 						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
 							print_line("Blacklisted parent method array that contained failing action");
@@ -2700,7 +2697,6 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				p_curr_node["selected_method"] = selected_method;
-				p_curr_node["created_subtasks"] = subtasks.duplicate(true);
 				p_curr_node["decision_info"] = decision_info;
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
 
@@ -2730,10 +2726,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				print_line("Blacklisted unigoal info since all methods failed");
 			}
 			if (p_parent_node_id >= 0) {
-				// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-				if (parent_node.has("created_subtasks")) {
-					Array parent_subtasks = parent_node["created_subtasks"];
+				Array parent_subtasks = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+				if (parent_subtasks.size() > 0) {
 					_blacklist_command(parent_subtasks);
 					if (verbose >= 2) {
 						print_line("Blacklisted parent subtasks that led to failure");
@@ -2911,7 +2905,6 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 
 				p_curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				p_curr_node["selected_method"] = selected_method;
-				p_curr_node["created_subtasks"] = subgoals;
 				p_curr_node["decision_info"] = decision_info;
 				solution_graph.update_node(p_curr_node_id, p_curr_node);
 
@@ -2950,10 +2943,8 @@ bool PlannerPlan::_process_node_iterative(int p_parent_node_id, int p_curr_node_
 				}
 			}
 			if (p_parent_node_id >= 0) {
-				// Note: created_subtasks is not in PlannerNodeStruct, so we use Dictionary
-				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-				if (parent_node.has("created_subtasks")) {
-					Array parent_subgoals = parent_node["created_subtasks"];
+				Array parent_subgoals = PlannerGraphOperations::get_successors_info_array(solution_graph, p_parent_node_id);
+				if (parent_subgoals.size() > 0) {
 					_blacklist_command(parent_subgoals);
 					if (verbose >= 2) {
 						print_line("Blacklisted parent subgoals that led to failure");

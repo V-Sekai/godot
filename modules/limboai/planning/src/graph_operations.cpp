@@ -365,13 +365,17 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 }
 
 Variant PlannerGraphOperations::find_open_node(PlannerSolutionGraph &p_graph, int p_parent_node_id) {
+	// IPyHOP semantics: first OPEN node among immediate successors only (no recursion into CLOSED children)
 	Dictionary parent_node = p_graph.get_node(p_parent_node_id);
 	TypedArray<int> successors = parent_node["successors"];
 
-	// First check direct successors
 	for (int i = 0; i < successors.size(); i++) {
 		int node_id = successors[i];
 		Dictionary node = p_graph.get_node(node_id);
+		// Skip removed or invalid nodes (e.g. after backtrack removed descendants)
+		if (node.is_empty() || !node.has("type") || !node.has("status")) {
+			continue;
+		}
 		int status = node["status"];
 
 		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
@@ -379,24 +383,7 @@ Variant PlannerGraphOperations::find_open_node(PlannerSolutionGraph &p_graph, in
 		}
 	}
 
-	// If no OPEN node in direct successors, recursively search through CLOSED nodes
-	for (int i = 0; i < successors.size(); i++) {
-		int node_id = successors[i];
-		Dictionary node = p_graph.get_node(node_id);
-		int status = node["status"];
-
-		// Guard: Only search CLOSED nodes (they may have OPEN descendants)
-		if (status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
-			continue;
-		}
-
-		Variant found = find_open_node(p_graph, node_id);
-		if (found.get_type() != Variant::NIL) {
-			return found;
-		}
-	}
-
-	return Variant(); // No open node found
+	return Variant(); // No open node found among immediate successors
 }
 
 int PlannerGraphOperations::find_predecessor(PlannerSolutionGraph &p_graph, int p_node_id) {
@@ -422,6 +409,27 @@ int PlannerGraphOperations::find_predecessor(PlannerSolutionGraph &p_graph, int 
 	return -1; // No predecessor found
 }
 
+Array PlannerGraphOperations::get_successors_info_array(PlannerSolutionGraph &p_graph, int p_node_id) {
+	Array result;
+	Dictionary node = p_graph.get_node(p_node_id);
+	if (node.is_empty() || !node.has("successors")) {
+		return result;
+	}
+	TypedArray<int> successors = node["successors"];
+	const Dictionary &graph_dict = p_graph.get_graph();
+	for (int i = 0; i < successors.size(); i++) {
+		int succ_id = successors[i];
+		if (!graph_dict.has(succ_id)) {
+			continue;
+		}
+		Dictionary succ_node = p_graph.get_node(succ_id);
+		if (succ_node.has("info")) {
+			result.push_back(succ_node["info"]);
+		}
+	}
+	return result;
+}
+
 void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id, bool p_also_remove_from_parent) {
 	TypedArray<int> to_remove;
 	TypedArray<int> visited;
@@ -432,15 +440,13 @@ void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, i
 
 	do_get_descendants(p_graph, successors, visited, to_remove);
 
-	// Remove nodes from graph using internal structure
-	HashMap<int, PlannerNodeStruct> &graph_internal = p_graph.get_graph_internal_mut();
+	// Remove nodes from graph (both graph_internal and graph Dictionary stay in sync)
 	for (int i = 0; i < to_remove.size(); i++) {
 		int node_id_to_remove = to_remove[i];
 		if (node_id_to_remove != p_node_id) { // Don't remove the node itself
-			graph_internal.erase(node_id_to_remove);
+			p_graph.erase_node(node_id_to_remove);
 		}
 	}
-	// Note: Dictionary is automatically updated via update_node() call below
 
 	// Clear successors of the node
 	successors.clear();

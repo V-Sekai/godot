@@ -55,6 +55,11 @@ public:
 	// If p_also_remove_from_parent is true, also remove the node itself from its parent's successors list
 	static void remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id, bool p_also_remove_from_parent = false);
 
+	// Build the array of planner elements (method expansion) from a node's successors.
+	// Returns each successor's "info" in order. Use for blacklisting instead of created_subtasks.
+	// Call before remove_descendants if the list is needed.
+	static Array get_successors_info_array(PlannerSolutionGraph &p_graph, int p_node_id);
+
 	// Extract solution plan (sequence of commands) from graph
 	// Commands with temporal constraints are sorted by start_time (STN-Based Plan Extraction)
 	// Uses start_time, or calculates from (end_time - duration) if start_time not available

@@ -279,3 +279,80 @@ func _academy_method_lounge(s: Dictionary, a: String) -> Array:
 
 func _academy_method_hack(s: Dictionary, a: String) -> Array:
 	return method_get_archive_via_hack(s, a)
+
+# ---- IPyHOP backtracking_test (migrated from ipyhop_tests/backtracking_test.py) ----
+# State: ipyhop.flag (int). Blackboard must have "ipyhop": {"flag": -1} (PlannerState only merges dict vars).
+# Actions: a_putv(flag_val), a_getv(flag_val). Tasks: put_it, need0, need1, need01, need10.
+
+static func _ipyhop_flag(state: Dictionary) -> int:
+	var d = state.get("ipyhop", {})
+	if d is Dictionary:
+		return d.get("flag", -999)
+	return -999
+
+static func ipyhop_a_putv(state: Dictionary, flag_val: int) -> Dictionary:
+	var new_state := state.duplicate(true)
+	var box: Dictionary = (new_state.get("ipyhop", {}) as Dictionary).duplicate(true)
+	box["flag"] = flag_val
+	new_state["ipyhop"] = box
+	return new_state
+
+static func ipyhop_a_getv(state: Dictionary, flag_val: int):
+	if _ipyhop_flag(state) != flag_val:
+		return false
+	var new_state := state.duplicate(true)
+	var box: Dictionary = (new_state.get("ipyhop", {}) as Dictionary).duplicate(true)
+	box["flag"] = flag_val
+	new_state["ipyhop"] = box
+	return new_state
+
+static func ipyhop_m_err(_state: Dictionary) -> Array:
+	return [["a_putv", 0], ["a_getv", 1]]
+
+static func ipyhop_m0(_state: Dictionary) -> Array:
+	return [["a_putv", 0], ["a_getv", 0]]
+
+static func ipyhop_m1(_state: Dictionary) -> Array:
+	return [["a_putv", 1], ["a_getv", 1]]
+
+static func ipyhop_m_need0(_state: Dictionary) -> Array:
+	return [["a_getv", 0]]
+
+static func ipyhop_m_need1(_state: Dictionary) -> Array:
+	return [["a_getv", 1]]
+
+func create_ipyhop_backtracking_domain() -> PlannerDomain:
+	var domain := PlannerDomain.new()
+	domain.add_command("a_putv", Callable(self, "_ipyhop_a_putv"))
+	domain.add_command("a_getv", Callable(self, "_ipyhop_a_getv"))
+	domain.add_task_methods("put_it", [
+		Callable(self, "_ipyhop_m_err"),
+		Callable(self, "_ipyhop_m0"),
+		Callable(self, "_ipyhop_m1")
+	])
+	domain.add_task_methods("need0", [Callable(self, "_ipyhop_m_need0")])
+	domain.add_task_methods("need1", [Callable(self, "_ipyhop_m_need1")])
+	domain.add_task_methods("need01", [Callable(self, "_ipyhop_m_need0"), Callable(self, "_ipyhop_m_need1")])
+	domain.add_task_methods("need10", [Callable(self, "_ipyhop_m_need1"), Callable(self, "_ipyhop_m_need0")])
+	return domain
+
+func _ipyhop_a_putv(s: Dictionary, v: int) -> Dictionary:
+	return ipyhop_a_putv(s, v)
+
+func _ipyhop_a_getv(s: Dictionary, v: int) -> Variant:
+	return ipyhop_a_getv(s, v)
+
+func _ipyhop_m_err(s: Dictionary) -> Array:
+	return ipyhop_m_err(s)
+
+func _ipyhop_m0(s: Dictionary) -> Array:
+	return ipyhop_m0(s)
+
+func _ipyhop_m1(s: Dictionary) -> Array:
+	return ipyhop_m1(s)
+
+func _ipyhop_m_need0(s: Dictionary) -> Array:
+	return ipyhop_m_need0(s)
+
+func _ipyhop_m_need1(s: Dictionary) -> Array:
+	return ipyhop_m_need1(s)

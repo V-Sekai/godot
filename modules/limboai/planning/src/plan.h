@@ -65,7 +65,7 @@ class PlannerPlan : public Resource {
 	Ref<PlannerPersona> current_persona; // Current persona for ego-centric planning
 	Ref<PlannerBeliefManager> belief_manager; // Belief manager for multi-persona interactions
 
-	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
+	int max_depth = 20; // Maximum recursion depth (allow IPyHOP backtracking tests to complete)
 	int max_iterations = 50000; // Maximum planning loop iterations (safety limit to prevent infinite loops)
 	int max_stack_size = 10000; // Maximum stack size to prevent excessive memory usage
 	int iterations = 0; // Track number of planning iterations

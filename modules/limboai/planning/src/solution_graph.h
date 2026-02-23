@@ -77,6 +77,8 @@ struct PlannerNodeStruct {
 	String tag;
 	// Plan explanation and debugging
 	Dictionary decision_info; // Stores why method was chosen, alternatives considered, scores, etc.
+	// Persisted for STN restore (not dropped on update_node). Method expansion is derived from successors.
+	Variant stn_snapshot; // STN snapshot for this node (used by restore)
 
 	PlannerNodeStruct() :
 			type(PlannerNodeType::TYPE_ROOT),
@@ -185,6 +187,12 @@ public:
 	// Get mutable internal graph HashMap (for operations that need to modify)
 	HashMap<int, PlannerNodeStruct> &get_graph_internal_mut() {
 		return graph_internal;
+	}
+
+	// Erase a node from both graph_internal and graph Dictionary (keeps them in sync)
+	void erase_node(int p_node_id) {
+		graph_internal.erase(p_node_id);
+		graph.erase(p_node_id);
 	}
 
 	// Helper for loading graphs - convert Dictionary to internal structure
@@ -309,6 +317,7 @@ private:
 		dict["duration"] = Variant(static_cast<int64_t>(p_node.duration));
 		dict["tag"] = Variant(p_node.tag);
 		dict["decision_info"] = p_node.decision_info;
+		dict["stn_snapshot"] = p_node.stn_snapshot;
 		return dict;
 	}
 
@@ -361,6 +370,9 @@ private:
 		}
 		if (p_dict.has("decision_info")) {
 			node.decision_info = p_dict["decision_info"];
+		}
+		if (p_dict.has("stn_snapshot")) {
+			node.stn_snapshot = p_dict["stn_snapshot"];
 		}
 		return node;
 	}
