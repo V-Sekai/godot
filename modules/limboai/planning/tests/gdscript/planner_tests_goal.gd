@@ -14,7 +14,7 @@ static func _test_goal_planning(h: RefCounted, domains: RefCounted) -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(domains.create_minimal_goal_domain())
-	plan.set_verbose(1)
+	plan.set_verbose(0)
 	var res: Array = h.run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		h._fail(name, "BTRunPlanner execute failed")
@@ -34,7 +34,7 @@ static func _test_two_step_goal(h: RefCounted, domains: RefCounted) -> void:
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(domains.create_two_step_goal_domain())
-	plan.set_verbose(1)
+	plan.set_verbose(0)
 	var res: Array = h.run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
 		h._fail(name, "BTRunPlanner execute failed")

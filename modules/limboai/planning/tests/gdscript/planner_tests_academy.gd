@@ -24,7 +24,7 @@ static func _test_academy_get_archive_access(h: RefCounted, domains: RefCounted)
 	var todo_list: Array = [["get_archive_access", "student_1"]]
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
-	plan.set_verbose(1)
+	plan.set_verbose(0)
 	plan.set_current_domain(domains.create_academy_one_block_domain_get_archive_lounge_only())
 	var res: Array = h.run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
@@ -60,7 +60,7 @@ static func _test_academy_prepare_student(h: RefCounted, domains: RefCounted) ->
 	var todo_list: Array = [["prepare_student", "student_1"]]
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
-	plan.set_verbose(1)
+	plan.set_verbose(0)
 	plan.set_current_domain(domains.create_academy_one_block_domain())
 	var res: Array = h.run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
