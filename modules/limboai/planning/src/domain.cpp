@@ -83,6 +83,8 @@ Variant PlannerDomain::method_verify_goal(Dictionary p_state, String p_method, S
 PlannerDomain::PlannerDomain() {
 	task_method_dictionary["_verify_g"] = varray(callable_mp_static(&PlannerDomain::method_verify_goal));
 	task_method_dictionary["_verify_mg"] = varray(callable_mp_static(&PlannerMultigoal::method_verify_multigoal));
+	// Default multigoal method (VSIDS-friendly): identity decomposition; inserted so every domain can handle multigoals.
+	multigoal_method_list.push_back(callable_mp_static(&PlannerMultigoal::method_decompose_identity));
 }
 
 void PlannerDomain::add_multigoal_methods(TypedArray<Callable> p_methods) {

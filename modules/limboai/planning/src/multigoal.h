@@ -58,6 +58,9 @@ public:
 	static Array method_goals_not_achieved(const Dictionary &p_state, const Array &p_multigoal_array);
 	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Array &p_multigoal_array, int p_depth, int p_verbose);
 
+	// Default multigoal method (VSIDS-friendly): decompose multigoal into subgoals in order.
+	static Array method_decompose_identity(const Dictionary &p_state, const Array &p_multigoal_array);
+
 protected:
 	static void _bind_methods();
 };

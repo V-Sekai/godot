@@ -38,6 +38,7 @@ void PlannerMultigoal::_bind_methods() {
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("set_goal_tag", "multigoal", "tag"), &PlannerMultigoal::set_goal_tag);
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal_array"), &PlannerMultigoal::method_goals_not_achieved);
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal_array", "depth", "verbose"), &PlannerMultigoal::method_verify_multigoal);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_decompose_identity", "state", "multigoal_array"), &PlannerMultigoal::method_decompose_identity);
 }
 
 // Check if a Variant is an Array multigoal (Array of unigoal arrays)
@@ -195,4 +196,11 @@ Variant PlannerMultigoal::method_verify_multigoal(const Dictionary &p_state, con
 		print_line(vformat("Depth %d: method %s achieved multigoal", p_depth, p_method));
 	}
 	return Array();
+}
+
+// Default multigoal method: return the multigoal array as subgoals (identity decomposition).
+// Inserted by default so every domain can handle multigoals; participates in VSIDS method selection.
+Array PlannerMultigoal::method_decompose_identity(const Dictionary &p_state, const Array &p_multigoal_array) {
+	(void)p_state;
+	return p_multigoal_array.duplicate();
 }
