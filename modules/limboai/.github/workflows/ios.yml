@@ -1,0 +1,228 @@
+name: 🍏 iOS builds
+on:
+  workflow_call:
+    inputs:
+      godot-ref:
+        description: A tag, branch or commit hash in the Godot repository.
+        type: string
+        default: master
+
+  workflow_dispatch:
+    inputs:
+      godot-ref:
+        description: A tag, branch or commit hash in the Godot repository.
+        type: string
+        default: master
+
+# Global Settings
+env:
+  SCONSFLAGS: production=yes verbose=yes warnings=extra
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CACHE_LIMIT: 4
+
+jobs:
+  ios-builds:
+    runs-on: "macos-latest"
+    name: ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Template (arm64, release)
+            target: template_release
+            arch: arm64
+            ios_simulator: false
+            dotnet: false
+
+          - name: Template (arm64, debug)
+            target: template_debug
+            arch: arm64
+            ios_simulator: false
+            dotnet: false
+
+          - name: Simulator (x86_64, release)
+            target: template_release
+            arch: x86_64
+            ios_simulator: true
+            dotnet: false
+
+          - name: Simulator (x86_64, debug)
+            target: template_debug
+            arch: x86_64
+            ios_simulator: true
+            dotnet: false
+
+          # ! Disabled for now as it doesn't work with cctools-port and current LLVM.
+          # * See https://github.com/godotengine/build-containers/pull/85.
+          # - name: Simulator Lib (arm64, release)
+          #   target: template_release
+          #   arch: arm64
+          #   ios_simulator: true
+
+          # - name: Simulator Lib (arm64, debug)
+          #   target: template_debug
+          #   arch: arm64
+          #   ios_simulator: true
+
+          - name: Template .NET (arm64, release)
+            target: template_release
+            arch: arm64
+            ios_simulator: false
+            dotnet: true
+
+          - name: Template .NET (arm64, debug)
+            target: template_debug
+            arch: arm64
+            ios_simulator: false
+            dotnet: true
+
+          - name: Simulator .NET (x86_64, release)
+            target: template_release
+            arch: x86_64
+            ios_simulator: true
+            dotnet: true
+
+          - name: Simulator .NET (x86_64, debug)
+            target: template_debug
+            arch: x86_64
+            ios_simulator: true
+            dotnet: true
+
+    env:
+      BIN: godot.ios.${{matrix.target}}.${{matrix.arch}}${{  matrix.dotnet == true && '.mono' || ''  }}
+
+    steps:
+      - name: Clone Godot
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: ${{ inputs.godot-ref }}
+
+      - name: Clone LimboAI module
+        uses: actions/checkout@v4
+        with:
+          path: modules/limboai
+
+      # Init version environment variables.
+      - uses: ./modules/limboai/.github/actions/init-version
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          architecture: "x64"
+
+      - name: Set up scons
+        run: |
+          python -c "import sys; print(sys.version)"
+          python -m pip install scons=="${{env.SCONS_VERSION}}"
+
+      - name: Diagnostics
+        run: |
+          python --version
+          scons --version
+          dotnet --info
+
+      - name: Set up Vulkan SDK
+        run: sh misc/scripts/install_vulkan_sdk_macos.sh
+
+      # ! Note: we stopped using the scons cache in release builds.
+      # - name: Set up scons cache
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ${{github.workspace}}/.scons_cache/
+      #     key: ${{env.BIN}}-${{inputs.godot-ref}}-${{github.ref}}-${{env.LIMBOAI_VERSION}}
+      #     restore-keys: |
+      #       ${{env.BIN}}-${{inputs.godot-ref}}-${{github.ref}}-${{env.LIMBOAI_VERSION}}
+      #       ${{env.BIN}}-${{inputs.godot-ref}}-${{github.ref}}
+      #       ${{env.BIN}}-${{inputs.godot-ref}}
+
+      - name: Compilation
+        run: |
+          scons platform=ios target=${{matrix.target}} arch=${{matrix.arch}} ios_simulator=${{matrix.ios_simulator}} module_mono_enabled=${{matrix.dotnet}} ${{env.SCONSFLAGS}} cache_path=${{github.workspace}}/.scons_cache/ cache_limit=${{env.CACHE_LIMIT}}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmp-ios${{matrix.dotnet == true && '-dotnet' || ''}}-templates-${{strategy.job-index}}
+          path: bin/*
+
+  package-ios-templates:
+    runs-on: "macos-latest"
+    name: ${{ matrix.name }}
+    needs: ios-builds
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Package iOS templates
+            dotnet: false
+          - name: Package iOS .NET templates
+            dotnet: true
+
+    steps:
+      - name: Clone Godot
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: ${{ inputs.godot-ref }}
+
+      - name: Clone LimboAI module
+        uses: actions/checkout@v4
+        with:
+          path: modules/limboai
+
+      # Init version environment variables.
+      - uses: ./modules/limboai/.github/actions/init-version
+
+      - name: Set up Vulkan SDK
+        run: |
+          curl -L "https://raw.githubusercontent.com/godotengine/godot/refs/heads/master/misc/scripts/install_vulkan_sdk_macos.sh" \
+            -o /tmp/install-vulkan.sh
+          sh /tmp/install-vulkan.sh
+
+      - name: Download templates artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tmp-ios${{matrix.dotnet == true && '-dotnet' || ''}}-templates-*
+          merge-multiple: true
+          path: bin/
+
+      - name: Make template bundle
+        run: |
+          ls bin/
+          cd bin/
+          cp -r ../misc/dist/apple_embedded_xcode ios_xcode
+
+          mv libgodot.ios.template_debug.arm64.a ios_xcode/libgodot.ios.debug.xcframework/ios-arm64/libgodot.a
+          mv libgodot.ios.template_debug.x86_64.simulator.a ios_xcode/libgodot.ios.debug.xcframework/ios-arm64_x86_64-simulator/libgodot.a
+
+          mv libgodot.ios.template_release.arm64.a ios_xcode/libgodot.ios.release.xcframework/ios-arm64/libgodot.a
+          mv libgodot.ios.template_release.x86_64.simulator.a ios_xcode/libgodot.ios.release.xcframework/ios-arm64_x86_64-simulator/libgodot.a
+
+          cp -r ~/VulkanSDK/*/macOS/lib/MoltenVK.xcframework ios_xcode
+          rm -rf ios_xcode/MoltenVK.xcframework/{macos,tvos}*
+
+          mkdir -p ${{github.workspace}}/out/templates/
+          cd ios_xcode
+          zip -q -9 -r ${{github.workspace}}/out/templates/ios.zip *
+
+          echo "${GODOT_VERSION}.limboai+${LIMBOAI_VERSION}${{matrix.dotnet == true && '.mono' || ''}}" > ${{github.workspace}}/out/templates/version.txt
+
+          ls -l ${{github.workspace}}/out/*
+
+      - name: Upload template bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.NAME_PREFIX}}${{matrix.dotnet == true && '.dotnet' || ''}}.export-templates.ios
+          path: out/*
+
+      - name: Delete templates artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: tmp-ios${{matrix.dotnet == true && '-dotnet' || ''}}-templates-*
+          useGlob: true
+          failOnError: false
