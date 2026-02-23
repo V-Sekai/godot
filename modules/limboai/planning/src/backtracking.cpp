@@ -278,9 +278,19 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		print_line(vformat("Backtracking: Found CLOSED node %d to retry", closed_node_id));
 	}
 
-	// Reopen CLOSED node: blacklist its method expansion, set OPEN, clear descendants and reset fields
-	Array subtasks_to_blacklist = PlannerGraphOperations::get_successors_info_array(p_graph, closed_node_id);
+	// Reopen CLOSED node: blacklist its method expansion, set OPEN, clear descendants and reset fields.
+	// If we're reopening a sibling of the failed branch (e.g. failed in tm_2, reopening tm_1), clear
+	// the blacklist so the other branch (tm_2) can retry all methods with the new state (IPyHOP sample_1).
+	int closed_node_parent = PlannerGraphOperations::find_predecessor(p_graph, closed_node_id);
+	bool reopening_sibling = (closed_node_parent >= 0 && closed_node_parent == PlannerGraphOperations::find_predecessor(p_graph, p_parent_node_id));
 	TypedArray<Variant> updated_blacklist = p_blacklisted_commands;
+	if (reopening_sibling) {
+		updated_blacklist.clear();
+		if (p_verbose >= 2) {
+			print_line(vformat("Backtracking: Cleared blacklist (reopening sibling node %d of failed branch)", closed_node_id));
+		}
+	}
+	Array subtasks_to_blacklist = PlannerGraphOperations::get_successors_info_array(p_graph, closed_node_id);
 	if (subtasks_to_blacklist.size() > 0) {
 		Array copy = subtasks_to_blacklist.duplicate(true);
 		int n_before = updated_blacklist.size();
@@ -300,7 +310,6 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	closed_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
 	p_graph.update_node(closed_node_id, closed_node);
 
-	int closed_node_parent = PlannerGraphOperations::find_predecessor(p_graph, closed_node_id);
 	BacktrackResult result;
 	result.parent_node_id = closed_node_parent >= 0 ? closed_node_parent : p_parent_node_id;
 	result.current_node_id = closed_node_id;
