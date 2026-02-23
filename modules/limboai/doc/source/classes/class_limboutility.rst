@@ -10,7 +10,7 @@
 LimboUtility
 ============
 
-**Inherits:** 
+**Inherits:**
 
 Helper functions for LimboAI.
 

@@ -158,7 +158,7 @@
 			<param index="1" name="blackboard" type="Blackboard" />
 			<param index="2" name="scene_root" type="Node" />
 			<description>
-				Initilizes the task. Assigns [member agent] and [member blackboard], and calls [method _setup] for the task and its children.
+				Initializes the task. Assigns [member agent] and [member blackboard], and calls [method _setup] for the task and its children.
 				The method is called recursively for each child task. [param scene_root] should be the root node of the scene the behavior tree is used in (e.g., the owner of the node that contains the behavior tree).
 			</description>
 		</method>

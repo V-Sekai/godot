@@ -10,7 +10,7 @@
 BT
 ==
 
-**Inherits:** 
+**Inherits:**
 
 **Inherited By:** :ref:`BTTask<class_BTTask>`
 

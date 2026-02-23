@@ -4,11 +4,11 @@
 		BT composite that executes all of its child tasks simultaneously.
 	</brief_description>
 	<description>
-		BTParallel executes all of its child tasks simultaneously. Note that BTParallel doesn't involve multithreading. It processes each task sequentially, from first to last, in the same tick before returning a result. If one of the abort criterea is met, any tasks currently [code]RUNNING[/code] will be terminated, and the result will be either [code]FAILURE[/code] or [code]SUCCESS[/code]. The [member num_failures_required] determines when BTParallel fails and [member num_successes_required] when it succeeds. When both are fullfilled, it gives priority to [member num_failures_required].
+		BTParallel executes all of its child tasks simultaneously. Note that BTParallel doesn't involve multithreading. It processes each task sequentially, from first to last, in the same tick before returning a result. If one of the abort criteria is met, any tasks currently [code]RUNNING[/code] will be terminated, and the result will be either [code]FAILURE[/code] or [code]SUCCESS[/code]. The [member num_failures_required] determines when BTParallel fails and [member num_successes_required] when it succeeds. When both are fulfilled, it gives priority to [member num_failures_required].
 		If set to [member repeat], all child tasks will be re-executed each tick, regardless of whether they previously resulted in [code]SUCCESS[/code] or [code]FAILURE[/code].
 		Returns [code]FAILURE[/code] when the required number of child tasks result in [code]FAILURE[/code]. When [member repeat] is set to [code]false[/code], if none of the criteria were met and all child tasks resulted in either [code]SUCCESS[/code] or [code]FAILURE[/code], BTParallel will return [code]FAILURE[/code].
 		Returns [code]SUCCESS[/code] when the required number of child tasks result in [code]SUCCESS[/code].
-		Returns [code]RUNNING[/code] if none of the criterea were fulfilled, and either [member repeat] is set to [code]true[/code] or a child task resulted in [code]RUNNING[/code].
+		Returns [code]RUNNING[/code] if none of the criteria were fulfilled, and either [member repeat] is set to [code]true[/code] or a child task resulted in [code]RUNNING[/code].
 	</description>
 	<tutorials>
 	</tutorials>

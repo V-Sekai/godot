@@ -10,7 +10,7 @@
 BlackboardPlan
 ==============
 
-**Inherits:** 
+**Inherits:**
 
 Stores and manages variables that will be used in constructing new :ref:`Blackboard<class_Blackboard>` instances.
 

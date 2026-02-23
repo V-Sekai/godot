@@ -10,7 +10,7 @@
 BTPlayer
 ========
 
-**Inherits:** 
+**Inherits:**
 
 Player of :ref:`BehaviorTree<class_BehaviorTree>` resources.
 

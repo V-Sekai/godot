@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  register_types.cpp                                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 /**
  * register_types.cpp
  * =============================================================================
@@ -82,6 +112,12 @@
 #include "bt/tasks/decorators/bt_run_limit.h"
 #include "bt/tasks/decorators/bt_subtree.h"
 #include "bt/tasks/decorators/bt_time_limit.h"
+#include "bt/tasks/planning/bt_command.h"
+#include "bt/tasks/planning/bt_compound_task.h"
+#include "bt/tasks/planning/bt_execute_plan.h"
+#include "bt/tasks/planning/bt_goal.h"
+#include "bt/tasks/planning/bt_multigoal.h"
+#include "bt/tasks/planning/bt_run_planner.h"
 #include "bt/tasks/scene/bt_await_animation.h"
 #include "bt/tasks/scene/bt_check_agent_property.h"
 #include "bt/tasks/scene/bt_pause_animation.h"
@@ -106,6 +142,13 @@
 #include "editor/tree_search.h"
 #include "hsm/limbo_hsm.h"
 #include "hsm/limbo_state.h"
+#include "planning/src/domain.h"
+#include "planning/src/multigoal.h"
+#include "planning/src/plan.h"
+#include "planning/src/planner_belief_manager.h"
+#include "planning/src/planner_persona.h"
+#include "planning/src/planner_result.h"
+#include "planning/src/planner_state.h"
 #include "util/limbo_string_names.h"
 #include "util/limbo_task_db.h"
 #include "util/limbo_utility.h"
@@ -201,6 +244,20 @@ void initialize_limboai_module(ModuleInitializationLevel p_level) {
 		LIMBO_REGISTER_TASK(BTCheckAgentProperty);
 		LIMBO_REGISTER_TASK(BTCheckTrigger);
 		LIMBO_REGISTER_TASK(BTCheckVar);
+		LIMBO_REGISTER_TASK(BTRunPlanner);
+		LIMBO_REGISTER_TASK(BTExecutePlan);
+		LIMBO_REGISTER_TASK(BTCommand);
+		LIMBO_REGISTER_TASK(BTCompoundTask);
+		LIMBO_REGISTER_TASK(BTGoal);
+		LIMBO_REGISTER_TASK(BTMultigoal);
+
+		GDREGISTER_CLASS(PlannerDomain);
+		GDREGISTER_CLASS(PlannerPlan);
+		GDREGISTER_CLASS(PlannerResult);
+		GDREGISTER_CLASS(PlannerState);
+		GDREGISTER_CLASS(PlannerMultigoal);
+		GDREGISTER_CLASS(PlannerPersona);
+		GDREGISTER_CLASS(PlannerBeliefManager);
 
 		GDREGISTER_ABSTRACT_CLASS(BBParam);
 		GDREGISTER_CLASS(BBAabb);

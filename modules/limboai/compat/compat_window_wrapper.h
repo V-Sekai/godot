@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  compat_window_wrapper.h                                                      */
+/*  compat_window_wrapper.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -27,6 +27,8 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+
+#pragma once
 
 // * This is a port of a WindowWrapper from the Godot Engine to use with godot-cpp.
 

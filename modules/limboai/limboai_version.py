@@ -32,7 +32,7 @@ def _git_hash(short: bool = False):
             cmd = ["git", "rev-parse", "HEAD"]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         ret = proc.communicate()[0].strip().decode("utf-8")
-    except:
+    except Exception:
         pass
     return ret
 
@@ -69,8 +69,6 @@ def generate_module_version_header():
 #define LIMBOAI_VERSION_DOC_URL "https://limboai.readthedocs.io/en/" LIMBOAI_VERSION_DOC_BRANCH "/"
 
 #endif // LIMBOAI_VERSION_GEN_H
-""".format(
-            **version_info
-        )
+""".format(**version_info)
     )
     f.close()

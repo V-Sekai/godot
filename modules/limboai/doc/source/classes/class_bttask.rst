@@ -206,14 +206,14 @@ Returns ``0`` when task is not ``RUNNING``.
 
 Root node of the scene the behavior tree is used in (e.g., the owner of the :ref:`BTPlayer<class_BTPlayer>` node). Can be uses to retrieve ``NodePath`` references.
 
-\ **Example:**\ 
+\ **Example:**\
 
 ::
 
     extends BTAction
-    
+
     @export var node_path: NodePath
-    
+
     func _setup():
         var node: Node = scene_root.get_node(node_path)
 
@@ -502,7 +502,7 @@ Returns ``true`` if ``task`` is a child of this task.
 
 |void| **initialize**\ (\ agent\: ``Node``, blackboard\: :ref:`Blackboard<class_Blackboard>`, scene_root\: ``Node``\ ) :ref:`🔗<class_BTTask_method_initialize>`
 
-Initilizes the task. Assigns :ref:`agent<class_BTTask_property_agent>` and :ref:`blackboard<class_BTTask_property_blackboard>`, and calls :ref:`_setup<class_BTTask_private_method__setup>` for the task and its children.
+Initializes the task. Assigns :ref:`agent<class_BTTask_property_agent>` and :ref:`blackboard<class_BTTask_property_blackboard>`, and calls :ref:`_setup<class_BTTask_private_method__setup>` for the task and its children.
 
 The method is called recursively for each child task. ``scene_root`` should be the root node of the scene the behavior tree is used in (e.g., the owner of the node that contains the behavior tree).
 
