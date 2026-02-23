@@ -31,7 +31,7 @@ static func _test_mznc2025_temporal_entity(h: RefCounted, domains: RefCounted) -
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(domains.create_minimal_goal_domain())
 	plan.set_verbose(0)
-	plan.set_max_depth(24)
+	plan.set_max_depth(100)
 	var start_usec: int = int(Time.get_unix_time_from_system() * 1_000_000)
 	plan.set_time_range_dict({ "start_time": start_usec, "duration": PLAN_DURATION_20MIN_USEC })
 	var goal_raw: Array = (instance.get("todo_list_goal", ["value", "value", 1]) as Array)

@@ -356,3 +356,106 @@ func _ipyhop_m_need0(s: Dictionary) -> Array:
 
 func _ipyhop_m_need1(s: Dictionary) -> Array:
 	return ipyhop_m_need1(s)
+
+# ---- IPyHOP sample tests (from ipyhop_tests/sample_test_*.py, test_action_models, test_state_models) ----
+# State has "flag": Dictionary (int -> bool). Initially flag[0]=true, flag[1..19]=false.
+# Action t_a(state, k1, k2): if flag[k1] then set flag[k2]=true and return state; else fail (return false).
+
+static func _sample_flag(state: Dictionary) -> Dictionary:
+	return state.get("flag", {})
+
+static func sample_t_a(state: Dictionary, k1: int, k2: int):
+	var flag: Dictionary = _sample_flag(state)
+	if not flag.get(k1, false):
+		return false
+	var new_state := state.duplicate(true)
+	var new_flag: Dictionary = (new_state.get("flag", {}) as Dictionary).duplicate(true)
+	new_flag[k2] = true
+	new_state["flag"] = new_flag
+	return new_state
+
+# sample_test_1: tm_1 (3 methods), tm_2 (2 methods). Expected: backtrack to tm_1_3 and tm_2_2.
+static func sample_tm_1_1(_s: Dictionary) -> Array:
+	return [["t_a", 0, 1], ["t_a", 1, 2], ["t_a", 3, 4]]
+static func sample_tm_1_2(_s: Dictionary) -> Array:
+	return [["t_a", 0, 1], ["t_a", 1, 2], ["t_a", 2, 3]]
+static func sample_tm_1_3(_s: Dictionary) -> Array:
+	return [["t_a", 0, 1], ["t_a", 1, 2], ["t_a", 2, 3], ["t_a", 3, 4]]
+static func sample_tm_2_1(_s: Dictionary) -> Array:
+	return [["t_a", 3, 4], ["t_a", 4, 5], ["t_a", 6, 7]]
+static func sample_tm_2_2(_s: Dictionary) -> Array:
+	return [["t_a", 4, 5], ["t_a", 5, 6], ["t_a", 6, 7]]
+
+func create_ipyhop_sample_1_domain() -> PlannerDomain:
+	var domain := PlannerDomain.new()
+	domain.add_command("t_a", Callable(self, "_sample_t_a"))
+	domain.add_task_methods("tm_1", [
+		Callable(self, "_sample_tm_1_1"),
+		Callable(self, "_sample_tm_1_2"),
+		Callable(self, "_sample_tm_1_3")
+	])
+	domain.add_task_methods("tm_2", [
+		Callable(self, "_sample_tm_2_1"),
+		Callable(self, "_sample_tm_2_2")
+	])
+	return domain
+
+func _sample_t_a(s: Dictionary, k1: int, k2: int):
+	return sample_t_a(s, k1, k2)
+func _sample_tm_1_1(s: Dictionary) -> Array: return sample_tm_1_1(s)
+func _sample_tm_1_2(s: Dictionary) -> Array: return sample_tm_1_2(s)
+func _sample_tm_1_3(s: Dictionary) -> Array: return sample_tm_1_3(s)
+func _sample_tm_2_1(s: Dictionary) -> Array: return sample_tm_2_1(s)
+func _sample_tm_2_2(s: Dictionary) -> Array: return sample_tm_2_2(s)
+
+# sample_test_2 and sample_test_3: tm_1 (2 methods, subtask tm_2), tm_2 (2 methods), tm_3 (1 method).
+static func sample2_tm_1_1(_s: Dictionary) -> Array:
+	return [["tm_2"], ["t_a", 3, 4], ["t_a", 4, 5]]
+static func sample2_tm_1_2(_s: Dictionary) -> Array:
+	return [["tm_2"], ["t_a", 3, 4], ["t_a", 4, 5], ["t_a", 5, 6]]
+static func sample2_tm_2_1(_s: Dictionary) -> Array:
+	return [["t_a", 0, 1], ["t_a", 1, 2], ["t_a", 2, 3]]
+static func sample2_tm_2_2(_s: Dictionary) -> Array:
+	return [["t_a", 0, 1], ["t_a", 1, 2], ["t_a", 2, 3], ["t_a", 3, 7]]
+static func sample2_tm_3_1(_s: Dictionary) -> Array:
+	return [["t_a", 7, 8]]
+
+# sample_test_3: tm_3 requires (9,10) so unsolvable (flag 9 never set).
+static func sample3_tm_3_1(_s: Dictionary) -> Array:
+	return [["t_a", 9, 10]]
+
+func create_ipyhop_sample_2_domain() -> PlannerDomain:
+	var domain := PlannerDomain.new()
+	domain.add_command("t_a", Callable(self, "_sample_t_a"))
+	domain.add_task_methods("tm_1", [
+		Callable(self, "_sample2_tm_1_1"),
+		Callable(self, "_sample2_tm_1_2")
+	])
+	domain.add_task_methods("tm_2", [
+		Callable(self, "_sample2_tm_2_1"),
+		Callable(self, "_sample2_tm_2_2")
+	])
+	domain.add_task_methods("tm_3", [Callable(self, "_sample2_tm_3_1")])
+	return domain
+
+# Same as sample_2 but tm_3 requires (9,10); flag 9 is never set so planning fails.
+func create_ipyhop_sample_3_domain() -> PlannerDomain:
+	var domain := PlannerDomain.new()
+	domain.add_command("t_a", Callable(self, "_sample_t_a"))
+	domain.add_task_methods("tm_1", [
+		Callable(self, "_sample2_tm_1_1"),
+		Callable(self, "_sample2_tm_1_2")
+	])
+	domain.add_task_methods("tm_2", [
+		Callable(self, "_sample2_tm_2_1"),
+		Callable(self, "_sample2_tm_2_2")
+	])
+	domain.add_task_methods("tm_3", [Callable(self, "_sample3_tm_3_1")])
+	return domain
+
+func _sample2_tm_1_1(s: Dictionary) -> Array: return sample2_tm_1_1(s)
+func _sample2_tm_1_2(s: Dictionary) -> Array: return sample2_tm_1_2(s)
+func _sample2_tm_2_1(s: Dictionary) -> Array: return sample2_tm_2_1(s)
+func _sample2_tm_2_2(s: Dictionary) -> Array: return sample2_tm_2_2(s)
+func _sample2_tm_3_1(s: Dictionary) -> Array: return sample2_tm_3_1(s)
+func _sample3_tm_3_1(s: Dictionary) -> Array: return sample3_tm_3_1(s)

@@ -269,7 +269,29 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		}
 	}
 
-	// Check reachable nodes for failures
+	// Include direct successors of every reachable node so OPEN/FAILED siblings are checked.
+	// Otherwise e.g. root -> [tm_1 CLOSED, tm_3 OPEN] would miss tm_3 and incorrectly report success.
+	LocalVector<int> nodes_to_check;
+	HashSet<int> added;
+	for (uint32_t i = 0; i < reachable_nodes.size(); i++) {
+		int nid = reachable_nodes[i];
+		if (!added.has(nid)) {
+			added.insert(nid);
+			nodes_to_check.push_back(nid);
+		}
+		const PlannerNodeStruct *n = solution_graph.get_node_internal(nid);
+		if (n) {
+			for (uint32_t j = 0; j < n->successors.size(); j++) {
+				int sid = n->successors[j];
+				if (!added.has(sid)) {
+					added.insert(sid);
+					nodes_to_check.push_back(sid);
+				}
+			}
+		}
+	}
+
+	// Check reachable nodes and their direct successors for failures
 	bool has_reachable_closed_nodes = false;
 	// Track FAILED VERIFY_GOAL nodes - they're acceptable if there's a CLOSED one for the same parent
 	HashMap<int, LocalVector<int>> failed_verify_goals_by_parent; // parent_id -> array of failed verify goal node_ids
@@ -278,8 +300,8 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	HashMap<int, LocalVector<int>> failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
 	LocalVector<int> closed_verify_multigoals;
 
-	for (uint32_t i = 0; i < reachable_nodes.size(); i++) {
-		int node_id = reachable_nodes[i];
+	for (uint32_t i = 0; i < nodes_to_check.size(); i++) {
+		int node_id = nodes_to_check[i];
 		if (node_id == 0) {
 			continue; // Skip root
 		}
