@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai-fire/limbo-ai.git
 	branch = master
-	commit = 91545e34211ca497a81e6669dd591ea14536401a
-	parent = 8a7c0e05ddd278554d44586d2c7409d1d2ee1eef
+	commit = 1780dd87900c1ecce8763e700018b7a32e34d973
+	parent = 3c571985b0094644d413b45aada33596ea17fb23
 	method = merge
 	cmdver = 0.4.9
