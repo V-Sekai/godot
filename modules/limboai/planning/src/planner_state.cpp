@@ -48,6 +48,171 @@
 #define _BB_BELIEFS StringName("beliefs")
 #define _BB_BELIEFS_METADATA StringName("beliefs_metadata")
 
+namespace {
+
+struct KnowledgeTriple {
+	String predicate;
+	String subject;
+	Variant object;
+	Dictionary metadata;
+};
+
+Vector<KnowledgeTriple> collect_triples(const PlannerState *state) {
+	Vector<KnowledgeTriple> result;
+	Ref<Blackboard> blackboard = state->get_blackboard();
+	if (!blackboard.is_valid()) {
+		return result;
+	}
+	Dictionary all = blackboard->get_vars_as_dict();
+	Dictionary meta_all = blackboard->get_var(_BB_PLANNER_METADATA, Dictionary(), false);
+	Array keys = all.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		StringName k = keys[i];
+		if (k == _BB_PLANNER_METADATA || k == _BB_BELIEFS || k == _BB_BELIEFS_METADATA ||
+				k == _BB_ENTITY_CAPABILITIES || k == _BB_ENTITY_CAPABILITIES_PUBLIC ||
+				k == _BB_TERRAIN_FACTS || k == _BB_SHARED_OBJECTS || k == _BB_PUBLIC_EVENTS || k == _BB_ENTITY_POSITIONS) {
+			continue;
+		}
+		Variant v = all[k];
+		if (v.get_type() != Variant::DICTIONARY) {
+			continue;
+		}
+		Dictionary dict = v;
+		Dictionary pred_meta = meta_all.has(k) ? Dictionary(meta_all[k]) : Dictionary();
+		Array subj_keys = dict.keys();
+		for (int j = 0; j < subj_keys.size(); j++) {
+			Variant subj = subj_keys[j];
+			String subj_str = subj;
+			KnowledgeTriple t;
+			t.predicate = String(k);
+			t.subject = subj_str;
+			t.object = dict[subj];
+			t.metadata = pred_meta.has(subj_str) ? Dictionary(pred_meta[subj_str]) : Dictionary();
+			result.push_back(t);
+		}
+	}
+	// Entity capabilities (state)
+	Dictionary entity_caps = blackboard->get_var(_BB_ENTITY_CAPABILITIES, Dictionary(), false);
+	keys = entity_caps.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String eid = keys[i];
+		Dictionary caps = entity_caps[keys[i]];
+		Array cap_keys = caps.keys();
+		for (int j = 0; j < cap_keys.size(); j++) {
+			String cap = cap_keys[j];
+			KnowledgeTriple t;
+			t.subject = "entity_" + eid;
+			t.predicate = "capability_" + cap;
+			t.object = caps[cap];
+			t.metadata["type"] = "state";
+			t.metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
+			result.push_back(t);
+		}
+	}
+	// Entity capabilities (public/fact)
+	Dictionary entity_caps_pub = blackboard->get_var(_BB_ENTITY_CAPABILITIES_PUBLIC, Dictionary(), false);
+	keys = entity_caps_pub.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String eid = keys[i];
+		Dictionary caps = entity_caps_pub[keys[i]];
+		Array cap_keys = caps.keys();
+		for (int j = 0; j < cap_keys.size(); j++) {
+			String cap = cap_keys[j];
+			KnowledgeTriple t;
+			t.subject = "entity_" + eid;
+			t.predicate = "capability_" + cap;
+			t.object = caps[cap];
+			t.metadata["type"] = "fact";
+			t.metadata["accessibility"] = "public";
+			result.push_back(t);
+		}
+	}
+	// Terrain facts
+	Dictionary terrain = blackboard->get_var(_BB_TERRAIN_FACTS, Dictionary(), false);
+	keys = terrain.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String loc = keys[i];
+		Dictionary facts = terrain[keys[i]];
+		Array fk = facts.keys();
+		for (int j = 0; j < fk.size(); j++) {
+			KnowledgeTriple t;
+			t.subject = "terrain_" + loc;
+			t.predicate = fk[j];
+			t.object = facts[fk[j]];
+			t.metadata["type"] = "fact";
+			t.metadata["source"] = "allocentric";
+			t.metadata["accessibility"] = "public";
+			result.push_back(t);
+		}
+	}
+	// Shared objects
+	Dictionary shared = blackboard->get_var(_BB_SHARED_OBJECTS, Dictionary(), false);
+	keys = shared.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		KnowledgeTriple t;
+		t.subject = "shared_object_" + String(keys[i]);
+		t.predicate = "data";
+		t.object = shared[keys[i]];
+		t.metadata["type"] = "fact";
+		t.metadata["accessibility"] = "public";
+		result.push_back(t);
+	}
+	// Public events
+	Dictionary events = blackboard->get_var(_BB_PUBLIC_EVENTS, Dictionary(), false);
+	keys = events.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		KnowledgeTriple t;
+		t.subject = "public_event_" + String(keys[i]);
+		t.predicate = "data";
+		t.object = events[keys[i]];
+		t.metadata["type"] = "fact";
+		t.metadata["accessibility"] = "public";
+		result.push_back(t);
+	}
+	// Entity positions
+	Dictionary positions = blackboard->get_var(_BB_ENTITY_POSITIONS, Dictionary(), false);
+	keys = positions.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		KnowledgeTriple t;
+		t.subject = "entity_" + String(keys[i]);
+		t.predicate = "position";
+		t.object = positions[keys[i]];
+		t.metadata["type"] = "fact";
+		t.metadata["accessibility"] = "public";
+		result.push_back(t);
+	}
+	// Beliefs
+	Dictionary beliefs = blackboard->get_var(_BB_BELIEFS, Dictionary(), false);
+	Dictionary beliefs_meta = blackboard->get_var(_BB_BELIEFS_METADATA, Dictionary(), false);
+	Array persona_ids = beliefs.keys();
+	for (int i = 0; i < persona_ids.size(); i++) {
+		String persona_id = persona_ids[i];
+		Dictionary by_target = beliefs[persona_id];
+		Dictionary meta_by_target = beliefs_meta.has(persona_id) ? Dictionary(beliefs_meta[persona_id]) : Dictionary();
+		Array targets = by_target.keys();
+		for (int j = 0; j < targets.size(); j++) {
+			String target = targets[j];
+			Dictionary preds = by_target[targets[j]];
+			Dictionary meta_preds = meta_by_target.has(target) ? Dictionary(meta_by_target[target]) : Dictionary();
+			Array pred_keys = preds.keys();
+			for (int k = 0; k < pred_keys.size(); k++) {
+				String pred = pred_keys[k];
+				KnowledgeTriple t;
+				t.subject = target;
+				t.predicate = pred;
+				t.object = preds[pred];
+				t.metadata = meta_preds.has(pred) ? Dictionary(meta_preds[pred]) : Dictionary();
+				t.metadata["type"] = "belief";
+				t.metadata["source"] = persona_id;
+				result.push_back(t);
+			}
+		}
+	}
+	return result;
+}
+
+} // namespace
+
 void PlannerState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_blackboard", "blackboard"), &PlannerState::set_blackboard);
 	ClassDB::bind_method(D_METHOD("get_blackboard"), &PlannerState::get_blackboard);
@@ -206,162 +371,9 @@ void PlannerState::set_predicate(const String &p_subject, const String &p_predic
 	blackboard->set_var(_BB_PLANNER_METADATA, meta);
 }
 
-Vector<KnowledgeTriple> PlannerState::get_triples() const {
-	Vector<KnowledgeTriple> result;
-	if (!blackboard.is_valid()) {
-		return result;
-	}
-	Dictionary all = blackboard->get_vars_as_dict();
-	Dictionary meta_all = blackboard->get_var(_BB_PLANNER_METADATA, Dictionary(), false);
-	Array keys = all.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		StringName k = keys[i];
-		if (k == _BB_PLANNER_METADATA || k == _BB_BELIEFS || k == _BB_BELIEFS_METADATA ||
-				k == _BB_ENTITY_CAPABILITIES || k == _BB_ENTITY_CAPABILITIES_PUBLIC ||
-				k == _BB_TERRAIN_FACTS || k == _BB_SHARED_OBJECTS || k == _BB_PUBLIC_EVENTS || k == _BB_ENTITY_POSITIONS) {
-			continue;
-		}
-		Variant v = all[k];
-		if (v.get_type() != Variant::DICTIONARY) {
-			continue;
-		}
-		Dictionary dict = v;
-		Dictionary pred_meta = meta_all.has(k) ? Dictionary(meta_all[k]) : Dictionary();
-		Array subj_keys = dict.keys();
-		for (int j = 0; j < subj_keys.size(); j++) {
-			Variant subj = subj_keys[j];
-			String subj_str = subj;
-			KnowledgeTriple t;
-			t.predicate = String(k);
-			t.subject = subj_str;
-			t.object = dict[subj];
-			t.metadata = pred_meta.has(subj_str) ? Dictionary(pred_meta[subj_str]) : Dictionary();
-			result.push_back(t);
-		}
-	}
-	// Entity capabilities (state)
-	Dictionary entity_caps = blackboard->get_var(_BB_ENTITY_CAPABILITIES, Dictionary(), false);
-	keys = entity_caps.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		String eid = keys[i];
-		Dictionary caps = entity_caps[keys[i]];
-		Array cap_keys = caps.keys();
-		for (int j = 0; j < cap_keys.size(); j++) {
-			String cap = cap_keys[j];
-			KnowledgeTriple t;
-			t.subject = "entity_" + eid;
-			t.predicate = "capability_" + cap;
-			t.object = caps[cap];
-			t.metadata["type"] = "state";
-			t.metadata["timestamp"] = OS::get_singleton()->get_ticks_usec();
-			result.push_back(t);
-		}
-	}
-	// Entity capabilities (public/fact)
-	Dictionary entity_caps_pub = blackboard->get_var(_BB_ENTITY_CAPABILITIES_PUBLIC, Dictionary(), false);
-	keys = entity_caps_pub.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		String eid = keys[i];
-		Dictionary caps = entity_caps_pub[keys[i]];
-		Array cap_keys = caps.keys();
-		for (int j = 0; j < cap_keys.size(); j++) {
-			String cap = cap_keys[j];
-			KnowledgeTriple t;
-			t.subject = "entity_" + eid;
-			t.predicate = "capability_" + cap;
-			t.object = caps[cap];
-			t.metadata["type"] = "fact";
-			t.metadata["accessibility"] = "public";
-			result.push_back(t);
-		}
-	}
-	// Terrain facts
-	Dictionary terrain = blackboard->get_var(_BB_TERRAIN_FACTS, Dictionary(), false);
-	keys = terrain.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		String loc = keys[i];
-		Dictionary facts = terrain[keys[i]];
-		Array fk = facts.keys();
-		for (int j = 0; j < fk.size(); j++) {
-			KnowledgeTriple t;
-			t.subject = "terrain_" + loc;
-			t.predicate = fk[j];
-			t.object = facts[fk[j]];
-			t.metadata["type"] = "fact";
-			t.metadata["source"] = "allocentric";
-			t.metadata["accessibility"] = "public";
-			result.push_back(t);
-		}
-	}
-	// Shared objects
-	Dictionary shared = blackboard->get_var(_BB_SHARED_OBJECTS, Dictionary(), false);
-	keys = shared.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		KnowledgeTriple t;
-		t.subject = "shared_object_" + String(keys[i]);
-		t.predicate = "data";
-		t.object = shared[keys[i]];
-		t.metadata["type"] = "fact";
-		t.metadata["accessibility"] = "public";
-		result.push_back(t);
-	}
-	// Public events
-	Dictionary events = blackboard->get_var(_BB_PUBLIC_EVENTS, Dictionary(), false);
-	keys = events.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		KnowledgeTriple t;
-		t.subject = "public_event_" + String(keys[i]);
-		t.predicate = "data";
-		t.object = events[keys[i]];
-		t.metadata["type"] = "fact";
-		t.metadata["accessibility"] = "public";
-		result.push_back(t);
-	}
-	// Entity positions
-	Dictionary positions = blackboard->get_var(_BB_ENTITY_POSITIONS, Dictionary(), false);
-	keys = positions.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		KnowledgeTriple t;
-		t.subject = "entity_" + String(keys[i]);
-		t.predicate = "position";
-		t.object = positions[keys[i]];
-		t.metadata["type"] = "fact";
-		t.metadata["accessibility"] = "public";
-		result.push_back(t);
-	}
-	// Beliefs
-	Dictionary beliefs = blackboard->get_var(_BB_BELIEFS, Dictionary(), false);
-	Dictionary beliefs_meta = blackboard->get_var(_BB_BELIEFS_METADATA, Dictionary(), false);
-	Array persona_ids = beliefs.keys();
-	for (int i = 0; i < persona_ids.size(); i++) {
-		String persona_id = persona_ids[i];
-		Dictionary by_target = beliefs[persona_id];
-		Dictionary meta_by_target = beliefs_meta.has(persona_id) ? Dictionary(beliefs_meta[persona_id]) : Dictionary();
-		Array targets = by_target.keys();
-		for (int j = 0; j < targets.size(); j++) {
-			String target = targets[j];
-			Dictionary preds = by_target[targets[j]];
-			Dictionary meta_preds = meta_by_target.has(target) ? Dictionary(meta_by_target[target]) : Dictionary();
-			Array pred_keys = preds.keys();
-			for (int k = 0; k < pred_keys.size(); k++) {
-				String pred = pred_keys[k];
-				KnowledgeTriple t;
-				t.subject = target;
-				t.predicate = pred;
-				t.object = preds[pred];
-				t.metadata = meta_preds.has(pred) ? Dictionary(meta_preds[pred]) : Dictionary();
-				t.metadata["type"] = "belief";
-				t.metadata["source"] = persona_id;
-				result.push_back(t);
-			}
-		}
-	}
-	return result;
-}
-
 TypedArray<Dictionary> PlannerState::get_triples_as_array() const {
 	TypedArray<Dictionary> result;
-	for (const KnowledgeTriple &triple : get_triples()) {
+	for (const KnowledgeTriple &triple : collect_triples(this)) {
 		Dictionary dict;
 		dict["subject"] = triple.subject;
 		dict["predicate"] = triple.predicate;
@@ -374,7 +386,7 @@ TypedArray<Dictionary> PlannerState::get_triples_as_array() const {
 
 TypedArray<String> PlannerState::get_subject_predicate_list() const {
 	TypedArray<String> subjects;
-	Vector<KnowledgeTriple> tr = get_triples();
+	Vector<KnowledgeTriple> tr = collect_triples(this);
 	for (const auto &triple : tr) {
 		if (!subjects.has(triple.subject)) {
 			subjects.push_back(triple.subject);
@@ -384,7 +396,7 @@ TypedArray<String> PlannerState::get_subject_predicate_list() const {
 }
 
 bool PlannerState::has_subject_variable(const String &p_variable) const {
-	Vector<KnowledgeTriple> tr = get_triples();
+	Vector<KnowledgeTriple> tr = collect_triples(this);
 	for (const auto &triple : tr) {
 		if (triple.subject == p_variable) {
 			return true;

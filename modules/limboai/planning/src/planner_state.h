@@ -34,21 +34,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "core/io/resource.h"
-#include "core/templates/vector.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
 
 class Blackboard;
-
-struct KnowledgeTriple {
-	String predicate;
-	String subject;
-	Variant object;
-	Dictionary metadata;
-
-	KnowledgeTriple() = default;
-	KnowledgeTriple(const String &p_predicate, const String &p_subject, const Variant &p_object, const Dictionary &p_metadata = Dictionary()) : predicate(p_predicate), subject(p_subject), object(p_object), metadata(p_metadata) {}
-};
 
 class PlannerState : public Resource {
 	GDCLASS(PlannerState, Resource);
@@ -72,7 +61,6 @@ public:
 	Variant get_predicate(const String &p_subject, const String &p_predicate) const;
 	void set_predicate(const String &p_subject, const String &p_predicate, const Variant &p_value, const Dictionary &p_metadata = Dictionary());
 	TypedArray<Dictionary> get_triples_as_array() const;
-	Vector<KnowledgeTriple> get_triples() const;
 
 	// Legacy Dictionary-based interface for backward compatibility
 	TypedArray<String> get_subject_predicate_list() const;

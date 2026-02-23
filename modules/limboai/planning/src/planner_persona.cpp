@@ -242,19 +242,8 @@ Dictionary PlannerPersona::get_planner_state(const String &p_target_persona_id, 
 		return error_dict;
 	}
 
-	// Return triples as Array of Dictionaries
-	Array result;
-	for (const auto &triple : belief_state->get_triples()) {
-		Dictionary triple_dict;
-		triple_dict["subject"] = triple.subject;
-		triple_dict["predicate"] = triple.predicate;
-		triple_dict["object"] = triple.object;
-		triple_dict["metadata"] = triple.metadata;
-		result.push_back(triple_dict);
-	}
-
 	Dictionary state_dict;
-	state_dict["triples"] = result;
+	state_dict["triples"] = belief_state->get_triples_as_array();
 	return state_dict;
 }
 

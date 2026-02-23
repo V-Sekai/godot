@@ -33,7 +33,7 @@
 /**
  * test_planner_state_blackboard.h
  * Unit tests for PlannerState with Blackboard backend (to_plan_dictionary,
- * apply_plan_state, get_triples).
+ * apply_plan_state, get_triples_as_array).
  *
  * =============================================================================
  * Copyright (c) 2023-present Serhii Snitsaruk and the LimboAI contributors.
@@ -91,21 +91,25 @@ TEST_CASE("[Modules][LimboAI][Planner] PlannerState with Blackboard - set/get an
 		CHECK_EQ(int(state2->get_predicate("e1", "p1")), 10);
 	}
 
-	SUBCASE("get_triples returns triples from Blackboard") {
+	SUBCASE("get_triples_as_array returns triples from Blackboard") {
 		state->set_predicate("s1", "p1", 1);
 		state->set_predicate("s1", "p2", 2);
 		state->set_predicate("s2", "p1", 3);
-		Vector<KnowledgeTriple> triples = state->get_triples();
+		TypedArray<Dictionary> triples = state->get_triples_as_array();
 		CHECK(triples.size() >= 3);
 		int found = 0;
-		for (const KnowledgeTriple &t : triples) {
-			if (t.subject == "s1" && t.predicate == "p1" && int(t.object) == 1) {
+		for (int i = 0; i < triples.size(); i++) {
+			Dictionary t = triples[i];
+			String subj = t["subject"];
+			String pred = t["predicate"];
+			Variant obj = t["object"];
+			if (subj == "s1" && pred == "p1" && int(obj) == 1) {
 				found++;
 			}
-			if (t.subject == "s1" && t.predicate == "p2" && int(t.object) == 2) {
+			if (subj == "s1" && pred == "p2" && int(obj) == 2) {
 				found++;
 			}
-			if (t.subject == "s2" && t.predicate == "p1" && int(t.object) == 3) {
+			if (subj == "s2" && pred == "p1" && int(obj) == 3) {
 				found++;
 			}
 		}
