@@ -114,9 +114,13 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		// Initialize STN solver with origin time point (planning-specific initialization)
 		stn.add_time_point("origin");
 
-		// Initialize time range if not already set
 		if (time_range.get_start_time() == 0) {
-			time_range.set_start_time(PlannerTimeRange::now_microseconds());
+			ERR_PRINT("PlannerPlan: temporal planning requires start horizon (set_time_range_dict with start_time in microseconds since Unix epoch, or set start before planning).");
+			Ref<PlannerResult> result = memnew(PlannerResult);
+			result->set_success(false);
+			result->set_final_state(p_state);
+			result->set_solution_graph(solution_graph.get_graph());
+			return result;
 		}
 
 		// Anchor origin to current absolute time
@@ -1424,9 +1428,13 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 		// Initialize STN solver with origin time point (planning-specific initialization)
 		stn.add_time_point("origin"); // Origin time point (plan start)
 
-		// Initialize time range if not already set
 		if (time_range.get_start_time() == 0) {
-			time_range.set_start_time(PlannerTimeRange::now_microseconds());
+			ERR_PRINT("PlannerPlan: temporal planning requires start horizon (set_time_range_dict with start_time in microseconds since Unix epoch, or set start before planning).");
+			Ref<PlannerResult> result = memnew(PlannerResult);
+			result->set_success(false);
+			result->set_final_state(p_state);
+			result->set_solution_graph(solution_graph.get_graph());
+			return result;
 		}
 
 		// Anchor origin to current absolute time

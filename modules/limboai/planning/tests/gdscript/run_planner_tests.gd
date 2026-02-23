@@ -331,6 +331,8 @@ func _test_mznc2025_temporal_entity() -> void:
 				state.set_entity_capability(str(ent_d.get("id")), str(cap_name), caps[cap_name])
 	var plan := PlannerPlan.new()
 	plan.set_current_domain(_domains.create_minimal_goal_domain())
+	# Temporal planning requires start horizon (microseconds since epoch)
+	plan.set_time_range_dict({ "start_time": int(Time.get_unix_time_from_system() * 1_000_000) })
 	# Goal from instance (use int for numeric value so planner state comparison succeeds)
 	var goal_raw: Array = (instance.get("todo_list_goal", ["value", "value", 1]) as Array)
 	var goal_val: int = int(goal_raw[2]) if goal_raw.size() >= 3 else 1
