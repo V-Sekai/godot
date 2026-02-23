@@ -17,7 +17,6 @@ static func _run_ipyhop_backtracking(h: RefCounted, domains: RefCounted, name: S
 	bb.set_var(&"ipyhop", {"flag": -1})
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
-	plan.set_verbose(0)
 	plan.set_current_domain(domains.create_ipyhop_backtracking_domain())
 	var res: Array = h.run_via_bt_run_planner(bb, state, plan)
 	if not res[0]:
@@ -68,7 +67,7 @@ static func _run_ipyhop_sample(h: RefCounted, name: String, todo_list: Array, ex
 	bb.set_var(&"flag", _make_sample_initial_flag())
 	bb.set_var(&"todo_list", todo_list)
 	var plan := PlannerPlan.new()
-	plan.set_verbose(1)
+	plan.set_verbose(3)
 	plan.set_current_domain(domain)
 	var res: Array = h.run_via_bt_run_planner(bb, state, plan)
 	if expect_failure:

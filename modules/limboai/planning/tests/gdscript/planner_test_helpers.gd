@@ -25,7 +25,6 @@ func make_state_and_bb() -> Array:
 func run_via_bt_run_planner(bb: Blackboard, state: PlannerState, plan: PlannerPlan) -> Array:
 	var dummy := Node.new()
 	var run_planner := BTRunPlanner.new()
-	plan.set_verbose(3)
 	plan.set_max_depth(50)
 	run_planner.set_planner_plan(plan)
 	run_planner.set_planner_state(state)
