@@ -143,6 +143,7 @@ private:
 	void _register_builtin_method_tools();
 	void _register_builtin_prompts();
 	void _register_class_methods_as_tools(const StringName &p_class_name, const String &p_prefix);
+	void _register_classdb_methods_as_tools();
 	Dictionary _build_generic_method_schema() const;
 	void _collect_project_filesystem_entries(const String &p_dir, PackedStringArray &r_entries) const;
 	bool _is_likely_binary_file(const String &p_path) const;

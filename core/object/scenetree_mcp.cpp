@@ -59,6 +59,12 @@ void SceneTreeMCP::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_server_version"), &SceneTreeMCP::get_server_version);
 	ClassDB::bind_method(D_METHOD("process_server", "delta"), &SceneTreeMCP::process_server);
 	ClassDB::bind_method(D_METHOD("_read_project_filesystem_resource"), &SceneTreeMCP::_read_project_filesystem_resource);
+	
+	// ClassDB method bindings
+	ClassDB::bind_method(D_METHOD("classdb_instantiate", "args"), &SceneTreeMCP::classdb_instantiate);
+	ClassDB::bind_method(D_METHOD("classdb_can_instantiate", "args"), &SceneTreeMCP::classdb_can_instantiate);
+	ClassDB::bind_method(D_METHOD("classdb_get_method_list", "args"), &SceneTreeMCP::classdb_get_method_list);
+	ClassDB::bind_method(D_METHOD("classdb_class_exists", "args"), &SceneTreeMCP::classdb_class_exists);
 }
 
 SceneTreeMCP::SceneTreeMCP() {
@@ -428,6 +434,7 @@ void SceneTreeMCP::_register_builtin_method_tools() {
 	_register_class_methods_as_tools("MainLoop", "MainLoop");
 	_register_class_methods_as_tools("SceneTree", "SceneTree");
 	_register_class_methods_as_tools("SceneTreeMCP", "SceneTreeMCP");
+	_register_classdb_methods_as_tools();
 }
 
 void SceneTreeMCP::_register_builtin_prompts() {
@@ -472,6 +479,146 @@ void SceneTreeMCP::_register_class_methods_as_tools(const StringName &p_class_na
 		String description = "Invoke " + p_prefix + "::" + method_name + " on SceneTreeMCP.";
 		register_tool(tool_name, description, schema, callable);
 	}
+}
+
+void SceneTreeMCP::_register_classdb_methods_as_tools() {
+	// Register ClassDB.instantiate as a tool for dynamic class instantiation
+	{
+		Dictionary schema;
+		schema["type"] = "array";
+		schema["items"] = Dictionary();
+		schema["description"] = "Class name to instantiate (String) and optional arguments (Array)";
+
+		Callable callable = Callable(this, "classdb_instantiate");
+		if (callable.is_valid()) {
+			register_tool("ClassDB.instantiate", "Instantiate a Godot class by name using ClassDB.instantiate()", schema, callable);
+		}
+	}
+
+	// Register ClassDB.can_instantiate as a tool for checking if a class can be instantiated
+	{
+		Dictionary schema;
+		schema["type"] = "array";
+		schema["items"] = Dictionary();
+		schema["description"] = "Class name to check (String)";
+
+		Callable callable = Callable(this, "classdb_can_instantiate");
+		if (callable.is_valid()) {
+			register_tool("ClassDB.can_instantiate", "Check if a Godot class can be instantiated using ClassDB.can_instantiate()", schema, callable);
+		}
+	}
+
+	// Register ClassDB.get_method_list as a tool for discovering class methods
+	{
+		Dictionary schema;
+		schema["type"] = "array";
+		schema["items"] = Dictionary();
+		schema["description"] = "Class name to get methods from (String)";
+
+		Callable callable = Callable(this, "classdb_get_method_list");
+		if (callable.is_valid()) {
+			register_tool("ClassDB.get_method_list", "Get list of methods for a Godot class using ClassDB.get_method_list()", schema, callable);
+		}
+	}
+
+	// Register ClassDB.class_exists as a tool for checking if a class exists
+	{
+		Dictionary schema;
+		schema["type"] = "array";
+		schema["items"] = Dictionary();
+		schema["description"] = "Class name to check (String)";
+
+		Callable callable = Callable(this, "classdb_class_exists");
+		if (callable.is_valid()) {
+			register_tool("ClassDB.class_exists", "Check if a Godot class exists using ClassDB.class_exists()", schema, callable);
+		}
+	}
+}
+
+// ClassDB method wrappers
+Variant SceneTreeMCP::classdb_instantiate(const Array &p_args) {
+	if (p_args.is_empty() || p_args[0].get_type() != Variant::STRING) {
+		return Variant("Error: First argument must be a class name (string)");
+	}
+
+	String class_name = p_args[0];
+	
+	// Call ClassDB::instantiate with the class name
+	Callable instantiate_callable = Callable(SceneTreeMCP::get_class_static(), "instantiate");
+	Variant result = instantiate_callable.callv(Array::make(class_name));
+
+	if (result.get_type() == Variant::OBJECT) {
+		Object *obj = Object::cast_to<Object>(result);
+		if (obj) {
+			// Return the object data
+			Dictionary ret;
+			ret["success"] = true;
+			ret["class"] = class_name;
+			ret["object"] = result;
+			return ret;
+		}
+	}
+
+	// Return error information
+	Dictionary ret;
+	ret["success"] = false;
+	ret["class"] = class_name;
+	ret["error"] = "Failed to instantiate class";
+	return ret;
+}
+
+Variant SceneTreeMCP::classdb_can_instantiate(const Array &p_args) {
+	if (p_args.is_empty() || p_args[0].get_type() != Variant::STRING) {
+		return false;
+	}
+
+	String class_name = p_args[0];
+	
+	// Call ClassDB::can_instantiate with the class name
+	Callable can_instantiate_callable = Callable(SceneTreeMCP::get_class_static(), "can_instantiate");
+	Variant result = can_instantiate_callable.callv(Array::make(class_name));
+
+	return result;
+}
+
+Variant SceneTreeMCP::classdb_get_method_list(const Array &p_args) {
+	if (p_args.is_empty() || p_args[0].get_type() != Variant::STRING) {
+		return Array();
+	}
+
+	String class_name = p_args[0];
+	List<MethodInfo> methods;
+	ClassDB::get_method_list(class_name, &methods, true);
+
+	Array result;
+	for (const MethodInfo &method_info : methods) {
+		Dictionary method;
+		method["name"] = method_info.name;
+		method["return_type"] = method_info.return_val.type;
+		
+		Array args;
+		for (const PropertyInfo &arg_info : method_info.arguments) {
+			Dictionary arg;
+			arg["name"] = arg_info.name;
+			arg["type"] = arg_info.type;
+			arg["hint"] = arg_info.hint;
+			args.push_back(arg);
+		}
+		method["arguments"] = args;
+		
+		result.push_back(method);
+	}
+
+	return result;
+}
+
+Variant SceneTreeMCP::classdb_class_exists(const Array &p_args) {
+	if (p_args.is_empty() || p_args[0].get_type() != Variant::STRING) {
+		return false;
+	}
+
+	String class_name = p_args[0];
+	return ClassDB::class_exists(class_name);
 }
 
 Dictionary SceneTreeMCP::_build_generic_method_schema() const {
