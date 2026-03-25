@@ -59,7 +59,7 @@ void SceneTreeMCP::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_server_version"), &SceneTreeMCP::get_server_version);
 	ClassDB::bind_method(D_METHOD("process_server", "delta"), &SceneTreeMCP::process_server);
 	ClassDB::bind_method(D_METHOD("_read_project_filesystem_resource"), &SceneTreeMCP::_read_project_filesystem_resource);
-	
+
 	// ClassDB method bindings
 	ClassDB::bind_method(D_METHOD("classdb_instantiate", "args"), &SceneTreeMCP::classdb_instantiate);
 	ClassDB::bind_method(D_METHOD("classdb_can_instantiate", "args"), &SceneTreeMCP::classdb_can_instantiate);
@@ -542,28 +542,38 @@ Variant SceneTreeMCP::classdb_instantiate(const Array &p_args) {
 	}
 
 	String class_name = p_args[0];
-	
-	// Call ClassDB::instantiate with the class name
-	Callable instantiate_callable = Callable(SceneTreeMCP::get_class_static(), "instantiate");
-	Variant result = instantiate_callable.callv(Array::make(class_name));
 
-	if (result.get_type() == Variant::OBJECT) {
-		Object *obj = Object::cast_to<Object>(result);
-		if (obj) {
-			// Return the object data
-			Dictionary ret;
-			ret["success"] = true;
-			ret["class"] = class_name;
-			ret["object"] = result;
-			return ret;
-		}
+	// Call ClassDB::instantiate directly
+	Object *obj = ClassDB::instantiate(class_name);
+
+	if (obj) {
+		// Return the object data
+		Dictionary ret;
+		ret["success"] = true;
+		ret["class"] = class_name;
+		ret["object"] = Variant(obj);
+		return ret;
 	}
 
 	// Return error information
 	Dictionary ret;
 	ret["success"] = false;
 	ret["class"] = class_name;
-	ret["error"] = "Failed to instantiate class";
+
+	// Get more specific error information
+	ClassDB::ClassInfo *ci = ClassDB::classes.getptr(class_name);
+	if (ci) {
+		if (ci->disabled) {
+			ret["error"] = "Class is disabled";
+		} else if (ci->is_virtual) {
+			ret["error"] = "Class is virtual and cannot be instantiated";
+		} else {
+			ret["error"] = "Failed to instantiate class (unknown reason)";
+		}
+	} else {
+		ret["error"] = "Class does not exist";
+	}
+
 	return ret;
 }
 
@@ -573,12 +583,9 @@ Variant SceneTreeMCP::classdb_can_instantiate(const Array &p_args) {
 	}
 
 	String class_name = p_args[0];
-	
-	// Call ClassDB::can_instantiate with the class name
-	Callable can_instantiate_callable = Callable(SceneTreeMCP::get_class_static(), "can_instantiate");
-	Variant result = can_instantiate_callable.callv(Array::make(class_name));
 
-	return result;
+	// Call ClassDB::can_instantiate directly
+	return ClassDB::can_instantiate(class_name);
 }
 
 Variant SceneTreeMCP::classdb_get_method_list(const Array &p_args) {
@@ -595,7 +602,7 @@ Variant SceneTreeMCP::classdb_get_method_list(const Array &p_args) {
 		Dictionary method;
 		method["name"] = method_info.name;
 		method["return_type"] = method_info.return_val.type;
-		
+
 		Array args;
 		for (const PropertyInfo &arg_info : method_info.arguments) {
 			Dictionary arg;
@@ -605,7 +612,7 @@ Variant SceneTreeMCP::classdb_get_method_list(const Array &p_args) {
 			args.push_back(arg);
 		}
 		method["arguments"] = args;
-		
+
 		result.push_back(method);
 	}
 

@@ -144,6 +144,13 @@ private:
 	void _register_builtin_prompts();
 	void _register_class_methods_as_tools(const StringName &p_class_name, const String &p_prefix);
 	void _register_classdb_methods_as_tools();
+
+	// ClassDB method wrappers
+	Variant classdb_instantiate(const Array &p_args);
+	Variant classdb_can_instantiate(const Array &p_args);
+	Variant classdb_get_method_list(const Array &p_args);
+	Variant classdb_class_exists(const Array &p_args);
+
 	Dictionary _build_generic_method_schema() const;
 	void _collect_project_filesystem_entries(const String &p_dir, PackedStringArray &r_entries) const;
 	bool _is_likely_binary_file(const String &p_path) const;
