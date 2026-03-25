@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SceneTreeMCP" inherits="SceneTree" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_server_name" qualifiers="const">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_server_version" qualifiers="const">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="is_http_server_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="is_server_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="process_server">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="register_resource">
+			<return type="int" enum="Error" />
+			<param index="0" name="uri" type="String" />
+			<param index="1" name="name" type="String" />
+			<param index="2" name="callable" type="Callable" />
+			<description>
+			</description>
+		</method>
+		<method name="register_tool">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="description" type="String" />
+			<param index="2" name="schema" type="Dictionary" />
+			<param index="3" name="callable" type="Callable" />
+			<description>
+			</description>
+		</method>
+		<method name="set_server_info">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="version" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="start_http_server">
+			<return type="int" enum="Error" />
+			<param index="0" name="port" type="int" default="8765" />
+			<description>
+			</description>
+		</method>
+		<method name="start_server">
+			<return type="int" enum="Error" />
+			<param index="0" name="port" type="int" default="8765" />
+			<description>
+			</description>
+		</method>
+		<method name="stop_http_server">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="stop_server">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
