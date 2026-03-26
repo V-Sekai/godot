@@ -1,0 +1,98 @@
+name: 🔗 All builds
+on:
+  workflow_dispatch:
+    inputs:
+      godot-ref:
+        description: A tag, branch or commit hash in the Godot repository.
+        type: string
+        default: 4.6-stable
+
+jobs:
+  cache-sha:
+    name: Cache SHA
+    runs-on: ubuntu-latest
+    outputs:
+      godot-sha: ${{ steps.cache-sha.outputs.godot-sha }}
+    steps:
+      - name: Clone Godot
+        uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: ${{ inputs.godot-ref }}
+
+      - name: Cache SHA
+        id: cache-sha
+        run: |
+          echo "godot-sha=$(git describe --tags --exact-match HEAD || git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  android-build:
+    name: 🤖 Android
+    needs: cache-sha
+    uses: ./.github/workflows/android.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}
+
+  ios-build:
+    name: 🍏 iOS
+    needs: cache-sha
+    uses: ./.github/workflows/ios.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}
+
+  linux-build:
+    name: 🐧 Linux
+    needs: cache-sha
+    uses: ./.github/workflows/linux.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}
+      test-build: false
+
+  macos-build:
+    name: 🍎 macOS
+    needs: cache-sha
+    uses: ./.github/workflows/macos.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}
+
+  windows-build:
+    name: 🪟 Windows
+    needs: cache-sha
+    uses: ./.github/workflows/windows.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}
+      test-build: false
+
+  web-build:
+    name: 🌐 Web
+    needs: cache-sha
+    uses: ./.github/workflows/web.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}
+
+  gdextension:
+    name: 🔌 GDExtension
+    uses: ./.github/workflows/gdextension.yml
+    with:
+      test-build: false
+
+  demo:
+    name: 🎮️ Demo project
+    needs: cache-sha
+    uses: ./.github/workflows/demo.yml
+
+  merge_templates:
+    name: 📦 Merge templates
+    if: ${{ always() }}
+    needs:
+      [
+        cache-sha,
+        android-build,
+        ios-build,
+        linux-build,
+        macos-build,
+        windows-build,
+        web-build,
+      ]
+    uses: ./.github/workflows/merge_templates.yml
+    with:
+      godot-ref: ${{ needs.cache-sha.outputs.godot-sha }}

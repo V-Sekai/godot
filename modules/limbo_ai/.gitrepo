@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/limbonaut/limboai.git
+	branch = master
+	commit = 3adc3d913aa440948f2a292af14f20f710675a68
+	parent = 60fff00a660a2aeb03f88c07fb7baed353bcb72f
+	method = merge
+	cmdver = 0.4.9
