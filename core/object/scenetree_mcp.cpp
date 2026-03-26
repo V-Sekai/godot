@@ -428,7 +428,6 @@ void SceneTreeMCP::set_server_info(const String &p_name, const String &p_version
 	server_info_name = p_name;
 	server_info_version = p_version;
 }
-
 void SceneTreeMCP::_register_builtin_method_tools() {
 	_register_class_methods_as_tools("Object", "Object");
 	_register_class_methods_as_tools("MainLoop", "MainLoop");
