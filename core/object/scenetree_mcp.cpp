@@ -59,12 +59,6 @@ void SceneTreeMCP::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_server_version"), &SceneTreeMCP::get_server_version);
 	ClassDB::bind_method(D_METHOD("process_server", "delta"), &SceneTreeMCP::process_server);
 	ClassDB::bind_method(D_METHOD("_read_project_filesystem_resource"), &SceneTreeMCP::_read_project_filesystem_resource);
-
-	// ClassDB method bindings
-	ClassDB::bind_method(D_METHOD("classdb_instantiate", "args"), &SceneTreeMCP::classdb_instantiate);
-	ClassDB::bind_method(D_METHOD("classdb_can_instantiate", "args"), &SceneTreeMCP::classdb_can_instantiate);
-	ClassDB::bind_method(D_METHOD("classdb_get_method_list", "args"), &SceneTreeMCP::classdb_get_method_list);
-	ClassDB::bind_method(D_METHOD("classdb_class_exists", "args"), &SceneTreeMCP::classdb_class_exists);
 }
 
 SceneTreeMCP::SceneTreeMCP() {
