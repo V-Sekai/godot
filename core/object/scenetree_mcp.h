@@ -151,6 +151,9 @@ private:
 	Variant classdb_get_method_list(const Array &p_args);
 	Variant classdb_class_exists(const Array &p_args);
 
+	// SceneTree method wrappers
+	Variant scenetree_get_root(const Array &p_args);
+
 	Dictionary _build_generic_method_schema() const;
 	void _collect_project_filesystem_entries(const String &p_dir, PackedStringArray &r_entries) const;
 	bool _is_likely_binary_file(const String &p_path) const;

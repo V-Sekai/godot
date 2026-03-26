@@ -533,6 +533,19 @@ void SceneTreeMCP::_register_classdb_methods_as_tools() {
 			register_tool("ClassDB.class_exists", "Check if a Godot class exists using ClassDB.class_exists()", schema, callable);
 		}
 	}
+
+	// Register SceneTree.get_root as a tool for accessing the scene root node
+	{
+		Dictionary schema;
+		schema["type"] = "array";
+		schema["items"] = Dictionary();
+		schema["description"] = "No parameters required - gets the root Node of the current scene";
+
+		Callable callable = Callable(this, "scenetree_get_root");
+		if (callable.is_valid()) {
+			register_tool("SceneTree.get_root", "Get the root Node of the current scene using SceneTree.get_root()", schema, callable);
+		}
+	}
 }
 
 // ClassDB method wrappers
@@ -574,6 +587,32 @@ Variant SceneTreeMCP::classdb_instantiate(const Array &p_args) {
 		ret["error"] = "Class does not exist";
 	}
 
+	return ret;
+}
+
+Variant SceneTreeMCP::scenetree_get_root(const Array &p_args) {
+	// Get the current SceneTree instance
+	SceneTree *scene_tree = OS::get_singleton()->get_main_loop();
+	
+	if (scene_tree && scene_tree->is_inside_tree()) {
+		// Get the root node of the scene
+		Node *root_node = scene_tree->get_root();
+		
+		if (root_node) {
+			// Return the root node information
+			Dictionary ret;
+			ret["success"] = true;
+			ret["root"] = Variant(root_node);
+			ret["root_name"] = root_node->get_name();
+			ret["root_type"] = root_node->get_class();
+			return ret;
+		}
+	}
+	
+	// Return error if scene tree or root not available
+	Dictionary ret;
+	ret["success"] = false;
+	ret["error"] = "SceneTree or root node not available";
 	return ret;
 }
 
