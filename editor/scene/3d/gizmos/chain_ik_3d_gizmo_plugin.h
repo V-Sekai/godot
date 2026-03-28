@@ -31,6 +31,7 @@
 #pragma once
 
 #include "editor/scene/3d/node_3d_editor_gizmos.h"
+#include "scene/resources/3d/joint_limitation_3d.h"
 
 class ChainIK3D;
 class SurfaceTool;
