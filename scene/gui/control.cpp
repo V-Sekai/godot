@@ -2194,6 +2194,30 @@ void Control::_call_gui_input(const Ref<InputEvent> &p_event) {
 	gui_input(p_event);
 }
 
+void Control::call_gui_input(const Ref<InputEvent> &p_event) {
+	ERR_MAIN_THREAD_GUARD;
+	ERR_FAIL_NULL(get_viewport());
+	ERR_FAIL_NULL(p_event);
+	// Save original state
+	bool was_handling_input_locally = get_viewport()->is_handling_input_locally();
+	bool was_input_handled = get_viewport()->is_input_handled();
+
+	// Set input to be local to viewport and unhandled.
+	get_viewport()->set_handle_input_locally(true);
+	get_viewport()->set_input_locally_unhandled();
+
+	// Call underlying _call_gui_input function.
+	_call_gui_input(p_event);
+
+	// Restore original state
+	if (was_input_handled) {
+		get_viewport()->set_input_as_handled();
+	} else {
+		get_viewport()->set_input_locally_unhandled();
+	}
+	get_viewport()->set_handle_input_locally(was_handling_input_locally);
+}
+
 void Control::gui_input(const Ref<InputEvent> &p_event) {
 }
 
@@ -4371,6 +4395,7 @@ void Control::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_prev_valid_focus"), &Control::find_prev_valid_focus);
 	ClassDB::bind_method(D_METHOD("find_next_valid_focus"), &Control::find_next_valid_focus);
 	ClassDB::bind_method(D_METHOD("find_valid_focus_neighbor", "side"), &Control::find_valid_focus_neighbor);
+	ClassDB::bind_method(D_METHOD("call_gui_input", "event"), &Control::call_gui_input);
 
 	ClassDB::bind_method(D_METHOD("set_h_size_flags", "flags"), &Control::set_h_size_flags);
 	ClassDB::bind_method(D_METHOD("get_h_size_flags"), &Control::get_h_size_flags);

@@ -4021,6 +4021,11 @@ bool Viewport::is_input_handled() const {
 	return local_input_handled;
 }
 
+void Viewport::set_input_locally_unhandled() {
+	ERR_MAIN_THREAD_GUARD;
+	local_input_handled = false;
+}
+
 void Viewport::set_handle_input_locally(bool p_enable) {
 	ERR_MAIN_THREAD_GUARD;
 	handle_input_locally = p_enable;

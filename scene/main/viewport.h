@@ -684,6 +684,7 @@ public:
 
 	void set_input_as_handled();
 	bool is_input_handled() const;
+	void set_input_locally_unhandled();
 
 	void set_handle_input_locally(bool p_enable);
 	bool is_handling_input_locally() const;
