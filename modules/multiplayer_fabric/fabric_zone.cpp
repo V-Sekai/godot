@@ -1327,7 +1327,7 @@ bool FabricZone::physics_process(double p_time) {
 					// Connected — reset backoff for next potential disconnect.
 					_retry_next[ni] = tick;
 					_retry_interval[ni] = latency_ticks_runtime;
-					// Send HLC ping periodically to measure RTT → _neighbor_latency_ticks.
+					// Send HLC ping periodically to measure RTT → _srtt_ticks/_rttvar_ticks.
 					if (tick >= _ping_next[ni]) {
 						uint8_t ping_buf[8];
 						uint32_t t32 = tick;
@@ -1365,18 +1365,37 @@ bool FabricZone::physics_process(double p_time) {
 					// Broadcast pong to all neighbors â they discard by magic check.
 					peer_callbacks.broadcast_raw(fabric_peer.ptr(), CH_MIGRATION, pong_buf, 8);
 				} else if (magic == PONG_MAGIC) {
-					// Compute RTT and update _neighbor_latency_ticks for the matching neighbor.
+					// Jacobson/Karels (1988) RTT estimator update.
+					// Compute one-way latency sample, floored by pbvh_latency_ticks.
 					uint32_t rtt_ticks = tick - field0;
-					// perNeighborLatencyTicks: max(pbvh_latency_ticks(hz), ceil(rtt_ms/2 * hz/1000))
-					// rtt_ticks is full round trip; one-way = rtt_ticks/2 ticks.
 					uint32_t one_way = (rtt_ticks + 1) / 2;
-					uint32_t lt = one_way < latency_ticks_runtime ? latency_ticks_runtime : one_way;
+					uint32_t sample = one_way < latency_ticks_runtime ? latency_ticks_runtime : one_way;
 					for (int ni = 0; ni < 2; ni++) {
 						if (_ping_send_tick[ni] == field0) {
-							_neighbor_latency_ticks[ni] = lt;
+							if (!_rtt_measured[ni]) {
+								// First sample: initialize SRTT and RTTVAR (RFC 6298 Section 2.2).
+								_srtt_ticks[ni] = sample;
+								_rttvar_ticks[ni] = sample / 2;
+							} else {
+								// Subsequent samples: EWMA update (Jacobson/Karels).
+								// RTTVAR = (1 - beta) * RTTVAR + beta * |SRTT - sample|
+								//        = 3/4 * RTTVAR + 1/4 * |SRTT - sample|   (beta = 1/4)
+								// SRTT   = (1 - alpha) * SRTT + alpha * sample
+								//        = 7/8 * SRTT + 1/8 * sample              (alpha = 1/8)
+								uint32_t delta = _srtt_ticks[ni] > sample
+										? _srtt_ticks[ni] - sample
+										: sample - _srtt_ticks[ni];
+								_rttvar_ticks[ni] = (3 * _rttvar_ticks[ni] + delta) / 4;
+								_srtt_ticks[ni] = (7 * _srtt_ticks[ni] + sample) / 8;
+								// Floor SRTT at pbvh_latency_ticks (proved minimum).
+								if (_srtt_ticks[ni] < latency_ticks_runtime) {
+									_srtt_ticks[ni] = latency_ticks_runtime;
+								}
+							}
 							_rtt_measured[ni] = true;
-							print_line(vformat("[FabricZone] zone=%d neighbor_idx=%d rtt_ticks=%d latency_ticks=%d",
-									zone_id, ni, rtt_ticks, lt));
+							print_line(vformat("[FabricZone] zone=%d neighbor_idx=%d rtt_ticks=%d srtt=%d rttvar=%d rto=%d",
+									zone_id, ni, rtt_ticks, _srtt_ticks[ni], _rttvar_ticks[ni],
+									_staging_timeout(_srtt_ticks[ni], _rttvar_ticks[ni], true, hz)));
 						}
 					}
 				} else if (magic == ACK_MAGIC) {
@@ -1747,9 +1766,9 @@ bool FabricZone::physics_process(double p_time) {
 				IntentRecord rec;
 				rec.target = target;
 				rec.local_idx = i;
-				// Use per-neighbor latency ticks (RTT-based) for arrival deadline.
+				// Use SRTT (smoothed one-way latency) for arrival deadline.
 				int ni_tgt = (target == my_id - 1) ? 0 : 1;
-				uint32_t lt = _neighbor_latency_ticks[ni_tgt];
+				uint32_t lt = _srtt_ticks[ni_tgt];
 				rec.data = _pack_intent(e.global_id, target, tick + lt, e);
 				intents.push_back(rec);
 				outbound_budget--;
@@ -1784,7 +1803,7 @@ bool FabricZone::physics_process(double p_time) {
 			IntentRecord rec;
 			rec.target = fwd_target;
 			rec.local_idx = i;
-			uint32_t lt = _neighbor_latency_ticks[0]; // neighbor index 0 = zone_id-1
+			uint32_t lt = _srtt_ticks[0]; // neighbor index 0 = zone_id-1
 			rec.data = _pack_intent(e.global_id, fwd_target, tick + lt, e);
 			intents.push_back(rec);
 			drain_budget--;
@@ -1990,7 +2009,7 @@ bool FabricZone::physics_process(double p_time) {
 	for (int i = 0; i < _zone_capacity; i++) {
 		if (slots[i].active && slots[i].is_staging) {
 			int ni_tgt = (slots[i].migration_target_zone == my_id - 1) ? 0 : 1;
-			uint32_t timeout = _staging_timeout(_neighbor_latency_ticks[ni_tgt], _rtt_measured[ni_tgt], hz);
+			uint32_t timeout = _staging_timeout(_srtt_ticks[ni_tgt], _rttvar_ticks[ni_tgt], _rtt_measured[ni_tgt], hz);
 			if (tick - slots[i].staging_send_tick >= timeout) {
 				// No ACK — rollback: STAGING â OWNED on zone A.
 				print_line(vformat("[XING_ROLLBACK] zone=%d tick=%d eid=%d (no ACK from zone=%d)",
@@ -2160,12 +2179,12 @@ bool FabricZone::physics_process(double p_time) {
 // ── Migration sub-routines (public static for testability) ──────────────────
 
 void FabricZone::_resolve_staging_timeouts_s(EntitySlot *p_slots, int p_capacity,
-		int p_zone_id, const uint32_t p_neighbor_latency[2],
+		int p_zone_id, const uint32_t p_srtt[2], const uint32_t p_rttvar[2],
 		const bool p_rtt_measured[2], uint32_t p_hz, uint32_t p_tick) {
 	for (int i = 0; i < p_capacity; i++) {
 		if (p_slots[i].active && p_slots[i].is_staging) {
 			int ni_tgt = (p_slots[i].migration_target_zone == p_zone_id - 1) ? 0 : 1;
-			uint32_t timeout = _staging_timeout(p_neighbor_latency[ni_tgt], p_rtt_measured[ni_tgt], p_hz);
+			uint32_t timeout = _staging_timeout(p_srtt[ni_tgt], p_rttvar[ni_tgt], p_rtt_measured[ni_tgt], p_hz);
 			if (p_tick - p_slots[i].staging_send_tick >= timeout) {
 				print_line(vformat("[XING_ROLLBACK] zone=%d tick=%d eid=%d (no ACK from zone=%d)",
 						p_zone_id, p_tick, p_slots[i].entity.global_id,
@@ -2222,7 +2241,7 @@ int FabricZone::_accept_incoming_intents_s(EntitySlot *p_slots, int p_capacity,
 }
 
 int FabricZone::_collect_migration_intents_s(EntitySlot *p_slots, int p_capacity,
-		int p_zone_id, int p_zone_count, const uint32_t p_neighbor_latency[2],
+		int p_zone_id, int p_zone_count, const uint32_t p_srtt[2],
 		uint32_t p_tick, uint32_t p_hz, int p_budget,
 		uint64_t &r_xing_started, uint64_t &r_migrations,
 		LocalVector<Vector<uint8_t>> &r_outbox) {
@@ -2244,7 +2263,7 @@ int FabricZone::_collect_migration_intents_s(EntitySlot *p_slots, int p_capacity
 				p_slots[i].migration_target_zone = target;
 				r_migrations += 1;
 				int ni_tgt = (target == p_zone_id - 1) ? 0 : 1;
-				uint32_t lt = p_neighbor_latency[ni_tgt];
+				uint32_t lt = p_srtt[ni_tgt];
 				Vector<uint8_t> pkt = _pack_intent(e.global_id, target, p_tick + lt, e);
 				r_outbox.push_back(pkt);
 				p_budget--;

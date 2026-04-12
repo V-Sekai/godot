@@ -168,24 +168,26 @@ public:
 	static Vector<uint8_t> _pack_intent(int eid, int to, uint32_t arrival, const FabricEntity &e);
 	static bool _unpack_intent(const uint8_t *p_data, int p_size, int &r_eid, int &r_to, uint32_t &r_arrival, FabricEntity &r_entity);
 
-	// ── Staging timeout (RTT-derived, not hardcoded) ───────────────────
+	// ── Staging timeout (Jacobson/Karels adaptive RTO) ─────────────────
 	// Returns the staging timeout in ticks for a given neighbor.
-	// When RTT is measured: 4x the one-way latency (generous window for
-	// packet loss + ENet fragment reassembly + return ACK).
+	// When RTT is measured: SRTT + 4 * RTTVAR (Jacobson/Karels 1988).
+	//   The variance term automatically widens the window under jitter.
 	// When RTT is unmeasured: 1 second of ticks (p_hz). Networking delays
 	// can reach minutes; 1 second is the floor for the unmeasured case.
-	static uint32_t _staging_timeout(uint32_t p_latency_ticks, bool p_rtt_measured, uint32_t p_hz) {
+	static uint32_t _staging_timeout(uint32_t p_srtt, uint32_t p_rttvar, bool p_rtt_measured, uint32_t p_hz) {
 		if (!p_rtt_measured) {
 			return p_hz; // 1 second
 		}
-		return p_latency_ticks * 4;
+		// Jacobson/Karels: RTO = SRTT + 4 * RTTVAR, floor of 1 tick.
+		uint32_t rto = p_srtt + 4 * p_rttvar;
+		return rto < 1 ? 1 : rto;
 	}
 
 	// ── Migration sub-routines (public static for testability) ──────────
 	// Operate on raw slot arrays — no SceneTree required.
 	// Zone A: scan STAGING slots, rollback if no ACK within timeout.
 	static void _resolve_staging_timeouts_s(EntitySlot *p_slots, int p_capacity,
-			int p_zone_id, const uint32_t p_neighbor_latency[2],
+			int p_zone_id, const uint32_t p_srtt[2], const uint32_t p_rttvar[2],
 			const bool p_rtt_measured[2], uint32_t p_hz, uint32_t p_tick);
 	// Zone B: drain intent_inbox, allocate INCOMING slots. Returns accepted count.
 	static int _accept_incoming_intents_s(EntitySlot *p_slots, int p_capacity,
@@ -194,7 +196,7 @@ public:
 	// Zone A: scan slots, emit intents for entities that crossed Hilbert boundary.
 	// Returns number of intents queued. Pushes packed intents to r_outbox.
 	static int _collect_migration_intents_s(EntitySlot *p_slots, int p_capacity,
-			int p_zone_id, int p_zone_count, const uint32_t p_neighbor_latency[2],
+			int p_zone_id, int p_zone_count, const uint32_t p_srtt[2],
 			uint32_t p_tick, uint32_t p_hz, int p_budget,
 			uint64_t &r_xing_started, uint64_t &r_migrations,
 			LocalVector<Vector<uint8_t>> &r_outbox);
@@ -281,13 +283,18 @@ private:
 	uint32_t _retry_next[2] = { 0, 0 };
 	uint32_t _retry_interval[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
 
-	// ── Per-neighbor STAGING latency (Resources.lean: perNeighborLatencyTicks) ──
+	// ── Per-neighbor RTT estimator (Jacobson/Karels 1988) ───────────────
 	// Index 0 = zone_id-1, index 1 = zone_id+1.
-	// Default = pbvh_latency_ticks(engine_hz) (= latencyTicksFloor, proved for 0ms RTT).
-	// Updated via HLC ping/pong RTT measurement on CH_MIGRATION.
-	// Formula: max(pbvh_latency_ticks(hz), ceil(rtt_ms * hz / 1000))
+	// SRTT: smoothed one-way latency in ticks (EWMA, alpha = 1/8).
+	//   Used for arrival deadlines in pack_intent.
+	//   Floor = pbvh_latency_ticks(hz) (= latencyTicksFloor, proved for 0ms RTT).
+	// RTTVAR: mean deviation in ticks (EWMA, beta = 1/4).
+	//   Used only in timeout calculation: RTO = SRTT + 4 * RTTVAR.
+	// First PONG initializes SRTT = sample, RTTVAR = sample / 2.
+	// Subsequent PONGs use Jacobson/Karels EWMA update.
 	// (proved: Resources.lean perNeighborLatencyTicks, per_neighbor_ge_floor)
-	uint32_t _neighbor_latency_ticks[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
+	uint32_t _srtt_ticks[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
+	uint32_t _rttvar_ticks[2] = { PBVH_LATENCY_TICKS_DEFAULT / 2, PBVH_LATENCY_TICKS_DEFAULT / 2 };
 	bool _rtt_measured[2] = { false, false }; // true once first PONG arrives
 
 	// ── HLC-based RTT ping/pong (CH_MIGRATION, 8-byte packets) ─────────────

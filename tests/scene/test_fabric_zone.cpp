@@ -248,7 +248,8 @@ struct ZoneState {
 	uint64_t xing_started = 0;
 	uint64_t xing_received = 0;
 	uint64_t migrations = 0;
-	uint32_t neighbor_latency[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
+	uint32_t srtt[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
+	uint32_t rttvar[2] = { PBVH_LATENCY_TICKS_DEFAULT / 2, PBVH_LATENCY_TICKS_DEFAULT / 2 };
 	bool rtt_measured[2] = { true, true }; // tests simulate measured RTT
 	uint32_t hz = 60;
 	LocalVector<Vector<uint8_t>> inbox;
@@ -323,9 +324,9 @@ TEST_CASE("[FabricZone][Migration] staging timeout rolls back entity to OWNED") 
 	za.slots[0].migration_target_zone = 1;
 	za.entity_count = 1;
 
-	// Advance tick past the timeout window (latency=2, timeout=2*4=8).
+	// Advance tick past the timeout window (srtt=2, rttvar=1, rto=2+4*1=6).
 	FabricZone::_resolve_staging_timeouts_s(za.slots, za.capacity,
-			za.zone_id, za.neighbor_latency, za.rtt_measured, za.hz, 100);
+			za.zone_id, za.srtt, za.rttvar, za.rtt_measured, za.hz, 100);
 
 	CHECK_MESSAGE(!za.slots[0].is_staging, "Entity should roll back to OWNED after timeout");
 	CHECK_MESSAGE(za.slots[0].hysteresis == 0, "Hysteresis should reset on rollback");
@@ -364,7 +365,7 @@ TEST_CASE("[FabricZone][Migration] 144 entities all land within timeout window")
 	for (int t = 0; t < 32 && total_received < 144; t++) {
 		// Zone A: collect intents.
 		FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
-				za.zone_id, za.zone_count, za.neighbor_latency,
+				za.zone_id, za.zone_count, za.srtt,
 				za.tick, 60, 50, za.xing_started, za.migrations, za.outbox);
 
 		// Deliver outbox → inbox.
@@ -378,7 +379,7 @@ TEST_CASE("[FabricZone][Migration] 144 entities all land within timeout window")
 
 		// Zone A: resolve staging timeouts.
 		FabricZone::_resolve_staging_timeouts_s(za.slots, za.capacity,
-				za.zone_id, za.neighbor_latency, za.rtt_measured, za.hz, za.tick);
+				za.zone_id, za.srtt, za.rttvar, za.rtt_measured, za.hz, za.tick);
 
 		za.tick++;
 		zb.tick++;
@@ -427,7 +428,7 @@ TEST_CASE("[FabricZone][Migration] Zone B at capacity rejects intent gracefully"
 
 	// Zone A rolls back via timeout.
 	FabricZone::_resolve_staging_timeouts_s(za.slots, za.capacity,
-			za.zone_id, za.neighbor_latency, za.rtt_measured, za.hz, 100);
+			za.zone_id, za.srtt, za.rttvar, za.rtt_measured, za.hz, 100);
 	CHECK_MESSAGE(!za.slots[9].is_staging, "Zone A should roll back after Zone B rejection");
 }
 
@@ -450,21 +451,21 @@ TEST_CASE("[FabricZone][Migration] outbound budget queues excess entities across
 
 	// Tick 1: should send exactly 50 (budget).
 	int sent_t1 = FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
-			za.zone_id, za.zone_count, za.neighbor_latency,
+			za.zone_id, za.zone_count, za.srtt,
 			0, 60, 50, za.xing_started, za.migrations, za.outbox);
 	CHECK_MESSAGE(sent_t1 == 50, vformat("Tick 1: expected 50 intents, got %d", sent_t1));
 	total_sent += sent_t1;
 
 	// Tick 2: another 50.
 	int sent_t2 = FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
-			za.zone_id, za.zone_count, za.neighbor_latency,
+			za.zone_id, za.zone_count, za.srtt,
 			1, 60, 50, za.xing_started, za.migrations, za.outbox);
 	CHECK_MESSAGE(sent_t2 == 50, vformat("Tick 2: expected 50 intents, got %d", sent_t2));
 	total_sent += sent_t2;
 
 	// Tick 3: remaining 20.
 	int sent_t3 = FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
-			za.zone_id, za.zone_count, za.neighbor_latency,
+			za.zone_id, za.zone_count, za.srtt,
 			2, 60, 50, za.xing_started, za.migrations, za.outbox);
 	CHECK_MESSAGE(sent_t3 == 20, vformat("Tick 3: expected 20 intents, got %d", sent_t3));
 	total_sent += sent_t3;

@@ -46,14 +46,40 @@ The RTT-based adaptive timeout is a well-studied problem in transport protocols:
 
 ## Fix
 
-The STAGING timeout is now derived from RTT measurement, not hardcoded:
+The STAGING timeout now implements the Jacobson/Karels (1988) adaptive RTO
+estimator, tracking both smoothed RTT and its mean deviation per neighbor:
+
+### Per-neighbor state
 
 ```cpp
-static uint32_t _staging_timeout(uint32_t p_latency_ticks, bool p_rtt_measured, uint32_t p_hz) {
+uint32_t _srtt_ticks[2];    // smoothed one-way latency (EWMA, alpha = 1/8)
+uint32_t _rttvar_ticks[2];  // mean deviation          (EWMA, beta  = 1/4)
+bool     _rtt_measured[2];  // true once first PONG arrives
+```
+
+### PONG handler (Jacobson/Karels EWMA update)
+
+On the first PONG, SRTT is initialized to the sample and RTTVAR to half the
+sample (RFC 6298 Section 2.2). Subsequent PONGs apply the standard EWMA:
+
+```
+RTTVAR = 3/4 * RTTVAR + 1/4 * |SRTT - sample|
+SRTT   = 7/8 * SRTT   + 1/8 * sample
+```
+
+SRTT is floored at `pbvh_latency_ticks(hz)` (the proved minimum for 0 ms RTT).
+
+### Timeout calculation
+
+```cpp
+static uint32_t _staging_timeout(uint32_t p_srtt, uint32_t p_rttvar,
+        bool p_rtt_measured, uint32_t p_hz) {
     if (!p_rtt_measured) {
         return p_hz; // 1 second — generous unmeasured default
     }
-    return p_latency_ticks * 4;
+    // Jacobson/Karels: RTO = SRTT + 4 * RTTVAR, floor of 1 tick.
+    uint32_t rto = p_srtt + 4 * p_rttvar;
+    return rto < 1 ? 1 : rto;
 }
 ```
 
@@ -62,11 +88,15 @@ static uint32_t _staging_timeout(uint32_t p_latency_ticks, bool p_rtt_measured, 
   that accommodates ENet connection setup, DNS resolution, and initial packet
   exchange.
 
-- **After RTT is measured**: `latency_ticks * 4`. The `4x` multiplier follows
-  the Jacobson/Karels intuition — the timeout must exceed the round trip
-  including variance. The `_neighbor_latency_ticks` value already applies
-  `max(pbvh_latency_ticks(hz), ceil(rtt_ms / 2 * hz / 1000))`, ensuring it
-  never drops below the theoretical floor.
+- **After RTT is measured**: `SRTT + 4 * RTTVAR`. The variance term
+  automatically widens the timeout window under jitter (packet reordering,
+  GC pauses, ENet retransmits) and tightens it on stable links. This directly
+  implements the Jacobson/Karels formula rather than using a fixed multiplier
+  on the raw latency sample.
+
+- **SRTT (arrival deadlines)**: `_srtt_ticks` is also used as the expected
+  one-way transit time in `_pack_intent` arrival tick calculations, replacing
+  the former raw `_neighbor_latency_ticks` value.
 
 - **`_rtt_measured[ni]`**: a per-neighbor boolean, set `true` when the first
   PONG arrives. This cleanly separates the "no data" case from the "measured"
@@ -90,14 +120,16 @@ All 5 migration tests pass (25/25 assertions):
 
 ## Changed files
 
-- `modules/multiplayer_fabric/fabric_zone.h` — `_staging_timeout()` static
-  function, `_rtt_measured[2]` flag, `EntitySlot` moved to public, extracted
-  method signatures updated
-- `modules/multiplayer_fabric/fabric_zone.cpp` — timeout uses `_staging_timeout()`
-  in both inline and extracted paths; `_rtt_measured[ni] = true` on PONG receipt
-- `tests/scene/test_fabric_zone.cpp` — `ZoneState` harness replaces
-  `MigrationHarness` (no SceneTree dependency); tests pass `rtt_measured` and
-  `hz` to static methods
+- `modules/multiplayer_fabric/fabric_zone.h` — `_staging_timeout()` takes
+  SRTT + RTTVAR; `_srtt_ticks[2]`/`_rttvar_ticks[2]` replace
+  `_neighbor_latency_ticks[2]`; `EntitySlot` moved to public; extracted
+  method signatures carry SRTT/RTTVAR arrays
+- `modules/multiplayer_fabric/fabric_zone.cpp` — PONG handler implements
+  Jacobson/Karels EWMA (first sample initializes, subsequent samples smooth);
+  all timeout and arrival deadline sites use `_srtt_ticks`/`_rttvar_ticks`
+- `tests/scene/test_fabric_zone.cpp` — `ZoneState` harness carries
+  `srtt[2]`/`rttvar[2]`; tests pass SRTT, RTTVAR, and `rtt_measured` to
+  static methods
 - `modules/csg/csg_shape.cpp` — guard `material_id >= 0` in `_pack_manifold`
   (fixes pre-existing CSG test crash)
 - `modules/multiplayer_fabric_mmog/todo.md` — updated root cause description
