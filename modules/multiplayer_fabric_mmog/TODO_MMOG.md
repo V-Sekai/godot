@@ -159,6 +159,31 @@ the burst population size.
 **Risk retired:** the burst absorption claim in the concept doc is
 formally verified, not just tested.
 
+## Validate Hilbert RDO with AV1-style partition search
+
+The Predictive BVH now uses entity-tight bounds for RDO cost and an
+AV1-style partition search in the E-graph saturator. Three pieces
+need validation:
+
+- **Entity-tight parentBounds.** `lbvhAux` sets `parentBounds` to
+  the entity-tight union instead of the old (wrong) Morton octree
+  cell. `evalNodeCost?` uses `surfaceArea(parentBounds)` for RDO
+  cost, so this change affects every split decision. Verify that
+  the resulting BVH quality is at least as good as before on the
+  Abyssal VR Grid populations.
+- **Centroid axis selection.** The initial axis is picked by max
+  child centroid separation. This replaces the Morton `depth % 3`
+  convention. Compare axis distributions on the jellyfish and whale
+  populations to confirm the heuristic picks sensible axes.
+- **Saturator axis rewrite.** `saturateAxes` tries `.horz`, `.vert`,
+  and `.depth` variants for each 2-way node and keeps the cheapest.
+  Confirm the saturator converges in ≤ 3 passes on the demo
+  populations and that it finds cheaper partitions than the initial
+  LBVH on at least some subtrees.
+
+**Risk retired:** the Hilbert-sorted BVH produces correct and
+competitive RDO cost with the new entity-tight + AV1 partition model.
+
 ## ~~Add UDS zone-to-zone transport~~ DEFERRED
 
 Add `FabricLocalZonePeer` via `UDSServer`/`StreamPeerUDS` as an
