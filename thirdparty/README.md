@@ -528,6 +528,27 @@ Patches:
 - `0005-backport-upstream-commit-449b645.patch` (GH-117194)
 
 
+## keychain
+
+- Upstream: https://github.com/hrantzsch/keychain
+- Version: 1.3.1 (2025)
+- License: MIT
+
+Cross-platform wrapper over native OS credential stores (macOS/iOS/visionOS
+Keychain Services, Windows Credential Vault, Linux Secret Service, Android
+KeyStore). Used by the `multiplayer_fabric_mmog` module to persist asset
+encryption keys.
+
+Files extracted from upstream source:
+
+- `include/keychain/keychain.h`
+- `src/keychain_{android,linux,mac,win}.cpp`
+- `LICENSE`, `README.md`
+
+The Android backend (`keychain_android.cpp`) is a new file not from upstream,
+using AndroidKeyStore AES-GCM encryption with SharedPreferences storage.
+
+
 ## libbacktrace
 
 - Upstream: https://github.com/ianlancetaylor/libbacktrace

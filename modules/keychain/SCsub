@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_keychain = env_modules.Clone()
+
+# hrantzsch/keychain — vendored at thirdparty/keychain/. Header lives at
+# keychain/keychain.h and exactly one platform backend is compiled in.
+env_keychain.Prepend(CPPPATH=["#thirdparty/keychain/include"])
+
+thirdparty_sources = []
+if env["platform"] in ["macos", "ios", "visionos"]:
+    # SecItem* API is shared across all Apple platforms.
+    thirdparty_sources.append("#thirdparty/keychain/src/keychain_mac.cpp")
+    env.Append(LINKFLAGS=["-framework", "Security", "-framework", "CoreFoundation"])
+elif env["platform"] == "windows":
+    thirdparty_sources.append("#thirdparty/keychain/src/keychain_win.cpp")
+    env.Append(LINKFLAGS=["advapi32" + env["LIBSUFFIX"]])
+elif env["platform"] == "linuxbsd":
+    thirdparty_sources.append("#thirdparty/keychain/src/keychain_linux.cpp")
+    env_keychain.ParseConfig("pkg-config libsecret-1 --cflags --libs")
+    env.ParseConfig("pkg-config libsecret-1 --libs")
+env_thirdparty = env_keychain.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.Prepend(CPPPATH=["#thirdparty/keychain/include/keychain"])
+env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
+
+# The Android backend uses Godot platform headers (JNI, OS_Android) so it
+# must be compiled with the module environment, not the warnings-suppressed
+# thirdparty environment.
+module_obj = []
+if env["platform"] == "android":
+    env_keychain.Prepend(CPPPATH=["#thirdparty/keychain/include/keychain"])
+    env_keychain.add_source_files(module_obj, "#thirdparty/keychain/src/keychain_android.cpp")
+env_keychain.add_source_files(module_obj, "*.cpp")
+
+env.modules_sources += module_obj
