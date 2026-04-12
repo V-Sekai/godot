@@ -81,60 +81,8 @@ Never hand-edit — the generated code is the source of truth for all Lean-prove
 
 ## Companion projects
 
-When making changes to this module, check the matching code in these
-sibling directories — they are the upstream proofs, downstream consumers,
-or co-evolved dependencies.
-
-### [`modules/multiplayer_fabric_mmog`](../multiplayer_fabric_mmog) — MMOG layer
-
-Adds the 100-byte wire format, entity class tags, humanoid bone sync,
-asset delivery, and ReBAC permissions on top of this module's zone
-transport. Wire format byte offsets in `fabric_zone.h` and channel
-constants in `fabric_multiplayer_peer.h` must stay in sync with the
-MMOG peer and asset code.
-
-### [`modules/keychain`](../keychain) — OS secure storage
-
-Platform-gated module (all platforms except web) wrapping
-`thirdparty/keychain/` for persisting per-asset AES key material.
-Used by `multiplayer_fabric_mmog`; not a direct dependency of this
-module, but changes to the asset key flow affect both.
-
-### [`thirdparty/predictive_bvh`](../../thirdparty/predictive_bvh) — Lean 4 proofs and codegen
-
-Formal verification of the broadphase, ghost expansion, migration
-protocol, and zone assignment. `predictive_bvh.h` is generated from
-Lean — never hand-edit. Constants like `PBVH_V_MAX_PHYSICAL_DEFAULT`,
-`PBVH_INTEREST_RADIUS_UM`, and `PBVH_LATENCY_TICKS` flow from Lean
-into this module's `fabric_zone.h`. Full bibliography in
-`thirdparty/predictive_bvh/OptimalPartitionBook.md`.
-
-### [`thirdparty/rx`](../../thirdparty/rx) — V-Sekai game client
-
-The reference client consuming CH_INTEREST snapshots and sending
-CH_PLAYER state. The strangle-fig migration plan replaces its
-`ENetMultiplayerPeer` with `FabricMultiplayerPeer` at a single seam
-in `sar_game_session_manager.gd`.
-
-### [`thirdparty/uro`](../../thirdparty/uro) — asset backend
-
-Phoenix/Elixir backend serving avatar and prop metadata, the chunk-store
-manifest endpoint, and the ReBAC `/acl/check` endpoint. URO path
-constants and store URLs in the MMOG module must match the routes this
-service exposes.
-
-### [`thirdparty/desync`](../../thirdparty/desync) — casync wire-format reference
-
-Go implementation of casync-compatible chunked stores. Kept in-tree as
-the wire-format reference for `.caibx` index layout, chunk ID hash
-width, and min/max chunk-size windows. The native C++ fetch pipeline in
-`multiplayer_fabric_mmog` replaced the original CGo bridge.
-
-### [`thirdparty/humanoid-project`](../../thirdparty/humanoid-project) — humanoid rig
-
-Defines the bone set that `HUMANOID_BONE_COUNT` in the MMOG layer is
-derived from. If the bone count or ordering changes upstream, the
-muscle-triplet payload indexing must be updated to match.
+See [COMPANION_PROJECTS.md](../../COMPANION_PROJECTS.md) for the full
+list of sibling modules and vendored projects that must stay in sync.
 
 ## Module structure
 
