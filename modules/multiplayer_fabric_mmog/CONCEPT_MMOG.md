@@ -1,20 +1,39 @@
 # Multiplayer Fabric MMOG
 
-Multiplayer Fabric is a two-layer networking stack for Godot 4.
-The lower layer (`multiplayer_fabric`) handles zone authority, interest
-filtering, and entity handoff across server zones. The upper layer
-(`multiplayer_fabric_mmog`) adds a 100-byte wire format, asset delivery
-via desync chunk stores, and a ReBAC permission model. Zones partition
-a 30-bit Hilbert code space; AOI bands derived from that partition
-determine neighbor topology and interest relay. The demo ("Abyssal VR
-Grid") validates zone handoff with three NPC populations and live
-player entities on the same fabric, using dual-hand pinch navigation
-and a trident weapon in VR.
+## For players
 
-Wire format details, payload layout, and API documentation live in the
-class reference (`FabricZone`, `FabricMultiplayerPeer`,
-`FabricSnapshot`); this document covers cross-cutting design rationale
-only.
+V-Sekai puts thousands of people in the same space — concerts, rallies,
+raids — with no loading screen, no shard boundary, and no landlord who
+can pull the plug. You move through the crowd with your hands, not a
+menu. Your world data stays yours because hosting runs on commodity
+hardware you can rent or own.
+
+## For investors
+
+**Early.** Godot is the fastest-growing open-source engine and has no
+native MMOG networking. Unity and Unreal outsource this to middleware
+(Photon, PlayFab, Pragma) that charges per peak CCU and owns the
+session. V-Sekai's Multiplayer Fabric is the first stack that puts
+zone authority, interest filtering, and entity migration directly in
+the Godot scene tree. Every MMOG project on the platform is a
+potential adopter from day one, with no competing native solution.
+
+**10x better.** A 30-bit Hilbert partition replaces the coordinator,
+match-maker, and session database that competing stacks require.
+Interest relay copies each packet once per physical link, not once per
+subscriber. Outcome: 1,000 concurrent players across five commodity
+machines with 12.5% headroom, 100-byte entity state, zero
+orchestrator — where comparable middleware quotes dedicated
+infrastructure per shard.
+
+**Survives longer.** V-Sekai ships as a Godot module under MIT. No
+per-seat fee, no runtime royalty, no vendor kill-switch. The Hilbert
+transforms are formally verified in Lean 4 and code-generated to C and
+Rust, so the core math does not rot when the engine upgrades. Asset
+delivery uses content-addressed chunk stores and ReBAC permissions, so
+operators keep data sovereignty. When a VC-funded platform shuts down,
+its worlds disappear; V-Sekai worlds are portable files on disks the
+community already controls.
 
 ---
 
