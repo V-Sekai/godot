@@ -1,0 +1,14 @@
+# Lean 4 / Lake build artifacts
+/.lake/
+/build/
+
+# Generated code
+/generated/
+
+# Quarto
+/.quarto/
+**/*.quarto_ipynb
+
+# SUMO simulation output
+sumo-sim/*.csv
+sumo-sim/*.xml
