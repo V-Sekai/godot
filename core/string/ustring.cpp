@@ -224,7 +224,9 @@ void String::append_utf32_unchecked(const Span<char32_t> &p_span) {
 	const int prev_length = length();
 	resize_uninitialized(prev_length + p_span.size() + 1); // + 1 for \0
 	char32_t *dst = ptrw() + prev_length;
-	memcpy(dst, p_span.ptr(), p_span.size() * sizeof(char32_t));
+	if (p_span.size() > 0) {
+		memcpy(dst, p_span.ptr(), p_span.size() * sizeof(char32_t));
+	}
 	*(dst + p_span.size()) = _null;
 }
 
