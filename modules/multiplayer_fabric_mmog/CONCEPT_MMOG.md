@@ -2,38 +2,37 @@
 
 ## For players
 
-V-Sekai puts thousands of people in the same space — concerts, rallies,
-raids — with no loading screen, no shard boundary, and no landlord who
-can pull the plug. You move through the crowd with your hands, not a
-menu. Your world data stays yours because hosting runs on commodity
-hardware you can rent or own.
+V-Sekai is building toward thousands of people in the same space —
+concerts, rallies, raids — without loading screens or shard boundaries.
+Hand-based VR navigation and self-hostable infrastructure are the goal.
+The zone networking and entity migration work. The VR demo has not
+passed its smoke test yet. Asset streaming through Uro is not
+implemented.
 
 ## For investors
 
-**Early.** Godot is the fastest-growing open-source engine and has no
-native MMOG networking. Unity and Unreal outsource this to middleware
-(Photon, PlayFab, Pragma) that charges per peak CCU and owns the
-session. V-Sekai's Multiplayer Fabric is the first stack that puts
-zone authority, interest filtering, and entity migration directly in
-the Godot scene tree. Every MMOG project on the platform is a
-potential adopter from day one, with no competing native solution.
+**Early.** Godot has no native MMOG networking. Unity and Unreal
+outsource this to middleware (Photon, PlayFab, Pragma) that charges per
+peak CCU and owns the session. V-Sekai's Multiplayer Fabric puts zone
+authority, interest filtering, and entity migration into the Godot scene
+tree. No competing native solution exists on the platform. The zone
+partitioning, interest relay, and migration protocol are implemented.
+The VR demo, asset streaming, and load testing are not done.
 
-**10x better.** A 30-bit Hilbert partition replaces the coordinator,
-match-maker, and session database that competing stacks require.
-Interest relay copies each packet once per physical link, not once per
-subscriber. Outcome: 1,000 concurrent players across five commodity
-machines with 12.5% headroom, 100-byte entity state, zero
-orchestrator — where comparable middleware quotes dedicated
-infrastructure per shard.
+**10x better (not yet measured).** A 30-bit Hilbert partition is
+designed to replace the coordinator, match-maker, and session database
+that competing stacks require. Interest relay copies each packet once
+per physical link, not once per subscriber. The target is 1,000
+concurrent players across five commodity machines with 12.5% headroom,
+100-byte entity state, zero orchestrator. Fan-out has not been
+measured. The 1,000-player target has not been load-tested.
 
 **Survives longer.** V-Sekai ships as a Godot module under MIT. No
 per-seat fee, no runtime royalty, no vendor kill-switch. The Hilbert
 transforms are formally verified in Lean 4 and code-generated to C and
 Rust, so the core math does not rot when the engine upgrades. Asset
-delivery uses content-addressed chunk stores and ReBAC permissions, so
-operators keep data sovereignty. When a VC-funded platform shuts down,
-its worlds disappear; V-Sekai worlds are portable files on disks the
-community already controls.
+delivery is planned to use content-addressed chunk stores served by Uro
+with ReBAC permissions. Uro asset streaming is not implemented yet.
 
 ---
 

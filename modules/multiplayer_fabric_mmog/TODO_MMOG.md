@@ -132,6 +132,33 @@ scenario.
 **Risk retired:** per-zone fan-out is bounded and measurable before
 scaling to multiple zones.
 
+## Upgrade Uro for asset streaming
+
+Uro is V-Sekai's web backend. Upgrade it to serve content-addressed
+desync chunks so the client can stream world assets on demand instead
+of bundling everything in the export. This is the delivery side of the
+"data sovereignty" claim: operators host their own Uro instance,
+assets are content-addressed and deduplicated, and ReBAC permissions
+control who can fetch what. Without this, the demo ships with baked-in
+assets and the pitch about portable, operator-owned worlds is
+aspirational.
+
+**Risk retired:** asset streaming works end-to-end through Uro; the
+client fetches chunks by hash at runtime.
+
+## Prove MIGRATION_HEADROOM absorbs the 144-entity burst
+
+CONCEPT_MMOG claims the headroom reserve absorbs the worst-case
+migration spike. Individual ghost containment is proved
+(`ghost_containment_implies_no_exit`) and no-duplication is proved
+(`staging_resolves_to_single_owner`), but there is no theorem proving
+the reserve constant in `fabric_zone.h` is sized to accept 144
+simultaneous arrivals. Add a Lean theorem that the headroom value ≥
+the burst population size.
+
+**Risk retired:** the burst absorption claim in the concept doc is
+formally verified, not just tested.
+
 ## ~~Add UDS zone-to-zone transport~~ DEFERRED
 
 Add `FabricLocalZonePeer` via `UDSServer`/`StreamPeerUDS` as an
