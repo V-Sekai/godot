@@ -31,6 +31,7 @@
 #include "audio_stream_player_internal.h"
 
 #include "core/config/engine.h"
+#include "core/error/error_macros.h"
 #include "core/object/callable_mp.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
@@ -361,6 +362,8 @@ AudioStreamPlayerInternal::AudioStreamPlayerInternal(Node *p_node, const Callabl
 	stop_callable = p_stop_callable;
 	physical = p_physical;
 	bus = SceneStringName(Master);
+
+	ERR_FAIL_NULL(AudioServer::get_singleton());
 
 	AudioServer::get_singleton()->connect("bus_layout_changed", callable_mp((Object *)node, &Object::notify_property_list_changed));
 	AudioServer::get_singleton()->connect("bus_renamed", callable_mp((Object *)node, &Object::notify_property_list_changed).unbind(3));
