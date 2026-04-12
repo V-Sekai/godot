@@ -9,7 +9,7 @@ The zone networking and entity migration work. The VR demo has not
 passed its smoke test yet. Asset streaming through Uro is not
 implemented.
 
-## For investors
+## For sponsors
 
 **Early.** Godot has no native MMOG networking. Unity and Unreal
 outsource this to middleware (Photon, PlayFab, Pragma) that charges per
