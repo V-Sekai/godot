@@ -93,7 +93,22 @@ scenario.
 **Risk retired:** per-zone fan-out is bounded and measurable before
 scaling to multiple zones.
 
-## 9. Reach 1,000 concurrent players across one fabric
+## ~~9. Editor zone visualizer~~ DEFERRED
+
+Hilbert band overlay, entity count per zone, migration arrows in the
+3D viewport. Unnecessary mass before the VR smoke test passes (item 1).
+Revisit if debugging items 5+ becomes painful without visualization.
+
+## ~~10. Editor multiplayer_fabric awareness~~ DEFERRED
+
+Making the editor understand zones, migration state, or CH_INTEREST
+routing. The demo runs headless zone servers plus a PCVR client; the
+editor does not participate in the fabric. Godot's existing "Run
+Multiple Instances" covers the multi-process case. Adding editor
+integration is maintenance surface area that breaks across Godot
+versions and solves no current risk.
+
+## 11. Reach 1,000 concurrent players across one fabric
 
 Sizing: 1,000 players x 56 entities = 56,000; at 1,800 per zone,
 32 zones; 7 zones per 8-core machine, 5 machines, 63,000 capacity,
