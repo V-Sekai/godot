@@ -1,5 +1,4 @@
-
-## Applied to the Fabric stack
+# Todo
 
 The two-layer split (`multiplayer_fabric` / `multiplayer_fabric_mmog`)
 follows "question and subtract": the zone transport layer carries no
@@ -19,10 +18,14 @@ risk.
 - **Zone B `xing_in` saturation.** At peak burst only ~10–13 of 144
   entities land in Zone B; the rest roll back to Zone A (OWNED, retry next
   half-cycle) per the Lean `staging_plus_aborted` path. Zone A never loses
-  entities, but the per-burst absorption rate should be higher. Investigate
-  MIGRATION_HEADROOM vs slot-allocation contention vs ENet fragment loss.
+  entities, but the per-burst absorption rate should be higher. Root cause:
+  STAGING timeout should be experimentally determined via RTT ping/pong, not
+  a fixed multiple of the default latency estimate. The initial 8-tick value
+  is too tight for 3-tick outbound queuing plus ENet fragment reassembly.
+  Fix path: red-green-refactor TDD — extract migration sub-routines, send
+  first PING early so RTT measurement runs before the burst.
 
-## Todo
+## Todo items
 
 - Wire the trident controller trigger to emit `CH_PLAYER` cmd=1
   (`current_funnel`) from `fabric_client.gd`. Currently `trident_hand.gd`
@@ -31,15 +34,12 @@ risk.
   instanced and functional under the `XROrigin3D` node in `main.tscn`.
 - End-to-end test: trident trigger in PCVR → Zone B interest range shows
   the C7 spike at `CURRENT_FUNNEL_PEAK_V` without a false negative.
-- Benchmark 1,800 entities per core at 32-player scale on x86 (measured on
-  M2 only so far). Claim the number only after measuring on target
-  hardware.
 - Measure `CH_INTEREST` fan-out latency at 100 simultaneous connected peers
   per zone.
-- Confirm whether ENet is or is not the wall at 100 peers per zone; if it
-  is, evaluate POSIX SHM (`ShmMultiplayerPeer` implementing the same
-  `FabricZonePeerCallbacks` interface) for same-machine zone-to-zone
-  traffic. ENet stays for zone-to-player.
+- Add UDS (`FabricLocalZonePeer` via `UDSServer`/`StreamPeerUDS`) as an
+  opt-in alternative to ENet for same-machine zone-to-zone traffic. ENet
+  remains the default and stays for zone-to-player. Avoids fragmentation
+  overhead on localhost deployments.
 - Reach 1,000 concurrent players across one fabric (one logical world made
   of many cooperating zones). Sizing reference: 1,000 players × 56 entities
   = 56,000; at 1,800 entities per zone → 32 zones; 7 zones per 8-core

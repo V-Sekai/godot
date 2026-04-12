@@ -1374,6 +1374,7 @@ bool FabricZone::physics_process(double p_time) {
 					for (int ni = 0; ni < 2; ni++) {
 						if (_ping_send_tick[ni] == field0) {
 							_neighbor_latency_ticks[ni] = lt;
+							_rtt_measured[ni] = true;
 							print_line(vformat("[FabricZone] zone=%d neighbor_idx=%d rtt_ticks=%d latency_ticks=%d",
 									zone_id, ni, rtt_ticks, lt));
 						}
@@ -1989,7 +1990,7 @@ bool FabricZone::physics_process(double p_time) {
 	for (int i = 0; i < _zone_capacity; i++) {
 		if (slots[i].active && slots[i].is_staging) {
 			int ni_tgt = (slots[i].migration_target_zone == my_id - 1) ? 0 : 1;
-			uint32_t timeout = _neighbor_latency_ticks[ni_tgt] * 4;
+			uint32_t timeout = _staging_timeout(_neighbor_latency_ticks[ni_tgt], _rtt_measured[ni_tgt], hz);
 			if (tick - slots[i].staging_send_tick >= timeout) {
 				// No ACK — rollback: STAGING â OWNED on zone A.
 				print_line(vformat("[XING_ROLLBACK] zone=%d tick=%d eid=%d (no ACK from zone=%d)",
@@ -2154,4 +2155,104 @@ bool FabricZone::physics_process(double p_time) {
 	}
 
 	return false; // Don't quit.
+}
+
+// ── Migration sub-routines (public static for testability) ──────────────────
+
+void FabricZone::_resolve_staging_timeouts_s(EntitySlot *p_slots, int p_capacity,
+		int p_zone_id, const uint32_t p_neighbor_latency[2],
+		const bool p_rtt_measured[2], uint32_t p_hz, uint32_t p_tick) {
+	for (int i = 0; i < p_capacity; i++) {
+		if (p_slots[i].active && p_slots[i].is_staging) {
+			int ni_tgt = (p_slots[i].migration_target_zone == p_zone_id - 1) ? 0 : 1;
+			uint32_t timeout = _staging_timeout(p_neighbor_latency[ni_tgt], p_rtt_measured[ni_tgt], p_hz);
+			if (p_tick - p_slots[i].staging_send_tick >= timeout) {
+				print_line(vformat("[XING_ROLLBACK] zone=%d tick=%d eid=%d (no ACK from zone=%d)",
+						p_zone_id, p_tick, p_slots[i].entity.global_id,
+						p_slots[i].migration_target_zone));
+				p_slots[i].is_staging = false;
+				p_slots[i].migration_target_zone = -1;
+				p_slots[i].hysteresis = 0;
+			}
+		}
+	}
+}
+
+int FabricZone::_accept_incoming_intents_s(EntitySlot *p_slots, int p_capacity,
+		int &r_entity_count, int &r_free_hint, int p_zone_id,
+		LocalVector<Vector<uint8_t>> &r_inbox, uint64_t &r_xing_received) {
+	int accepted = 0;
+	for (uint32_t di = 0; di < r_inbox.size(); di++) {
+		const Vector<uint8_t> &data = r_inbox[di];
+		int offset = 0;
+		while (offset + INTENT_SIZE <= data.size()) {
+			int eid, to_zone;
+			uint32_t arrival;
+			FabricEntity ent;
+			if (_unpack_intent(data.ptr() + offset, INTENT_SIZE, eid, to_zone, arrival, ent)) {
+				if (to_zone != p_zone_id) {
+					offset += INTENT_SIZE;
+					continue;
+				}
+				int free_idx = -1;
+				for (int fi = 0; fi < p_capacity; fi++) {
+					int idx = (r_free_hint + fi) % p_capacity;
+					if (!p_slots[idx].active) {
+						free_idx = idx;
+						break;
+					}
+				}
+				if (free_idx >= 0) {
+					r_xing_received++;
+					p_slots[free_idx].entity = ent;
+					p_slots[free_idx].snap = _make_ghost_snap(ent);
+					p_slots[free_idx].hysteresis = 0;
+					p_slots[free_idx].active = true;
+					p_slots[free_idx].is_incoming = true;
+					r_entity_count++;
+					r_free_hint = (free_idx + 1) % p_capacity;
+					accepted++;
+				}
+			}
+			offset += INTENT_SIZE;
+		}
+	}
+	r_inbox.clear();
+	return accepted;
+}
+
+int FabricZone::_collect_migration_intents_s(EntitySlot *p_slots, int p_capacity,
+		int p_zone_id, int p_zone_count, const uint32_t p_neighbor_latency[2],
+		uint32_t p_tick, uint32_t p_hz, int p_budget,
+		uint64_t &r_xing_started, uint64_t &r_migrations,
+		LocalVector<Vector<uint8_t>> &r_outbox) {
+	int sent = 0;
+	uint32_t hysteresis_runtime = pbvh_hysteresis_threshold(p_hz);
+
+	for (int i = 0; i < p_capacity && p_budget > 0; i++) {
+		if (!p_slots[i].active || p_slots[i].is_staging || p_slots[i].is_incoming || p_slots[i].is_player_slot) {
+			continue;
+		}
+		const FabricEntity &e = p_slots[i].entity;
+		int target = _zone_for_hilbert(_entity_hilbert(e), p_zone_count);
+		if (target != p_zone_id) {
+			p_slots[i].hysteresis += 1;
+			if (p_slots[i].hysteresis >= hysteresis_runtime && p_budget > 0) {
+				r_xing_started++;
+				p_slots[i].is_staging = true;
+				p_slots[i].staging_send_tick = p_tick;
+				p_slots[i].migration_target_zone = target;
+				r_migrations += 1;
+				int ni_tgt = (target == p_zone_id - 1) ? 0 : 1;
+				uint32_t lt = p_neighbor_latency[ni_tgt];
+				Vector<uint8_t> pkt = _pack_intent(e.global_id, target, p_tick + lt, e);
+				r_outbox.push_back(pkt);
+				p_budget--;
+				sent++;
+			}
+		} else {
+			p_slots[i].hysteresis = 0;
+		}
+	}
+	return sent;
 }

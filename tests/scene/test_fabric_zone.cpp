@@ -230,6 +230,248 @@ TEST_CASE("[FabricZone] hilbert_cell_of_aabb returns AABB containing the input p
 	}
 }
 
+// ── Migration state-machine tests ──────────────────────────────────────────
+//
+// These tests exercise the OWNED→STAGING→INCOMING→OWNED migration path
+// using raw slot arrays and the public static _*_s methods. No FabricZone
+// (SceneTree) objects are created — only plain data + pure functions.
+
+// Lightweight zone state for test harness (no SceneTree dependency).
+struct ZoneState {
+	FabricZone::EntitySlot *slots = nullptr;
+	int capacity = 1800;
+	int zone_id = 0;
+	int zone_count = 2;
+	int entity_count = 0;
+	int free_hint = 0;
+	uint32_t tick = 0;
+	uint64_t xing_started = 0;
+	uint64_t xing_received = 0;
+	uint64_t migrations = 0;
+	uint32_t neighbor_latency[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
+	bool rtt_measured[2] = { true, true }; // tests simulate measured RTT
+	uint32_t hz = 60;
+	LocalVector<Vector<uint8_t>> inbox;
+	LocalVector<Vector<uint8_t>> outbox;
+
+	void alloc() {
+		slots = (FabricZone::EntitySlot *)memalloc(sizeof(FabricZone::EntitySlot) * capacity);
+		memset(slots, 0, sizeof(FabricZone::EntitySlot) * capacity);
+	}
+
+	~ZoneState() {
+		if (slots) {
+			memfree(slots);
+			slots = nullptr;
+		}
+	}
+};
+
+// Deliver outbox of src into inbox of dst (replaces ENet for tests).
+static void deliver(ZoneState &src, ZoneState &dst) {
+	for (uint32_t i = 0; i < src.outbox.size(); i++) {
+		dst.inbox.push_back(src.outbox[i]);
+	}
+	src.outbox.clear();
+}
+
+TEST_CASE("[FabricZone][Migration] pack_intent round-trips through unpack_intent") {
+	FabricZone::FabricEntity ent;
+	ent.cx = 1.5;
+	ent.cy = -3.0;
+	ent.cz = 7.25;
+	ent.vx = 0.1;
+	ent.vy = -0.2;
+	ent.vz = 0.0;
+	ent.ax = 0.01;
+	ent.ay = -0.005;
+	ent.az = 0.003;
+	ent.global_id = 42;
+
+	Vector<uint8_t> pkt = FabricZone::_pack_intent(42, 1, 100, ent);
+	CHECK(pkt.size() == INTENT_SIZE);
+
+	int r_eid = 0, r_to = 0;
+	uint32_t r_arrival = 0;
+	FabricZone::FabricEntity r_ent;
+	bool ok = FabricZone::_unpack_intent(pkt.ptr(), pkt.size(), r_eid, r_to, r_arrival, r_ent);
+	CHECK(ok);
+	CHECK(r_eid == 42);
+	CHECK(r_to == 1);
+	CHECK(r_arrival == 100);
+	CHECK(r_ent.cx == doctest::Approx(1.5));
+	CHECK(r_ent.cy == doctest::Approx(-3.0));
+	CHECK(r_ent.cz == doctest::Approx(7.25));
+	CHECK(r_ent.vx == doctest::Approx(0.1));
+	CHECK(r_ent.vy == doctest::Approx(-0.2));
+	CHECK(r_ent.vz == doctest::Approx(0.0));
+	CHECK(r_ent.ax == doctest::Approx(0.01));
+	CHECK(r_ent.ay == doctest::Approx(-0.005));
+	CHECK(r_ent.az == doctest::Approx(0.003));
+}
+
+TEST_CASE("[FabricZone][Migration] staging timeout rolls back entity to OWNED") {
+	ZoneState za;
+	za.zone_id = 0;
+	za.alloc();
+
+	// Activate slot 0 and put it into STAGING state.
+	za.slots[0].active = true;
+	za.slots[0].entity.global_id = 1;
+	za.slots[0].is_staging = true;
+	za.slots[0].staging_send_tick = 0;
+	za.slots[0].migration_target_zone = 1;
+	za.entity_count = 1;
+
+	// Advance tick past the timeout window (latency=2, timeout=2*4=8).
+	FabricZone::_resolve_staging_timeouts_s(za.slots, za.capacity,
+			za.zone_id, za.neighbor_latency, za.rtt_measured, za.hz, 100);
+
+	CHECK_MESSAGE(!za.slots[0].is_staging, "Entity should roll back to OWNED after timeout");
+	CHECK_MESSAGE(za.slots[0].hysteresis == 0, "Hysteresis should reset on rollback");
+	CHECK_MESSAGE(za.slots[0].migration_target_zone == -1, "Target zone should clear on rollback");
+}
+
+TEST_CASE("[FabricZone][Migration] 144 entities all land within timeout window") {
+	ZoneState za, zb;
+	za.zone_id = 0;
+	za.zone_count = 2;
+	za.alloc();
+
+	zb.zone_id = 1;
+	zb.zone_count = 2;
+	zb.alloc();
+
+	// Populate Zone A with 1400 entities; last 144 are crossing-ready.
+	for (int i = 0; i < 1400; i++) {
+		za.slots[i].active = true;
+		za.slots[i].entity.global_id = i;
+		za.entity_count++;
+	}
+	for (int i = 1400 - 144; i < 1400; i++) {
+		za.slots[i].hysteresis = 1000; // well past threshold
+		za.slots[i].entity.cx = 14.0; // position in Zone B's Hilbert range
+	}
+
+	// Populate Zone B with 1400 entities.
+	for (int i = 0; i < 1400; i++) {
+		zb.slots[i].active = true;
+		zb.slots[i].entity.global_id = 10000 + i;
+		zb.entity_count++;
+	}
+
+	int total_received = 0;
+	for (int t = 0; t < 32 && total_received < 144; t++) {
+		// Zone A: collect intents.
+		FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
+				za.zone_id, za.zone_count, za.neighbor_latency,
+				za.tick, 60, 50, za.xing_started, za.migrations, za.outbox);
+
+		// Deliver outbox → inbox.
+		deliver(za, zb);
+
+		// Zone B: accept incoming intents.
+		int accepted = FabricZone::_accept_incoming_intents_s(zb.slots, zb.capacity,
+				zb.entity_count, zb.free_hint, zb.zone_id,
+				zb.inbox, zb.xing_received);
+		total_received += accepted;
+
+		// Zone A: resolve staging timeouts.
+		FabricZone::_resolve_staging_timeouts_s(za.slots, za.capacity,
+				za.zone_id, za.neighbor_latency, za.rtt_measured, za.hz, za.tick);
+
+		za.tick++;
+		zb.tick++;
+	}
+
+	CHECK_MESSAGE(total_received == 144, vformat("Expected 144 migrations but got %d", total_received));
+}
+
+TEST_CASE("[FabricZone][Migration] Zone B at capacity rejects intent gracefully") {
+	ZoneState za, zb;
+	za.zone_id = 0;
+	za.alloc();
+
+	zb.zone_id = 1;
+	zb.alloc();
+
+	// Zone A: 10 entities.
+	for (int i = 0; i < 10; i++) {
+		za.slots[i].active = true;
+		za.slots[i].entity.global_id = i;
+		za.entity_count++;
+	}
+
+	// Zone B: completely full.
+	for (int i = 0; i < 1800; i++) {
+		zb.slots[i].active = true;
+		zb.slots[i].entity.global_id = 10000 + i;
+		zb.entity_count++;
+	}
+
+	// Manually stage slot 9 on Zone A.
+	za.slots[9].is_staging = true;
+	za.slots[9].staging_send_tick = 0;
+	za.slots[9].migration_target_zone = 1;
+
+	// Fabricate intent and push into Zone B's inbox.
+	Vector<uint8_t> pkt = FabricZone::_pack_intent(za.slots[9].entity.global_id, 1, 5, za.slots[9].entity);
+	zb.inbox.push_back(pkt);
+
+	// Zone B tries to accept — should reject (no free slots).
+	int accepted = FabricZone::_accept_incoming_intents_s(zb.slots, zb.capacity,
+			zb.entity_count, zb.free_hint, zb.zone_id,
+			zb.inbox, zb.xing_received);
+	CHECK_MESSAGE(accepted == 0, "Zone B at capacity should reject all intents");
+	CHECK_MESSAGE(zb.entity_count == 1800, "Zone B entity count should not change");
+
+	// Zone A rolls back via timeout.
+	FabricZone::_resolve_staging_timeouts_s(za.slots, za.capacity,
+			za.zone_id, za.neighbor_latency, za.rtt_measured, za.hz, 100);
+	CHECK_MESSAGE(!za.slots[9].is_staging, "Zone A should roll back after Zone B rejection");
+}
+
+TEST_CASE("[FabricZone][Migration] outbound budget queues excess entities across ticks") {
+	ZoneState za;
+	za.zone_id = 0;
+	za.zone_count = 2;
+	za.alloc();
+
+	// 120 entities, all crossing-ready.
+	for (int i = 0; i < 120; i++) {
+		za.slots[i].active = true;
+		za.slots[i].entity.global_id = i;
+		za.slots[i].hysteresis = 1000;
+		za.slots[i].entity.cx = 14.0; // in Zone B's Hilbert range
+		za.entity_count++;
+	}
+
+	int total_sent = 0;
+
+	// Tick 1: should send exactly 50 (budget).
+	int sent_t1 = FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
+			za.zone_id, za.zone_count, za.neighbor_latency,
+			0, 60, 50, za.xing_started, za.migrations, za.outbox);
+	CHECK_MESSAGE(sent_t1 == 50, vformat("Tick 1: expected 50 intents, got %d", sent_t1));
+	total_sent += sent_t1;
+
+	// Tick 2: another 50.
+	int sent_t2 = FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
+			za.zone_id, za.zone_count, za.neighbor_latency,
+			1, 60, 50, za.xing_started, za.migrations, za.outbox);
+	CHECK_MESSAGE(sent_t2 == 50, vformat("Tick 2: expected 50 intents, got %d", sent_t2));
+	total_sent += sent_t2;
+
+	// Tick 3: remaining 20.
+	int sent_t3 = FabricZone::_collect_migration_intents_s(za.slots, za.capacity,
+			za.zone_id, za.zone_count, za.neighbor_latency,
+			2, 60, 50, za.xing_started, za.migrations, za.outbox);
+	CHECK_MESSAGE(sent_t3 == 20, vformat("Tick 3: expected 20 intents, got %d", sent_t3));
+	total_sent += sent_t3;
+
+	CHECK_MESSAGE(total_sent == 120, vformat("Total sent should be 120, got %d", total_sent));
+}
+
 } // namespace TestFabricZone
 
 #endif // MODULE_MULTIPLAYER_FABRIC_ENABLED

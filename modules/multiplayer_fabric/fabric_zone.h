@@ -140,6 +140,65 @@ public:
 		uint32_t ghost_hilbert = 0;
 	};
 
+	// ── Entity slot (migration state machine) ──────────────────────────
+	// Migration state machine (matches Lean: Fabric.lean MigrationState):
+	//   OWNED:    active=true,  is_staging=false, is_incoming=false  (normal)
+	//   STAGING:  active=true,  is_staging=true,  is_incoming=false  (zone A, sent intent)
+	//   INCOMING: active=true,  is_staging=false, is_incoming=true   (zone B, received intent)
+	// Transitions:
+	//   OWNED → STAGING (zone A): when entity crosses Hilbert boundary after hysteresis
+	//   STAGING → OWNED (zone A): on ACK from zone B, or rollback on timeout
+	//   INCOMING → OWNED (zone B): one tick after receipt; sends ACK to zone A
+	struct EntitySlot {
+		FabricEntity entity;
+		GhostSnap snap;
+		uint32_t hysteresis = 0;
+		bool active = false;
+		bool is_staging = false;
+		uint32_t staging_send_tick = 0;
+		int migration_target_zone = -1;
+		bool is_incoming = false;
+		int incoming_from_zone = -1;
+		bool is_player_slot = false;
+		uint32_t last_update_tick = 0;
+	};
+
+	// ── Migration serialization (float wire format) ─────────────────────
+	// Pure static — no side effects, safe to call from unit tests.
+	static Vector<uint8_t> _pack_intent(int eid, int to, uint32_t arrival, const FabricEntity &e);
+	static bool _unpack_intent(const uint8_t *p_data, int p_size, int &r_eid, int &r_to, uint32_t &r_arrival, FabricEntity &r_entity);
+
+	// ── Staging timeout (RTT-derived, not hardcoded) ───────────────────
+	// Returns the staging timeout in ticks for a given neighbor.
+	// When RTT is measured: 4x the one-way latency (generous window for
+	// packet loss + ENet fragment reassembly + return ACK).
+	// When RTT is unmeasured: 1 second of ticks (p_hz). Networking delays
+	// can reach minutes; 1 second is the floor for the unmeasured case.
+	static uint32_t _staging_timeout(uint32_t p_latency_ticks, bool p_rtt_measured, uint32_t p_hz) {
+		if (!p_rtt_measured) {
+			return p_hz; // 1 second
+		}
+		return p_latency_ticks * 4;
+	}
+
+	// ── Migration sub-routines (public static for testability) ──────────
+	// Operate on raw slot arrays — no SceneTree required.
+	// Zone A: scan STAGING slots, rollback if no ACK within timeout.
+	static void _resolve_staging_timeouts_s(EntitySlot *p_slots, int p_capacity,
+			int p_zone_id, const uint32_t p_neighbor_latency[2],
+			const bool p_rtt_measured[2], uint32_t p_hz, uint32_t p_tick);
+	// Zone B: drain intent_inbox, allocate INCOMING slots. Returns accepted count.
+	static int _accept_incoming_intents_s(EntitySlot *p_slots, int p_capacity,
+			int &r_entity_count, int &r_free_hint, int p_zone_id,
+			LocalVector<Vector<uint8_t>> &r_inbox, uint64_t &r_xing_received);
+	// Zone A: scan slots, emit intents for entities that crossed Hilbert boundary.
+	// Returns number of intents queued. Pushes packed intents to r_outbox.
+	static int _collect_migration_intents_s(EntitySlot *p_slots, int p_capacity,
+			int p_zone_id, int p_zone_count, const uint32_t p_neighbor_latency[2],
+			uint32_t p_tick, uint32_t p_hz, int p_budget,
+			uint64_t &r_xing_started, uint64_t &r_migrations,
+			LocalVector<Vector<uint8_t>> &r_outbox);
+
 	// ── Scenario enum ───────────────────────────────────────────────────
 	enum Scenario {
 		SCENARIO_DEFAULT,
@@ -229,6 +288,7 @@ private:
 	// Formula: max(pbvh_latency_ticks(hz), ceil(rtt_ms * hz / 1000))
 	// (proved: Resources.lean perNeighborLatencyTicks, per_neighbor_ge_floor)
 	uint32_t _neighbor_latency_ticks[2] = { PBVH_LATENCY_TICKS_DEFAULT, PBVH_LATENCY_TICKS_DEFAULT };
+	bool _rtt_measured[2] = { false, false }; // true once first PONG arrives
 
 	// ── HLC-based RTT ping/pong (CH_MIGRATION, 8-byte packets) ─────────────
 	// Ping:    [u32 send_tick][u32 PING_MAGIC]   zone A → zone B
@@ -266,32 +326,6 @@ private:
 	uint32_t _drain_at_tick = 0;
 
 	// ── Server entity storage (fixed-size slot array) ───────────────────
-	// Migration state machine (matches Lean: Fabric.lean MigrationState):
-	//   OWNED:    active=true,  is_staging=false, is_incoming=false  (normal)
-	//   STAGING:  active=true,  is_staging=true,  is_incoming=false  (zone A, sent intent)
-	//   INCOMING: active=true,  is_staging=false, is_incoming=true   (zone B, received intent)
-	// Transitions:
-	//   OWNED → STAGING (zone A): when entity crosses Hilbert boundary after hysteresis
-	//   STAGING → OWNED (zone A): on ACK from zone B, or rollback on timeout
-	//   INCOMING → OWNED (zone B): one tick after receipt; sends ACK to zone A
-	struct EntitySlot {
-		FabricEntity entity;
-		GhostSnap snap;
-		uint32_t hysteresis = 0;
-		bool active = false;
-		// STAGING: zone A side — intent sent, waiting for ACK from zone B.
-		bool is_staging = false;
-		uint32_t staging_send_tick = 0;
-		int migration_target_zone = -1;
-		// INCOMING: zone B side — intent received, one tick before becoming OWNED.
-		// On finalization (next tick), sends ACK_MAGIC back to zone A.
-		bool is_incoming = false;
-		int incoming_from_zone = -1;
-		// Player entity slots: is_player_slot=true means position is driven by CH_PLAYER,
-		// not by _step_entity. Player slots are not migrated — authority stays with connected zone.
-		bool is_player_slot = false;
-		uint32_t last_update_tick = 0; // for player slot idle-expiry
-	};
 	EntitySlot *slots = nullptr;
 	int entity_count = 0;
 	int free_hint = 0;
@@ -352,6 +386,7 @@ private:
 
 	// ── Networking ───────────────────────────────────────────────────────
 	LocalVector<Vector<uint8_t>> intent_inbox;
+	LocalVector<Vector<uint8_t>> intent_outbox;
 	Ref<MultiplayerPeer> fabric_peer; // implementation provided via peer_callbacks
 
 	// ── Timing ───────────────────────────────────────────────────────────
@@ -391,10 +426,6 @@ private:
 	// gives two or three neighbors in a 100-zone fabric; AOI_CELLS=2 on a
 	// 3-zone smoke covers the full Hilbert space (full mesh by derivation,
 	// not by branch).
-	// ── Migration serialization (float wire format) ─────────────────────
-	static Vector<uint8_t> _pack_intent(int eid, int to, uint32_t arrival, const FabricEntity &e);
-	static bool _unpack_intent(const uint8_t *p_data, int p_size, int &r_eid, int &r_to, uint32_t &r_arrival, FabricEntity &r_entity);
-
 	// ── Drain helpers ───────────────────────────────────────────────────
 	void _begin_drain(); // enter draining mode, broadcast DRAIN_MAGIC
 	void _drain_collect_entity(const FabricEntity &e); // zone 0: buffer entity for snapshot

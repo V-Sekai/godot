@@ -516,4 +516,31 @@ This work replaces that bottleneck with a proved-optimal O(N+k) broadphase and a
   number      = {CS-2006-07},
   year        = {2006}
 }
+
+@inproceedings{jacobson1988congestion,
+  author    = {Jacobson, Van and Karels, Michael J.},
+  title     = {Congestion Avoidance and Control},
+  booktitle = {Proceedings of {SIGCOMM} '88},
+  pages     = {314--329},
+  year      = {1988},
+  doi       = {10.1145/52324.52356}
+}
+
+@inproceedings{karn1987rtt,
+  author    = {Karn, Phil and Partridge, Craig},
+  title     = {Improving Round-Trip Time Estimates in Reliable Transport Protocols},
+  booktitle = {Proceedings of {ACM SIGCOMM} '87},
+  pages     = {2--7},
+  year      = {1987},
+  doi       = {10.1145/55483.55484}
+}
+
+@inproceedings{braud2021talaria,
+  author    = {Braud, Tristan and Alhilal, Ahmad and Hui, Pan},
+  title     = {Talaria: In-Engine Synchronisation for Seamless Migration of Mobile Edge Gaming Instances},
+  booktitle = {Proceedings of the 17th International Conference on Emerging Networking EXperiments and Technologies ({CoNEXT} '21)},
+  pages     = {375--381},
+  year      = {2021},
+  doi       = {10.1145/3485983.3494848}
+}
 ```
