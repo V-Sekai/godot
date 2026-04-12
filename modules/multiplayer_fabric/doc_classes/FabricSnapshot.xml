@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FabricSnapshot" inherits="Resource" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Godot Resource holding a complete fabric entity state dump.
+	</brief_description>
+	<description>
+		FabricSnapshot stores entity state as parallel packed arrays for efficient binary serialization. Zone 0 writes a snapshot during graceful shutdown (drain consolidation) and reloads it on restart to redistribute entities across a potentially different zone topology.
+		Saved as [code].res[/code] with [constant ResourceSaver.FLAG_COMPRESS] (zstd). The [member version] field allows loaders to reject incompatible layouts.
+		Array layout per entity [code]i[/code]:
+		[codeblock]
+		global_ids[i]                    -- entity global ID
+		positions[i*3 .. i*3+2]          -- cx, cy, cz (meters, f64)
+		velocities[i*3 .. i*3+2]         -- vx, vy, vz (m/s, f64)
+		accelerations[i*3 .. i*3+2]      -- ax, ay, az (m/s^2, f64)
+		payloads[i*14 .. i*14+13]        -- 14 u32 payload words
+		[/codeblock]
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_entity_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of entities stored, equal to the length of [member global_ids].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="version" type="int" setter="set_version" getter="get_version" default="1">
+			Format version. Currently [code]1[/code]. Loaders reject snapshots whose version they do not recognize.
+		</member>
+		<member name="global_ids" type="PackedInt32Array" setter="set_global_ids" getter="get_global_ids" default="PackedInt32Array()">
+			Per-entity global IDs. Length equals the entity count.
+		</member>
+		<member name="positions" type="PackedFloat64Array" setter="set_positions" getter="get_positions" default="PackedFloat64Array()">
+			Interleaved [code]cx, cy, cz[/code] per entity (meters). Length equals entity count times 3.
+		</member>
+		<member name="velocities" type="PackedFloat64Array" setter="set_velocities" getter="get_velocities" default="PackedFloat64Array()">
+			Interleaved [code]vx, vy, vz[/code] per entity. Length equals entity count times 3.
+		</member>
+		<member name="accelerations" type="PackedFloat64Array" setter="set_accelerations" getter="get_accelerations" default="PackedFloat64Array()">
+			Interleaved [code]ax, ay, az[/code] per entity. Length equals entity count times 3.
+		</member>
+		<member name="payloads" type="PackedInt32Array" setter="set_payloads" getter="get_payloads" default="PackedInt32Array()">
+			14 payload words per entity, interleaved. Length equals entity count times 14. See [FabricZone] for the payload word layout.
+		</member>
+	</members>
+</class>

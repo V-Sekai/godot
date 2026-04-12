@@ -1,0 +1,40 @@
+[gd_scene load_steps=6 format=3 uid="uid://abyssal_main"]
+
+[ext_resource type="Script" path="res://addons/procedural_3d_grid/core/xr_origin.gd" id="1_xrorigin"]
+[ext_resource type="Script" path="res://addons/procedural_3d_grid/core/xr_pinch.gd" id="2_pinch"]
+[ext_resource type="Script" path="res://addons/procedural_3d_grid/core/procedural_grid_3d.gd" id="3_grid"]
+[ext_resource type="Script" path="res://scripts/fabric_client.gd" id="4_client"]
+[ext_resource type="Script" path="res://scripts/zone_curtain.gd" id="5_curtain"]
+
+[node name="main" type="Node3D"]
+
+[node name="XROrigin3D" type="Node3D" parent="."]
+script = ExtResource("1_xrorigin")
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+
+[node name="hand_left" type="XRController3D" parent="XROrigin3D"]
+tracker = "left_hand"
+
+[node name="hand_right" type="XRController3D" parent="XROrigin3D"]
+tracker = "right_hand"
+
+[node name="canvas" type="Node3D" parent="."]
+script = ExtResource("2_pinch")
+hand_left = NodePath("../XROrigin3D/hand_left")
+hand_right = NodePath("../XROrigin3D/hand_right")
+
+[node name="ProceduralGrid3D" type="Node3D" parent="canvas"]
+script = ExtResource("3_grid")
+FOCUS_NODE = NodePath("../../XROrigin3D/XRCamera3D")
+
+[node name="ZoneCurtains" type="Node3D" parent="canvas"]
+script = ExtResource("5_curtain")
+
+[node name="Entities" type="Node3D" parent="canvas"]
+
+[node name="FabricClient" type="Node" parent="."]
+script = ExtResource("4_client")
+zone_host = "127.0.0.1"
+zone_port = 17500
+entities_root = NodePath("../canvas/Entities")

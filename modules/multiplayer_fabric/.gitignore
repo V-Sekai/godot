@@ -1,0 +1,48 @@
+# Rust (legacy, pending cleanup)
+target/
+
+# Lean build artifacts
+thirdparty/optimal-partition/.lake/
+thirdparty/optimal-partition/build/
+
+# Generated code (regenerate via: cd thirdparty/optimal-partition && lake exe bvh-codegen)
+thirdparty/optimal-partition/generated/
+
+# Zone SQLite databases (generated at runtime)
+*.db
+*.db-wal
+*.db-shm
+
+# Godot project artifacts
+sample/.godot/
+sample-player/.godot/
+godot-bin/
+
+# Test artifacts
+test_logs/
+certs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Quarto / Verification Book artifacts
+**/OptimalPartitionBook/_book/
+**/OptimalPartitionBook/.quarto/
+**/OptimalPartitionBook/**/*.pdf
+**/OptimalPartitionBook/**/*.tex
+
+# Python artifacts
+**/__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs and temp
+*.log
+*.tmp
+*.bak

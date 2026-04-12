@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FabricMultiplayerPeer" inherits="MultiplayerPeer" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Zone-fabric multiplayer peer using ENet transport with channel-sorted messaging.
+	</brief_description>
+	<description>
+		FabricMultiplayerPeer is a native [MultiplayerPeer] subclass that wraps ENet and adds zone-to-zone networking. It provides three logical communication channels:
+		- [b]CH_MIGRATION (0)[/b]: Reliable ordered — STAGING migration intents between zones.
+		- [b]CH_INTEREST (1)[/b]: Unreliable — Entity interest snapshots for culled replication.
+		- [b]CH_PLAYER (2)[/b]: Unreliable — Player state updates.
+		Works with [code]@rpc[/code], [MultiplayerSynchronizer], and [MultiplayerSpawner] out of the box.
+		[codeblock]
+		var peer := FabricMultiplayerPeer.new()
+		peer.game_id = "my_game"
+		peer.create_server(7447, 32)
+		multiplayer.multiplayer_peer = peer
+		[/codeblock]
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="broadcast_to_zones">
+			<return type="void" />
+			<param index="0" name="channel" type="int" />
+			<param index="1" name="data" type="PackedByteArray" />
+			<description>
+				Broadcasts [param data] to all connected neighbor zones on the given [param channel].
+			</description>
+		</method>
+		<method name="connect_to_zone">
+			<return type="void" />
+			<param index="0" name="target_zone_id" type="int" />
+			<description>
+				Establishes a neighbor connection to another zone server. The target zone's ENet port is computed as [code]base_port + target_zone_id[/code].
+			</description>
+		</method>
+		<method name="create_client">
+			<return type="int" enum="Error" />
+			<param index="0" name="address" type="String" />
+			<param index="1" name="port" type="int" />
+			<description>
+				Creates a client and connects to the server at [param address]:[param port]. Returns [constant OK] on success.
+			</description>
+		</method>
+		<method name="create_server">
+			<return type="int" enum="Error" />
+			<param index="0" name="port" type="int" />
+			<param index="1" name="max_clients" type="int" default="32" />
+			<description>
+				Creates a server bound to [param port] with a maximum of [param max_clients] connections. Returns [constant OK] on success.
+			</description>
+		</method>
+		<method name="drain_channel">
+			<return type="Array" />
+			<param index="0" name="channel" type="int" />
+			<description>
+				Returns all queued packets for [param channel] as an [Array] of [PackedByteArray], emptying the channel inbox. Call after [method MultiplayerPeer.poll].
+			</description>
+		</method>
+		<method name="send_to_zone">
+			<return type="void" />
+			<param index="0" name="target_zone_id" type="int" />
+			<param index="1" name="channel" type="int" />
+			<param index="2" name="data" type="PackedByteArray" />
+			<description>
+				Sends [param data] to the specified [param target_zone_id] on the given [param channel] (0 = migration, 1 = interest, 2 = player).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="game_id" type="String" setter="set_game_id" getter="get_game_id" default="&quot;&quot;">
+			The game identifier used by the zone fabric for topic routing.
+		</member>
+	</members>
+</class>

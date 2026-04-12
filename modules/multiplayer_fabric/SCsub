@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_mf = env_modules.Clone()
+
+# Thirdparty: r128.h (header-only, implementation compiled in r128_impl.cpp)
+
+env_mf.Prepend(CPPPATH=["#thirdparty/misc/", "#thirdparty/predictive_bvh/"])
+
+# Thirdparty: ENet headers (needed by enet_transport.h which includes enet module headers)
+
+if env["builtin_enet"]:
+    env_mf.Prepend(CPPPATH=["#thirdparty/enet/"])
+
+# Godot source files
+
+module_obj = []
+env_mf.add_source_files(module_obj, "*.cpp")
+
+env.modules_sources += module_obj
