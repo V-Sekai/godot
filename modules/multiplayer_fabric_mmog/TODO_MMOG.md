@@ -3,17 +3,66 @@
 Items are sequenced by risk: each step retires one uncertainty before
 the next begins.
 
-## 1. Smoke-test the Abyssal VR Grid demo in a headset
+## 1. Fix observer overlays so you can tell what is happening
 
-Boot `main.tscn` in PCVR with two zone servers. Confirm the observer
-sees jellyfish, whales, and pen strokes. Confirm head and hand tracking
-update in CH_INTEREST. This is the most basic "does it still work"
-gate — everything else is meaningless if the demo is broken.
+Previous test session: zone boundaries were hard to read, the observer
+position was invisible, and the status HUD was unreadable from the
+spectator camera. Known problems in `observer.tscn`:
 
-**Risk retired:** the VR demo boots and renders after all recent
-code changes (RTT timeout, static extraction, CSG fix).
+- **StatusHUD is at world origin `(0, 6, 0)`**, not parented to the
+  camera. The spectator orbits at 30-80 m — the HUD is a distant speck.
+  Fix: reparent StatusHUD under `SpectatorRig/SpringArm3D/Camera3D` so
+  it follows the viewport.
+- **No observer position marker.** There is nothing showing where "you"
+  are in the world. Add a pulsing sphere or crosshair at the observer's
+  connected zone position so you can see yourself relative to the zone
+  curtains.
+- **Zone labels are flat on the ground** (`rotation_degrees.x = -90`
+  in `zone_curtain.gd:54`). From the spectator camera's oblique angle
+  they are foreshortened and hard to read. Either billboard them toward
+  the camera or duplicate them on vertical faces of the curtain.
+- **Zone curtain colors are very transparent** (`alpha = 0.18`). From
+  far away the boundaries vanish. Consider raising alpha or adding a
+  wireframe outline pass.
 
-## 2. Instance the procedural grid into the demo
+**Risk retired:** you can see zone boundaries, your position, and
+status text during the smoke test.
+
+## 2. Add a top-down bird's eye development camera
+
+The current spectator camera orbits at an oblique angle making it hard
+to see zone boundaries and entity movement. Add an orthographic
+top-down camera mode (like a Final Fantasy Tactics overworld view) as
+the default development view. The camera looks straight down at the
+`SIM_BOUND` area, zone curtains are visible as colored region borders,
+entities are dots, and the observer position is a highlighted marker.
+This makes zone assignment, migration flow, and entity clustering
+immediately legible without VR hardware.
+
+Toggle between top-down and orbit modes with a key (e.g. Tab) so
+both views remain available. The top-down view is the primary
+development and debugging tool; the orbit view is for visual polish.
+
+**Risk retired:** developers can observe zone state, migration, and
+entity distribution at a glance without a headset.
+
+## 3. Smoke-test the demo (top-down first, then headset)
+
+Boot with three zone servers (the minimum for testing transitive
+migration: zone 0 → 1 → 2 exercises both neighbor indices). Two zones
+only test one boundary; three zones prove the neighbor-index logic for
+both `ni=0` (lower) and `ni=1` (upper). The observer scene already
+defaults to `zone_count = 3`.
+
+First confirm in the top-down view (no headset needed): zone curtains
+visible, entities populate all three zones, 144-entity burst migrates
+without mass rollback. Then put on the headset and confirm VR
+rendering, head tracking, and hand tracking update in CH_INTEREST.
+
+**Risk retired:** the demo boots and renders after all recent code
+changes (RTT timeout, static extraction, CSG fix).
+
+## 4. Instance the procedural grid into the demo
 
 The xr-grid addon (`thirdparty/xr-grid/addons/procedural_3d_grid/`)
 provides `procedural_grid_3d.gd` (infinite multi-level grid that
@@ -31,7 +80,7 @@ not assume symlinks work on the target platform.
 **Risk retired:** the player has a visible ground plane and scale
 reference in VR.
 
-## 3. Wire WorldGrab navigation
+## 5. Wire WorldGrab navigation
 
 The xr-grid addon provides `world_grab.gd` (`WorldGrab` RefCounted)
 and `xr_pinch.gd` (`XRPinch`). Instance `XRPinch` on each
@@ -45,7 +94,7 @@ Same symlink caveat as item 2: copy or remap, do not symlink.
 teleport or joystick; two-hand grab is the only input method the
 demo needs.
 
-## 4. Verify XR node tree in main.tscn
+## 6. Verify XR node tree in main.tscn
 
 Confirm `WorldGrab`, `XRPinch`, `ProceduralGrid3D`, and
 `trident_hand.gd` are all instanced and functional under the
@@ -53,7 +102,7 @@ Confirm `WorldGrab`, `XRPinch`, `ProceduralGrid3D`, and
 
 **Risk retired:** VR scene graph is complete; input reaches scripts.
 
-## 5. Wire trident trigger to CH_PLAYER cmd=1
+## 7. Wire trident trigger to CH_PLAYER cmd=1
 
 `trident_hand.gd` is a cosmetic CSG mesh. Wire the XR controller
 trigger to emit a CH_PLAYER cmd=1 (`current_funnel`) packet from
@@ -63,7 +112,7 @@ missing.
 
 **Risk retired:** player input reaches the zone simulation.
 
-## 6. End-to-end trident test
+## 8. End-to-end trident test
 
 Trident trigger in PCVR produces a C7 spike visible in Zone B's
 interest range at `CURRENT_FUNNEL_PEAK_V` without a false negative.
@@ -73,7 +122,7 @@ CH_PLAYER and CH_INTEREST.
 **Risk retired:** the wire format carries player commands faithfully
 across zones.
 
-## 7. Measure CH_INTEREST fan-out at 100 peers
+## 9. Measure CH_INTEREST fan-out at 100 peers
 
 Measure `CH_INTEREST` fan-out latency at 100 simultaneous connected
 peers per zone. First load test; validates that the Hilbert AOI band
@@ -83,7 +132,7 @@ scenario.
 **Risk retired:** per-zone fan-out is bounded and measurable before
 scaling to multiple zones.
 
-## ~~8. Add UDS zone-to-zone transport~~ DEFERRED
+## ~~10. Add UDS zone-to-zone transport~~ DEFERRED
 
 Add `FabricLocalZonePeer` via `UDSServer`/`StreamPeerUDS` as an
 opt-in alternative to ENet for same-machine zone-to-zone traffic.
@@ -94,13 +143,13 @@ fragmentation overhead entirely but is only relevant for same-machine
 deployments — unnecessary mass until fan-out measurement (item 7)
 shows ENet is the bottleneck.
 
-## ~~9. Editor zone visualizer~~ DEFERRED
+## ~~11. Editor zone visualizer~~ DEFERRED
 
 Hilbert band overlay, entity count per zone, migration arrows in the
 3D viewport. Unnecessary mass before the VR smoke test passes (item 1).
 Revisit if debugging items 5+ becomes painful without visualization.
 
-## ~~10. Editor multiplayer_fabric awareness~~ DEFERRED
+## ~~12. Editor multiplayer_fabric awareness~~ DEFERRED
 
 Making the editor understand zones, migration state, or CH_INTEREST
 routing. The demo runs headless zone servers plus a PCVR client; the
@@ -109,7 +158,7 @@ Multiple Instances" covers the multi-process case. Adding editor
 integration is maintenance surface area that breaks across Godot
 versions and solves no current risk.
 
-## 11. Reach 1,000 concurrent players across one fabric
+## 13. Reach 1,000 concurrent players across one fabric
 
 
 Sizing: 1,000 players x 56 entities = 56,000; at 1,800 per zone,
