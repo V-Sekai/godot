@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FabricMMOGPeer" inherits="RefCounted" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode_muscle_triplet_component" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="encoded" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="encode_humanoid_bone" qualifiers="const">
+			<return type="PackedByteArray" />
+			<param index="0" name="player_id" type="int" />
+			<param index="1" name="bone_index" type="int" />
+			<param index="2" name="swing_twist" type="Vector3" />
+			<param index="3" name="held_left" type="int" />
+			<param index="4" name="held_right" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="encode_muscle_triplet_component" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="value" type="float" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="WIRE_PACKET_BYTES" value="100">
+		</constant>
+		<constant name="WIRE_OFFSET_ID" value="0">
+		</constant>
+		<constant name="WIRE_OFFSET_CX" value="4">
+		</constant>
+		<constant name="WIRE_OFFSET_CY" value="12">
+		</constant>
+		<constant name="WIRE_OFFSET_CZ" value="20">
+		</constant>
+		<constant name="WIRE_OFFSET_VX" value="28">
+		</constant>
+		<constant name="WIRE_OFFSET_VY" value="30">
+		</constant>
+		<constant name="WIRE_OFFSET_VZ" value="32">
+		</constant>
+		<constant name="WIRE_OFFSET_AX" value="34">
+		</constant>
+		<constant name="WIRE_OFFSET_AY" value="36">
+		</constant>
+		<constant name="WIRE_OFFSET_AZ" value="38">
+		</constant>
+		<constant name="WIRE_OFFSET_HLC" value="40">
+		</constant>
+		<constant name="WIRE_OFFSET_PAYLOAD" value="44">
+		</constant>
+		<constant name="HLC_TICK_BITS" value="24">
+		</constant>
+		<constant name="HLC_COUNTER_BITS" value="8">
+		</constant>
+		<constant name="MUSCLE_TRIPLET_COMPONENT_BITS" value="16">
+		</constant>
+		<constant name="MUSCLE_TRIPLET_SCALE" value="32767">
+		</constant>
+		<constant name="CMD_POSITION_ONLY" value="0" enum="Command">
+		</constant>
+		<constant name="CMD_CURRENT_FUNNEL" value="1" enum="Command">
+		</constant>
+		<constant name="CMD_NUDGE" value="2" enum="Command">
+		</constant>
+		<constant name="CMD_SPAWN_STROKE" value="3" enum="Command">
+		</constant>
+	</constants>
+</class>

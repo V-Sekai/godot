@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FabricMMOGAsset" inherits="RefCounted" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="fetch_asset">
+			<return type="String" />
+			<param index="0" name="store_url" type="String" />
+			<param index="1" name="index_url" type="String" />
+			<param index="2" name="output_dir" type="String" />
+			<param index="3" name="cache_dir" type="String" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="CHUNK_ID_BYTES" value="32">
+		</constant>
+		<constant name="CHUNK_MIN_BYTES" value="16384">
+		</constant>
+		<constant name="CHUNK_MAX_BYTES" value="262144">
+		</constant>
+		<constant name="REGISTRY_SLOT_BYTES" value="2">
+		</constant>
+		<constant name="REGISTRY_INDEX_ID_BYTES" value="32">
+		</constant>
+		<constant name="REGISTRY_URO_UUID_BYTES" value="16">
+		</constant>
+		<constant name="REGISTRY_ENTRY_BYTES" value="50">
+		</constant>
+		<constant name="AES_KEY_BYTES" value="16">
+		</constant>
+		<constant name="AES_IV_BYTES" value="12">
+		</constant>
+		<constant name="AES_TAG_BYTES" value="16">
+		</constant>
+		<constant name="KEY_TTL_SECONDS" value="86400">
+		</constant>
+	</constants>
+</class>

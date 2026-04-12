@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FabricMMOGZone" inherits="FabricZone" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="despawn_humanoid_entities_for_player">
+			<return type="void" />
+			<param index="0" name="player_id" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="register_script">
+			<return type="void" />
+			<param index="0" name="slot" type="int" />
+			<param index="1" name="index_chunk_id" type="PackedByteArray" />
+			<param index="2" name="uro_uuid" type="PackedByteArray" />
+			<description>
+			</description>
+		</method>
+		<method name="send_script_registry">
+			<return type="void" />
+			<param index="0" name="peer_id" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="spawn_humanoid_entities_for_player">
+			<return type="int" />
+			<param index="0" name="player_id" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="HUMANOID_BONE_COUNT" value="55">
+		</constant>
+		<constant name="ENTITIES_PER_PLAYER" value="56">
+		</constant>
+		<constant name="TARGET_PLAYERS_PER_ZONE" value="100">
+		</constant>
+		<constant name="ZONE_CAPACITY_TARGET" value="1800">
+		</constant>
+		<constant name="ENTITY_CLASS_HUMANOID_BONE" value="4">
+		</constant>
+	</constants>
+</class>
