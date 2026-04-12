@@ -4,10 +4,19 @@ Multiplayer Fabric is a two-layer networking stack for Godot 4.
 The lower layer (`multiplayer_fabric`) handles zone authority, interest
 filtering, and entity handoff across server zones. The upper layer
 (`multiplayer_fabric_mmog`) adds a 100-byte wire format, asset delivery
-via desync chunk stores, and a ReBAC permission model. Wire format
-details, payload layout, and API documentation live in the class
-reference (`FabricZone`, `FabricMultiplayerPeer`, `FabricSnapshot`);
-this document covers cross-cutting design rationale only.
+via desync chunk stores, and a ReBAC permission model. Zones partition
+a 30-bit Hilbert code space; AOI bands derived from that partition
+determine neighbor topology and interest relay. The demo ("Abyssal VR
+Grid") validates zone handoff with three NPC populations and live
+player entities on the same fabric, using dual-hand pinch navigation
+and a trident weapon in VR.
+
+Wire format details, payload layout, and API documentation live in the
+class reference (`FabricZone`, `FabricMultiplayerPeer`,
+`FabricSnapshot`); this document covers cross-cutting design rationale
+only.
+
+---
 
 ## Zone architecture
 
