@@ -284,7 +284,7 @@ static void _unpack_manifold(
 	constexpr int32_t order[3] = { 0, 2, 1 };
 
 	for (size_t run_i = 0; run_i < mesh.runIndex.size() - 1; run_i++) {
-		uint32_t original_id = -1;
+		uint32_t original_id = UINT32_MAX;
 		if (run_i < mesh.runOriginalID.size()) {
 			original_id = mesh.runOriginalID[run_i];
 		}
@@ -400,7 +400,7 @@ static void _pack_manifold(
 		CSGShape3D *p_csg_shape) {
 	ERR_FAIL_NULL_MSG(p_mesh_merge, "p_mesh_merge is null");
 	ERR_FAIL_NULL_MSG(p_csg_shape, "p_shape is null");
-	HashMap<uint32_t, Vector<CSGBrush::Face>> faces_by_material;
+	HashMap<int32_t, Vector<CSGBrush::Face>> faces_by_material;
 	for (int face_i = 0; face_i < p_mesh_merge->faces.size(); face_i++) {
 		const CSGBrush::Face &face = p_mesh_merge->faces[face_i];
 		faces_by_material[face.material].push_back(face);
@@ -413,8 +413,8 @@ static void _pack_manifold(
 	mesh.vertProperties.reserve(p_mesh_merge->faces.size() * 3 * MANIFOLD_PROPERTY_MAX);
 
 	// Make a run of triangles for each material.
-	for (const KeyValue<uint32_t, Vector<CSGBrush::Face>> &E : faces_by_material) {
-		const uint32_t material_id = E.key;
+	for (const KeyValue<int32_t, Vector<CSGBrush::Face>> &E : faces_by_material) {
+		const int32_t material_id = E.key;
 		const Vector<CSGBrush::Face> &faces = E.value;
 		mesh.runIndex.push_back(mesh.triVerts.size());
 
@@ -422,7 +422,7 @@ static void _pack_manifold(
 		uint32_t reserved_id = r_manifold.ReserveIDs(1);
 		mesh.runOriginalID.push_back(reserved_id);
 		Ref<Material> material;
-		if (material_id < p_mesh_merge->materials.size()) {
+		if (material_id >= 0 && material_id < p_mesh_merge->materials.size()) {
 			material = p_mesh_merge->materials[material_id];
 		}
 
