@@ -87,15 +87,15 @@ inductive PartitionNode where
 
 -- #snippet EClass
 /-- An equivalence class in the spatial E-graph: tracks the best (lowest-cost) partition node,
-    entity-tight bounds for SAH, and Morton-code range for octree cell reconstruction. -/
+    entity-tight bounds for SAH, and Hilbert-code range for cell reconstruction. -/
 structure EClass where
   id        : EClassId
   nodes     : Array ENodeId
   minCost   : Int              -- SAH cost in μm²
   bestNode  : Option ENodeId
   bounds    : BoundingBox      -- entity-tight bounds for SAH union computation
-  firstCode : Nat              -- Morton code of leftmost (first) entity in this class
-  lastCode  : Nat              -- Morton code of rightmost (last) entity in this class
+  firstCode : Nat              -- Hilbert code of leftmost (first) entity in this class
+  lastCode  : Nat              -- Hilbert code of rightmost (last) entity in this class
   deriving Inhabited
 -- #end EClass
 
@@ -106,7 +106,7 @@ structure SpatialEGraph where
   nodes        : Array PartitionNode
   classes      : Array EClass
   rootId       : Option EClassId    -- set by applyRewrites after saturation
-  scene        : BoundingBox        -- full scene AABB; used for bottom-up octree cell reconstruction
+  scene        : BoundingBox        -- full scene AABB; used for Hilbert cell reconstruction
   optimalDelta : Nat                -- auto-computed optimal prediction window (ticks); 1 = rebuild every tick
   deriving Inhabited
 -- #end SpatialEGraph
@@ -165,18 +165,6 @@ def hysteresisThreshold : Nat := simTickHz * 4
     Curve-agnostic: works for both Morton and Hilbert codes. -/
 def clz30 (x : Nat) : Nat :=
   if x == 0 then 30 else 29 - Nat.log2 x
-
--- ── Morton code (retained for BVH cell reconstruction) ──────────────────────
-
-private def expandBits (v : Nat) : Nat :=
-  let v := v &&& 0x3FF
-  let v := (v ||| (v <<< 16)) &&& 0xFF0000FF
-  let v := (v ||| (v <<< 8))  &&& 0x0300F00F
-  let v := (v ||| (v <<< 4))  &&& 0x030C30C3
-  (v ||| (v <<< 2))            &&& 0x09249249
-
-def morton3D (x y z : Nat) : Nat :=
-  expandBits x ||| (expandBits y <<< 1) ||| (expandBits z <<< 2)
 
 -- ── 3D Hilbert curve (Skilling 2004) ────────────────────────────────────────
 

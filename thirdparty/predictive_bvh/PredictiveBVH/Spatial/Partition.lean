@@ -8,11 +8,11 @@ import PredictiveBVH.Formulas.Formula
 -- PARTITION NODE VOCABULARY
 --
 -- 3D partition node types for SAH-BVH construction.
--- Every split node stores a `parent` BoundingBox as the space-filling proof witness.
+-- Every split node stores a `parent` BoundingBox as the Hilbert cell volume for RDO.
 -- ============================================================================
 
 /-- 3D BVH partition node vocabulary covering 2-, 3-, 4-, 8-way splits and leaf.
-    Every split node stores a `parent` BoundingBox (the octree cell) as the space-filling proof witness. -/
+    Every split node stores a `parent` BoundingBox (the Hilbert cell AABB) for RDO cost. -/
 inductive PartitionNode where
   | none_split (data : LeafData)
   | horz       (parent : BoundingBox) (top bot : EClassId)      -- Y-axis 2-way

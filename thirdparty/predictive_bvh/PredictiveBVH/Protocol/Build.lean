@@ -5,6 +5,7 @@ import Init.Data.FloatArray
 import PredictiveBVH.Primitives.Types
 import PredictiveBVH.Formulas.Formula
 import PredictiveBVH.Spatial.Partition
+import PredictiveBVH.Spatial.HilbertRoundtrip
 
 -- ============================================================================
 -- 5. MATRIX PARSING  (Float → Int at FFI boundary)
@@ -117,7 +118,7 @@ def splitEntityToSegments (whole : LeafData) (segBounds : List BoundingBox) : Li
 -- midpoint position: shift = V·(k/2) + A_half·(k/2)².  Both ghosts keep
 -- the same velocity and acceleration (the expansion formula handles the rest).
 --
--- Ghosts are inserted as regular leaves; Morton sort places each ghost near
+-- Ghosts are inserted as regular leaves; Hilbert sort places each ghost near
 -- its actual predicted spatial position, and saturateLoop groups them.
 -- The duration field records how many ticks each ghost covers so lbvhAux
 -- can call predictiveSAHK with the correct k per leaf.
@@ -186,34 +187,28 @@ def recursiveGhostSplit (ld : LeafData) (k : Nat) (lam delta : Nat := 0) : Array
   recursiveGhostSplitAux ld k lam delta (k + 1)
 
 -- ============================================================================
--- 6. BVH CONSTRUCTION  (LBVH — Morton sort + binary-split hierarchy)
+-- 6. BVH CONSTRUCTION  (LBVH — Hilbert sort + binary-split hierarchy)
 -- ============================================================================
 
--- ── Morton code utilities ────────────────────────────────────────────────────
+-- ── Hilbert code utilities ──────────────────────────────────────────────────
 
-/-- Count leading zeros for a 30-bit Morton code (result ∈ [0, 30]).
-    Used to find the common prefix depth of two Morton codes in the Karras split. -/
+/-- Count leading zeros for a 30-bit code (result ∈ [0, 30]).
+    Used to find the common prefix depth of two codes in the Karras split. -/
 def clz30 (x : Nat) : Nat :=
   if x == 0 then 30 else 29 - Nat.log2 x
-
--- Spread 10 bits into every 3rd bit of a 30-bit word (Morton interleave).
-private def expandBits (v : Nat) : Nat :=
-  let v := v &&& 0x3FF
-  let v := (v ||| (v <<< 16)) &&& 0xFF0000FF
-  let v := (v ||| (v <<< 8))  &&& 0x0300F00F
-  let v := (v ||| (v <<< 4))  &&& 0x030C30C3
-  (v ||| (v <<< 2))            &&& 0x09249249
-
-/-- Interleave three 10-bit coordinates into a 30-bit 3D Morton code. -/
-def morton3D (x y z : Nat) : Nat :=
-  expandBits x ||| (expandBits y <<< 1) ||| (expandBits z <<< 2)
 
 -- Scene bounds: tight union of all leaf AABBs.
 private def sceneBoundsOf (leaves : Array LeafData) : BoundingBox :=
   if leaves.isEmpty then { minX := 0, maxX := 1, minY := 0, maxY := 1, minZ := 0, maxZ := 1 }
   else leaves.foldl (fun acc ld => unionBounds acc ld.bounds) leaves[0]!.bounds
 
-/-- Compute the Hilbert code for a leaf's centroid, normalised to [0, 1023]³ within the scene AABB. -/
+/-- 30-bit 3D Hilbert inverse: code → (x, y, z) ∈ [0, 1023]³.
+    Proved roundtrip-correct in HilbertRoundtrip.lean. -/
+def hilbert3D_inverse (h : Nat) : Nat × Nat × Nat :=
+  hilbertInverse h 10
+
+/-- Compute the Hilbert code for a leaf's centroid, normalised to [0, 1023]³
+    within the scene AABB. -/
 def leafHilbert (ld : LeafData) (scene : BoundingBox) : Nat :=
   let cx := (ld.bounds.minX + ld.bounds.maxX) / 2
   let cy := (ld.bounds.minY + ld.bounds.maxY) / 2
@@ -226,74 +221,67 @@ def leafHilbert (ld : LeafData) (scene : BoundingBox) : Nat :=
   let nz := ((cz - scene.minZ) * 1024 / sd).toNat.min 1023
   hilbert3D nx ny nz
 
--- ── 3D Hilbert curve (Skilling 2004) ────────────────────────────────────────
+-- ── Hilbert cell AABB ───────────────────────────────────────────────────────
 --
--- Converts three 10-bit coordinates into a 30-bit Hilbert index with better
--- spatial locality than Morton: maximum cluster diameter O(n^{1/3}) vs
--- O(n^{2/3}) for Morton (Bader 2013, Ch. 7).
+-- Unlike Morton, Hilbert bit positions do not correspond to fixed axis splits.
+-- The spatial region covered by a Hilbert prefix has a complex shape that
+-- depends on the curve's rotation state at each level.  We compute the
+-- axis-aligned bounding box of the prefix range by inverse-transforming
+-- sample codes and taking their coordinate extremes.
 --
--- The algorithm operates on the coordinate bits in-place:
---   1. Inverse-undo: walk from MSB to LSB, inverting or exchanging bits.
---   2. Gray-encode: XOR each coordinate with its predecessor.
---   3. Transpose: interleave coordinate bits into the Hilbert index.
+-- For prefix depth d the range contains 2^(30-d) codes.  We sample up to
+-- 1024 evenly spaced codes (exact when stride ≤ 1024, approximate otherwise).
+-- The approximation is tight because the Hilbert curve has O(n^{1/3}) cluster
+-- diameter — a contiguous range of S codes spans at most S^{1/3} cells per axis.
 
-/-- Hilbert axes-to-transpose for 3 dimensions at `order` bits per axis.
-    Implements Skilling (2004) §2, adapted for Nat arithmetic. -/
-private def hilbertAxesToTranspose (x0 y0 z0 order : Nat) : Nat × Nat × Nat :=
-  let mask := (1 <<< order) - 1
-  let x0 := x0 &&& mask
-  let y0 := y0 &&& mask
-  let z0 := z0 &&& mask
-  -- Step 1: inverse undo (from MSB down to bit 1)
-  let (x1, y1, z1) := (List.range (order - 1)).foldl (fun (x, y, z) i =>
-    let q := 1 <<< (order - 1 - i)
-    let p := q - 1
-    -- dim 2 (z)
-    let (x, z) := if z &&& q != 0 then (x ^^^ p, z) else
-      let t := (x ^^^ z) &&& p; (x ^^^ t, z ^^^ t)
-    -- dim 1 (y)
-    let (x, y) := if y &&& q != 0 then (x ^^^ p, y) else
-      let t := (x ^^^ y) &&& p; (x ^^^ t, y ^^^ t)
-    (x, y, z)) (x0, y0, z0)
-  -- Step 2: Gray encode
-  let y2 := y1 ^^^ x1
-  let z2 := z1 ^^^ y1
-  -- Step 3: fixup — propagate gray parity from MSB of last coordinate
-  let t := (List.range (order - 1)).foldl (fun t i =>
-    let q := 1 <<< (order - 1 - i)
-    if z2 &&& q != 0 then t ^^^ (q - 1) else t) 0
-  let x3 := x1 ^^^ t
-  let y3 := y2 ^^^ t
-  let z3 := z2 ^^^ t
-  (x3 &&& mask, y3 &&& mask, z3 &&& mask)
+/-- Convert a normalised grid coordinate (0..1023) to scene-space integer. -/
+private def gridToScene (n : Nat) (sceneMin sceneMax : Int) : Int :=
+  sceneMin + (n : Int) * (sceneMax - sceneMin) / 1024
 
-/-- Interleave three `order`-bit transposed coordinates into a `3*order`-bit
-    Hilbert index (MSB-first, dimension order z-y-x per bit position). -/
-private def hilbertTransposeToIndex (x y z order : Nat) : Nat :=
-  (List.range order).foldl (fun h bit =>
-    let b := order - 1 - bit
-    let h := (h <<< 1) ||| ((z >>> b) &&& 1)
-    let h := (h <<< 1) ||| ((y >>> b) &&& 1)
-    (h <<< 1) ||| ((x >>> b) &&& 1)) 0
-
-/-- Compute a 30-bit 3D Hilbert index from three 10-bit coordinates.
-    Drop-in replacement for `morton3D` with better spatial locality. -/
-def hilbert3D (x y z : Nat) : Nat :=
-  let (tx, ty, tz) := hilbertAxesToTranspose x y z 10
-  hilbertTransposeToIndex tx ty tz 10
-
-/-- Compute the Hilbert code for a leaf's centroid (same normalisation as leafMorton). -/
-def leafHilbert (ld : LeafData) (scene : BoundingBox) : Nat :=
-  let cx := (ld.bounds.minX + ld.bounds.maxX) / 2
-  let cy := (ld.bounds.minY + ld.bounds.maxY) / 2
-  let cz := (ld.bounds.minZ + ld.bounds.maxZ) / 2
-  let sw := max (scene.maxX - scene.minX) 1
-  let sh := max (scene.maxY - scene.minY) 1
-  let sd := max (scene.maxZ - scene.minZ) 1
-  let nx := ((cx - scene.minX) * 1024 / sw).toNat.min 1023
-  let ny := ((cy - scene.minY) * 1024 / sh).toNat.min 1023
-  let nz := ((cz - scene.minZ) * 1024 / sd).toNat.min 1023
-  hilbert3D nx ny nz
+/-- Compute the AABB of all Hilbert codes sharing a common prefix with `code`
+    at `prefixDepth` bits, mapped back into scene coordinates. -/
+def hilbertCellOf (code : Nat) (prefixDepth : Nat) (scene : BoundingBox) : BoundingBox :=
+  if prefixDepth == 0 then scene
+  else if prefixDepth ≥ 30 then
+    -- Single cell: inverse-transform the code directly.
+    let (gx, gy, gz) := hilbert3D_inverse code
+    { minX := gridToScene gx scene.minX scene.maxX,
+      maxX := gridToScene (gx + 1) scene.minX scene.maxX,
+      minY := gridToScene gy scene.minY scene.maxY,
+      maxY := gridToScene (gy + 1) scene.minY scene.maxY,
+      minZ := gridToScene gz scene.minZ scene.maxZ,
+      maxZ := gridToScene (gz + 1) scene.minZ scene.maxZ }
+  else
+    let stride := 1 <<< (30 - prefixDepth)
+    let lo := code &&& (~~~(stride - 1))
+    -- Sample up to 1024 codes in the prefix range.
+    let sampleStep := max (stride / 1024) 1
+    let numSamples := (stride + sampleStep - 1) / sampleStep
+    let (gx0, gy0, gz0) := hilbert3D_inverse lo
+    let init : BoundingBox :=
+      { minX := (gx0 : Int), maxX := (gx0 : Int),
+        minY := (gy0 : Int), maxY := (gy0 : Int),
+        minZ := (gz0 : Int), maxZ := (gz0 : Int) }
+    -- Accumulate min/max over sampled inverse coordinates.
+    let gridBB := (List.range numSamples).foldl (fun bb i =>
+      let h := lo + i * sampleStep
+      let (gx, gy, gz) := hilbert3D_inverse h
+      { minX := min bb.minX gx, maxX := max bb.maxX gx,
+        minY := min bb.minY gy, maxY := max bb.maxY gy,
+        minZ := min bb.minZ gz, maxZ := max bb.maxZ gz }) init
+    -- Also sample the last code in the range.
+    let (lx, ly, lz) := hilbert3D_inverse (lo + stride - 1)
+    let gridBB :=
+      { minX := min gridBB.minX lx, maxX := max gridBB.maxX lx,
+        minY := min gridBB.minY ly, maxY := max gridBB.maxY ly,
+        minZ := min gridBB.minZ lz, maxZ := max gridBB.maxZ lz }
+    -- Map grid coordinates back to scene space.
+    { minX := gridToScene gridBB.minX.toNat scene.minX scene.maxX,
+      maxX := gridToScene (gridBB.maxX.toNat + 1) scene.minX scene.maxX,
+      minY := gridToScene gridBB.minY.toNat scene.minY scene.maxY,
+      maxY := gridToScene (gridBB.maxY.toNat + 1) scene.minY scene.maxY,
+      minZ := gridToScene gridBB.minZ.toNat scene.minZ scene.maxZ,
+      maxZ := gridToScene (gridBB.maxZ.toNat + 1) scene.minZ scene.maxZ }
 
 -- ── Karras 2012 binary-search split point ───────────────────────────────────
 --
@@ -317,42 +305,6 @@ private def findSplit (codes : Array Nat) (first last : Nat) : Nat :=
     let fc := codes[first]!
     if fc == codes[last]! then (first + last) / 2          -- equal codes: median
     else findSplitAux codes fc (clz30 (fc ^^^ codes[last]!)) first (last - first) last
-
--- ── Morton octree split ──────────────────────────────────────────────────────
---
--- The Morton code layout (morton3D x y z) places:
---   Z bits at positions 29, 26, 23, … (bit % 3 = 2, from MSB)
---   Y bits at positions 28, 25, 22, … (bit % 3 = 1)
---   X bits at positions 27, 24, 21, … (bit % 3 = 0)
---
--- So recursion depth d splits on axis  d % 3:
---   0 → Z   1 → Y   2 → X   (then cycles)
---
--- Splitting the octree cell at its geometric midpoint on the Morton bit axis
--- guarantees: entity e goes left ↔ Morton bit (29-d) of e's code = 0
---           ↔ e's centroid coordinate < midpoint of the octree cell.
--- This is the key invariant linking Morton sort to space-filling.
-
-private def mortonSplit (b : BoundingBox) (depth : Nat) : BoundingBox × BoundingBox :=
-  match depth % 3 with
-  | 0 =>                                         -- Z axis
-    let mid := (b.minZ + b.maxZ) / 2
-    ({ b with maxZ := mid }, { b with minZ := mid })
-  | 1 =>                                         -- Y axis
-    let mid := (b.minY + b.maxY) / 2
-    ({ b with maxY := mid }, { b with minY := mid })
-  | _ =>                                         -- X axis
-    let mid := (b.minX + b.maxX) / 2
-    ({ b with maxX := mid }, { b with minX := mid })
-
-/-- Reconstruct the octree cell for Morton code `c` at prefix depth `p` by walking
-    from the scene root and choosing left/right at each level based on bit (29-d). -/
-def octreeCellOf (c : Nat) (p : Nat) (scene : BoundingBox) : BoundingBox :=
-  (List.range p).foldl (fun b d =>
-    let bitPos := 29 - d
-    let bitVal := (c >>> bitPos) &&& 1
-    let (left, right) := mortonSplit b d
-    if bitVal == 0 then left else right) scene
 
 -- ── EGraph helpers (must precede lbvhAux) ───────────────────────────────────
 
@@ -434,10 +386,17 @@ def deltaFromRttTicks (rttOnewayMs : Nat) (tickHz : Nat) : Nat :=
 def deltaCoversRtt (configuredDelta rttOnewayMs tickHz : Nat) : Bool :=
   deltaFromRttTicks rttOnewayMs tickHz ≤ configuredDelta
 
--- ── Recursive Morton octree LBVH (fuel-terminated) ───────────────────────────
+-- ── Recursive Hilbert LBVH (fuel-terminated) ────────────────────────────────
 --
--- PartitionNode.parent = octree cell (space-filling + HLOD proof witness).
+-- PartitionNode.parent = Hilbert cell AABB (space-filling volume for RDO).
 -- EClass.bounds = entity-tight union of children (SAH quality).
+--
+-- Each internal node's parentBounds is the AABB of the Hilbert prefix range
+-- shared by all leaves in the subtree.  The Hilbert cell is the spatial
+-- volume that RDO evaluates when deciding whether to split or keep a single
+-- ghost.  Unlike Morton, the Hilbert cell shape varies with the curve's
+-- rotation state at each level, so we compute it via hilbertCellOf (which
+-- inverse-transforms sampled codes in the prefix range).
 
 -- Effective duration for a leaf: use its own ghost duration if set, else global δ.
 private def leafDuration (ld : LeafData) (δ : Nat) : Nat :=
@@ -459,22 +418,20 @@ private def lbvhAux (leaves : Array LeafData) (codes : Array Nat) (δ : Nat)
         let fc           := if h : first < codes.size then codes[first] else 0
         let lc           := if h : last  < codes.size then codes[last]  else 0
         let depth        := clz30 (fc ^^^ lc)
-        let parentBounds := octreeCellOf fc depth g.scene
+        let parentBounds := hilbertCellOf fc depth g.scene
         let split        := findSplit codes first last
         let (g1, lId)    := lbvhAux leaves codes δ first       split g  fuel
         let (g2, rId)    := lbvhAux leaves codes δ (split + 1) last  g1 fuel
         -- Entity-tight union for EClass.bounds and SAH cost.
         let ub   := unionBounds g2.classes[lId]!.bounds g2.classes[rId]!.bounds
-        -- PartitionNode.parent = octree cell (space-filling + HLOD proof witness).
-        let node : PartitionNode :=
-          match depth % 3 with
-          | 0 => .depth parentBounds lId rId   -- Z split
-          | 1 => .horz  parentBounds lId rId   -- Y split
-          | _ => .vert  parentBounds lId rId   -- X split
+        -- PartitionNode.parent = Hilbert cell (space-filling volume for RDO).
+        -- Axis label is .depth (generic 2-way); Hilbert cells don't have a
+        -- fixed axis orientation per level like Morton does.
+        let node : PartitionNode := .depth parentBounds lId rId
         let cost := classCost g2 lId + classCost g2 rId + bvhTraversalCost * surfaceArea ub
         addClass g2 node cost ub fc lc
 
-/-- Build the initial Morton-sorted LBVH E-graph from a flat FloatArray of entity rows.
+/-- Build the initial Hilbert-sorted LBVH E-graph from a flat FloatArray of entity rows.
     Computes δ* via J(δ) minimisation, ghost-splits high-acceleration leaves, and returns the saturated graph. -/
 def buildInitialEGraph (raw : FloatArray) (rows : Nat) (tickHz : Nat := 60)
     (lam delta : Nat := 0) (vMaxUmPerTick : Nat := vMaxPhysical) : SpatialEGraph :=
@@ -484,7 +441,7 @@ def buildInitialEGraph (raw : FloatArray) (rows : Nat) (tickHz : Nat := 60)
     let δstar   := optimalDelta leaves tickHz
     -- Recursively ghost-split high-acceleration leaves.  Each ghost covers a
     -- shorter window, reducing acceleration-term bloat.  Ghosts are regular
-    -- leaves; Morton sort places each near its predicted spatial position.
+    -- leaves; Hilbert sort places each near its predicted spatial position.
     let allLeaves := leaves.foldl (fun acc ld => acc ++ recursiveGhostSplit ld δstar lam delta) #[]
     -- Recompute scene from ghost leaves so Hilbert normalisation covers all ghosts.
     let scene     := sceneBoundsOf allLeaves

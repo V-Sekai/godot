@@ -160,7 +160,7 @@ def intentSize : Nat := 88
 /-- An entity cannot cross a zone boundary if its ghost AABB is entirely within the zone.
     Proved sound by expansion_covers_k_ticks: the ghost covers all positions within δ ticks.
     The ghost containment check uses only axis-aligned bounds, which is valid even in a
-    Morton-partitioned fabric. -/
+    Hilbert-partitioned fabric. -/
 theorem ghost_inside_zone_no_crossing
     (ghost_min ghost_max zone_min zone_max : Int)
     (h_min : zone_min ≤ ghost_min) (h_max : ghost_max ≤ zone_max) :
@@ -229,28 +229,27 @@ theorem intent_size_is_88 : intentSize = 88 := rfl
 
 /-! ## Part 5a: Zone Partition (proved) -/
 
-/-- Morton code zone assignment: maps a 30-bit Morton code to a zone index.
-    Matches the C++ `_zone_for_morton` in `fabric_zone.cpp:321`.
-    The Morton code is the Z-order (space-filling) curve index for a 3D point,
-    interleaving 10 bits per axis. Zone z owns codes [z*stride, (z+1)*stride)
-    where stride = 2^30 / count. -/
-def zoneForMorton (code : Nat) (count : Nat) : Nat :=
+/-- Zone assignment: maps a 30-bit space-filling curve code to a zone index.
+    Matches the C++ `_zone_for_hilbert` in `fabric_zone.cpp:615`.
+    Zone z owns codes [z*stride, (z+1)*stride) where stride = 2^30 / count.
+    The formula is SFC-agnostic — works for both Morton and Hilbert codes. -/
+def zoneForCode (code : Nat) (count : Nat) : Nat :=
   if count ≤ 1 then 0
   else
     let stride := (1 <<< 30) / count
     (code / stride).min (count - 1)
 
-/-- Morton zone assignment is always in range [0, count). -/
-theorem zone_for_morton_in_range (code : Nat) (count : Nat) (hc : 0 < count) :
-    zoneForMorton code count < count := by
-  unfold zoneForMorton
+/-- Zone assignment is always in range [0, count). -/
+theorem zone_for_code_in_range (code : Nat) (count : Nat) (hc : 0 < count) :
+    zoneForCode code count < count := by
+  unfold zoneForCode
   split
   · omega
   · exact Nat.lt_of_le_of_lt (Nat.min_le_right _ _) (by omega)
 
-/-- Morton zone assignment is deterministic. -/
-theorem zone_for_morton_deterministic (code count : Nat) :
-    ∀ a b, a = zoneForMorton code count → b = zoneForMorton code count → a = b :=
+/-- Zone assignment is deterministic. -/
+theorem zone_for_code_deterministic (code count : Nat) :
+    ∀ a b, a = zoneForCode code count → b = zoneForCode code count → a = b :=
   fun _ _ ha hb => ha ▸ hb ▸ rfl
 
 /-! ## Part 5b: Ghost ↔ Zone Boundary (proved) -/
@@ -269,11 +268,11 @@ theorem ghost_containment_implies_no_exit (v ah δ : Nat) :
   apply Nat.mul_le_mul_left
   exact Nat.sub_le δ 1
 
-/-- Morton stride: the 30-bit code-space width assigned to each zone.
+/-- Code-space stride: the 30-bit width assigned to each zone.
     Zone z owns codes in [z*stride, (z+1)*stride). -/
-def mortonStride (count : Nat) : Nat := (1 <<< 30) / (max count 1)
+def codeStride (count : Nat) : Nat := (1 <<< 30) / (max count 1)
 
-/-- An entity whose ghost expansion (in Morton code units) is less than half the stride
+/-- An entity whose ghost expansion (in code-space units) is less than half the stride
     cannot reach the adjacent zone's code region within δ ticks.
     This is the sufficient condition for skipping the migration check. -/
 theorem ghost_smaller_than_zone_safe
