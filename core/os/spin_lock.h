@@ -94,7 +94,7 @@ static_assert(std::atomic_bool::is_always_lock_free);
 class SpinLock {
 	union {
 #if __cplusplus >= 202002L
-		mutable std::atomic<bool> locked = false;
+		mutable std::atomic<bool> locked{ false };
 #else
 		mutable std::atomic<bool> locked = ATOMIC_VAR_INIT(false);
 #endif
