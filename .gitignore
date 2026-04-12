@@ -399,3 +399,7 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 *.generated.props
+
+/*.db*
+thirdparty/uro/cockroach/
+.claude/scheduled_tasks.lock
