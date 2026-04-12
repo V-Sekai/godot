@@ -1946,7 +1946,7 @@ void GDScriptInstance::notification(int p_notification, bool p_reversed) {
 	const StringName &notification_str = GDScriptLanguage::get_singleton()->strings._notification;
 
 	LocalVector<GDScript *> script_stack;
-	uint32_t script_count = 0;
+	int script_count = 0;
 	for (GDScript *sptr = script.ptr(); sptr; sptr = sptr->base.ptr(), ++script_count) {
 		script_stack.push_back(sptr);
 	}
