@@ -73,17 +73,7 @@ CH_PLAYER and CH_INTEREST.
 **Risk retired:** the wire format carries player commands faithfully
 across zones.
 
-## 7. Add UDS zone-to-zone transport
-
-Add `FabricLocalZonePeer` via `UDSServer`/`StreamPeerUDS` as an
-opt-in alternative to ENet for same-machine zone-to-zone traffic.
-ENet remains the default and stays for zone-to-player. Gated by
-`#ifdef UNIX_ENABLED`.
-
-**Risk retired:** zone-to-zone migration is not bottlenecked by
-ENet reliable-channel reassembly on same-machine deployments.
-
-## 8. Measure CH_INTEREST fan-out at 100 peers
+## 7. Measure CH_INTEREST fan-out at 100 peers
 
 Measure `CH_INTEREST` fan-out latency at 100 simultaneous connected
 peers per zone. First load test; validates that the Hilbert AOI band
@@ -92,6 +82,17 @@ scenario.
 
 **Risk retired:** per-zone fan-out is bounded and measurable before
 scaling to multiple zones.
+
+## ~~8. Add UDS zone-to-zone transport~~ DEFERRED
+
+Add `FabricLocalZonePeer` via `UDSServer`/`StreamPeerUDS` as an
+opt-in alternative to ENet for same-machine zone-to-zone traffic.
+ENet remains the default and stays for zone-to-player. Gated by
+`#ifdef UNIX_ENABLED`. The RTT-derived adaptive timeout already
+fixes the 144-entity burst under ENet fragmentation. UDS removes
+fragmentation overhead entirely but is only relevant for same-machine
+deployments — unnecessary mass until fan-out measurement (item 7)
+shows ENet is the bottleneck.
 
 ## ~~9. Editor zone visualizer~~ DEFERRED
 
@@ -109,6 +110,7 @@ integration is maintenance surface area that breaks across Godot
 versions and solves no current risk.
 
 ## 11. Reach 1,000 concurrent players across one fabric
+
 
 Sizing: 1,000 players x 56 entities = 56,000; at 1,800 per zone,
 32 zones; 7 zones per 8-core machine, 5 machines, 63,000 capacity,
