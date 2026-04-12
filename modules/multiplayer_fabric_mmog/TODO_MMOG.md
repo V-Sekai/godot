@@ -13,18 +13,6 @@ ghost AABBs forward in time so receiving zones pre-allocate slots before
 entities arrive — sequencing the migration risk before the throughput
 risk.
 
-## In progress
-
-- **Zone B `xing_in` saturation.** At peak burst only ~10–13 of 144
-  entities land in Zone B; the rest roll back to Zone A (OWNED, retry next
-  half-cycle) per the Lean `staging_plus_aborted` path. Zone A never loses
-  entities, but the per-burst absorption rate should be higher. Root cause:
-  STAGING timeout should be experimentally determined via RTT ping/pong, not
-  a fixed multiple of the default latency estimate. The initial 8-tick value
-  is too tight for 3-tick outbound queuing plus ENet fragment reassembly.
-  Fix path: red-green-refactor TDD — extract migration sub-routines, send
-  first PING early so RTT measurement runs before the burst.
-
 ## Todo items
 
 - Wire the trident controller trigger to emit `CH_PLAYER` cmd=1
