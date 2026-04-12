@@ -1,3 +1,4 @@
+#!/bin/bash
 usage() {
 	echo "Usage: $0 [--api] [-o output] -- [input...]"
 	echo "  --api        Instead of compiling, copy the API files to the output."

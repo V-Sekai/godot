@@ -33,6 +33,7 @@
 #include "core/config/engine.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
+#include "core/object/callable_mp.h"
 #ifdef TOOLS_ENABLED
 #include "editor/editor_interface.h"
 #endif
@@ -88,8 +89,8 @@ Vector<String> ELFScriptLanguage::get_string_delimiters() const {
 }
 
 Ref<Script> ELFScriptLanguage::make_template(const String &p_template, const String &p_class_name, const String &p_base_class_name) const {
-	ELFScript *elf_script = memnew(ELFScript);
-	return Ref<Script>(elf_script);
+	Ref<ELFScript> elf_script = memnew(ELFScript);
+	return elf_script;
 }
 
 Vector<ScriptLanguage::ScriptTemplate> ELFScriptLanguage::get_built_in_templates(const StringName &p_object) {
@@ -103,11 +104,6 @@ bool ELFScriptLanguage::is_using_templates() {
 
 bool ELFScriptLanguage::validate(const String &p_script, const String &p_path, List<String> *r_functions, List<ScriptLanguage::ScriptError> *r_errors, List<ScriptLanguage::Warning> *r_warnings, HashSet<int> *r_safe_lines) const {
 	return true; // For now, assume all ELF scripts are valid
-}
-
-Script *ELFScriptLanguage::create_script() const {
-	ELFScript *elf_script = memnew(ELFScript);
-	return elf_script;
 }
 
 bool ELFScriptLanguage::supports_builtin_mode() const {

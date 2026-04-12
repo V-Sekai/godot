@@ -43,11 +43,17 @@
 #include "src/elf/script_language_elf.h"
 #include "src/sandbox.h"
 
+namespace riscv {
+void init_global_singleton_list();
+}
+
 static Ref<ResourceFormatLoaderELF> resource_loader_elf;
 static Ref<ResourceFormatSaverCPP> resource_saver_cpp;
 
 void initialize_sandbox_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
+		// riscv::init_global_singleton_list();
+
 		// Register the Sandbox class
 		GDREGISTER_CLASS(Sandbox);
 

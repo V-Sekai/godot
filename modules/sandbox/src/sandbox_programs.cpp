@@ -153,17 +153,16 @@ PackedByteArray Sandbox::download_program(String program_name) {
 
 	// Download the program from the URL
 #ifdef WEB_ENABLED
-	HTTPClientWeb *client = memnew(HTTPClientWeb);
+	Ref<HTTPClientWeb> client = memnew(HTTPClientWeb);
 #else
-	HTTPClientTCP *client = memnew(HTTPClientTCP);
+	Ref<HTTPClientTCP> client = memnew(HTTPClientTCP);
 	client->set_blocking_mode(true);
 #endif
 	client->connect_to_host("https://github.com", 443);
 
-	PackedByteArray data = handle_request(client, url);
+	PackedByteArray data = handle_request(client.ptr(), url);
 	//printf("Response code: %d\n", client->get_response_code());
 	//UtilityFunctions::print(client->get_response_headers_as_dictionary());
-	memdelete(client);
 
 	if (data.is_empty()) {
 		return data;
@@ -179,11 +178,10 @@ PackedByteArray Sandbox::download_program(String program_name) {
 	file->close();
 
 	// Read the temporary file into a byte array
-	ZIPReader *zip = memnew(ZIPReader);
+	Ref<ZIPReader> zip = memnew(ZIPReader);
 	Error err = zip->open("user://temp.zip");
 	if (err != OK) {
 		ERR_PRINT("Failed to open temporary file for reading");
-		memdelete(zip);
 		// Remove the temporary file even on error
 		Ref<DirAccess> dir = DirAccess::open("user://");
 		if (dir.is_valid()) {
@@ -193,7 +191,6 @@ PackedByteArray Sandbox::download_program(String program_name) {
 	}
 
 	PackedByteArray program_data = zip->read_file(program_name + String(".elf"), true);
-	memdelete(zip);
 
 	// Remove the temporary file
 	Ref<DirAccess> dir = DirAccess::open("user://");

@@ -123,8 +123,8 @@ Vector<String> CPPScriptLanguage::get_string_delimiters() const {
 }
 
 Ref<Script> CPPScriptLanguage::make_template(const String &p_template, const String &p_class_name, const String &p_base_class_name) const {
-	CPPScript *cpp_script = memnew(CPPScript);
-	return Ref<Script>(cpp_script);
+	Ref<CPPScript> cpp_script = memnew(CPPScript);
+	return cpp_script;
 }
 
 Vector<ScriptLanguage::ScriptTemplate> CPPScriptLanguage::get_built_in_templates(const StringName &p_object) {
@@ -138,11 +138,6 @@ bool CPPScriptLanguage::is_using_templates() {
 
 bool CPPScriptLanguage::validate(const String &p_script, const String &p_path, List<String> *r_functions, List<ScriptLanguage::ScriptError> *r_errors, List<ScriptLanguage::Warning> *r_warnings, HashSet<int> *r_safe_lines) const {
 	return true; // For now, assume all C++ scripts are valid
-}
-
-Script *CPPScriptLanguage::create_script() const {
-	CPPScript *cpp_script = memnew(CPPScript);
-	return cpp_script;
 }
 
 bool CPPScriptLanguage::supports_builtin_mode() const {

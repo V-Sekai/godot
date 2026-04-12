@@ -71,7 +71,6 @@ public:
 	virtual Vector<ScriptTemplate> get_built_in_templates(const StringName &p_object) override;
 	virtual bool is_using_templates() override;
 	virtual bool validate(const String &p_script, const String &p_path = "", List<String> *r_functions = nullptr, List<ScriptLanguage::ScriptError> *r_errors = nullptr, List<ScriptLanguage::Warning> *r_warnings = nullptr, HashSet<int> *r_safe_lines = nullptr) const override;
-	virtual Script *create_script() const override;
 	virtual bool supports_builtin_mode() const override;
 	virtual bool supports_documentation() const override;
 	virtual bool can_inherit_from_file() const override;

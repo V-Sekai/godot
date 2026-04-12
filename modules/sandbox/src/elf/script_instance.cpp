@@ -35,7 +35,7 @@
 #include "../sandbox_project_settings.h"
 #include "../scoped_tree_base.h"
 // #include "../zig/script_zig.h" // Zig support not available
-#include "core/object/callable_method_pointer.h"
+#include "core/object/callable_mp.h"
 #include "core/object/object.h"
 #include "core/templates/local_vector.h"
 #include "script_elf.h"

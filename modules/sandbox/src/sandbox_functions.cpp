@@ -30,6 +30,8 @@
 
 #include "sandbox.h"
 
+#include "core/variant/typed_array.h"
+
 #include <unordered_set>
 
 static const std::unordered_set<std::string_view> exclude_functions{

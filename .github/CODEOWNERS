@@ -150,8 +150,6 @@
 /modules/meshoptimizer/                       @godotengine/rendering
 /modules/raycast/                             @godotengine/rendering
 /modules/vhacd/                               @godotengine/rendering
-/modules/visual_shader/                       @godotengine/shaders
-/modules/visual_shader/doc_classes/           @godotengine/shaders @godotengine/documentation
 /modules/xatlas_unwrap/                       @godotengine/rendering
 
 ## Scripting
@@ -159,6 +157,8 @@
 /modules/gdscript/doc_classes/                @godotengine/gdscript @godotengine/documentation
 /modules/gdscript/editor/                     @godotengine/gdscript @godotengine/script-editor
 /modules/gdscript/tests/                      @godotengine/gdscript @godotengine/tests
+/modules/sandbox/                             @fire
+/modules/speech/                              @fire
 /modules/jsonrpc/                             @godotengine/gdscript @godotengine/network
 /modules/jsonrpc/tests/                       @godotengine/gdscript @godotengine/network @godotengine/tests
 /modules/mono/                                @godotengine/dotnet
@@ -257,6 +257,7 @@
 /scene/resources/shader*                      @godotengine/shaders
 /scene/resources/skeleton*                    @godotengine/animation
 /scene/resources/text_*                       @godotengine/gui-nodes
+/scene/resources/visual_shader*               @godotengine/shaders
 /scene/theme/                                 @godotengine/gui-nodes
 
 # Servers
