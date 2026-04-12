@@ -5,7 +5,6 @@ import Init.Data.FloatArray
 import PredictiveBVH.Primitives.Types
 import PredictiveBVH.Formulas.Formula
 import PredictiveBVH.Spatial.Partition
-import PredictiveBVH.Spatial.HilbertRoundtrip
 
 -- ============================================================================
 -- 5. MATRIX PARSING  (Float → Int at FFI boundary)
@@ -192,20 +191,10 @@ def recursiveGhostSplit (ld : LeafData) (k : Nat) (lam delta : Nat := 0) : Array
 
 -- ── Hilbert code utilities ──────────────────────────────────────────────────
 
-/-- Count leading zeros for a 30-bit code (result ∈ [0, 30]).
-    Used to find the common prefix depth of two codes in the Karras split. -/
-def clz30 (x : Nat) : Nat :=
-  if x == 0 then 30 else 29 - Nat.log2 x
-
 -- Scene bounds: tight union of all leaf AABBs.
 private def sceneBoundsOf (leaves : Array LeafData) : BoundingBox :=
   if leaves.isEmpty then { minX := 0, maxX := 1, minY := 0, maxY := 1, minZ := 0, maxZ := 1 }
   else leaves.foldl (fun acc ld => unionBounds acc ld.bounds) leaves[0]!.bounds
-
-/-- 30-bit 3D Hilbert inverse: code → (x, y, z) ∈ [0, 1023]³.
-    Proved roundtrip-correct in HilbertRoundtrip.lean. -/
-def hilbert3D_inverse (h : Nat) : Nat × Nat × Nat :=
-  hilbertInverse h 10
 
 /-- Compute the Hilbert code for a leaf's centroid, normalised to [0, 1023]³
     within the scene AABB. -/
@@ -220,68 +209,6 @@ def leafHilbert (ld : LeafData) (scene : BoundingBox) : Nat :=
   let ny := ((cy - scene.minY) * 1024 / sh).toNat.min 1023
   let nz := ((cz - scene.minZ) * 1024 / sd).toNat.min 1023
   hilbert3D nx ny nz
-
--- ── Hilbert cell AABB ───────────────────────────────────────────────────────
---
--- Unlike Morton, Hilbert bit positions do not correspond to fixed axis splits.
--- The spatial region covered by a Hilbert prefix has a complex shape that
--- depends on the curve's rotation state at each level.  We compute the
--- axis-aligned bounding box of the prefix range by inverse-transforming
--- sample codes and taking their coordinate extremes.
---
--- For prefix depth d the range contains 2^(30-d) codes.  We sample up to
--- 1024 evenly spaced codes (exact when stride ≤ 1024, approximate otherwise).
--- The approximation is tight because the Hilbert curve has O(n^{1/3}) cluster
--- diameter — a contiguous range of S codes spans at most S^{1/3} cells per axis.
-
-/-- Convert a normalised grid coordinate (0..1023) to scene-space integer. -/
-private def gridToScene (n : Nat) (sceneMin sceneMax : Int) : Int :=
-  sceneMin + (n : Int) * (sceneMax - sceneMin) / 1024
-
-/-- Compute the AABB of all Hilbert codes sharing a common prefix with `code`
-    at `prefixDepth` bits, mapped back into scene coordinates. -/
-def hilbertCellOf (code : Nat) (prefixDepth : Nat) (scene : BoundingBox) : BoundingBox :=
-  if prefixDepth == 0 then scene
-  else if prefixDepth ≥ 30 then
-    -- Single cell: inverse-transform the code directly.
-    let (gx, gy, gz) := hilbert3D_inverse code
-    { minX := gridToScene gx scene.minX scene.maxX,
-      maxX := gridToScene (gx + 1) scene.minX scene.maxX,
-      minY := gridToScene gy scene.minY scene.maxY,
-      maxY := gridToScene (gy + 1) scene.minY scene.maxY,
-      minZ := gridToScene gz scene.minZ scene.maxZ,
-      maxZ := gridToScene (gz + 1) scene.minZ scene.maxZ }
-  else
-    let stride := 1 <<< (30 - prefixDepth)
-    let lo := code &&& (~~~(stride - 1))
-    -- Sample up to 1024 codes in the prefix range.
-    let sampleStep := max (stride / 1024) 1
-    let numSamples := (stride + sampleStep - 1) / sampleStep
-    let (gx0, gy0, gz0) := hilbert3D_inverse lo
-    let init : BoundingBox :=
-      { minX := (gx0 : Int), maxX := (gx0 : Int),
-        minY := (gy0 : Int), maxY := (gy0 : Int),
-        minZ := (gz0 : Int), maxZ := (gz0 : Int) }
-    -- Accumulate min/max over sampled inverse coordinates.
-    let gridBB := (List.range numSamples).foldl (fun bb i =>
-      let h := lo + i * sampleStep
-      let (gx, gy, gz) := hilbert3D_inverse h
-      { minX := min bb.minX gx, maxX := max bb.maxX gx,
-        minY := min bb.minY gy, maxY := max bb.maxY gy,
-        minZ := min bb.minZ gz, maxZ := max bb.maxZ gz }) init
-    -- Also sample the last code in the range.
-    let (lx, ly, lz) := hilbert3D_inverse (lo + stride - 1)
-    let gridBB :=
-      { minX := min gridBB.minX lx, maxX := max gridBB.maxX lx,
-        minY := min gridBB.minY ly, maxY := max gridBB.maxY ly,
-        minZ := min gridBB.minZ lz, maxZ := max gridBB.maxZ lz }
-    -- Map grid coordinates back to scene space.
-    { minX := gridToScene gridBB.minX.toNat scene.minX scene.maxX,
-      maxX := gridToScene (gridBB.maxX.toNat + 1) scene.minX scene.maxX,
-      minY := gridToScene gridBB.minY.toNat scene.minY scene.maxY,
-      maxY := gridToScene (gridBB.maxY.toNat + 1) scene.minY scene.maxY,
-      minZ := gridToScene gridBB.minZ.toNat scene.minZ scene.maxZ,
-      maxZ := gridToScene (gridBB.maxZ.toNat + 1) scene.minZ scene.maxZ }
 
 -- ── Karras 2012 binary-search split point ───────────────────────────────────
 --
@@ -386,17 +313,42 @@ def deltaFromRttTicks (rttOnewayMs : Nat) (tickHz : Nat) : Nat :=
 def deltaCoversRtt (configuredDelta rttOnewayMs tickHz : Nat) : Bool :=
   deltaFromRttTicks rttOnewayMs tickHz ≤ configuredDelta
 
+-- ── Spatial axis selection ───────────────────────────────────────────────────
+--
+-- Pick the axis where the left and right child centroids are furthest apart.
+-- This gives the LBVH a meaningful initial split axis (like AV1's initial
+-- mode decision) without requiring Hilbert cell reconstruction.
+
+/-- Centroid of a BoundingBox along each axis. -/
+private def centroid (b : BoundingBox) : Int × Int × Int :=
+  ((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2)
+
+/-- Absolute value for Int. -/
+private def iabs (x : Int) : Int := if x < 0 then -x else x
+
+/-- Pick the partition node constructor for the axis with maximum centroid
+    separation between left and right children.  Returns .vert (X), .horz (Y),
+    or .depth (Z) with the entity-tight union as parent bounds. -/
+private def axisNode (ub : BoundingBox) (lb rb : BoundingBox)
+    (lId rId : EClassId) : PartitionNode :=
+  let (lx, ly, lz) := centroid lb
+  let (rx, ry, rz) := centroid rb
+  let dx := iabs (rx - lx)
+  let dy := iabs (ry - ly)
+  let dz := iabs (rz - lz)
+  if dx ≥ dy && dx ≥ dz then .vert  ub lId rId   -- X split
+  else if dy ≥ dz         then .horz  ub lId rId   -- Y split
+  else                          .depth ub lId rId   -- Z split
+
 -- ── Recursive Hilbert LBVH (fuel-terminated) ────────────────────────────────
 --
--- PartitionNode.parent = Hilbert cell AABB (space-filling volume for RDO).
--- EClass.bounds = entity-tight union of children (SAH quality).
+-- parentBounds = entity-tight union (tightest possible for RDO cost).
+-- Axis label = max centroid separation (spatial, not curve-derived).
+-- Hilbert code range stored on EClass.firstCode/lastCode.
 --
--- Each internal node's parentBounds is the AABB of the Hilbert prefix range
--- shared by all leaves in the subtree.  The Hilbert cell is the spatial
--- volume that RDO evaluates when deciding whether to split or keep a single
--- ghost.  Unlike Morton, the Hilbert cell shape varies with the curve's
--- rotation state at each level, so we compute it via hilbertCellOf (which
--- inverse-transforms sampled codes in the prefix range).
+-- The E-graph saturator adds alternative axis splits (AV1-style partition
+-- search) to each 2-way EClass, so the initial axis choice is a starting
+-- point, not final.
 
 -- Effective duration for a leaf: use its own ghost duration if set, else global δ.
 private def leafDuration (ld : LeafData) (δ : Nat) : Nat :=
@@ -417,17 +369,14 @@ private def lbvhAux (leaves : Array LeafData) (codes : Array Nat) (δ : Nat)
       else
         let fc           := if h : first < codes.size then codes[first] else 0
         let lc           := if h : last  < codes.size then codes[last]  else 0
-        let depth        := clz30 (fc ^^^ lc)
-        let parentBounds := hilbertCellOf fc depth g.scene
         let split        := findSplit codes first last
         let (g1, lId)    := lbvhAux leaves codes δ first       split g  fuel
         let (g2, rId)    := lbvhAux leaves codes δ (split + 1) last  g1 fuel
-        -- Entity-tight union for EClass.bounds and SAH cost.
+        -- Entity-tight union for both EClass.bounds and PartitionNode.parent.
         let ub   := unionBounds g2.classes[lId]!.bounds g2.classes[rId]!.bounds
-        -- PartitionNode.parent = Hilbert cell (space-filling volume for RDO).
-        -- Axis label is .depth (generic 2-way); Hilbert cells don't have a
-        -- fixed axis orientation per level like Morton does.
-        let node : PartitionNode := .depth parentBounds lId rId
+        let lb   := g2.classes[lId]!.bounds
+        let rb   := g2.classes[rId]!.bounds
+        let node := axisNode ub lb rb lId rId
         let cost := classCost g2 lId + classCost g2 rId + bvhTraversalCost * surfaceArea ub
         addClass g2 node cost ub fc lc
 

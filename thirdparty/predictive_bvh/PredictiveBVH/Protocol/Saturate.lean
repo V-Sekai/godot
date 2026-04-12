@@ -54,3 +54,48 @@ def SaturateState.getRootClass (s : SaturateState) : Option EClassId :=
         bestId := i
         bestCost := cost
     some bestId
+
+-- ── AV1-style axis variant rewrite ─────────────────────────────────────────
+--
+-- For each 2-way split node (.horz, .vert, .depth), insert the two
+-- alternative axis splits into the same EClass.  The E-graph keeps the
+-- cheapest.  This is the BVH analogue of AV1's partition mode search:
+-- the encoder tries horizontal, vertical, and square splits at each
+-- superblock and picks the best RDO cost.
+
+/-- Generate axis variants for a 2-way split node.  Given a node that
+    splits on one axis, return the two alternative axis nodes. -/
+private def axisVariants (node : PartitionNode) : List PartitionNode :=
+  match node with
+  | .horz  p l r => [.vert p l r, .depth p l r]
+  | .vert  p l r => [.horz p l r, .depth p l r]
+  | .depth p l r => [.horz p l r, .vert  p l r]
+  | other        => []
+
+/-- One saturation pass: for every EClass, try axis variants of each
+    2-way node.  Returns the updated state and whether any cost improved. -/
+def SaturateState.axisRewritePass (s : SaturateState) : SaturateState × Bool :=
+  let mut state := s
+  let mut improved := false
+  for classId in List.range s.classes.size do
+    let cls := state.classes[classId]!
+    let oldCost := cls.minCost
+    -- Collect node IDs before mutating (snapshot).
+    let nodeIds := cls.nodes.toList
+    for nid in nodeIds do
+      if nid < state.nodes.size then
+        let node := state.nodes[nid]!
+        for variant in axisVariants node do
+          state := state.addNode variant classId
+    if state.classes[classId]!.minCost < oldCost then
+      improved := true
+  (state, improved)
+
+/-- Run axis variant saturation until fixed point (no cost improves).
+    Bounded by `fuel` iterations to guarantee termination. -/
+def saturateAxes (s : SaturateState) (fuel : Nat := 3) : SaturateState :=
+  match fuel with
+  | 0 => s
+  | n + 1 =>
+    let (s', improved) := s.axisRewritePass
+    if improved then saturateAxes s' n else s'
