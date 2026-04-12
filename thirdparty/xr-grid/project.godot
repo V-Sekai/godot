@@ -1,0 +1,45 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="xr-grid"
+run/main_scene="res://procedural_3d_grid_sample/scenes/main.tscn"
+config/features=PackedStringArray("4.4", "Double Precision", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+VSKVersion="*res://addons/vsk_version/vsk_version.gd"
+
+[display]
+
+window/vsync/vsync_mode=0
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GPUTrail-main/plugin.cfg", "res://addons/vsk_version/plugin.cfg")
+
+[gui]
+
+theme/default_font_multichannel_signed_distance_field=true
+
+[rendering]
+
+textures/vram_compression/import_s3tc_bptc=true
+textures/vram_compression/import_etc2_astc=true
+anti_aliasing/screen_space_roughness_limiter/enabled=false
+anti_aliasing/quality/use_debanding=true
+mesh_lod/lod_change/threshold_pixels=0.2
+
+[xr]
+
+openxr/enabled=true
+shaders/enabled=true

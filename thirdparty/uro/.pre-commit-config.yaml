@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      # - id: mix-test
+      #   name: "elixir: mix test"
+      #   entry: mix test
+      #   language: system
+      #   pass_filenames: false
+      #   files: \.exs*$
+
+      - id: mix-format
+        name: "elixir: mix format"
+        entry: mix format --check-formatted
+        language: system
+        files: \.exs*$
+
+      - id: mix-compile
+        name: "elixir: mix compile"
+        entry: mix compile --force --warnings-as-errors
+        language: system
+        pass_filenames: false
+        files: \.ex$
+
+      - id: mix-credo
+        name: "elixir: mix credo"
+        entry: mix credo
+        language: system
+        pass_filenames: false
+        files: \.exs*$

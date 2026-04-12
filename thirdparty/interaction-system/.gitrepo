@@ -1,0 +1,11 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/interaction_system.git
+	branch = xr
+	commit = bea995f9b2d7ea1b258135795ced7909f5a76b29
+	parent = c0a9c6f9c680c83e287206e3a534f8d282d6e5e9
+	cmdver = 0.1.0

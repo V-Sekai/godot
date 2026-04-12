@@ -1,0 +1,11 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/desync/tree/main
+	branch = master
+	commit = FETCH_HEAD
+	parent = d0f3cc044cc297be6e07980f3784841010909aa8
+	cmdver = 0.1.0

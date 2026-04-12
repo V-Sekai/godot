@@ -1,0 +1,124 @@
+version: "4.0"
+services:
+  database:
+    # Oxide CockroachDB 22.1 fork, packaged by V-Sekai as a docker image tar:
+    # https://github.com/V-Sekai/cockroach/releases/tag/cockroach-2
+    # Load before `docker compose up`:
+    #   curl -sSL -o /tmp/cockroachdb.tar \
+    #     https://github.com/V-Sekai/cockroach/releases/download/cockroach-2/cockroachdb.tar
+    #   docker load -i /tmp/cockroachdb.tar
+    image: v-sekai/cockroach:latest
+    restart: always
+    shm_size: 128mb
+    command: start-single-node --accept-sql-without-tls
+    environment:
+      COCKROACH_DATABASE: vsekai
+      COCKROACH_USER: vsekai
+      COCKROACH_PASSWORD: vsekai
+    volumes:
+      - "./cockroach:/cockroach/cockroach-data"
+    ports:
+      - "26257:26257"
+      - "8081:8080"  # Dashboard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      
+  #database-postgres:
+  #  image: postgres:16.6-alpine
+  #  restart: always
+  #  shm_size: 128mb
+  #  environment:
+  #    POSTGRES_USER: vsekai
+  #    POSTGRES_PASSWORD: vsekai
+  #  volumes:
+  #    - "./postgres:/var/lib/postgresql/data"
+  #  ports:
+  #    - "5432:5432"
+  #  healthcheck:
+  #    test: pg_isready -U vsekai
+  #    interval: 5s
+  #    timeout: 5s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    shm_size: 128mb
+    volumes:
+      - "./redis:/data"
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 5s
+
+  uro:
+    build:
+      context: .
+      tags:
+        - "uro:latest"
+    restart: always
+    links:
+      - database
+      - redis
+    depends_on:
+      database:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_healthy
+        restart: true
+    env_file:
+      - .env
+    # healthcheck:
+    #   test: curl --fail http://uro:4000/health || exit 1
+    #   interval: 5s
+    #   timeout: 5s
+
+  nextjs:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      additional_contexts:
+         # Enforce build-time dependency (openapi.json generation)
+         uro: "service:uro"
+    env_file:
+      - frontend/.env
+    # healthcheck:
+    #   test: curl --fail http://nextjs:3000/health || exit 1
+    #   interval: 5s
+    #   timeout: 5s
+    depends_on:
+      - uro
+
+  caddy:
+    image: caddy:2.9.1-alpine
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    depends_on:
+      - uro
+      - nextjs
+      # uro:
+      #   condition: service_healthy
+      #   restart: true
+      # nextjs:
+      #   condition: service_healthy
+      #   restart: true
+
+networks:
+  uro:
+    name: "uro"
+
+volumes:
+  caddy_data:
+  caddy_config:

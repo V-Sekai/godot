@@ -1,0 +1,94 @@
+name: Uro Development x86_64
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: elixir:1.16.3-otp-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          apt update
+          apt install -y build-essential erlang-dev curl
+
+      - name: Set up Elixir
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-deps-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-deps-
+
+      - name: Install CockroachDB
+        run: |
+          curl -s https://binaries.cockroachdb.com/cockroach-v23.2.0-rc.1.linux-amd64.tgz | tar xvz
+          mkdir -p ${{ runner.temp }}/cockroach
+          cp cockroach-v23.2.0-rc.1.linux-amd64/cockroach ${{ runner.temp }}/cockroach/
+          echo "${{ runner.temp }}/cockroach" >> $GITHUB_PATH
+
+      - name: Start CockroachDB
+        run: |
+          cockroach start-single-node --insecure --background
+
+      - name: Wait for CockroachDB to be ready
+        run: |
+          until cockroach sql --execute="SELECT 1" --insecure; do sleep 1; done
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile code
+        run: mix compile
+
+      - name: Run tests
+        continue-on-error: true
+        id: test_step
+        run: |
+          set -e
+          chmod +x elixir_mvsqlite/rust_src/target/release/mvstore
+          export RUST_LOG=error
+          elixir_mvsqlite/rust_src/target/release/mvstore --data-plane 127.0.0.1:7000 --admin-api 127.0.0.1:7001 --metadata-prefix mvstore-test --raw-data-prefix m --auto-create-namespace --cluster /etc/foundationdb/fdb.cluster &
+          sleep 1
+          curl http://localhost:7001/api/create_namespace -d '{"key":"uro_dev.sqlite3","metadata":""}'
+          sleep 1
+          MIX_ENV=test mix ecto.setup
+          MIX_ENV=test mix run priv/repo/test_seeds.exs
+          mix test | tee test_output.txt; test ${PIPESTATUS[0]} -eq 0
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test_output.txt
+
+      - name: Parse and check test results
+        continue-on-error: true
+        if: always()
+        run: |
+          echo "Parsing test results..."
+          TEST_OUTPUT=$(grep -oP '\d+ tests, \K\d+(?= failures)' test_output.txt)
+          echo "TEST_FAILURES=$TEST_OUTPUT" >> $GITHUB_ENV
+
+          if [ "$TEST_OUTPUT" -le 102 ]; then
+            echo "Test failures are within the acceptable range."
+          else
+            echo "Too many test failures: $TEST_OUTPUT"
+            exit 1
+          fi
+
+      - name: Check formatted code
+        run: mix format --check-formatted

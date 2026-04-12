@@ -1,0 +1,5 @@
+_build
+deps
+frontend/node_modules
+frontend/.next
+frontend/out

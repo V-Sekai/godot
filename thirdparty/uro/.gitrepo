@@ -1,0 +1,11 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/uro.git
+	branch = master
+	commit = b3f491a04442b40fd71a3f230e0b507bfdd532cd
+	parent = 8d1e51dc03c91d1413131ce35b431d587dcf1e8a
+	cmdver = 0.1.0

@@ -1,0 +1,287 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="V-Sekai"
+config/description="Social Multiplayer User-Generated Content VR Platform for Godot."
+config/tags=PackedStringArray("multiplayer", "ugc", "xr")
+run/main_scene="uid://bbva2sy5g66ek"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="vsk_game"
+config/project_settings_override="user://config.cfg"
+config/features=PackedStringArray("4.5", "Forward Plus")
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/fullsize=false
+boot_splash/image="uid://dy5smxmxgkbt0"
+config/icon="uid://ddmrcblnd4y4v"
+
+[assets]
+
+config/avatar_forbidden_path="res://addons/vsk_game_framework/scenes/avatars/error_handlers/avatar_forbidden.tscn"
+config/avatar_not_found_path="res://addons/vsk_game_framework/scenes/avatars/error_handlers/avatar_not_found.tscn"
+config/avatar_error_path="res://addons/vsk_game_framework/scenes/avatars/error_handlers/avatar_error.tscn"
+config/teapot_path="res://addons/vsk_game_framework/scenes/avatars/error_handlers/teapot.tscn"
+config/loading_avatar_path="res://addons/vsk_game_framework/scenes/avatars/loading/loading_orb.tscn"
+config/avatar_whitelist=PackedStringArray()
+config/prop_whitelist=PackedStringArray()
+config/map_whitelist=PackedStringArray()
+config/game_mode_whitelist=PackedStringArray()
+config/avatar_allow_list=PackedStringArray()
+config/prop_allow_list=PackedStringArray()
+config/map_allow_list=PackedStringArray()
+config/game_mode_allow_list=PackedStringArray()
+
+[audio]
+
+buses/default_bus_layout="res://addons/vsk_game_framework/config/vsk_bus_layout.tres"
+driver/enable_input=true
+
+[autoload]
+
+VSKGameSettingsManagerSingleton="*res://addons/vsk_game_framework/scripts/managers/vsk_game_settings_manager.gd"
+VSKGameSessionManagerSingleton="*res://addons/vsk_game_framework/scripts/managers/vsk_game_session_manager.gd"
+VSKGameAssetManagerSingleton="*res://addons/vsk_game_framework/scripts/managers/vsk_game_asset_manager.gd"
+VSKGameServiceManagerSingleton="*res://addons/vsk_game_framework/scripts/managers/vsk_game_service_manager.gd"
+VSKShardManagerSingleton="*res://addons/vsk_game_framework/scripts/managers/vsk_game_shard_manager.gd"
+VSKXRManagerSingleton="*res://addons/vsk_game_framework/scripts/managers/vsk_game_xr_manager.gd"
+XRToolsUserSettings="*res://addons/godot-xr-tools/user_settings/user_settings.gd"
+XRToolsRumbleManager="*res://addons/godot-xr-tools/rumble/rumble_manager.gd"
+VSKEditorSingleton="*res://addons/vsk_editor/vsk_editor.gd"
+
+[debug]
+
+gdscript/warnings/exclude_addons=false
+; WARNING: Disabling this skips resource validation on godot scenes, it's dangerous
+whitelist/godot_scn/enabled=true
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
+
+[editor]
+
+movie_writer/movie_file="D:/contents/videos/godot_movies/movie.png"
+run/main_run_args="--xr-mode off"
+; Import Multithreading is disabled due to docker --headless export bug
+; https://github.com/godotengine/godot/issues/103696#issuecomment-3029242943
+import/use_multiple_threads=false
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/Godot-MToon-Shader/plugin.cfg", "res://addons/animation_tree_driver/plugin.cfg", "res://addons/godot-xr-tools/plugin.cfg", "res://addons/godot_uro/plugin.cfg", "res://addons/sar_game_framework/plugin.cfg", "res://addons/textureRectUrl/plugin.cfg", "res://addons/vrm/plugin.cfg", "res://addons/vsk_editor/plugin.cfg", "res://addons/vsk_game_framework/plugin.cfg", "res://addons/vsk_importer_exporter/plugin.cfg")
+
+[file_customization]
+
+folder_colors={
+"res://addons/sar_game_framework/": "green",
+"res://addons/vsk_editor/": "blue",
+"res://addons/vsk_game_framework/": "red",
+"res://addons/vsk_game_framework/scenes/entities/vsk_game_entity_player_3d.tscn": "green",
+"res://addons/vsk_importer_exporter/": "red",
+"res://addons/vsk_ui/": "red",
+"res://vsk_default/": "red"
+}
+
+[filesystem]
+
+import/fbx2gltf/enabled=false
+
+[game]
+
+session/player_vessel_scene_path="uid://iym64t583x3o"
+session/player_soul_scene_path="uid://6ohhdebb5pjr"
+session/show_window_title_debug_info=true
+session/shard_heartbeat_frequency=10.0
+
+[global_group]
+
+player_scene_tree_state_notification_receivers="Nodes to be informed when a player has entered the scene."
+
+[gui]
+
+theme/custom="uid://s05juvtforjo"
+
+[input]
+
+move_forwards={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":87,"key_label":0,"unicode":119,"location":0,"echo":false,"script":null)
+, Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":1,"axis_value":-1.0,"script":null)
+]
+}
+move_backwards={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":83,"key_label":0,"unicode":115,"location":0,"echo":false,"script":null)
+, Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":1,"axis_value":1.0,"script":null)
+]
+}
+move_left={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":65,"key_label":0,"unicode":97,"location":0,"echo":false,"script":null)
+, Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":0,"axis_value":-1.0,"script":null)
+]
+}
+move_right={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":68,"key_label":0,"unicode":100,"location":0,"echo":false,"script":null)
+, Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":0,"axis_value":1.0,"script":null)
+]
+}
+move_up={
+"deadzone": 0.2,
+"events": []
+}
+move_down={
+"deadzone": 0.2,
+"events": []
+}
+jump={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":32,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)
+]
+}
+rotate_camera_up={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":3,"axis_value":-1.0,"script":null)
+]
+}
+rotate_camera_down={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":3,"axis_value":1.0,"script":null)
+]
+}
+rotate_camera_left={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":2,"axis_value":-1.0,"script":null)
+, Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":81,"key_label":0,"unicode":113,"location":0,"echo":false,"script":null)
+]
+}
+rotate_camera_right={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":2,"axis_value":1.0,"script":null)
+, Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":69,"key_label":0,"unicode":101,"location":0,"echo":false,"script":null)
+]
+}
+toggle_mute={
+"deadzone": 0.2,
+"events": []
+}
+grab={
+"deadzone": 0.2,
+"events": []
+}
+grab_left={
+"deadzone": 0.2,
+"events": []
+}
+grab_right={
+"deadzone": 0.2,
+"events": []
+}
+toggle_performance_monitor={
+"deadzone": 0.2,
+"events": []
+}
+toggle_camera_mode={
+"deadzone": 0.2,
+"events": []
+}
+snap_left={
+"deadzone": 0.2,
+"events": []
+}
+snap_right={
+"deadzone": 0.2,
+"events": []
+}
+request_vr_calibration={
+"deadzone": 0.2,
+"events": []
+}
+confirm_vr_calibration={
+"deadzone": 0.2,
+"events": []
+}
+request_respawn={
+"deadzone": 0.2,
+"events": []
+}
+request_screenshot={
+"deadzone": 0.2,
+"events": []
+}
+crouch={
+"deadzone": 0.2,
+"events": []
+}
+shoot={
+"deadzone": 0.2,
+"events": []
+}
+toggle_vr={
+"deadzone": 0.2,
+"events": []
+}
+reset_character_body_position={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":3,"pressure":0.0,"pressed":true,"script":null)
+]
+}
+menu={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194305,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
+}
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://addons/vsk_game_framework/localization/vsk_game_strings.de.translation", "res://addons/vsk_game_framework/localization/vsk_game_strings.en.translation", "res://addons/vsk_game_framework/localization/vsk_game_strings.es.translation")
+locale/locale_filter_mode=1
+
+[physics]
+
+3d/run_on_separate_thread=true
+common/physics_ticks_per_second=30
+common/physics_jitter_fix=0.0
+3d/physics_engine="Jolt Physics"
+common/physics_interpolation=true
+
+[rendering]
+
+textures/vram_compression/import_s3tc_bptc=true
+textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=5
+lights_and_shadows/positional_shadow/soft_shadow_filter_quality=5
+global_illumination/voxel_gi/quality=1
+anti_aliasing/quality/msaa_3d=3
+occlusion_culling/use_occlusion_culling=true
+
+[ugc]
+
+config/clean_avatar_export=true
+config/clean_map_export=true
+config/clean_avatar_import=true
+config/clean_map_import=true
+
+[xr]
+
+openxr/enabled=true
+openxr/default_action_map="res://addons/vsk_game_framework/config/vsk_openxr_action_map.tres"
+openxr/startup_alert=false
+openxr/extensions/hand_tracking=true
+openxr/extensions/hand_interaction_profile=true
+openxr/extensions/eye_gaze_interaction=true
+shaders/enabled=true

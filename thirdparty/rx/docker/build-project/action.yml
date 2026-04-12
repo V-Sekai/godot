@@ -1,0 +1,31 @@
+name: 'build-project'
+description: 'Build project with latest Godot editor from V-Sekai/world-godot'
+inputs:
+  repo:
+    description: 'Github project repository id "owner/myrepo"'
+    required: true
+  branch:
+    description: 'Github branch name used to build project'
+    required: false
+  game_name:
+    description: 'Override default repository name in game name'
+    required: false
+    default: ''
+  default_export:
+    description: 'Override project export_presets.cfg with default configuration file'
+    required: false
+    default: 'false'
+  xr_plugins:
+    description: 'Install Godot XR Vendor Plugins, required for Meta Quest https://github.com/GodotVR/godot_openxr_vendors'
+    required: false
+    default: 'true'
+  nightly:
+    description: 'Nightly build mode'
+    required: false
+    default: 'false'
+outputs:
+  version_tag:
+    description: 'Auto-generated version tag'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

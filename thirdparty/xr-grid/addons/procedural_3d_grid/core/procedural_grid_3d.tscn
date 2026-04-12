@@ -1,0 +1,51 @@
+[gd_scene load_steps=8 format=3 uid="uid://ye52hc0t6bue"]
+
+[ext_resource type="Script" path="res://addons/procedural_3d_grid/core/procedural_grid_3d.gd" id="1_4uxcc"]
+[ext_resource type="PackedScene" uid="uid://rs0j50y8n0gn" path="res://addons/procedural_3d_grid/core/base_procedural_grid_3d.tscn" id="1_hr8ny"]
+[ext_resource type="Shader" path="res://addons/procedural_3d_grid/core/procedural_grid_3d.gdshader" id="3_h18ko"]
+
+[sub_resource type="Gradient" id="Gradient_dqq8l"]
+colors = PackedColorArray(0, 0.388235, 0.556863, 1, 1, 0.65098, 0.631373, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_w7ysm"]
+gradient = SubResource("Gradient_dqq8l")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qwywq"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("3_h18ko")
+shader_parameter/_DisplayGridLines = null
+shader_parameter/_PointRadius = 0.02
+shader_parameter/_GridCenter = Vector3(0, 0, 0)
+shader_parameter/_Color = Color(0.5, 0.519607, 0.594118, 1)
+shader_parameter/_NearFade = 0.2
+shader_parameter/_FarFade = 0.5
+shader_parameter/_FadeZone = 0.5
+shader_parameter/_FocusPoint = Vector3(0, 0, 0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_wv3t0"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("3_h18ko")
+shader_parameter/_DisplayGridLines = null
+shader_parameter/_PointRadius = 0.02
+shader_parameter/_GridCenter = Vector3(0, 0, 0)
+shader_parameter/_Color = Color(1, 0.65098, 0.631373, 0)
+shader_parameter/_NearFade = 0.2
+shader_parameter/_FarFade = 0.5
+shader_parameter/_FadeZone = 0.5
+shader_parameter/_FocusPoint = Vector3(0, 0, 0)
+
+[node name="ProceduralGrid3D" type="Node3D"]
+script = ExtResource("1_4uxcc")
+level_color = SubResource("GradientTexture1D_w7ysm")
+
+[node name="BaseProceduralGrid3D" parent="." instance=ExtResource("1_hr8ny")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+material_override = SubResource("ShaderMaterial_qwywq")
+pulse_regenerate_mesh = false
+
+[node name="BaseProceduralGrid3D2" parent="BaseProceduralGrid3D" instance=ExtResource("1_hr8ny")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+material_override = SubResource("ShaderMaterial_wv3t0")
+pulse_regenerate_mesh = false

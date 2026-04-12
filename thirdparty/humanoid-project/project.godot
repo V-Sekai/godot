@@ -1,0 +1,20 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Humanoid Project"
+run/main_scene="res://humanoid/scenes/test_humanoid.tscn"
+config/features=PackedStringArray("4.5", "Double Precision", "Forward Plus")
+config/icon="res://icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/Godot-MToon-Shader/plugin.cfg", "res://addons/gut/plugin.cfg", "res://addons/humanoid/plugin.cfg", "res://addons/vrm/plugin.cfg")

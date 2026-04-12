@@ -1,0 +1,356 @@
+[gd_scene load_steps=41 format=3 uid="uid://bg6gj8x7d3mrl"]
+
+[ext_resource type="Script" uid="uid://bhgqer41udrla" path="res://addons/procedural_3d_grid/core/hand.gd" id="2_bpl2v"]
+[ext_resource type="Shader" uid="uid://nqhuvjyl5bf4" path="res://addons/GPUTrail-main/shaders/trail.gdshader" id="2_rl0re"]
+[ext_resource type="Shader" uid="uid://b35htbko4hv85" path="res://addons/GPUTrail-main/shaders/trail_draw_pass.gdshader" id="3_biyvx"]
+[ext_resource type="Script" uid="uid://cqeyvdcoi37qr" path="res://addons/procedural_3d_grid/core/xr_origin.gd" id="3_p8s7d"]
+[ext_resource type="Script" uid="uid://c351cyh3u2n31" path="res://addons/procedural_3d_grid/core/xr_pinch.gd" id="4_4qf3o"]
+[ext_resource type="Script" uid="uid://dl6f33628oxnt" path="res://addons/procedural_3d_grid/core/simple_sketcher/sketch_tool.gd" id="5_uqwsl"]
+[ext_resource type="Script" uid="uid://bjpqewbtgif6n" path="res://addons/GPUTrail-main/GPUTrail3D.gd" id="6_dqij4"]
+[ext_resource type="Shader" uid="uid://c46ssct7fj6pj" path="res://addons/procedural_3d_grid/core/simple_sketcher/simple_sketch.gdshader" id="6_wgf7r"]
+[ext_resource type="PackedScene" uid="uid://ye52hc0t6bue" path="res://addons/procedural_3d_grid/core/procedural_grid_3d.tscn" id="6_yejl2"]
+[ext_resource type="Script" uid="uid://18xcph2o0pci" path="res://addons/procedural_3d_grid/core/follow_test.gd" id="8_uwiqs"]
+[ext_resource type="Shader" uid="uid://b2cjphncghsi8" path="res://addons/procedural_3d_grid/core/simple_sketcher/simple_sketch_shadow.gdshader" id="10_pydft"]
+[ext_resource type="PackedScene" uid="uid://cccdflexw520e" path="res://procedural_3d_grid_sample/art/sophia/sophia.glb" id="11_6yesq"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hf7ak"]
+shading_mode = 0
+albedo_color = Color(0.980392, 0.827451, 0.0745098, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_u42fx"]
+radius = 1.0
+height = 2.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6xw0l"]
+shader = ExtResource("2_rl0re")
+
+[sub_resource type="Curve" id="Curve_hqx6l"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.218182), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_m72oh"]
+curve = SubResource("Curve_hqx6l")
+
+[sub_resource type="Gradient" id="Gradient_y8ofu"]
+colors = PackedColorArray(0.980392, 0.827451, 0.0745098, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_g1tsk"]
+gradient = SubResource("Gradient_y8ofu")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tj13k"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("3_biyvx")
+shader_parameter/tex = SubResource("GradientTexture1D_g1tsk")
+shader_parameter/curve = SubResource("CurveTexture_m72oh")
+shader_parameter/emmission_transform = Projection(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+shader_parameter/flags = 4
+
+[sub_resource type="QuadMesh" id="QuadMesh_5hune"]
+material = SubResource("ShaderMaterial_tj13k")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spxwv"]
+shading_mode = 0
+albedo_color = Color(0.0745098, 0.101961, 0.643137, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dhual"]
+shader = ExtResource("2_rl0re")
+
+[sub_resource type="Shader" id="Shader_urvn5"]
+code = "shader_type spatial;
+
+render_mode unshaded,world_vertex_coords,cull_disabled;
+
+uniform sampler2D tex : repeat_disable, source_color, hint_default_white;
+uniform sampler2D color_ramp : repeat_disable, source_color, hint_default_white;
+uniform sampler2D curve : repeat_disable, hint_default_white;
+uniform mat4 emmission_transform = mat4(1);
+uniform int flags = 0;
+/*uniform bool vertical_texture = false;
+uniform bool use_red_as_alpha = false;
+uniform bool billboard = false;
+uniform bool dewiggle = false;
+uniform bool snap_to_transform = false;*/
+
+#define vertical_texture  bool(flags & 1)
+#define use_red_as_alpha  bool(flags & 2)
+#define billboard		  bool(flags & 4)
+#define dewiggle 		  bool(flags & 8)
+#define snap_to_transform bool(flags & 16)
+#define clip_overlaps bool(flags & 32)
+
+
+varying float scale_interp;
+varying vec2 clip;
+varying vec2 mesh_uv;
+void vertex(){
+	mesh_uv = UV;
+	
+	mat4 my_model_matrix = MODEL_MATRIX;
+	if(snap_to_transform && INSTANCE_CUSTOM.w==2.0){
+		my_model_matrix[1] = emmission_transform * vec4(0,1,0,1);
+		my_model_matrix[2] = emmission_transform * vec4(0,-1,0,1);
+	}
+	
+	if(billboard){
+		vec3 t0 = my_model_matrix[0].xyz-my_model_matrix[3].xyz;
+		vec3 t1 = my_model_matrix[1].xyz-my_model_matrix[2].xyz;
+		
+		//vec3 up1 = up0;
+		vec3 up0 = length(t0)*normalize(
+			cross(
+				my_model_matrix[3].xyz-INV_VIEW_MATRIX[3].xyz,
+				//-INV_VIEW_MATRIX[2].xyz,
+				t0));
+		vec3 up1 = length(t1)*normalize(
+			cross(
+				my_model_matrix[2].xyz-INV_VIEW_MATRIX[3].xyz,
+				//-INV_VIEW_MATRIX[2].xyz,
+				t1));
+		
+		my_model_matrix[0] = my_model_matrix[3];
+		my_model_matrix[1] = my_model_matrix[2];
+		
+		my_model_matrix[0].xyz += up0;
+		my_model_matrix[3].xyz -= up0;
+		
+		my_model_matrix[1].xyz += up1;
+		my_model_matrix[2].xyz -= up1;
+	}
+	
+	vec3 a = mix(my_model_matrix[1].xyz,my_model_matrix[0].xyz,UV.x);
+	vec3 b = mix(my_model_matrix[2].xyz,my_model_matrix[3].xyz,UV.x);
+
+	UV.x = (UV.x + INSTANCE_CUSTOM.w-1.0 - 2.0)/(INSTANCE_CUSTOM.z-1.0);
+
+	
+	float h = textureLod(curve, vec2(UV.x), 0.0).x;//h=1.0;
+	
+	VERTEX = mix(a,b,(UV.y-0.5)*h + 0.5);
+
+	if(dewiggle){
+		scale_interp = h;
+		UV *= scale_interp;
+	}
+	
+		
+	clip.x = dot(VERTEX - INV_VIEW_MATRIX[3].xyz,cross(my_model_matrix[1].xyz - INV_VIEW_MATRIX[3].xyz,my_model_matrix[2].xyz - INV_VIEW_MATRIX[3].xyz));
+	clip.y = dot(VERTEX - INV_VIEW_MATRIX[3].xyz,cross(my_model_matrix[3].xyz - INV_VIEW_MATRIX[3].xyz,my_model_matrix[0].xyz - INV_VIEW_MATRIX[3].xyz));
+}
+
+void fragment(){
+	//if(billboard && !FRONT_FACING) discard;
+	
+	vec2 clip0 = clip;
+	float ababab = clip0.x*clip0.y;
+	//ababab += dFdx(ababab) + dFdy(ababab);
+	//clip0 -= fwidth(clip0);
+	if(clip_overlaps && ababab < 0.0) { 
+		
+		
+		
+		if(abs(mesh_uv.x-0.5)<0.5)
+			discard;
+	}
+	
+	vec2 base_uv = UV;
+
+	if(dewiggle){
+		base_uv /= scale_interp;
+	}
+	
+	vec2 raw_uv = base_uv;
+
+	if(vertical_texture){
+		base_uv = base_uv.yx;
+	}
+	
+	vec4 T = textureLod(tex, base_uv, 0.0);
+	ALBEDO = T.rgb;
+	ALPHA = T.a;
+	
+	if(use_red_as_alpha){
+		ALBEDO = vec3(1);
+		ALPHA = T.r;
+	}
+	
+	T = textureLod(color_ramp, raw_uv, 0.0);
+	ALBEDO *= T.rgb;
+	ALPHA *= T.a;
+	
+	//ALBEDO = vec3(UV,0);
+	
+	if((base_uv.x < .01) || (.99 < base_uv.x)){
+		//ALBEDO = vec3(1,0,1);
+	}
+}"
+
+[sub_resource type="Gradient" id="Gradient_x6w7l"]
+colors = PackedColorArray(0.0745098, 0.101961, 0.643137, 1, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_24r4x"]
+gradient = SubResource("Gradient_x6w7l")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sw5rf"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_urvn5")
+shader_parameter/tex = SubResource("GradientTexture1D_24r4x")
+shader_parameter/curve = SubResource("CurveTexture_m72oh")
+shader_parameter/emmission_transform = Projection(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+shader_parameter/flags = 4
+
+[sub_resource type="QuadMesh" id="QuadMesh_v1e26"]
+material = SubResource("ShaderMaterial_sw5rf")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1r3ns"]
+render_priority = 0
+shader = ExtResource("6_wgf7r")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_autvg"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4t5i7"]
+render_priority = 0
+shader = ExtResource("10_pydft")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_df4c5"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dik2t"]
+albedo_color = Color(0.180392, 0.180392, 0.180392, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_skpai"]
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_dpjv4"]
+
+[sub_resource type="Gradient" id="Gradient_dqq8l"]
+colors = PackedColorArray(0, 0.388235, 0.556863, 1, 1, 0.65098, 0.631373, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_nbrpf"]
+gradient = SubResource("Gradient_dqq8l")
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_gj73n"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_w1won"]
+sky_material = SubResource("ProceduralSkyMaterial_gj73n")
+
+[sub_resource type="Environment" id="Environment_6juhc"]
+background_mode = 1
+background_color = Color(0.972549, 0.976471, 0.92549, 1)
+background_energy_multiplier = 0.91
+sky = SubResource("Sky_w1won")
+
+[node name="main" type="Node3D"]
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+script = ExtResource("3_p8s7d")
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+
+[node name="hand_left" type="XRController3D" parent="XROrigin3D"]
+tracker = &"left_hand"
+script = ExtResource("2_bpl2v")
+
+[node name="SketchTool" type="Node3D" parent="XROrigin3D/hand_left"]
+script = ExtResource("5_uqwsl")
+CANVAS = NodePath("../../../canvas")
+color = Color(0.980392, 0.827451, 0.0745098, 1)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="XROrigin3D/hand_left"]
+transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_hf7ak")
+mesh = SubResource("SphereMesh_u42fx")
+skeleton = NodePath("../../hand_right")
+
+[node name="GPUTrail3D" type="GPUParticles3D" parent="XROrigin3D/hand_left/MeshInstance3D"]
+lifetime = 8.0
+explosiveness = 1.0
+fixed_fps = 0
+process_material = SubResource("ShaderMaterial_6xw0l")
+draw_pass_1 = SubResource("QuadMesh_5hune")
+script = ExtResource("6_dqij4")
+length = 8
+texture = SubResource("GradientTexture1D_g1tsk")
+curve = SubResource("CurveTexture_m72oh")
+billboard = true
+_defaults_have_been_set = true
+
+[node name="hand_right" type="XRController3D" parent="XROrigin3D"]
+tracker = &"right_hand"
+script = ExtResource("2_bpl2v")
+
+[node name="SketchTool" type="Node3D" parent="XROrigin3D/hand_right"]
+script = ExtResource("5_uqwsl")
+CANVAS = NodePath("../../../canvas")
+color = Color(0.0745098, 0.101961, 0.643137, 1)
+
+[node name="focus" type="Node3D" parent="XROrigin3D/hand_right"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="XROrigin3D/hand_right"]
+transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_spxwv")
+mesh = SubResource("SphereMesh_u42fx")
+
+[node name="GPUTrail3D3" type="GPUParticles3D" parent="XROrigin3D/hand_right/MeshInstance3D"]
+lifetime = 8.0
+explosiveness = 1.0
+fixed_fps = 0
+process_material = SubResource("ShaderMaterial_dhual")
+draw_pass_1 = SubResource("QuadMesh_v1e26")
+script = ExtResource("6_dqij4")
+length = 8
+texture = SubResource("GradientTexture1D_24r4x")
+curve = SubResource("CurveTexture_m72oh")
+billboard = true
+_defaults_have_been_set = true
+
+[node name="Node3D" type="Node3D" parent="XROrigin3D/hand_right"]
+visible = false
+script = ExtResource("8_uwiqs")
+
+[node name="sophia" parent="XROrigin3D/hand_right/Node3D" instance=ExtResource("11_6yesq")]
+transform = Transform3D(0.0296712, 0, 0, 0, 0.0296712, 0, 0, 0, 0.0296712, 0, 0, 0)
+
+[node name="canvas" type="Node3D" parent="." node_paths=PackedStringArray("hand_left", "hand_right")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+script = ExtResource("4_4qf3o")
+hand_left = NodePath("../XROrigin3D/hand_left")
+hand_right = NodePath("../XROrigin3D/hand_right")
+
+[node name="strokes" type="MeshInstance3D" parent="canvas"]
+material_override = SubResource("ShaderMaterial_1r3ns")
+mesh = SubResource("ArrayMesh_autvg")
+
+[node name="strokes_shadow" type="MeshInstance3D" parent="canvas"]
+visible = false
+material_override = SubResource("ShaderMaterial_4t5i7")
+mesh = SubResource("ArrayMesh_df4c5")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="canvas"]
+material_override = SubResource("StandardMaterial3D_dik2t")
+mesh = SubResource("PlaneMesh_skpai")
+skeleton = NodePath("../..")
+
+[node name="Node3D" type="Node3D" parent="canvas"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+visible = false
+
+[node name="strokes_mirror" type="MeshInstance3D" parent="canvas/Node3D"]
+material_override = SubResource("ShaderMaterial_1r3ns")
+mesh = SubResource("ArrayMesh_dpjv4")
+skeleton = NodePath("../..")
+
+[node name="ProceduralGrid3D" parent="canvas" instance=ExtResource("6_yejl2")]
+level_color = SubResource("GradientTexture1D_nbrpf")
+FOCUS_NODE = NodePath("../../XROrigin3D/hand_right/focus")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="canvas"]
+transform = Transform3D(-0.866024, -0.433016, 0.250001, 0, 0.499998, 0.866027, -0.500003, 0.75, -0.43301, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="canvas"]
+environment = SubResource("Environment_6juhc")
+
+[node name="sophia" parent="canvas" instance=ExtResource("11_6yesq")]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, 0)

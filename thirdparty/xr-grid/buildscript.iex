@@ -1,0 +1,254 @@
+defmodule BuildScript do
+    @url "https://github.com/V-Sekai/world-godot/releases/download/latest.v-sekai-editor-2/v-sekai-world.zip"
+    @output "v-sekai-world.zip"
+    @extract_dir "export"
+    @extract_dir_extracted "#{@extract_dir}/temp"
+    @os_family :os.type()
+    @project_name "xr_grid"
+    @expected_hash "657529B71E0BFF9500265FEE8C4A932E58A7FAC87CB1600F851ABA7C56FC15E6"
+
+    def all do
+        pending_files_to_delete = editor_download()
+        editor_sign()
+        export_stage()
+        cleanup_pending_files(pending_files_to_delete)
+    end
+    def editor_download do
+        case verify_hash() do
+            {:ok, _hash, _message} ->
+                IO.puts("File hash matches, skipping download.")
+            {:error, _hash, _message} ->
+                download()
+                case verify_hash() do
+                    {:ok, _hash, _message} ->
+                        IO.puts("Download complete and hash verified.")
+                    {:error, _hash, _message} ->
+                        IO.puts("Hash verification failed after download.")
+                        exit(:normal)
+                end
+        end
+        pending_files_to_delete = extract()
+        create_gdignore()
+        pending_files_to_delete
+    end
+
+    defp cleanup_pending_files(files) do
+        IO.inspect(files, label: "Pending files to delete")
+    end
+
+    def editor_sign do
+        make_executable()
+        sign_app()
+    end
+
+    def download do
+        File.mkdir_p!(@extract_dir)
+        System.cmd("curl", ["-L", @url, "-o", "#{@extract_dir}/#{@output}"])
+    end
+
+    def verify_hash do
+        case File.read("#{@extract_dir}/#{@output}") do
+            {:ok, content} ->
+                hash = :crypto.hash(:sha256, content) |> Base.encode16()
+                IO.puts("Computed hash: #{hash}")
+                if hash == @expected_hash do
+                    {:ok, hash, "Hash matches"}
+                else
+                    {:error, hash, "Hash does not match"}
+                end
+            _ ->
+                {:error, nil, "File not found"}
+        end
+    end
+
+    def extract do
+        File.mkdir_p!(@extract_dir_extracted)
+        case System.cmd("tar", ["-xvf", "#{@extract_dir}/#{@output}", "-C", "#{@extract_dir_extracted}", "--strip-components=1"]) do
+            {output, 0} ->
+                IO.puts("Extraction output:\n#{output}")
+                extracted_files = Path.wildcard("#{@extract_dir_extracted}/**/*")
+                extracted_files
+            {output, _} ->
+                IO.puts("Failed to extract file. Output:\n#{output}")
+                exit(:normal)
+        end
+    end
+
+    def create_gdignore do
+        File.touch("#{@extract_dir}/.gdignore")
+    end
+
+    def make_executable do
+        case @os_family do
+            {:win32, :nt} ->
+                # Windows specific commands
+                :ok
+            {:unix, _} ->
+                File.chmod("#{@extract_dir_extracted}/godot.macos.editor.double.arm64", 0o755)
+                File.chmod("#{@extract_dir_extracted}/godot.macos.template_debug.double.arm64", 0o755)
+                File.chmod("#{@extract_dir_extracted}/godot.macos.template_release.double.arm64", 0o755)
+                File.chmod("#{@extract_dir_extracted}/godot_macos_editor_double.app/Contents/MacOS/Godot", 0o755)
+        end
+    end
+
+    def sign_app do
+        case @os_family do
+            {:win32, :nt} ->
+                # Windows specific commands
+                :ok
+            {:unix, :darwin} ->
+                System.cmd("codesign", ["--deep", "--force", "--sign", "-", "#{@extract_dir_extracted}/godot.macos.editor.double.arm64"])
+                System.cmd("codesign", ["--deep", "--force", "--sign", "-", "#{@extract_dir_extracted}/godot.macos.template_debug.double.arm64"])
+                System.cmd("codesign", ["--deep", "--force", "--sign", "-", "#{@extract_dir_extracted}/godot.macos.template_release.double.arm64"])
+                System.cmd("codesign", ["--deep", "--force", "--sign", "-", "#{@extract_dir_extracted}/godot_macos_editor_double.app/Contents/MacOS/Godot"])
+                :ok
+            _ ->
+                :ok
+        end
+    end
+
+    def export_stage do
+        editor_path = case @os_family do
+            {:win32, :nt} ->
+                Path.expand("#{@extract_dir_extracted}/godot.windows.editor.double.x86_64.llvm.exe")
+            {:unix, :darwin} ->
+                Path.expand("#{@extract_dir_extracted}/godot.macos.editor.double.arm64")
+            {:unix, _} ->
+                Path.expand("#{@extract_dir_extracted}/godot.linux.editor.double.x86_64")
+        end
+
+        if File.exists?(editor_path) do
+            File.chmod(editor_path, 0o755)
+            version = System.cmd(editor_path, ["--headless", "--version"]) |> elem(0) |> String.trim()
+            platforms = [
+                {"windows", "x86_64"},
+                {"linuxbsd", "x86_64"},
+                {"web", "wasm32"},
+            ]
+            for {target_platform, target_arch} <- platforms do
+                export_template(platform_name(@os_family), platform_arch(@os_family), target_platform, target_arch, version)
+                export_platform(platform_name(@os_family), platform_arch(@os_family), target_platform, target_arch)
+            end
+        else
+            IO.puts("Editor path not found: #{editor_path}")
+            exit(:normal)
+        end
+    end
+
+    defp platform_name({:win32, :nt}), do: "windows"
+    defp platform_name({:unix, :darwin}), do: "macos"
+    defp platform_name({:unix, _}), do: "linux"
+
+    defp platform_arch({:win32, :nt}), do: "x86_64"
+    defp platform_arch({:unix, :darwin}), do: "arm64"
+    defp platform_arch({:unix, _}), do: "x86_64"
+
+    def create_version_file(version) do
+        content = """
+        ## AUTOGENERATED BY BUILD
+        const BUILD_LABEL = "#{version}"
+        const BUILD_DATE_STR = "#{:os.system_time(:seconds) |> DateTime.from_unix!() |> DateTime.to_iso8601()}"
+        const BUILD_UNIX_TIME = #{:os.system_time(:seconds)}
+        """
+        File.mkdir_p!("addons/vsk_version")
+        File.write!("addons/vsk_version/build_constants.gd", content)
+    end
+
+    def export_template(_from_platform, _from_arch, target_platform, target_arch, version) do
+        version = String.replace(version, ".custom_build", "")
+        create_version_file(version)
+
+        templatedir = case @os_family do
+            {:win32, :nt} ->
+                Path.expand("#{System.get_env("USERPROFILE")}/AppData/Roaming/Godot/export_templates/#{version}/")
+            {:unix, :darwin} ->
+                Path.expand("#{System.get_env("HOME")}/Library/Application Support/Godot/export_templates/#{version}/")
+            {:unix, _} ->
+                Path.expand("#{System.get_env("HOME")}/.local/share/godot/export_templates/#{version}/")
+        end
+        File.mkdir_p!(templatedir)
+
+        debug_file = case target_platform do
+            "linuxbsd" -> "#{@extract_dir_extracted}/godot.linuxbsd.template_debug.double.#{target_arch}"
+            "windows" -> "#{@extract_dir_extracted}/godot.windows.template_debug.double.#{target_arch}.llvm.exe"
+            "web" -> "#{@extract_dir_extracted}/godot.web.template_debug.double.wasm32.dlink.zip"
+            "android" -> "#{@extract_dir_extracted}/android_debug.apk"
+            _ -> raise "Unsupported platform: #{target_platform}"
+        end
+
+        release_file = case target_platform do
+            "linuxbsd" -> "#{@extract_dir_extracted}/godot.linuxbsd.template_release.double.#{target_arch}"
+            "windows" -> "#{@extract_dir_extracted}/godot.windows.template_release.double.#{target_arch}.llvm.exe"
+            "web" -> "#{@extract_dir_extracted}/godot.web.template_release.double.wasm32.dlink.zip"
+            "android" -> "#{@extract_dir_extracted}/android_release.apk"
+            _ -> raise "Unsupported platform: #{target_platform}"
+        end
+
+        debug_file_name = case target_platform do
+            "linuxbsd" -> "linux_debug.#{target_arch}"
+            "windows" -> "windows_debug_#{target_arch}.exe"
+            "web" -> "web_dlink_nothreads_debug.zip"
+            "macos" -> "macos_debug_#{target_arch}"
+            "android" -> "android_debug.apk"
+            _ -> "#{target_platform}_debug_#{target_arch}"
+    end
+
+        release_file_name = case target_platform do
+            "linuxbsd" -> "linux_release.#{target_arch}"
+            "windows" -> "windows_release_#{target_arch}.exe"
+            "web" -> "web_dlink_nothreads_release.zip"
+            "android" -> "android_release.apk"
+            _ -> "#{target_platform}_release_#{target_arch}"
+        end
+
+        File.cp!(debug_file, "#{templatedir}/#{debug_file_name}", force: true)
+        File.cp!(release_file, "#{templatedir}/#{release_file_name}", force: true)
+    end
+    def export_platform(from_platform, from_arch, target_platform, target_arch) do
+        File.rm_rf!("#{@extract_dir}/export_#{target_platform}_#{target_arch}")
+        File.mkdir_p!("#{@extract_dir}/export_#{target_platform}_#{target_arch}")
+        editor_file = cond do
+            from_platform == "windows" and File.exists?("#{@extract_dir_extracted}/godot.#{from_platform}.editor.double.#{from_arch}.llvm.exe") ->
+                "#{@extract_dir_extracted}/godot.#{from_platform}.editor.double.#{from_arch}.llvm.exe"
+            from_platform == "macos" and File.exists?("#{@extract_dir_extracted}/godot.macos.editor.double.arm64") ->
+                "#{@extract_dir_extracted}/godot.macos.editor.double.arm64"
+            true ->
+                "#{@extract_dir_extracted}/godot.#{from_platform}.editor.double.#{from_arch}"
+        end
+        File.chmod(editor_file, 0o755)
+        pwd = Path.dirname(__ENV__.file)
+        arguments = ["--headless", "--path", pwd, "--import"]
+        {output, _exit_code} = System.cmd("bash", ["-c", "#{editor_file} #{Enum.join(arguments, " ")}"])
+        IO.puts(output)
+
+        output_file = "#{@extract_dir}/export_#{target_platform}_#{target_arch}/#{@project_name}"
+        output_file = if target_platform == "windows", do: output_file <> ".exe", else: output_file
+        arguments = ["--headless", "--path", pwd, "--export-release", target_platform, output_file, "-e"]
+        {output, _exit_code} = System.cmd("bash", ["-c", "#{editor_file} #{Enum.join(arguments, " ")}"])
+        IO.puts(output)
+
+        case target_platform do
+            "windows" ->
+                System.cmd("strip", [output_file], stderr_to_stdout: true)
+                pdb_file = "#{@extract_dir_extracted}/godot.#{target_platform}.template_release.double.#{from_arch}.llvm.pdb"
+                if File.exists?(pdb_file) do
+                    File.cp!(pdb_file, "#{@extract_dir}/export_#{target_platform}_#{target_arch}/#{Path.basename(pdb_file)}")
+                else
+                    IO.puts("PDB file not found: #{pdb_file}")
+                end
+            _ -> :ok
+        end
+    end
+
+    def upload_stage do
+        upload_artifacts("windows", "x86_64")
+        upload_artifacts("linux", "x86_64")
+    end
+
+    def upload_artifacts(platform, arch) do
+        File.mkdir_p!("#{@extract_dir}/game")
+        File.mkdir_p!("#{@extract_dir}/editor")
+        File.cp_r!("#{@extract_dir_extracted}/export_#{platform}_#{arch}", "#{@extract_dir}/game")
+        File.cp_r!("#{@extract_dir_extracted}/export_#{platform}_#{arch}/xr_grid_#{platform}_#{arch}", "#{@extract_dir}/editor/xr_grid_#{platform}_#{arch}_editor")
+    end
+end

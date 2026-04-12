@@ -1,0 +1,48 @@
+version: "3.9"
+services:
+  uro:
+    extends:
+      file: docker-compose.yml
+      service: uro
+    build:
+      args:
+        MIX_ENV: dev
+    volumes:
+      - ./lib:/app/lib
+      - ./config:/app/config
+      - ./priv:/app/priv
+
+  nextjs:
+    extends:
+      file: docker-compose.yml
+      service: nextjs
+    build:
+      args:
+        NODE_ENV: development
+    entrypoint: npm run dev
+    user: "root"
+    volumes:
+      - ./frontend:/app
+
+  database:
+    extends:
+      file: docker-compose.yml
+      service: database
+
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+
+  caddy:
+    extends:
+      file: docker-compose.yml
+      service: caddy
+
+networks:
+  uro:
+    name: "uro"
+    
+volumes:
+  caddy_data:
+  caddy_config:

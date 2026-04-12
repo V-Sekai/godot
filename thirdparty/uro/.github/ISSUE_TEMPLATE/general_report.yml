@@ -1,0 +1,19 @@
+name: General report.
+description: Propose a possible solution to solve an limitation.
+title: "[REPORT NAME]"
+labels: []
+body:
+  - type: textarea
+    attributes:
+      label: Context and Problem Statement
+      description: Describe the problem or limitation you are having in your project, e.g., in free form using two to three sentences. You may want to articulate the problem in the form of a question.
+      placeholder: Example - "A 3D space game with heavy use of cut-out animation"
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Describe the proposed option and how it helps to overcome the problem or limitation
+      placeholder: Example - "The 3D selection tools are cumbersome to use."
+    validations:
+      required: true

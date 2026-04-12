@@ -1,0 +1,53 @@
+name: Feature implementation proposal
+description: Propose a possible solution to solve an limitation.
+title: "[FEATURE NAME]"
+labels: [enhancement]
+body:
+  - type: checkboxes
+    attributes:
+      label: Describe the status of the issue.
+      options:
+        - label: proposed
+        - label: draft
+        - label: rejected
+        - label: accepted
+        - label: deprecated
+        - label: superseded by
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Context and Problem Statement
+      description: Describe the problem or limitation you are having in your project, e.g., in free form using two to three sentences. You may want to articulate the problem in the form of a question.
+      placeholder: Example - "A 3D space game with heavy use of cut-out animation"
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Describe the proposed option and how it helps to overcome the problem or limitation
+      placeholder: Example - "The 3D selection tools are cumbersome to use."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Describe how your proposal will work, with code, pseudo-code, mock-ups, or diagrams
+      placeholder: Example - "When the user presses Ctrl + Shift + G, select all nodes that have the group..."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: If this enhancement will not be used often, can it be worked around with a few lines of script?
+      placeholder: Example - "Implementing mesh merging systems is not a few lines of script."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Is there a reason why this should be core and done by us?
+      placeholder: Example - "This is about improving the 3D editor usability out of the box."
+    validations:
+      required: true

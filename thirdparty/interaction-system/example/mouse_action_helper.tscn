@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://buwabismbkdda"]
+
+[ext_resource type="Script" uid="uid://b7v5wchripyau" path="res://addons/interaction_system/mouse_interaction_helper.gd" id="1_oyceq"]
+[ext_resource type="Script" uid="uid://bdw70rk7ibcgd" path="res://addons/interaction_system/controller_actions/interaction_action.gd" id="1_s14pd"]
+[ext_resource type="Material" uid="uid://dceqxufojv3q8" path="res://addons/interaction_system/assets/laser.material.tres" id="2_oyceq"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ugcfk"]
+material = ExtResource("2_oyceq")
+size = Vector2(0.05, 20)
+subdivide_depth = 20
+
+[node name="MouseActionHost" type="Node3D" unique_id=583915862]
+script = ExtResource("1_oyceq")
+
+[node name="InteractionAction" type="Node3D" parent="." unique_id=1912102640]
+script = ExtResource("1_s14pd")
+
+[node name="Laser" type="MeshInstance3D" parent="InteractionAction" unique_id=533924399]
+mesh = SubResource("PlaneMesh_ugcfk")

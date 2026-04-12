@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  min-width: 0;
+  text-rendering: optimizeLegibility;
+}
+
+@layer components {
+  .light {
+    --tertiary-0: 255 255 255;
+    --tertiary-50: 255 255 255;
+    --tertiary-100: 250 250 250;
+    --tertiary-200: 245 245 245;
+    --tertiary-300: 229 229 229;
+    
+    --secondary-0: 0 0 0;
+    --secondary-100: 23 23 23;
+
+    @apply text-secondary-100;
+  }
+
+  .dark {
+    --tertiary-0: 0 0 0;
+    --tertiary-50: 21 21 21;
+    --tertiary-100: 23 23 23;
+    --tertiary-200: 38 38 38;
+    --tertiary-300: 64 64 64;
+  
+    --secondary-0: 255 255 255;
+    --secondary-100: 245 245 245;
+
+    @apply text-secondary-100;
+  }
+}
