@@ -257,7 +257,9 @@ struct ZoneState {
 
 	void alloc() {
 		slots = (FabricZone::EntitySlot *)memalloc(sizeof(FabricZone::EntitySlot) * capacity);
-		memset(slots, 0, sizeof(FabricZone::EntitySlot) * capacity);
+		for (uint32_t i = 0; i < capacity; i++) {
+			memnew_placement(&slots[i], FabricZone::EntitySlot);
+		}
 	}
 
 	~ZoneState() {
