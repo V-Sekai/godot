@@ -413,8 +413,8 @@ static void _pack_manifold(
 	mesh.vertProperties.reserve(p_mesh_merge->faces.size() * 3 * MANIFOLD_PROPERTY_MAX);
 
 	// Make a run of triangles for each material.
-	for (const KeyValue<uint32_t, Vector<CSGBrush::Face>> &E : faces_by_material) {
-		const uint32_t material_id = E.key;
+	for (const KeyValue<int32_t, Vector<CSGBrush::Face>> &E : faces_by_material) {
+		const int32_t material_id = E.key;
 		const Vector<CSGBrush::Face> &faces = E.value;
 		mesh.runIndex.push_back(mesh.triVerts.size());
 

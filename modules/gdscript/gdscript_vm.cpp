@@ -805,15 +805,15 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 						if (_code_ptr[ip + 5] == 0) {
 							_code_ptr[ip + 5] = actual_signature;
 							_code_ptr[ip + 6] = static_cast<int>(ret_type);
-							Variant::ValidatedOperatorEvaluator *tmp = reinterpret_cast<Variant::ValidatedOperatorEvaluator *>(&_code_ptr[ip + 7]);
-							*tmp = op_func;
+							memcpy(&_code_ptr[ip + 7], &op_func, sizeof(op_func));
 						}
 					}
 					initializer_mutex.unlock();
 				} else if (likely(op_signature == actual_signature)) {
 					// If the signature matches, we can use the optimized path.
 					Variant::Type ret_type = static_cast<Variant::Type>(_code_ptr[ip + 6]);
-					Variant::ValidatedOperatorEvaluator op_func = *reinterpret_cast<Variant::ValidatedOperatorEvaluator *>(&_code_ptr[ip + 7]);
+					Variant::ValidatedOperatorEvaluator op_func;
+					memcpy(&op_func, &_code_ptr[ip + 7], sizeof(op_func));
 
 					// Make sure the return value has the correct type.
 					VariantInternal::initialize(dst, ret_type);
