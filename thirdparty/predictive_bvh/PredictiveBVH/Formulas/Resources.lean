@@ -8,7 +8,7 @@ import AmoLean.Field.GF2
 # Resource Definitions for Durable State Layer
 
 Resources are the durable counterpart to ephemeral entity state.
-Defined here in Lean, proved sound, and emitted to SQLite DDL + Rust CRUD
+Defined here in Lean, proved sound, and emitted to Rust CRUD
 by CodeGen.lean through the same pipeline as the spatial oracle.
 
 References:
@@ -23,12 +23,12 @@ namespace PredictiveBVH.Resources
 
 /-! ## Part 1: Schema Types -/
 
-/-- Field types supported in resource schemas. Maps to SQLite column types. -/
+/-- Field types supported in resource schemas. -/
 inductive FieldType where
-  | int    -- INTEGER
-  | bool   -- INTEGER (0/1)
-  | text   -- TEXT
-  | blob   -- BLOB
+  | int
+  | bool
+  | text
+  | blob
   deriving Repr, BEq, Inhabited
 
 /-- A single field definition: name + type. -/
@@ -333,34 +333,6 @@ theorem pack_unpack_roundtrip (i : Intent) :
     } := by
   simp [packIntentFields, unpackIntentFields]
 
-/-! ## Part 6: SQLite DDL Generation -/
-
-/-- Map FieldType to SQLite column type string. -/
-def fieldTypeToSql : FieldType → String
-  | .int  => "INTEGER"
-  | .bool => "INTEGER"
-  | .text => "TEXT"
-  | .blob => "BLOB"
-
-/-- Generate CREATE TABLE DDL for a resource. -/
-def resourceToDDL (r : ResourceDef) : String :=
-  let columns := r.fields.map fun f =>
-    s!"    {f.name} {fieldTypeToSql f.type}"
-  let columnStr := String.intercalate ",\n" (["    id INTEGER PRIMARY KEY"] ++ columns ++ ["    _last_tick INTEGER NOT NULL"])
-  let createTable := s!"CREATE TABLE IF NOT EXISTS {r.name} (\n{columnStr}\n);"
-  let stagingTable := if r.isZoneAware then
-    s!"\nCREATE TABLE IF NOT EXISTS {r.name}_staging (\n" ++
-    "    id INTEGER PRIMARY KEY,\n" ++
-    "    from_zone INTEGER NOT NULL,\n" ++
-    "    target_zone INTEGER NOT NULL,\n" ++
-    "    tick INTEGER NOT NULL\n);"
-  else ""
-  createTable ++ stagingTable
-
-/-- Generate DDL for all resources. -/
-def allResourcesDDL : String :=
-  String.intercalate "\n\n" (allResources.map resourceToDDL)
-
 /-! ## Part 6: Verification -/
 
 -- Verify built-in resources are well-formed
@@ -368,7 +340,5 @@ def allResourcesDDL : String :=
   for r in allResources do
     IO.println s!"Resource: {r.name} (zone-aware: {r.isZoneAware})"
     IO.println s!"  Fields: {r.fieldNames}"
-  IO.println "\n-- DDL --"
-  IO.println allResourcesDDL
 
 end PredictiveBVH.Resources

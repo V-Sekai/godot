@@ -81,7 +81,7 @@ PredictiveBVH/
 │   ├── CodeGen.lean        — generates predictive_bvh.h and predictive_bvh.rs
 │   └── QuinticHermite.lean — smooth interpolation kernel
 │
-├── Resources.lean          — SQLite DDL + Rust CRUD (GF(2)² STAGING proof)
+├── Resources.lean          — Rust CRUD (GF(2)² STAGING proof)
 ```
 
 ## Units
