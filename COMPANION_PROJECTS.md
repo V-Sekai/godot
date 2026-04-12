@@ -137,6 +137,8 @@ controller (`current_funnel`, CH_PLAYER cmd=1) and pen tool
 (`spawn_stroke_knot`, cmd=3) originate from interaction-system actions
 routed through `fabric_client.gd`.
 
+See also [`thirdparty/lasso`](thirdparty/lasso)
+
 ### [`thirdparty/xr-grid`](thirdparty/xr-grid) — VR locomotion
 
 Upstream: <https://github.com/V-Sekai/V-Sekai.xr-grid>

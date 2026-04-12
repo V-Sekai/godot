@@ -192,6 +192,7 @@
 /modules/gridmap/                             @godotengine/3d-nodes
 /modules/gridmap/doc_classes/                 @godotengine/3d-nodes @godotengine/documentation
 /modules/gridmap/editor/                      @godotengine/3d-nodes @godotengine/editor
+/modules/lasso/                               @fire
 /modules/navigation_2d/                       @godotengine/navigation
 /modules/navigation_2d/editor/                @godotengine/navigation @godotengine/editor
 /modules/navigation_3d/                       @godotengine/navigation

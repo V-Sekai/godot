@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LassoPoint" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Represents a point in the LassoDB system used for Voronoi-based selection.
+	</brief_description>
+	<description>
+		LassoPoint stores data for an interactable object's position and size, influencing its Voronoi hitbox in LassoDB. It allows enabling snapping and adjusting parameters to control selection behavior, such as snap lock and power.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="enable_snapping">
+			<return type="void" />
+			<param index="0" name="on" type="bool" />
+			<description>
+				Enables or disables the ability for this point to snap to selections based on user input.
+			</description>
+		</method>
+		<method name="get_origin">
+			<return type="Node" />
+			<description>
+				Returns the origin Node associated with this LassoPoint, typically the interactable object it represents.
+			</description>
+		</method>
+		<method name="get_size">
+			<return type="float" />
+			<description>
+				Returns the size of the LassoPoint, influencing the multiplicative weight of its Voronoi hitbox.
+			</description>
+		</method>
+		<method name="get_snap_locked">
+			<return type="bool" />
+			<description>
+				Returns true if the point's snap position is locked, preventing automatic updates based on movement.
+			</description>
+		</method>
+		<method name="get_snap_score">
+			<return type="float" />
+			<description>
+				Returns the current snap score, which determines selection priority based on proximity and other factors.
+			</description>
+		</method>
+		<method name="get_snapping_enabled">
+			<return type="bool" />
+			<description>
+				Returns true if snapping is currently enabled for this point.
+			</description>
+		</method>
+		<method name="get_snapping_power">
+			<return type="float" />
+			<description>
+				Returns the snapping power, which affects the influence of this point in selection calculations.
+			</description>
+		</method>
+		<method name="register_point">
+			<return type="void" />
+			<param index="0" name="p_database" type="LassoDB" />
+			<param index="1" name="p_origin" type="Node" />
+			<description>
+				Registers this point with a LassoDB database, associating it with the given origin Node for Voronoi calculations.
+			</description>
+		</method>
+		<method name="set_size">
+			<return type="void" />
+			<param index="0" name="p_size" type="float" />
+			<description>
+				Sets the size of the LassoPoint, adjusting its weight in the Voronoi diagram.
+			</description>
+		</method>
+		<method name="set_snap_locked">
+			<return type="void" />
+			<param index="0" name="p_enable" type="bool" />
+			<description>
+				Locks or unlocks the snap position, maintaining its current state if locked.
+			</description>
+		</method>
+		<method name="set_snapping_power">
+			<return type="void" />
+			<param index="0" name="p_snapping_power" type="float" />
+			<description>
+				Sets the snapping power, modifying how strongly this point attracts the selection.
+			</description>
+		</method>
+		<method name="unregister_point">
+			<return type="void" />
+			<description>
+				Unregisters this point from its associated LassoDB, removing it from Voronoi calculations.
+			</description>
+		</method>
+	</methods>
+</class>
